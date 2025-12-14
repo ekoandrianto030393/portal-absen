@@ -30,12 +30,12 @@ app.use(bodyParser.json());
 
 // --- KONFIGURASI WAKTU KERJA (WIB) & KEAMANAN ---
 // Catatan: Jam kerja disesuaikan berdasarkan contoh sebelumnya (malam)
-const JAM_MASUK_START_H = 17;
-const JAM_MASUK_START_M = 40;
-const JAM_MASUK_END_H = 18;
-const JAM_MASUK_END_M = 59; 
-const JAM_PULANG_START_H = 23;
-const JAM_PULANG_START_M = 44;
+const JAM_MASUK_START_H =15;
+const JAM_MASUK_START_M = 10;
+const JAM_MASUK_END_H = 15;
+const JAM_MASUK_END_M = 15; 
+const JAM_PULANG_START_H = 15;
+const JAM_PULANG_START_M = 16;
 
 // 🛑 KONFIGURASI PENGAMANAN WAKTU (TIME GATE)
 const MIN_INTERVAL_SECONDS = 60; // Minimal 60 detik antar absensi yang sah
