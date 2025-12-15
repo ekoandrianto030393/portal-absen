@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Monitoring Kedisiplinan Karyawan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* TEMA DASAR - Dibuat sedikit lebih sederhana */
+        :root {
+            --color-primary: #0080FF;
+            /* Biru Neon */
+            --color-secondary: #00FFFF;
+            --color-bg: #1F2937;
+            /* Dark Gray */
+            --color-card: #374151;
+            /* Medium Dark Gray */
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--color-bg);
+            color: #E5E7EB;
+        }
+
+        .header-bg {
+            background-color: #111827;
+            border-bottom: 3px solid var(--color-primary);
+        }
+
+        .card {
+            background-color: var(--color-card);
+            border: 1px solid #4B5563;
+            border-radius: 0.5rem;
+        }
+
+        .text-accent-main {
+            color: var(--color-primary);
+        }
+
+        .table-header {
+            background-color: #2563EB;
+            /* Biru untuk header tabel */
+            color: white;
+            font-weight: 700;
+        }
+
+        /* Style untuk notifikasi di UI */
+        .notification-info {
+            border-left: 4px solid var(--color-secondary);
+            background-color: #374151;
+        }
+
+        .notification-problem {
+            border-left: 4px solid #F87171;
+            background-color: #4B5563;
+        }
+
+        .spinner {
+            display: none;
+        }
+
+        /* Sembunyikan spinner saat cetak */
+
+        /* TOMBOL CETAK DENGAN INLINE CSS SEDERHANA (NON-TAILWIND STYLE) */
+        #printButton {
+            background-color: #007bff;
+            /* Biru Standar */
+            color: white;
+            font-weight: bold;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #printButton:hover {
+            background-color: #0056b3;
+        }
+
+
+        /* --- MODE CETAK (PRINT CSS PROFESIONAL AGGRESSIVE) --- */
+        @media print {
+
+            /* 1. Reset Global */
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0;
+                margin: 0;
+                font-family: 'Times New Roman', serif !important;
+                font-size: 11pt;
+            }
+
+            /* 2. Sembunyikan Elemen Non-Laporan */
+            .no-print {
+                display: none !important;
+            }
+
+            /* 3. Tampilkan Header Resmi Laporan */
+            .print-header {
+                display: block !important;
+                margin-bottom: 25px;
+                padding-bottom: 10px;
+                border-bottom: 3px solid #000;
+                text-align: center;
+            }
+
+            .print-header h1 {
+                font-size: 18pt !important;
+                color: #000 !important;
+                margin-bottom: 5px;
+            }
+
+            .print-header p {
+                font-size: 10pt !important;
+                color: #333 !important;
+            }
+
+            /* 4. Reset Style Card */
+            .card {
+                background: white !important;
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+                margin-bottom: 20px;
+                padding: 0px !important;
+            }
+
+            /* 5. Styling Tabel untuk Cetak */
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                font-size: 10pt !important;
+                color: black !important;
+            }
+
+            th,
+            td {
+                border: 1px solid #666 !important;
+                padding: 6px 8px !important;
+                text-align: left !important;
+                color: black !important;
+                background: white !important;
+            }
+
+            .table-header {
+                background-color: #e0e0e0 !important;
+                /* Header abu-abu terang */
+                color: black !important;
+            }
+
+            /* Pastikan angka pelanggaran dicetak hitam/merah */
+            .text-red-400,
+            .text-yellow-300 {
+                color: #CC0000 !important;
+                /* Merah Marun untuk cetak */
+                font-weight: bold;
+            }
+
+            .text-accent-main {
+                color: #000 !important;
+                font-weight: bold;
+            }
+        }
+    </style>
+</head>
+
+<body class="p-8">
+
+    <header class="header-bg p-6 mb-10 rounded-lg shadow-2xl no-print">
+        <h1 class="text-3xl font-extrabold text-accent-main">SYSTEM KEDISIPLINAN BIOMETRIK</h1>
+        <p class="text-sm text-gray-400 mt-1">Status Operasional & Laporan Pelanggaran Absensi (Ver. 2.0)</p>
+        <nav class="mt-4 flex space-x-4">
+            <a href="scan.html" class="text-accent-secondary hover:text-white transition">Terminal Absensi</a>
+            <a href="rekap.html" class="text-accent-secondary hover:text-white transition">Laporan Rekapitulasi</a>
+            <a href="admin.html" class="text-accent-secondary hover:text-white transition">Admin Registrasi</a>
+        </nav>
+    </header>
+
+    <div class="print-header hidden">
+        <h1>LAPORAN MONITORING KEDISIPLINAN KARYAWAN</h1>
+        <p class="text-lg font-bold">Periode Laporan: <span id="printPeriodeDisplay"></span></p>
+        <p>Dicetak pada: <span id="printDate"></span></p>
+    </div>
+
+    <div class="mb-8 p-4 bg-gray-700 rounded-lg flex items-center shadow-lg no-print">
+        <label for="modeSelect" class="text-lg font-bold text-accent-main mr-4 whitespace-nowrap">Pilih Mode
+            Laporan:</label>
+
+        <select id="modeSelect"
+            class="bg-gray-600 text-white p-2 rounded-md border border-gray-500 focus:outline-none transition duration-200 mr-4">
+            <option value="today">Monitoring Hari Ini</option>
+            <option value="monthly">Laporan Bulanan</option>
+        </select>
+
+        <select id="periodeSelect"
+            class="bg-gray-600 text-white p-2 rounded-md border border-gray-500 focus:outline-none transition duration-200 hidden">
+            <option value="">-- Loading Periode --</option>
+        </select>
+
+        <p id="todayDateDisplay" class="text-white ml-4 text-lg font-semibold whitespace-nowrap"></p>
+
+        <button id="printButton" onclick="window.print()" class="ml-auto flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6m-4-2v-4"></path>
+            </svg>
+            Cetak Laporan
+        </button>
+    </div>
+
+    <main class="space-y-12">
+
+        <section class="card p-8 rounded-xl shadow-2xl">
+            <h2 class="text-2xl font-bold mb-5 flex items-center text-accent-main">
+                <span class="mr-3 text-3xl no-print">🕢</span> 1. Total Kasus Lupa Absen Pulang
+            </h2>
+            <div id="lupaPulangStatus" class="notification-info p-4 rounded-md mb-4 text-sm font-semibold">
+                Memuat data...
+            </div>
+            <div id="lupaPulangTableContainer" class="overflow-x-auto">
+            </div>
+        </section>
+
+        <section class="card p-8 rounded-xl shadow-2xl">
+            <h2 class="text-2xl font-bold mb-5 flex items-center text-accent-main">
+                <span class="mr-3 text-3xl no-print">⏱️</span> 2. Total Kasus Terlambat Masuk (Kehadiran Lengkap)
+            </h2>
+            <div id="terlambatLengkapStatus" class="notification-info p-4 rounded-md mb-4 text-sm font-semibold">
+                Memuat data...
+            </div>
+            <div id="terlambatLengkapTableContainer" class="overflow-x-auto">
+            </div>
+        </section>
+
+        <section class="card p-8 rounded-xl shadow-2xl border-red-500 border-2">
+            <h2 class="text-2xl font-bold mb-5 flex items-center text-red-400">
+                <span class="mr-3 text-3xl no-print">🚨</span> 3. Kasus Terburuk: Terlambat Masuk DAN Lupa Pulang
+            </h2>
+            <div id="terlambatLupaStatus"
+                class="notification-problem p-4 rounded-md mb-4 text-sm font-semibold text-red-300">
+                Memuat data...
+            </div>
+            <div id="terlambatLupaTableContainer" class="overflow-x-auto">
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="mt-12 pt-6 border-t border-gray-600 text-center text-xs text-gray-500 no-print">
+        &copy; <span id="currentYear"></span> Biometric System Monitoring. Developed with secure protocols.
+    </footer>
+
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+        const modeSelect = document.getElementById('modeSelect');
+        const periodeSelect = document.getElementById('periodeSelect');
+        const todayDateDisplay = document.getElementById('todayDateDisplay');
+        const printPeriodeDisplay = document.getElementById('printPeriodeDisplay');
+        const printDate = document.getElementById('printDate');
+
+
+        /** Memuat daftar periode dari API */
+        async function loadPeriodes() {
+            try {
+                const response = await fetch('/api/rekap_all_periodes');
+                const result = await response.json();
+                const data = result.data;
+
+                if (data && data.length > 0) {
+                    periodeSelect.innerHTML = '';
+                    data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.periode_bulan;
+                        option.textContent = formatPeriode(item.periode_bulan);
+                        periodeSelect.appendChild(option);
+                    });
+                    periodeSelect.value = data[0].periode_bulan;
+                } else {
+                    periodeSelect.innerHTML = '<option value="">Tidak ada data periode</option>';
+                }
+            } catch (error) {
+                console.error('Error loading periodes:', error);
+                periodeSelect.innerHTML = '<option value="">Error Memuat</option>';
+            }
+        }
+
+        /** Format YYYY-MM menjadi Bulan Tahun (Cth: 2025-12 -> Desember 2025) */
+        function formatPeriode(periodString) {
+            if (!periodString) return 'Hari Ini';
+            const [year, month] = periodString.split('-');
+            const date = new Date(year, parseInt(month) - 1, 1);
+            const options = { year: 'numeric', month: 'long' };
+            return date.toLocaleDateString('id-ID', options);
+        }
+
+        /** Mendapatkan tanggal hari ini dalam format YYYY-MM-DD */
+        function getTodayDate() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        /** Menampilkan info tanggal hari ini dan update print header */
+        function updateDisplayAndPrintHeader() {
+            const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const now = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            let reportTitle;
+
+            if (modeSelect.value === 'today') {
+                todayDateDisplay.textContent = `Tanggal: ${today}`;
+                todayDateDisplay.classList.remove('hidden');
+                periodeSelect.classList.add('hidden');
+                reportTitle = `Harian: ${today}`;
+            } else {
+                todayDateDisplay.classList.add('hidden');
+                periodeSelect.classList.remove('hidden');
+                reportTitle = `Bulanan: ${formatPeriode(periodeSelect.value)}`;
+            }
+
+            // Update Print Header
+            printPeriodeDisplay.textContent = reportTitle;
+            printDate.textContent = now;
+        }
+
+
+        /** Mengambil data dari API dan memprosesnya */
+        async function fetchDataAndRender(endpoint, statusId, containerId, title) {
+            const statusElement = document.getElementById(statusId);
+            const containerElement = document.getElementById(containerId);
+
+            let queryParam = '';
+            let reportTitle = '';
+
+            if (modeSelect.value === 'today') {
+                const today = getTodayDate();
+                queryParam = `tanggal=${today}`;
+                reportTitle = `Hari Ini (${today})`;
+            } else if (modeSelect.value === 'monthly' && periodeSelect.value) {
+                const selectedPeriode = periodeSelect.value;
+                queryParam = `periode=${selectedPeriode}`;
+                reportTitle = formatPeriode(selectedPeriode);
+            } else {
+                statusElement.innerHTML = 'Silakan pilih mode laporan yang valid.';
+                statusElement.className = 'notification-info p-4 rounded-md mb-4 text-sm font-semibold text-yellow-300 border-l-4 border-yellow-500';
+                containerElement.innerHTML = '';
+                return;
+            }
+
+            statusElement.innerHTML = `Mengambil data ${title} periode ${reportTitle}...`;
+            statusElement.className = 'notification-info p-4 rounded-md mb-4 text-sm font-semibold';
+            containerElement.innerHTML = '';
+
+            try {
+                const url = `/api/monitoring/${endpoint}?${queryParam}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                const result = await response.json();
+                const data = result.data;
+
+                updateDisplayAndPrintHeader();
+
+                if (data && data.length > 0) {
+                    const isSevere = endpoint === 'terlambat_lupa';
+                    statusElement.innerHTML = `⚠️ Ditemukan **${data.length}** karyawan bermasalah pada ${reportTitle}. Segera tindak lanjuti!`;
+                    statusElement.className = isSevere
+                        ? 'notification-problem p-4 rounded-md mb-4 text-sm font-bold text-red-300'
+                        : 'notification-info p-4 rounded-md mb-4 text-sm font-bold text-yellow-300';
+                    renderTable(data, containerElement, title);
+                } else {
+                    statusElement.innerHTML = `✅ **Status OK.** Tidak ditemukan kasus ${title.toLowerCase()} pada ${reportTitle}.`;
+                    statusElement.className = 'notification-info p-4 rounded-md mb-4 text-sm font-bold text-green-400 border-l-4 border-green-500';
+                    renderTable([], containerElement, title);
+                }
+
+            } catch (error) {
+                console.error(`Error fetching ${endpoint}:`, error);
+                statusElement.innerHTML = `❌ GAGAL MEMUAT DATA. Cek log terminal server: ${error.message}`;
+                statusElement.className = 'notification-problem p-4 rounded-md mb-4 text-sm font-bold text-red-500';
+                renderTable([], containerElement, title);
+            }
+        }
+
+        /** Rendering data menjadi tabel yang rapi */
+        function renderTable(data, container, title) {
+            const totalKey = Object.keys(data[0] || { total_kasus: 0 }).find(key => key.startsWith('total_'));
+            const totalLabel = title.replace('Kasus ', 'Total ');
+
+            let tableHTML = `
+                <table class="min-w-full divide-y divide-gray-600 rounded-lg overflow-hidden border border-gray-600">
+                    <thead class="table-header">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wider">ID Karyawan</th>
+                            <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wider">Nama Karyawan</th>
+                            <th class="px-6 py-3 text-right text-xs font-extrabold uppercase tracking-wider">${totalLabel}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700 text-sm">
+            `;
+
+            if (data.length === 0) {
+                tableHTML += `<tr><td colspan="3" class="px-6 py-4 text-center text-gray-400 bg-gray-800 table-row-even">Tidak ada data pelanggaran pada periode ini.</td></tr>`;
+            } else {
+                data.forEach((item, index) => {
+                    const rowClass = (index % 2 === 0) ? 'bg-gray-800 table-row-even' : 'bg-gray-900 table-row-odd';
+                    const totalColor = (item[totalKey] > 0 && modeSelect.value === 'today') ? 'text-red-400' :
+                        (item[totalKey] > 5 && modeSelect.value === 'monthly') ? 'text-red-400' : 'text-yellow-300';
+
+                    tableHTML += `
+                        <tr class="${rowClass} hover:bg-gray-700 transition duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-accent-secondary">${item.id_karyawan}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${item.nama}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-lg ${totalColor}">${item[totalKey]}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = tableHTML;
+        }
+
+        /** Handle perubahan mode laporan */
+        function handleModeChange() {
+            updateDisplayAndPrintHeader();
+            loadAllMonitoringData();
+        }
+
+        /** Memanggil semua fungsi saat halaman dimuat atau filter diubah */
+        function loadAllMonitoringData() {
+            if (modeSelect.value === 'today' || (modeSelect.value === 'monthly' && periodeSelect.value)) {
+                fetchDataAndRender('lupa_pulang', 'lupaPulangStatus', 'lupaPulangTableContainer', 'Kasus Lupa Absen Pulang');
+                fetchDataAndRender('terlambat_lengkap', 'terlambatLengkapStatus', 'terlambatLengkapTableContainer', 'Kasus Sering Terlambat Masuk');
+                fetchDataAndRender('terlambat_lupa', 'terlambatLupaStatus', 'terlambatLupaTableContainer', 'Kasus Terlambat & Lupa Pulang');
+            }
+        }
+
+        // Event listener saat mode atau periode diubah
+        modeSelect.addEventListener('change', handleModeChange);
+        periodeSelect.addEventListener('change', loadAllMonitoringData);
+
+        // Inisialisasi saat DOM siap
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadPeriodes();
+            handleModeChange();
+        });
+    </script>
+</body>
+
+</html>

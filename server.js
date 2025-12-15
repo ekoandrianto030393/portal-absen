@@ -26,14 +26,14 @@ app.use(bodyParser.json());
 // --- 🛑 KONFIGURASI WAKTU KERJA (WIB) & KEAMANAN 🛑 ---
 
 // 1. WAKTU MASUK (7:30)
-const JAM_MASUK_START_H =12 ;
-const JAM_MASUK_START_M = 46; // Mulai Absen MASUK 5 menit sebelum 7:30
-const JAM_MASUK_END_H = 13;
-const JAM_MASUK_END_M = 0; // Batas akhir Absen MASUK 15 menit setelah 7:30
+const JAM_MASUK_START_H = 7;
+const JAM_MASUK_START_M = 5; // Mulai Absen MASUK 5 menit sebelum 7:30
+const JAM_MASUK_END_H = 8;
+const JAM_MASUK_END_M = 44; // Batas akhir Absen MASUK 15 menit setelah 7:30 (07:45)
 
 // 2. WAKTU PULANG (14:00)
-const JAM_PULANG_START_H = 15;
-const JAM_PULANG_START_M = 0; // Mulai Absen PULANG 5 menit sebelum 14:00
+const JAM_PULANG_START_H = 14;
+const JAM_PULANG_START_M = 0; // Mulai Absen PULANG 14:00:00
 
 // 3. DURASI STANDAR untuk Kasus Lupa Absen (7:30 sampai 14:00 = 6.5 jam)
 const JAM_KERJA_STANDAR_H = 6.50; 
@@ -113,7 +113,7 @@ app.post('/api/register_face', async (req, res) => {
     }
 });
 
-// 3. POST: Proses Absensi (Dengan Perbaikan Syntax SQL dan Kolom Keterangan)
+// 3. POST: Proses Absensi 
 app.post('/absensi', async (req, res) => {
     let connection;
     try {
@@ -140,34 +140,24 @@ app.post('/absensi', async (req, res) => {
         }
         const karyawanName = karyawanData[0].nama;
         
-        // --- 🛑 LOGIKA AUTO-FIX LUPA ABSEN (Perbaikan Syntax SQL di sini) ---
+        // --- 🛑 LOGIKA AUTO-FIX LUPA ABSEN ---
         
-        // Menggunakan string concatenation (+) untuk menghindari ER_PARSE_ERROR
+        // Query untuk mencari Absensi MASUK kemarin atau hari sebelumnya yang belum ada Absen PULANG hari itu.
         const sqlHangingAbsensi = 
             'SELECT waktu_absensi FROM absensi ' +
-            'WHERE id_karyawan = ? AND tipe_absensi = \'MASUK\' ' +
-            'AND DATE(waktu_absensi) < DATE(NOW()) AND jam_kerja IS NULL ' + 
+            'WHERE id_karyawan = ? ' +
+            'AND tipe_absensi = \'MASUK\' ' +
+            'AND DATE(waktu_absensi) < DATE(NOW()) ' + 
+            'AND jam_kerja IS NULL ' + 
             'ORDER BY waktu_absensi DESC LIMIT 1';
             
         const [hangingAbsensi] = await connection.execute(sqlHangingAbsensi, [karyawanId]);
         
-        // OLD CODE (yang menyebabkan error):
-        /*
-        const [hangingAbsensi] = await connection.execute(`
-            SELECT waktu_absensi 
-            FROM absensi 
-            WHERE id_karyawan = ? 
-              AND tipe_absensi = 'MASUK' 
-              AND DATE(waktu_absensi) < DATE(NOW())
-              AND jam_kerja IS NULL                 
-            ORDER BY waktu_absensi DESC LIMIT 1
-        `, [karyawanId]);
-        */
         
         if (hangingAbsensi.length > 0) {
             const waktuMasukLama = new Date(hangingAbsensi[0].waktu_absensi);
             const waktuPulangOtomatis = new Date(waktuMasukLama);
-            // Set waktu pulang default jam 14:00:00 (Sesuai JAM_KERJA_STANDAR_H)
+            // Set waktu pulang default jam 14:00:00 
             waktuPulangOtomatis.setHours(14, 0, 0); 
             const waktuPulangDefaultSQL = toSqlDatetime(waktuPulangOtomatis);
             const jamKerjaDefault = JAM_KERJA_STANDAR_H.toFixed(2);
@@ -195,7 +185,6 @@ app.post('/absensi', async (req, res) => {
 
             if (timeDifferenceSeconds < MIN_INTERVAL_SECONDS) {
                 const remainingTime = MIN_INTERVAL_SECONDS - Math.floor(timeDifferenceSeconds);
-                // 🛑 KRUSIAL: RETURN DI SINI AGAR KODE INSERT DI BAWAH TIDAK DIEKSEKUSI
                 return res.json({
                     success: false,
                     message: `Absensi **${karyawanName}** terlalu cepat. Coba lagi dalam ${remainingTime} detik.`,
@@ -227,7 +216,6 @@ app.post('/absensi', async (req, res) => {
                 const startStr = `${String(JAM_MASUK_START_H).padStart(2,'0')}:${String(JAM_MASUK_START_M).padStart(2,'0')}`;
                 const endStr = `${String(JAM_MASUK_END_H).padStart(2,'0')}:${String(JAM_MASUK_END_M).padStart(2,'0')}`;
 
-                // 🛑 KRUSIAL: RETURN DI SINI
                 return res.json({ 
                     success: false, 
                     message: `Absen MASUK Gagal. Diluar jam ${startStr} - ${endStr}.`, 
@@ -235,7 +223,7 @@ app.post('/absensi', async (req, res) => {
                 });
             }
 
-            // 🛑 PERBAIKAN KOLOM KETERANGAN
+            // INSERT Absen Masuk Normal (jam_kerja NULL)
             await connection.execute('INSERT INTO absensi (id_karyawan, tipe_absensi, waktu_absensi, jam_kerja, keterangan) VALUES (?, ?, ?, NULL, ?)', 
                 [karyawanId, tipeAbsensiBaru, waktuAbsensi, 'Absen Masuk Normal']);
             
@@ -255,7 +243,6 @@ app.post('/absensi', async (req, res) => {
                 
                 if (currentHour >= 10 && currentHour < 12) { 
                     const startStr = `${String(JAM_PULANG_START_H).padStart(2,'0')}:${String(JAM_PULANG_START_M).padStart(2,'0')}`;
-                    // 🛑 KRUSIAL: RETURN DI SINI
                     return res.json({ 
                         success: false, 
                         message: `⛔ Absen PULANG Ditolak. Dimulai jam ${startStr}.`, 
@@ -264,7 +251,7 @@ app.post('/absensi', async (req, res) => {
                     });
                 }
 
-                // Fake Success untuk jam kerja normal (di antara waktu masuk dan waktu penolakan keras)
+                // Fake Success untuk jam kerja normal 
                 return res.json({ 
                     success: true, 
                     message: `Absen MASUK telah tercatat. Anda sedang dalam masa kerja.`, 
@@ -291,7 +278,6 @@ app.post('/absensi', async (req, res) => {
             }
         }
 
-        // Jika sampai sini, ada kondisi tidak terduga
         res.json({ success: false, message: 'Proses Absensi Tidak Valid', statusColor: 'red', karyawanName, karyawanId });
 
     } catch (error) {
@@ -317,7 +303,6 @@ app.get('/api/rekap_data', async (req, res) => {
             whereClause = `WHERE Tahun = ${mysql.escape(tahun)} AND Bulan = ${mysql.escape(parseInt(bulan))}`;
         }
 
-        // Query ini mengandalkan VIEW bernama rekap_gaji_bulanan
         const sql = `
             SELECT 
                 id_karyawan, 
@@ -333,7 +318,7 @@ app.get('/api/rekap_data', async (req, res) => {
         res.json({ success: true, data: rows });
     } catch (e) {
         console.error('Rekap Data Error:', e);
-        res.status(500).json({ success: false, message: 'Gagal memuat rekap data. Pastikan VIEW rekap_gaji_bulanan sudah dibuat.' });
+        res.status(500).json({ success: false, message: 'Gagal memuat rekap data.' });
     } finally {
         if (connection) connection.release();
     }
@@ -355,7 +340,116 @@ app.get('/api/rekap_all_periodes', async (req, res) => {
         res.json({ success: true, data: rows });
     } catch (e) {
         console.error('Rekap All Periodes Error:', e);
-        res.status(500).json({ success: false, message: 'Gagal memuat daftar periode. Pastikan VIEW rekap_gaji_bulanan sudah dibuat.' });
+        res.status(500).json({ success: false, message: 'Gagal memuat daftar periode.' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+
+// --- ENDPOINT MONITORING KEDISIPLINAN (Menggunakan VIEW status_absensi_harian) ---
+
+// 6. GET: Monitoring Lupa Absen Pulang (LUPA PULANG)
+app.get('/api/monitoring/lupa_pulang', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const periodeFilter = req.query.periode; 
+        let whereClause = 'WHERE is_lupa_pulang = 1'; // Filter dasar
+
+        // Filter Bulanan
+        if (periodeFilter && periodeFilter.length === 7 && periodeFilter.includes('-')) {
+            const [tahun, bulan] = periodeFilter.split('-');
+            // diasumsikan kolom tanggal ada di status_absensi_harian
+            whereClause += ` AND YEAR(tanggal) = ${mysql.escape(tahun)} AND MONTH(tanggal) = ${mysql.escape(parseInt(bulan))}`;
+        }
+
+        const sql = `
+            SELECT 
+                id_karyawan, 
+                nama, 
+                COUNT(*) AS total_lupa_pulang
+            FROM status_absensi_harian
+            ${whereClause} 
+            GROUP BY id_karyawan, nama
+            ORDER BY total_lupa_pulang DESC;
+        `;
+        
+        const [rows] = await connection.execute(sql);
+        res.json({ success: true, data: rows });
+    } catch (e) {
+        console.error('Monitoring Lupa Pulang Error:', e);
+        res.status(500).json({ success: false, message: 'Gagal memuat data monitoring lupa pulang.' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 7. GET: Monitoring Sering Terlambat Masuk (LENGKAP PULANG)
+app.get('/api/monitoring/terlambat_lengkap', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const periodeFilter = req.query.periode; 
+        let whereClause = 'WHERE is_terlambat_masuk = 1 AND is_lupa_pulang = 0'; // Filter dasar
+
+        // Filter Bulanan
+        if (periodeFilter && periodeFilter.length === 7 && periodeFilter.includes('-')) {
+            const [tahun, bulan] = periodeFilter.split('-');
+            whereClause += ` AND YEAR(tanggal) = ${mysql.escape(tahun)} AND MONTH(tanggal) = ${mysql.escape(parseInt(bulan))}`;
+        }
+        
+        const sql = `
+            SELECT 
+                id_karyawan, 
+                nama, 
+                COUNT(*) AS total_terlambat_lengkap
+            FROM status_absensi_harian
+            ${whereClause}
+            GROUP BY id_karyawan, nama
+            ORDER BY total_terlambat_lengkap DESC;
+        `;
+        
+        const [rows] = await connection.execute(sql);
+        res.json({ success: true, data: rows });
+    } catch (e) {
+        console.error('Monitoring Terlambat Lengkap Error:', e);
+        res.status(500).json({ success: false, message: 'Gagal memuat data monitoring terlambat lengkap.' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 8. GET: Monitoring Terlambat Masuk DAN Lupa Absen Pulang (KASUS TERBURUK)
+app.get('/api/monitoring/terlambat_lupa', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const periodeFilter = req.query.periode; 
+        let whereClause = 'WHERE is_terlambat_masuk = 1 AND is_lupa_pulang = 1'; // Filter dasar
+
+        // Filter Bulanan
+        if (periodeFilter && periodeFilter.length === 7 && periodeFilter.includes('-')) {
+            const [tahun, bulan] = periodeFilter.split('-');
+            whereClause += ` AND YEAR(tanggal) = ${mysql.escape(tahun)} AND MONTH(tanggal) = ${mysql.escape(parseInt(bulan))}`;
+        }
+        
+        const sql = `
+            SELECT 
+                id_karyawan, 
+                nama, 
+                COUNT(*) AS total_terlambat_lupa
+            FROM status_absensi_harian
+            ${whereClause}
+            GROUP BY id_karyawan, nama
+            ORDER BY total_terlambat_lupa DESC;
+        `;
+        
+        const [rows] = await connection.execute(sql);
+        res.json({ success: true, data: rows });
+    } catch (e) {
+        console.error('Monitoring Terlambat Lupa Error:', e);
+        res.status(500).json({ success: false, message: 'Gagal memuat data monitoring terlambat dan lupa pulang.' });
     } finally {
         if (connection) connection.release();
     }
@@ -372,5 +466,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`⚙️  ADMIN REGISTRASI : http://localhost:${PORT}/admin.html`);
     console.log(`📷  ABSENSI TERMINAL : http://localhost:${PORT}/scan.html`);
     console.log(`📊  REKAP DATA       : http://localhost:${PORT}/rekap.html`); 
+    console.log(`🚨  MONITORING       : http://localhost:${PORT}/monitor.html`); 
     console.log('===================================================\n');
 });
