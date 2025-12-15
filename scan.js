@@ -1,8 +1,6 @@
 /**
  * scan.js - Biometric Attendance Terminal
- * Perbaikan: Memastikan elemen <select id="cameraSelect"> berfungsi dan terlihat,
- * serta mengatasi masalah overlay notifikasi yang tertimpa dengan manajemen isProcessing 
- * dan cooldown yang lebih ketat.
+ * Perbaikan Terbaru: Implementasi penuh efek visual futuristik: Grid Perspektif, Scanline, dan Corner Brackets.
  */
 
 // --- GLOBAL DOM & VARS ---
@@ -24,7 +22,7 @@ const networkStatus = document.getElementById('networkStatus');
 const cameraStatus = document.getElementById('cameraStatus');
 const dbStatus = document.getElementById('dbStatus');
 const systemLog = document.getElementById('systemLog');
-const cameraSelect = document.getElementById('cameraSelect'); // Mendapatkan elemen Select
+const cameraSelect = document.getElementById('cameraSelect');
 
 let labeledDescriptors = null;
 let detectionInterval = null;
@@ -34,7 +32,7 @@ let employeeMap = {};
 let currentStream = null;
 let videoDevices = []; 
 
-const FACE_MATCHING_THRESHOLD = 0.6; 
+const FACE_MATCHING_THRESHOLD = 0.45; 
 const DETECTION_INTERVAL_MS = 100;
 
 
@@ -218,6 +216,110 @@ function updateGraph() {
 }
 setInterval(updateDataStream, 50);
 setInterval(updateGraph, 300);
+
+
+/** Menggambar grid perspektif 3D sederhana di Canvas, mensimulasikan lantai/langit. */
+function drawPerspectiveGrid(ctx, opacity = 0.15) {
+    const W = ctx.canvas.width;
+    const H = ctx.canvas.height;
+    const center = W / 2;
+    const horizon = H * 0.9; // Titik horison (di dekat bawah)
+    const gridSize = 30; // Jarak antar garis di horison
+    const time = Date.now() / 1000; 
+
+    ctx.strokeStyle = `rgba(0, 255, 255, ${opacity})`;
+    ctx.lineWidth = 0.5;
+
+    // --- Garis Vertikal (Perspektif) ---
+    for (let i = -10; i <= 10; i++) {
+        if (i === 0) continue; 
+
+        // Offset per waktu untuk efek bergeser
+        const timeOffset = Math.sin(time * 0.5) * 0.5;
+        const x1 = center + (i + timeOffset) * gridSize * 4; 
+        const x2 = center + (i + timeOffset * 0.1) * gridSize; 
+
+        ctx.beginPath();
+        ctx.moveTo(x1, 0); 
+        ctx.lineTo(x2, horizon); 
+        ctx.stroke();
+    }
+
+    // --- Garis Horizontal (Jarak) ---
+    // Peningkatan: Menggerakkan garis horizontal untuk efek maju/mundur
+    const scrollOffset = (time * 0.8) % 1; // Kecepatan scroll
+    
+    for (let j = 0; j < 15; j++) {
+        // Logika untuk membuat jarak garis semakin rapat ke horison
+        const baseOffset = Math.pow(j, 2) * 8;
+        const y = horizon - baseOffset + (scrollOffset * 10); 
+        // Tambahkan y < 0.2 di sini untuk mencegah garis muncul terlalu rendah di frame
+        
+        if (y < 0 || y > H + 5) continue; // Batasi garis di dalam canvas
+
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+    }
+}
+
+
+/** Menggambar elemen visual latar belakang yang terus berjalan. */
+function drawDynamicBackground(ctx) {
+    // 1. Gambar Grid Perspektif (Lantai/Jaring)
+    drawPerspectiveGrid(ctx, 0.15); 
+    
+    // 2. Tambahkan Garis Radar/Sinyal yang bergerak (membuatnya hidup)
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
+    ctx.lineWidth = 1;
+    
+    const time = Date.now() / 100;
+    
+    // Garis horizontal bergerak
+    for (let i = 0; i < 5; i++) {
+        // Gerakan sinusoida
+        const yPos = (Math.sin(time / 15 + i * 2) + 1) / 2 * ctx.canvas.height;
+        ctx.beginPath();
+        ctx.moveTo(0, yPos);
+        ctx.lineTo(ctx.canvas.width, yPos);
+        ctx.stroke();
+    }
+    
+    // --- Efek Scanline Bergerak (BARU) ---
+    const scanlineY = (Math.sin(time / 20) + 1) / 2 * ctx.canvas.height; 
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, scanlineY);
+    ctx.lineTo(ctx.canvas.width, scanlineY);
+    ctx.stroke();
+
+    // 3. Titik-titik bintang/noise (memberi tekstur)
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.03)';
+    for (let i = 0; i < 50; i++) {
+        ctx.fillRect(Math.random() * ctx.canvas.width, Math.random() * ctx.canvas.height, 1, 1);
+    }
+}
+
+/** Menggambar bingkai sudut statis (frame) BARU */
+function drawCornerBrackets(ctx, color = '#00FFFF', length = 50) {
+    const W = ctx.canvas.width;
+    const H = ctx.canvas.height;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'square';
+
+    // Kiri Atas
+    ctx.beginPath(); ctx.moveTo(0, length); ctx.lineTo(0, 0); ctx.lineTo(length, 0); ctx.stroke();
+    // Kanan Atas
+    ctx.beginPath(); ctx.moveTo(W - length, 0); ctx.lineTo(W, 0); ctx.lineTo(W, length); ctx.stroke();
+    // Kanan Bawah
+    ctx.beginPath(); ctx.moveTo(W, H - length); ctx.lineTo(W, H); ctx.lineTo(W - length, H); ctx.stroke();
+    // Kiri Bawah
+    ctx.beginPath(); ctx.moveTo(length, H); ctx.lineTo(0, H); ctx.lineTo(0, H - length); ctx.stroke();
+}
+
 
 // =============================================================================
 // 3. FUNGSI LOGIKA SISTEM & KAMERA (Integrasi Server)
@@ -409,12 +511,17 @@ async function detectFace() {
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 🛑 LOGIKA COOLDOWN BARU UNTUK MEMPERTAHANKAN LABEL WAJAH 🛑
+    // 🚨 Pemanggilan elemen visual background konstan
+    drawDynamicBackground(context); 
+    drawCornerBrackets(context); // Panggil Corner Brackets
+
+    // 🛑 LOGIKA COOLDOWN UNTUK MEMPERTAHANKAN LABEL WAJAH
     if (isProcessing && lastKnownMatch) {
-        // Jika sedang cooldown, gambar ulang label terakhir
+        // Jika sedang cooldown, gambar ulang label terakhir dan HENTIKAN deteksi berat
         const { box, faceLabel, faceColor, landmarks } = lastKnownMatch;
         
         if (box && landmarks) {
+            // Gambar di atas background dinamis
             drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor);
             drawMatchLabel(context, box, faceLabel, faceColor);
             drawHolographicMesh(context, landmarks); 
@@ -485,7 +592,7 @@ async function detectFace() {
                 userStatusDisplay.classList.remove('text-red-500');
                 userStatusDisplay.classList.add('text-amber-500');
                 
-                // 🛑 PERBAIKAN UTAMA: Blokir deteksi kedua DITEMPAT ini 🛑
+                // 🛑 PERBAIKAN: Blokir deteksi kedua DITEMPAT ini 🛑
                 if (!isProcessing) { 
                     setStatusVisual(`ID MATCH: ${recognizedName}. AUTHORIZING...`, 'text-cyan-400', true);
                     isProcessing = true; // Pasang isProcessing = true sebelum await
@@ -531,6 +638,7 @@ async function detectFace() {
 
     } else {
         // --- TIDAK ADA WAJAH ---
+        // Background sudah digambar di awal, hanya reset UI teks
         userIdDisplay.textContent = 'SCANNING...';
         userStatusDisplay.textContent = 'LOCKED';
         userStatusDisplay.classList.remove('text-green-500', 'text-amber-500');
