@@ -27,13 +27,13 @@ app.use(bodyParser.json());
 
 // 1. WAKTU MASUK (7:30)
 const JAM_MASUK_START_H = 7;
-const JAM_MASUK_START_M = 5; // Mulai Absen MASUK 5 menit sebelum 7:30
+const JAM_MASUK_START_M = 2; // Mulai Absen MASUK 5 menit sebelum 7:30
 const JAM_MASUK_END_H = 8;
-const JAM_MASUK_END_M = 44; // Batas akhir Absen MASUK 15 menit setelah 7:30 (07:45)
+const JAM_MASUK_END_M = 5; // Batas akhir Absen MASUK 15 menit setelah 7:30 (07:45)
 
 // 2. WAKTU PULANG (14:00)
-const JAM_PULANG_START_H = 14;
-const JAM_PULANG_START_M = 0; // Mulai Absen PULANG 14:00:00
+const JAM_PULANG_START_H = 10;
+const JAM_PULANG_START_M = 55; // Mulai Absen PULANG 14:00:00
 
 // 3. DURASI STANDAR untuk Kasus Lupa Absen (7:30 sampai 14:00 = 6.5 jam)
 const JAM_KERJA_STANDAR_H = 6.50; 

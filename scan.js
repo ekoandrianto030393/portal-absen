@@ -1,6 +1,6 @@
 /**
  * scan.js - Biometric Attendance Terminal
- * Perbaikan Terbaru: Implementasi penuh efek visual futuristik: Grid Perspektif, Scanline, dan Corner Brackets.
+ * Fitur Terbaru: Highlight Nama Karyawan dengan Warna Mencolok di Overlay Sukses Absen Masuk.
  */
 
 // --- GLOBAL DOM & VARS ---
@@ -182,6 +182,25 @@ function setStatusVisual(message, colorClass, isPulsing = false) {
         statusMessage.classList.remove('animate-pulse');
     }
 }
+
+/** Menyesuaikan dimensi Canvas agar sesuai dengan Video Element (untuk responsifitas). */
+function resizeCanvas() {
+    // Gunakan clientWidth/Height dari Video Element yang diatur oleh CSS
+    const W = video.clientWidth; 
+    const H = video.clientHeight;
+
+    if (W > 0 && H > 0) {
+        canvas.width = W;
+        canvas.height = H;
+        // Pastikan dimensi deteksi FaceAPI juga disesuaikan
+        faceapi.matchDimensions(canvas, { width: W, height: H });
+        // Opsional: atur ulang ukuran container jika diperlukan
+        videoContainer.style.width = `${W}px`;
+        videoContainer.style.height = `${H}px`;
+        logSystem(`Canvas resized to ${W}x${H}.`, 'text-cyan-500');
+    }
+}
+
 
 /** Update jam sistem */
 setInterval(() => {
@@ -488,9 +507,8 @@ async function initializeApp() {
 
 /** Event Listener ketika kamera mulai bermain */
 video.addEventListener('play', async () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    faceapi.matchDimensions(canvas, { width: video.videoWidth, height: video.videoHeight });
+    // Panggil resizeCanvas untuk pertama kalinya saat video dimulai
+    resizeCanvas(); 
 
     if (!labeledDescriptors) {
         labeledDescriptors = await loadLabeledImages();
@@ -663,7 +681,7 @@ async function processAttendance(karyawanId) {
         successOverlay.style.pointerEvents = 'auto';
         // Atur status awal loading di overlay (Opsional)
         overlayStatus.textContent = 'TRANSMITTING DATA...';
-        overlayMessage.textContent = 'Processing request on secure server...';
+        overlayMessage.innerHTML = 'Processing request on secure server...'; // Menggunakan innerHTML
         overlayStatus.style.color = '#00FFFF';
         successOverlay.style.background = `rgba(0, 0, 0, 0.9)`;
         successOverlay.style.opacity = 1;
@@ -691,6 +709,10 @@ async function processAttendance(karyawanId) {
         // --- 2. LOGIKA UPDATE VISUAL SETELAH RESPON SERVER ---
         
         if (result.success) {
+            
+            // Tentukan nama yang terdeteksi
+            const display_name = result.karyawanName || employeeMap[karyawanId] || karyawanId; 
+
             // --- SUKSES (HIJAU) ---
             setStatusVisual(cleanMessage, displayColor);
             userStatusDisplay.textContent = 'AUTHORIZED';
@@ -698,13 +720,45 @@ async function processAttendance(karyawanId) {
             videoContainer.classList.add('scan-success'); 
 
             if(successOverlay) {
-                overlayStatus.textContent = 'ACCESS GRANTED';
-                overlayMessage.textContent = cleanMessage.replace(/✅\s*/, '');
+                // WARNA BARU UNTUK NAMA (Kuning Emas, Mencolok)
+                const nameColor = '#FFD700'; 
+                // Bungkus nama dengan tag span HTML untuk mengatur warna, font-weight, dan text-shadow
+                const coloredName = `<span style="color: ${nameColor}; font-weight: 900; text-shadow: 0 0 10px ${nameColor}, 0 0 5px #000;">${display_name}</span>`;
+                
+                let finalMessageHTML = cleanMessage.replace(/✅\s*/, '');
+                
+                // 🛑 LOGIKA SPESIAL UNTUK ABSEN MASUK PERTAMA KALI 🛑
+                if (currentAction === 'Check-in' && finalMessageHTML.includes('telah tercatat')) {
+                    
+                    // Notifikasi Spesial Absen Masuk
+                    overlayStatus.textContent = 'SELAMAT DATANG DI PUSKESMAS WANA!';
+                    finalMessageHTML = `Absen ${finalMessageHTML.includes('MASUK') ? 'MASUK' : 'masuk'} atas nama ${coloredName} telah berhasil tercatat.`;
+                    // Latar belakang dengan efek radial yang menawan
+                    successOverlay.style.background = `radial-gradient(circle, rgba(0,255,127,0.7) 0%, rgba(0,150,0,0.9) 100%)`; 
+                    
+                } else if (finalMessageHTML.includes('telah tercatat')) {
+                    // Notifikasi Normal (Pulang, atau Masuk yang tidak teridentifikasi statusnya secara spesifik)
+                    overlayStatus.textContent = 'ACCESS GRANTED';
+                    finalMessageHTML = finalMessageHTML.replace('telah tercatat', `atas nama ${coloredName} telah tercatat.`);
+                    successOverlay.style.background = `rgba(0, 150, 0, 0.8)`; // Hijau solid
+
+                } else if (finalMessageHTML.includes('masuk telah tercatat')) {
+                    // Penanganan untuk kasus huruf kecil
+                    overlayStatus.textContent = 'ACCESS GRANTED';
+                     finalMessageHTML = finalMessageHTML.replace('masuk telah tercatat', `masuk atas nama ${coloredName} telah tercatat.`);
+                     successOverlay.style.background = `rgba(0, 150, 0, 0.8)`;
+                } else {
+                    // Kasus umum/fallback
+                    overlayStatus.textContent = 'ACCESS GRANTED';
+                    successOverlay.style.background = `rgba(0, 150, 0, 0.8)`; 
+                }
+                
+                // Gunakan .innerHTML untuk merender tag <span> berwarna
+                overlayMessage.innerHTML = finalMessageHTML; 
                 overlayStatus.style.color = hexColor;
-                successOverlay.style.background = `rgba(0, 150, 0, 0.8)`; // Hijau
             }
 
-            userIdDisplay.textContent = result.karyawanName || employeeMap[karyawanId] || karyawanId;
+            userIdDisplay.textContent = display_name; // Menggunakan nama yang sama di sidebar
             lastActionDisplay.textContent = `${serverTimestamp} (${currentAction})`;
             logSystem(`Attendance successful: ${userIdDisplay.textContent} (${currentAction})`, displayColor);
 
@@ -720,7 +774,7 @@ async function processAttendance(karyawanId) {
 
             if(successOverlay) {
                 overlayStatus.textContent = (statusColor === 'yellow') ? 'ACCESS ALERT' : 'ACCESS DENIED';
-                overlayMessage.textContent = cleanMessage;
+                overlayMessage.textContent = cleanMessage; 
                 overlayStatus.style.color = hexColor;
                 successOverlay.style.background = `rgba(150, 0, 0, 0.8)`; // Merah
             }
@@ -737,7 +791,6 @@ async function processAttendance(karyawanId) {
         }
 
         // --- 3. COOLDOWN UTAMA ---
-        // Overlay sudah di-update dengan status final. Kita tunggu 5 detik.
         await new Promise(resolve => setTimeout(resolve, 5000));
 
 
@@ -748,7 +801,7 @@ async function processAttendance(karyawanId) {
         
         if(successOverlay) {
             overlayStatus.textContent = 'NETWORK ERROR';
-            overlayMessage.textContent = 'Check server connection and try again.';
+            overlayMessage.textContent = 'Check server connection and try again.'; 
             overlayStatus.style.color = '#FF00FF';
             successOverlay.style.background = `rgba(150, 0, 150, 0.8)`;
         }
@@ -759,13 +812,12 @@ async function processAttendance(karyawanId) {
     } finally {
         // --- 4. RESET SEMUA KEADAAN ---
 
-        // Sembunyikan Overlay hanya setelah cooldown selesai (di blok try atau catch)
+        // Sembunyikan Overlay hanya setelah cooldown selesai 
         if(successOverlay) {
             successOverlay.style.opacity = 0;
-            // Penting: Hapus pointerEvents setelah disembunyikan
             setTimeout(() => { 
                 successOverlay.style.pointerEvents = 'none';
-            }, 500); // 500ms adalah waktu transisi opacity (sesuai CSS)
+            }, 500); 
         }
         
         isProcessing = false;
@@ -784,3 +836,6 @@ async function processAttendance(karyawanId) {
 
 // Start
 initializeApp();
+
+// --- PENANGANAN RESPONSIVITAS ---
+window.addEventListener('resize', resizeCanvas);
