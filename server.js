@@ -26,13 +26,13 @@ app.use(bodyParser.json());
 // --- 🛑 KONFIGURASI WAKTU KERJA (WIB) & KEAMANAN 🛑 ---
 
 // 1. WAKTU MASUK (7:30)
-const JAM_MASUK_START_H = 7;
-const JAM_MASUK_START_M = 2; // Mulai Absen MASUK 5 menit sebelum 7:30
-const JAM_MASUK_END_H = 8;
-const JAM_MASUK_END_M = 5; // Batas akhir Absen MASUK 15 menit setelah 7:30 (07:45)
+const JAM_MASUK_START_H = 19;
+const JAM_MASUK_START_M = 20; // Mulai Absen MASUK 5 menit sebelum 7:30
+const JAM_MASUK_END_H = 20;
+const JAM_MASUK_END_M = 50; // Batas akhir Absen MASUK 15 menit setelah 7:30 (07:45)
 
 // 2. WAKTU PULANG (14:00)
-const JAM_PULANG_START_H = 10;
+const JAM_PULANG_START_H = 21;
 const JAM_PULANG_START_M = 55; // Mulai Absen PULANG 14:00:00
 
 // 3. DURASI STANDAR untuk Kasus Lupa Absen (7:30 sampai 14:00 = 6.5 jam)
@@ -186,7 +186,7 @@ app.post('/absensi', async (req, res) => {
             if (timeDifferenceSeconds < MIN_INTERVAL_SECONDS) {
                 const remainingTime = MIN_INTERVAL_SECONDS - Math.floor(timeDifferenceSeconds);
                 return res.json({
-                    success: false,
+                    success: false, // Diganti success: false untuk memicu overlay DENIED (merah), tapi statusColor kuning
                     message: `Absensi **${karyawanName}** terlalu cepat. Coba lagi dalam ${remainingTime} detik.`,
                     statusColor: 'yellow',
                     karyawanName: karyawanName 
@@ -227,9 +227,10 @@ app.post('/absensi', async (req, res) => {
             await connection.execute('INSERT INTO absensi (id_karyawan, tipe_absensi, waktu_absensi, jam_kerja, keterangan) VALUES (?, ?, ?, NULL, ?)', 
                 [karyawanId, tipeAbsensiBaru, waktuAbsensi, 'Absen Masuk Normal']);
             
+            // 🛑 PENYESUAIAN 1: Pesan harus mengandung 'telah tercatat' untuk memicu tampilan kustom di scan.js
             return res.json({ 
                 success: true, 
-                message: `✅ **${karyawanName}** Absen MASUK Berhasil. Selamat Bekerja..!`, 
+                message: `✅ Absensi MASUK atas nama **${karyawanName}** telah tercatat.`, // Pemicu tampilan kustom Absen Masuk Pertama
                 statusColor: 'green', 
                 karyawanName 
             });
@@ -252,10 +253,11 @@ app.post('/absensi', async (req, res) => {
                 }
 
                 // Fake Success untuk jam kerja normal 
+                // 🛑 PENYESUAIAN 2: Gunakan statusColor 'yellow' untuk 'Absen Lanjutan/Konfirmasi Ulang' 
                 return res.json({ 
                     success: true, 
-                    message: `Absen MASUK telah tercatat. Anda sedang dalam masa kerja.`, 
-                    statusColor: 'green', 
+                    message: `Absen MASUK telah tercatat. Anda sedang dalam masa kerja.`, // Pemicu Absen Lanjutan
+                    statusColor: 'yellow', // Warna Kuning untuk 'Status Dikonfirmasi'
                     karyawanName 
                 });
             }
@@ -269,9 +271,10 @@ app.post('/absensi', async (req, res) => {
                 await connection.execute('INSERT INTO absensi (id_karyawan, tipe_absensi, waktu_absensi, jam_kerja, keterangan) VALUES (?, ?, ?, ?, NULL)', 
                     [karyawanId, tipeAbsensiBaru, waktuAbsensi, jamKerja]);
                 
+                // 🛑 PENYESUAIAN 3: Pesan harus mengandung 'telah tercatat' dan 'PULANG' untuk memicu tampilan kustom Absen Pulang
                 return res.json({ 
                     success: true, 
-                    message: `✅ Absensi PULANG Berhasil: **${karyawanName}**. Total jam kerja hari ini: ${jamKerja} Jam`, 
+                    message: `✅ Absensi PULANG atas nama **${karyawanName}** telah tercatat. Total jam kerja: ${jamKerja} Jam`, 
                     statusColor: 'green', 
                     karyawanName 
                 });

@@ -1,6 +1,7 @@
 /**
  * scan.js - Biometric Attendance Terminal
  * Fitur Terbaru: Highlight Nama Karyawan dengan Warna Mencolok di Overlay Sukses Absen Masuk.
+ * Perbaikan Logika: Pemisahan Absen Masuk Normal vs. Absen Ganda (Masa Kerja) di Overlay.
  */
 
 // --- GLOBAL DOM & VARS ---
@@ -98,7 +99,7 @@ function drawMatchLabel(ctx, box, label, color) {
 function drawHolographicMesh(ctx, landmarks) {
     const points = landmarks.positions;
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+    ctx.strokeStyle = 'rgba(0, 26, 255, 0.4)';
     ctx.fillStyle = 'rgba(0, 255, 255, 0.05)';
 
     const regions = [
@@ -139,7 +140,7 @@ function drawDataTags(ctx, box, landmarks) {
         { text: `SYNC: ACTIVE`, color: '#FF00FF' }
     ];
 
-    ctx.beginPath(); ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+    ctx.beginPath(); ctx.strokeStyle = 'rgba(38, 0, 255, 0.5)';
     ctx.moveTo(box.right, box.top); ctx.lineTo(tagX - 10, box.top); ctx.stroke();
 
     dataLines.forEach((item, i) => {
@@ -228,7 +229,7 @@ function updateGraph() {
     const bar = document.createElement('div');
     bar.className = 'graph-bar';
     bar.style.height = `${barHeight}%`;
-    const colors = ['#00FFFF', '#00FF7F', '#FF00FF'];
+    const colors = ['#f0d90eff', '#00FF7F', '#FF00FF'];
     bar.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
     graphElement.appendChild(bar);
     if (graphElement.children.length > 30) graphElement.removeChild(graphElement.firstChild);
@@ -272,7 +273,6 @@ function drawPerspectiveGrid(ctx, opacity = 0.15) {
         // Logika untuk membuat jarak garis semakin rapat ke horison
         const baseOffset = Math.pow(j, 2) * 8;
         const y = horizon - baseOffset + (scrollOffset * 10); 
-        // Tambahkan y < 0.2 di sini untuk mencegah garis muncul terlalu rendah di frame
         
         if (y < 0 || y > H + 5) continue; // Batasi garis di dalam canvas
 
@@ -307,7 +307,7 @@ function drawDynamicBackground(ctx) {
     
     // --- Efek Scanline Bergerak (BARU) ---
     const scanlineY = (Math.sin(time / 20) + 1) / 2 * ctx.canvas.height; 
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+    ctx.strokeStyle = 'rgba(10, 60, 224, 0.4)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, scanlineY);
@@ -585,7 +585,7 @@ async function detectFace() {
             // Update Match Bar
             if(matchThresholdBar) {
                 matchThresholdBar.style.width = `${Math.min(100, confidence)}%`;
-                matchThresholdBar.style.background = (confidence >= 70) ? 'linear-gradient(90deg, #00FF7F, #00FFFF)' : (confidence >= 40 ? 'linear-gradient(90deg, #FFD700, #FFB300)' : 'linear-gradient(90deg, #FF0055, #FF5500)');
+                matchThresholdBar.style.background = (confidence >= 70) ? 'linear-gradient(90deg, #00FF7F, #2600ffff)' : (confidence >= 40 ? 'linear-gradient(90deg, #FFD700, #FFB300)' : 'linear-gradient(90deg, #FF0055, #FF5500)');
                 matchThresholdBar.className = (confidence >= 40) ? 'loader-fill' : 'loader-fill-red';
             }
 
@@ -668,7 +668,7 @@ async function detectFace() {
 }
 
 // =============================================================================
-// 4. PROSES ABSENSI (HANDLER - Koneksi ke /absensi)
+// 4. PROSES ABSENSI (HANDLER - Koneksi ke /absensi) - PERBAIKAN LOGIKA DISINI
 // =============================================================================
 
 /** Mengirim data absensi ke server dan menangani respons. */
@@ -679,10 +679,10 @@ async function processAttendance(karyawanId) {
     if(successOverlay) {
         successOverlay.style.opacity = 0; // Pastikan transisi mulai dari 0
         successOverlay.style.pointerEvents = 'auto';
-        // Atur status awal loading di overlay (Opsional)
+        // Atur status awal loading di overlay
         overlayStatus.textContent = 'TRANSMITTING DATA...';
-        overlayMessage.innerHTML = 'Processing request on secure server...'; // Menggunakan innerHTML
-        overlayStatus.style.color = '#00FFFF';
+        overlayMessage.innerHTML = 'Processing request on secure server...'; 
+        overlayStatus.style.color = 'rgba(48, 240, 9, 0.95)';
         successOverlay.style.background = `rgba(0, 0, 0, 0.9)`;
         successOverlay.style.opacity = 1;
     }
@@ -701,7 +701,7 @@ async function processAttendance(karyawanId) {
         const serverTimestamp = new Date().toLocaleTimeString('id-ID');
         const statusColor = result.statusColor || 'red';
         const displayColor = (statusColor === 'green' ? 'text-green-500' : (statusColor === 'yellow' ? 'text-amber-500' : 'text-red-500'));
-        const hexColor = (statusColor === 'green' ? '#00FF7F' : (statusColor === 'yellow' ? '#FFD700' : '#FF0055'));
+        const hexColor = (statusColor === 'green' ? '#00FF7F' : (statusColor === 'yellow' ? '#013fe9ff' : '#FF0055'));
 
         const cleanMessage = result.message.replace(/\*\*/g, '');
         const currentAction = cleanMessage.includes('PULANG') ? 'Check-out' : (cleanMessage.includes('MASUK') ? 'Check-in' : 'Status');
@@ -712,50 +712,65 @@ async function processAttendance(karyawanId) {
             
             // Tentukan nama yang terdeteksi
             const display_name = result.karyawanName || employeeMap[karyawanId] || karyawanId; 
+            
+            // WARNA BARU UNTUK NAMA (Kuning Emas, Mencolok)
+            const nameColor = '#220de0fa'; 
+            // Bungkus nama dengan tag span HTML untuk mengatur warna, font-weight, dan text-shadow
+            const coloredName = `<span style="color: ${nameColor}; font-weight: 900; text-shadow: 0 0 10px ${nameColor}, 0 0 5px #000;">${display_name}</span>`;
 
-            // --- SUKSES (HIJAU) ---
+            let finalMessageHTML = cleanMessage.replace(/✅\s*/, '');
+            
+            // --- SUKSES (HIJAU/KUNING) ---
             setStatusVisual(cleanMessage, displayColor);
             userStatusDisplay.textContent = 'AUTHORIZED';
             userStatusDisplay.className = 'text-2xl font-extrabold ' + displayColor;
             videoContainer.classList.add('scan-success'); 
 
             if(successOverlay) {
-                // WARNA BARU UNTUK NAMA (Kuning Emas, Mencolok)
-                const nameColor = '#FFD700'; 
-                // Bungkus nama dengan tag span HTML untuk mengatur warna, font-weight, dan text-shadow
-                const coloredName = `<span style="color: ${nameColor}; font-weight: 900; text-shadow: 0 0 10px ${nameColor}, 0 0 5px #000;">${display_name}</span>`;
                 
-                let finalMessageHTML = cleanMessage.replace(/✅\s*/, '');
-                
-                // 🛑 LOGIKA SPESIAL UNTUK ABSEN MASUK PERTAMA KALI 🛑
-                if (currentAction === 'Check-in' && finalMessageHTML.includes('telah tercatat')) {
+                // 🛑 LOGIKA SPESIAL 1: ABSEN MASUK PERTAMA KALI ATAU PULANG 🛑
+                // Kunci: success=true, mengandung 'telah tercatat', DAN TIDAK mengandung 'masa kerja'
+                if (finalMessageHTML.includes('telah tercatat') && !finalMessageHTML.includes('masa kerja')) { 
                     
-                    // Notifikasi Spesial Absen Masuk
-                    overlayStatus.textContent = 'SELAMAT DATANG DI PUSKESMAS WANA!';
-                    finalMessageHTML = `Absen ${finalMessageHTML.includes('MASUK') ? 'MASUK' : 'masuk'} atas nama ${coloredName} telah berhasil tercatat.`;
-                    // Latar belakang dengan efek radial yang menawan
-                    successOverlay.style.background = `radial-gradient(circle, rgba(0,255,127,0.7) 0%, rgba(0,150,0,0.9) 100%)`; 
+                    // Notifikasi Spesial Absen Masuk/Pulang
+                    overlayStatus.textContent = finalMessageHTML.includes('PULANG') ? 'CHECK-OUT BERHASIL' : 'SELAMAT DATANG DI PUSKESMAS WANA!';
+                    overlayStatus.style.color = nameColor; // Menggunakan warna emas untuk status
                     
-                } else if (finalMessageHTML.includes('telah tercatat')) {
-                    // Notifikasi Normal (Pulang, atau Masuk yang tidak teridentifikasi statusnya secara spesifik)
-                    overlayStatus.textContent = 'ACCESS GRANTED';
-                    finalMessageHTML = finalMessageHTML.replace('telah tercatat', `atas nama ${coloredName} telah tercatat.`);
-                    successOverlay.style.background = `rgba(0, 150, 0, 0.8)`; // Hijau solid
+                    // Pesan: Nama Emas/Putih
+                    finalMessageHTML = finalMessageHTML.includes('PULANG') ? 
+                        `Absensi PULANG atas nama ${coloredName} telah berhasil tercatat. Terima kasih.` :
+                        `Absensi MASUK atas nama ${coloredName} telah berhasil dicatat. Selamat Bekerja.`;
 
-                } else if (finalMessageHTML.includes('masuk telah tercatat')) {
-                    // Penanganan untuk kasus huruf kecil
-                    overlayStatus.textContent = 'ACCESS GRANTED';
-                     finalMessageHTML = finalMessageHTML.replace('masuk telah tercatat', `masuk atas nama ${coloredName} telah tercatat.`);
-                     successOverlay.style.background = `rgba(0, 150, 0, 0.8)`;
+                    // Latar belakang Absen Masuk/Pulang (radial Hijau yang menawan)
+                    successOverlay.style.background = `radial-gradient(circle, rgba(0,255,127,0.7) 0%, hsla(135, 97%, 41%, 0.90) 100%)`; 
+
+                // 🛑 LOGIKA SPESIAL 2: ABSEN GANDA / SUDAH DI DALAM MASA KERJA 🛑
+                // Kunci: success=true, mengandung 'masa kerja'
+                } else if (finalMessageHTML.includes('Anda sedang dalam masa kerja')) {
+
+                    // Notifikasi Absen Ganda (Status Di Konfirmasi)
+                    overlayStatus.textContent = 'SELAMAT DATANG DI PUSKESMAS WANA';
+                    overlayStatus.style.color = nameColor; // Kuning Emas
+                    
+                    // Pesan: Nama Hijau, sisanya Putih (menunjukkan status OK)
+                    const activeName = `<span style="color: #00FF7F; font-weight: 900; text-shadow: 0 0 10px #00FF7F, 0 0 5px #eb380bff;">${display_name}</span>`;
+                    finalMessageHTML = `Anda sudah tercatat masuk. Status saat ini: Bekerja. Cek-in atas nama ${activeName} dikonfirmasi ulang.`;
+
+                    // Latar belakang Kuning/Warning
+                    successOverlay.style.background = `radial-gradient(circle, rgba(255,215,0,0.7) 0%, hsla(120, 100%, 50%, 0.90) 100%)`; 
+
                 } else {
-                    // Kasus umum/fallback
+                    // --- KASUS UMUM / FALLBACK ---
                     overlayStatus.textContent = 'ACCESS GRANTED';
+                    overlayStatus.style.color = hexColor;
                     successOverlay.style.background = `rgba(0, 150, 0, 0.8)`; 
+                    
+                    // Sisipkan nama berwarna jika tidak ada di pesan
+                    finalMessageHTML = finalMessageHTML.replace(/(telah tercatat|masuk telah tercatat)/i, `atas nama ${coloredName} telah tercatat.`);
                 }
                 
                 // Gunakan .innerHTML untuk merender tag <span> berwarna
                 overlayMessage.innerHTML = finalMessageHTML; 
-                overlayStatus.style.color = hexColor;
             }
 
             userIdDisplay.textContent = display_name; // Menggunakan nama yang sama di sidebar
@@ -764,78 +779,75 @@ async function processAttendance(karyawanId) {
 
             if (lastKnownMatch) lastKnownMatch.faceColor = hexColor;
 
-
         } else {
             // --- GAGAL / DENIED (MERAH/KUNING) ---
             setStatusVisual(`❌ ${cleanMessage}`, displayColor);
-            userStatusDisplay.textContent = (statusColor === 'yellow') ? 'IN PROGRESS' : 'DENIED';
+            userStatusDisplay.textContent = (statusColor === 'yellow') ? 'ALERT' : 'DENIED';
             userStatusDisplay.className = 'text-2xl font-extrabold ' + displayColor;
             videoContainer.classList.remove('scan-success');
 
             if(successOverlay) {
                 overlayStatus.textContent = (statusColor === 'yellow') ? 'ACCESS ALERT' : 'ACCESS DENIED';
-                overlayMessage.textContent = cleanMessage; 
-                overlayStatus.style.color = hexColor;
-                successOverlay.style.background = `rgba(150, 0, 0, 0.8)`; // Merah
+                overlayMessage.innerHTML = cleanMessage.replace(/❌\s*/, '');
+                overlayStatus.style.color = hexColor; 
+                
+                // Latar belakang Merah atau Kuning
+                successOverlay.style.background = (statusColor === 'yellow') ? 
+                    `radial-gradient(circle, rgba(255,215,0,0.7) 0%, rgba(255,165,0,0.9) 100%)` :
+                    `radial-gradient(circle, rgba(255,0,85,0.7) 0%, rgba(150,0,0,0.9) 100%)`; 
             }
-            logSystem(`Attendance denied: ${cleanMessage}`, displayColor);
+            logSystem(`Attendance denied: ${karyawanId}. Status: ${cleanMessage}`, displayColor);
 
-            if (lastKnownMatch) {
-                lastKnownMatch.faceColor = hexColor;
-                if (statusColor === 'yellow') {
-                    lastKnownMatch.faceLabel = result.karyawanName || employeeMap[karyawanId] || 'IN PROGRESS'; 
-                } else {
-                    lastKnownMatch.faceLabel = 'DENIED ACCESS';
-                }
-            }
+            if (lastKnownMatch) lastKnownMatch.faceColor = hexColor;
         }
-
-        // --- 3. COOLDOWN UTAMA ---
-        await new Promise(resolve => setTimeout(resolve, 5000));
-
 
     } catch (error) {
-        setStatusVisual('❌ SYSTEM ERROR: CONNECTION OFFLINE', 'text-red-500');
-        userStatusDisplay.textContent = 'NETWORK FAULT';
-        logSystem(`FATAL: Connection Error to /absensi: ${error.message}`, 'text-red-500');
-        
+        // --- KONEKSI GAGAL ---
+        console.error('Attendance processing failed:', error);
+        setStatusVisual(`FATAL ERROR: Failed to connect to server.`, 'text-red-500');
+        userStatusDisplay.textContent = 'SERVER FAIL';
+        userStatusDisplay.className = 'text-2xl font-extrabold text-red-500';
+        networkStatus.textContent = 'ERROR';
+        networkStatus.className = 'text-red-500';
+        logSystem(`Network Error: ${error.message}`, 'text-red-500');
+
         if(successOverlay) {
-            overlayStatus.textContent = 'NETWORK ERROR';
-            overlayMessage.textContent = 'Check server connection and try again.'; 
-            overlayStatus.style.color = '#FF00FF';
-            successOverlay.style.background = `rgba(150, 0, 150, 0.8)`;
+            overlayStatus.textContent = 'SYSTEM OFFLINE';
+            overlayMessage.innerHTML = `Koneksi ke server gagal. Coba lagi dalam beberapa saat.<br>Error: ${error.message}`;
+            overlayStatus.style.color = '#FF0055'; 
+            successOverlay.style.background = `radial-gradient(circle, rgba(255,0,85,0.7) 0%, rgba(150,0,0,0.9) 100%)`;
         }
-        
-        // Cooldown/delay untuk pesan error
-        await new Promise(resolve => setTimeout(resolve, 4000));
-        
+
     } finally {
-        // --- 4. RESET SEMUA KEADAAN ---
-
-        // Sembunyikan Overlay hanya setelah cooldown selesai 
-        if(successOverlay) {
-            successOverlay.style.opacity = 0;
-            setTimeout(() => { 
+        // 3. Cooldown dan Hapus Overlay
+        setTimeout(() => {
+            isProcessing = false;
+            // Hanya sembunyikan jika tidak ada proses baru yang dimulai
+            if (successOverlay) {
+                successOverlay.style.opacity = 0;
                 successOverlay.style.pointerEvents = 'none';
-            }, 500); 
-        }
+            }
+        }, 5000); // Overlay ditampilkan selama 5 detik
         
-        isProcessing = false;
-        videoContainer.classList.remove('scan-success');
-        lastKnownMatch = null; 
-
-        if (detectionInterval) {
-            setStatusVisual('SYSTEM READY. SCANNING...', 'text-gray-300', true);
-            userIdDisplay.textContent = 'SCANNING...';
-            userStatusDisplay.textContent = 'LOCKED';
-            userStatusDisplay.classList.remove('text-green-500', 'text-amber-500');
-            userStatusDisplay.classList.add('text-red-500');
-        }
+        // Atur ulang status sidebar ke Standby setelah sukses/gagal singkat
+        setTimeout(() => {
+            if(!isProcessing) {
+                userStatusDisplay.textContent = 'STANDBY';
+                userStatusDisplay.classList.remove('text-green-500', 'text-amber-500', 'text-red-500');
+                userStatusDisplay.classList.add('text-gray-500');
+                videoContainer.classList.remove('scan-success');
+            }
+        }, 5500);
     }
 }
 
-// Start
-initializeApp();
 
-// --- PENANGANAN RESPONSIVITAS ---
+// =============================================================================
+// 5. INISIALISASI
+// =============================================================================
+
+// Tambahkan event listener untuk resize saat window berubah
 window.addEventListener('resize', resizeCanvas);
+
+// Panggil fungsi inisialisasi aplikasi saat DOM selesai dimuat
+document.addEventListener('DOMContentLoaded', initializeApp);
