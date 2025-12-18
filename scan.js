@@ -561,6 +561,9 @@ async function detectFace() {
         drawHolographicMesh(context, landmarks);
         drawDataTags(context, box, landmarks);
 
+        // Efek suara scanning ringan (opsional, bisa dimatikan jika terlalu berisik)
+        // if (Math.random() > 0.8) playSfx('scan'); 
+
         setStatusVisual('SUBJECT DETECTED. PROCESSING BIOMETRICS...', 'text-amber-500', true);
 
         let faceLabel = 'UNKNOWN';
@@ -647,16 +650,37 @@ async function processAttendance(karyawanId) {
         
         // INIT OVERLAY BARU
         successOverlay.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: white;">
+            <div style="
+                position: relative;
+                text-align: center;
+                padding: 60px;
+                color: white;
+                background: rgba(5, 10, 15, 0.95);
+                border: 2px solid ${HEADER_COLOR};
+                box-shadow: 0 0 50px rgba(0, 255, 255, 0.2);
+                border-radius: 15px;
+                max-width: 90%;
+                backdrop-filter: blur(10px);
+            ">
                 <h1 class="text-5xl font-extrabold mb-8 glitch-text" style="
+                    font-family: 'Courier New', monospace;
                     color: ${NAME_HIGHLIGHT_COLOR}; 
                     text-shadow: 0 0 20px ${NAME_HIGHLIGHT_COLOR};
-                    letter-spacing: 5px;
+                    letter-spacing: 8px;
+                    text-transform: uppercase;
+                    border-bottom: 1px solid ${NAME_HIGHLIGHT_COLOR};
+                    padding-bottom: 20px;
+                    display: inline-block;
                 ">
                     SELAMAT DATANG DI PUSKESMAS WANA
                 </h1>
-                <h2 class="text-3xl font-bold mb-4" id="overlayStatus" style="color: ${HEADER_COLOR};">TRANSMITTING DATA</h2>
-                <p id="overlayMessage" class="text-xl text-gray-400">Processing request on secure server...</p>
+                <h2 class="text-4xl font-bold mb-6 animate-pulse" id="overlayStatus" style="
+                    font-family: 'Courier New', monospace;
+                    color: ${HEADER_COLOR};
+                    letter-spacing: 3px;
+                    text-transform: uppercase;
+                ">>> TRANSMITTING DATA <<</h2>
+                <p id="overlayMessage" class="text-xl text-cyan-200 font-mono tracking-wider">Processing request on secure server...</p>
             </div>
         `;
         successOverlay.style.background = `rgba(0, 0, 0, 0.95)`;
@@ -742,32 +766,54 @@ async function processAttendance(karyawanId) {
                     flex-direction: column; 
                     align-items: center; 
                     justify-content: center; 
-                    height: 100%;
                     text-align: center;
-                    padding: 40px;
+                    padding: 50px;
+                    background: rgba(0, 0, 0, 0.8);
+                    border: 3px solid ${finalStatusColor};
+                    box-shadow: 0 0 60px ${finalStatusColor}40, inset 0 0 30px ${finalStatusColor}20;
+                    border-radius: 20px;
+                    position: relative;
+                    max-width: 90%;
+                    backdrop-filter: blur(5px);
                 ">
+                    <!-- Decorative Corners -->
+                    <div style="position: absolute; top: 20px; left: 20px; width: 40px; height: 40px; border-top: 4px solid ${finalStatusColor}; border-left: 4px solid ${finalStatusColor};"></div>
+                    <div style="position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-top: 4px solid ${finalStatusColor}; border-right: 4px solid ${finalStatusColor};"></div>
+                    <div style="position: absolute; bottom: 20px; left: 20px; width: 40px; height: 40px; border-bottom: 4px solid ${finalStatusColor}; border-left: 4px solid ${finalStatusColor};"></div>
+                    <div style="position: absolute; bottom: 20px; right: 20px; width: 40px; height: 40px; border-bottom: 4px solid ${finalStatusColor}; border-right: 4px solid ${finalStatusColor};"></div>
+
                     <h1 class="text-5xl lg:text-7xl font-extrabold mb-8 tracking-widest" style="
+                        font-family: 'Courier New', monospace;
                         color: #00FFFF;
-                        text-shadow: 0 0 10px #00FFFF, 0 0 20px rgba(0, 255, 255, 0.4);
-                        font-family: inherit;
+                        text-shadow: 0 0 15px #00FFFF;
+                        text-transform: uppercase;
+                        letter-spacing: 5px;
+                        border-bottom: 2px solid #00FFFF;
+                        padding-bottom: 10px;
+                        display: inline-block;
                     ">
                         SELAMAT DATANG DI PUSKESMAS WANA
                     </h1>
                     
-                    <h2 class="text-4xl lg:text-6xl font-extrabold mt-6 mb-8" id="overlayStatus" style="
+                    <h2 class="text-4xl lg:text-6xl font-extrabold mt-2 mb-8" id="overlayStatus" style="
+                        font-family: 'Courier New', monospace;
                         color: ${finalStatusColor}; 
-                        text-shadow: 0 0 15px ${finalStatusColor};
+                        text-shadow: 0 0 20px ${finalStatusColor};
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
                     ">
-                        ${finalStatusText}
+                        [ ${finalStatusText} ]
                     </h2>
                     
-                    <p class="text-xl lg:text-3xl mt-4 text-white font-medium" id="overlayMessage" style="max-width: 800px;">
+                    <div class="text-xl lg:text-3xl mt-4 text-white font-medium font-mono" id="overlayMessage" style="max-width: 900px; line-height: 1.6;">
                         ${finalMessageHTML}
-                    </p>
+                    </div>
 
-                    <p class="text-lg mt-8 text-cyan-200">
-                        Transaction Time: ${serverTimestamp} | ID Terminal: A-9
-                    </p>
+                    <div class="mt-12 pt-6 border-t border-gray-600 w-full">
+                        <p class="text-lg text-cyan-200 font-mono tracking-widest">
+                            Transaction Time: ${serverTimestamp} <span class="mx-3 text-gray-500">|</span> ID Terminal: A-9
+                        </p>
+                    </div>
                 </div>
             `;
         }
@@ -795,23 +841,47 @@ async function processAttendance(karyawanId) {
         if(successOverlay) {
              successOverlay.style.background = `radial-gradient(circle, rgba(255,0,0,0.8) 0%, rgba(100,0,0,0.95) 100%)`;
              successOverlay.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: white;">
+                <div style="
+                    text-align: center; 
+                    padding: 60px; 
+                    color: white;
+                    background: rgba(20, 0, 0, 0.8);
+                    border: 4px solid #FF0055;
+                    box-shadow: 0 0 80px #FF0055, inset 0 0 30px #FF0055;
+                    border-radius: 20px;
+                    max-width: 900px;
+                    backdrop-filter: blur(10px);
+                ">
                      <h1 class="text-5xl lg:text-7xl font-extrabold mb-8 tracking-widest" style="
+                        font-family: 'Courier New', monospace;
                         color: #00FFFF;
-                        text-shadow: 0 0 10px #00FFFF, 0 0 20px rgba(0, 255, 255, 0.4);
-                        font-family: inherit;
+                        text-shadow: 0 0 10px #00FFFF;
+                        text-transform: uppercase;
+                        letter-spacing: 5px;
                     ">
                         SELAMAT DATANG DI PUSKESMAS WANA
                     </h1>
-                    <h2 class="text-4xl font-extrabold mb-4" style="color: #FF0055; text-shadow: 0 0 10px #FF0055;">TRANSMISSION FAILED</h2>
-                    <p class="text-xl text-white">Gagal terhubung ke server. Cek koneksi jaringan.</p>
-                    <p class="text-lg mt-4 text-amber-300">${error.message}</p>
+                    <h2 class="text-5xl font-extrabold mb-6 glitch-text" style="
+                        font-family: 'Courier New', monospace;
+                        color: #FF0055; 
+                        text-shadow: 0 0 25px #FF0055;
+                        text-transform: uppercase;
+                        letter-spacing: 3px;
+                    ">
+                        ⚠ TRANSMISSION FAILED ⚠
+                    </h2>
+                    <p class="text-2xl text-white font-mono mb-6 tracking-wide">Gagal terhubung ke server. Cek koneksi jaringan.</p>
+                    <div style="background: rgba(255, 0, 0, 0.1); padding: 20px; border: 1px dashed #FF0055; border-radius: 5px;">
+                        <p class="text-xl text-amber-300 font-mono">ERROR: ${error.message}</p>
+                    </div>
                 </div>
              `;
         }
         await new Promise(resolve => setTimeout(resolve, 3000)); 
     } finally {
         isProcessing = false;
+        // Kembalikan tema ke IDLE (Cyan)
+        if (window.setSystemTheme) window.setSystemTheme('IDLE');
         if(successOverlay) {
             successOverlay.style.opacity = 0;
             successOverlay.style.pointerEvents = 'none';
