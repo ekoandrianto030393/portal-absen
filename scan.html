@@ -103,6 +103,64 @@
             }
         }
 
+        /* Animasi untuk Jam Digital */
+        .digit-flicker {
+            animation: text-flicker 3s infinite alternate;
+        }
+
+        /* Animasi untuk Judul */
+        #mainTitle {
+            position: relative;
+            overflow: hidden;
+            min-height: 1.2em;
+            /* Sesuaikan dengan ukuran font h1 */
+            line-height: 1.2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            white-space: nowrap;
+            /* Mencegah teks melipat */
+        }
+
+        #mainTitle .title-char {
+            display: inline-block;
+            position: relative;
+            opacity: 0;
+            animation: title-waterfall 3s ease-in-out infinite;
+            /* Durasi total siklus animasi */
+            font-size: inherit;
+            font-weight: inherit;
+            letter-spacing: inherit;
+            color: inherit;
+            text-shadow: inherit;
+        }
+
+        @keyframes title-waterfall {
+            0% {
+                opacity: 0;
+                transform: translateY(-100%);
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            40% {
+                opacity: 1;
+                transform: translateY(0%);
+            }
+
+            70% {
+                opacity: 0;
+                transform: translateY(0%);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-100%);
+            }
+        }
+
         @keyframes border-anim {
             0% {
                 border-image: linear-gradient(45deg, #00FFFF, #FF00FF, #00FF7F) 1;
@@ -231,34 +289,34 @@
         .glitch-text {
             color: #FF00FF;
             text-shadow: -3px 0 #00FFFF, 3px 0 #ac00ac, 0 0 15px #FF00FF;
-            animation: glitch-anim 3s infinite linear alternate-reverse;
+            animation: glitch-anim 3s infinite ease-in-out alternate-reverse;
             text-transform: uppercase;
         }
 
         @keyframes glitch-anim {
             0% {
                 text-shadow: -3px 0 #00FFFF;
-                transform: translate(0);
+                /* transform: translate(0); */
             }
 
             25% {
                 text-shadow: 3px 0 #FF00FF;
-                transform: translate(-1px);
+                /* transform: translate(-1px); */
             }
 
             50% {
                 text-shadow: -3px 0 #00FFFF;
-                transform: translate(1px);
+                /* transform: translate(1px); */
             }
 
             75% {
                 text-shadow: 3px 0 #FF00FF;
-                transform: translate(-2px);
+                /* transform: translate(-2px); */
             }
 
             100% {
                 text-shadow: -2px 0 #00FFFF;
-                transform: translate(0);
+                /* transform: translate(0); */
             }
         }
 
@@ -364,19 +422,15 @@
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
                 <div class="widget-panel">
-                    <h2 class="widget-title">:: SYSTEM STATUS ::</h2>
-                    <div class="text-xs space-y-2">
-                        <div class="flex justify-between"><span class="text-gray-400">NETWORK</span><span
-                                id="networkStatus" class="text-green-500 font-bold">25ms (OK)</span></div>
-                        <div class="flex justify-between"><span class="text-gray-400">CAMERA</span><span
-                                id="cameraStatus" class="text-green-500 font-bold">ACTIVE</span></div>
-                        <div class="flex justify-between"><span class="text-gray-400">DB SYNC</span><span id="dbStatus"
-                                class="text-amber-500 font-bold">PENDING</span></div>
-                        <div class="flex justify-between"><span class="text-gray-400">CORE</span><span
-                                class="text-green-500 font-bold">ONLINE</span></div>
+                    <h2 class="widget-title">:: SYSTEM TIME ::</h2>
+                    <div id="clock"
+                        class="flex justify-center items-baseline gap-1 text-5xl font-mono text-cyan-400 font-extrabold tracking-widest leading-none">
+                        <span id="clock-h" class="digit-flicker">00</span><span
+                            class="text-3xl opacity-50 animate-pulse">:</span><span id="clock-m"
+                            class="digit-flicker">00</span><span class="text-3xl opacity-50 animate-pulse">:</span><span
+                            id="clock-s" class="digit-flicker">00</span>
                     </div>
                 </div>
-
                 <div class="widget-panel">
                     <h2 class="widget-title">:: DEVICE SELECT ::</h2>
                     <select id="cameraSelect"
@@ -415,13 +469,6 @@
                     </div>
                 </div>
 
-                <div class="widget-panel">
-                    <h2 class="widget-title">:: SYSTEM TIME ::</h2>
-                    <p id="clock"
-                        class="text-5xl font-mono text-center text-cyan-400 font-extrabold tracking-widest leading-none">
-                    </p>
-                </div>
-
                 <div class="widget-panel flex-grow h-32 lg:h-auto">
                     <h2 class="widget-title">:: KERNEL LOG ::</h2>
                     <div id="systemLog" class="text-xs h-full overflow-y-auto font-mono space-y-1">
@@ -432,9 +479,7 @@
 
             <div class="col-span-1 lg:col-span-2 flex flex-col items-center justify-start gap-4 order-1 lg:order-2">
                 <div class="fancy-header w-full text-center">
-                    <h1 class="text-4xl lg:text-5xl font-extrabold glitch-text tracking-widest text-center">PUSKESMAS
-                        WANA
-                    </h1>
+                    <h1 id="mainTitle" class="text-4xl lg:text-5xl font-extrabold tracking-widest text-center"></h1>
                     <p class="text-xs text-cyan-700 mt-1 font-mono">SECURE ACCESS POINT: A-9 // [CONNECTED]</p>
                 </div>
 
@@ -512,6 +557,8 @@
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, 10, 50);
         camera.lookAt(0, 0, 0);
+        const mouse = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
 
         const directionalLight = new THREE.DirectionalLight(0x00FFFF, 0.8);
         directionalLight.position.set(10, 50, 30);
@@ -551,28 +598,144 @@
         const codeCount = 8000;
         const codePositions = new Float32Array(codeCount * 3), codeColors = new Float32Array(codeCount * 3);
         const c1 = new THREE.Color(0x00FFFF), c2 = new THREE.Color(0xFF00FF), c3 = new THREE.Color(0x00FF7F);
+        const sizes = new Float32Array(codeCount);
 
         for (let i = 0; i < codeCount * 3; i += 3) {
             codePositions[i] = (Math.random() - 0.5) * 800;
             codePositions[i + 1] = (Math.random() - 0.5) * 400 + 100;
             codePositions[i + 2] = (Math.random() - 0.5) * 800;
+            sizes[i / 3] = Math.random() * 1.5 + 0.5; // Ukuran partikel acak
             const r = Math.random();
             if (r < 0.33) c1.toArray(codeColors, i); else if (r < 0.66) c2.toArray(codeColors, i); else c3.toArray(codeColors, i);
         }
         codeGeo.setAttribute('position', new THREE.BufferAttribute(codePositions, 3));
         codeGeo.setAttribute('color', new THREE.BufferAttribute(codeColors, 3));
-        const codeStream = new THREE.Points(codeGeo, new THREE.PointsMaterial({ size: 0.3, vertexColors: true, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending }));
+        codeGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+        // --- OPTIMASI: Gunakan ShaderMaterial untuk animasi di GPU ---
+        const particleMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime: { value: 0.0 }
+            },
+            vertexShader: `
+                uniform float uTime;
+                attribute float size;
+                varying vec3 vColor;
+                void main() {
+                    vColor = color;
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    mvPosition.y += sin(position.x * 0.1 + uTime * 0.5) * 5.0;
+                    gl_PointSize = size * (20.0 / -mvPosition.z);
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `,
+            fragmentShader: `
+                varying vec3 vColor;
+                void main() {
+                    gl_FragColor = vec4(vColor, 0.7);
+                }
+            `,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            transparent: true,
+            vertexColors: true
+        });
+
+        const codeStream = new THREE.Points(codeGeo, particleMaterial);
         scene.add(codeStream);
+
+        const originalPositions = codePositions.slice();
+
+        // --- TAMBAHAN CANGGIH: HOLOGRAPHIC AI CORE ---
+        const coreGroup = new THREE.Group();
+        coreGroup.position.y = 10; // Sejajar dengan tinggi kamera
+        scene.add(coreGroup);
+
+        // 1. Outer Ring (Icosahedron Wireframe)
+        const outerGeo = new THREE.IcosahedronGeometry(12, 1);
+        const outerMat = new THREE.MeshBasicMaterial({
+            color: 0x00FFFF,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.1,
+            blending: THREE.AdditiveBlending
+        });
+        const outerCore = new THREE.Mesh(outerGeo, outerMat);
+        coreGroup.add(outerCore);
+
+        // 2. Inner Nucleus (Energy Sphere)
+        const innerGeo = new THREE.SphereGeometry(5, 32, 32);
+        const innerMat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 } },
+            vertexShader: `
+                varying vec3 vNormal;
+                void main() {
+                    vNormal = normalize(normalMatrix * normal);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float uTime;
+                varying vec3 vNormal;
+                void main() {
+                    float intensity = pow(0.7 - dot(vNormal, vec3(0, 0, 1.0)), 4.0);
+                    vec3 color = vec3(0.0, 0.8, 1.0) * intensity;
+                    gl_FragColor = vec4(color, 1.0) * (0.8 + 0.2 * sin(uTime * 3.0));
+                }
+            `,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        const innerCore = new THREE.Mesh(innerGeo, innerMat);
+        coreGroup.add(innerCore);
+
+        // 3. Orbiting Rings
+        const ringGeo = new THREE.TorusGeometry(18, 0.1, 16, 100);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xFF00FF, transparent: true, opacity: 0.2 });
+        const ring1 = new THREE.Mesh(ringGeo, ringMat);
+        const ring2 = new THREE.Mesh(ringGeo, ringMat);
+        ring1.rotation.x = Math.PI / 2;
+        ring2.rotation.x = Math.PI / 1.8;
+        coreGroup.add(ring1);
+        coreGroup.add(ring2);
 
         function animateThreeJS() {
             requestAnimationFrame(animateThreeJS);
+            const time = Date.now() * 0.001;
+
+            // Animasi Grid & Partikel Lama
             grid1.position.z += 0.1; if (grid1.position.z > 50) grid1.position.z = -150;
             grid2.position.z += 0.08; if (grid2.position.z > 50) grid2.position.z = -150;
             codeStream.rotation.y += 0.0005;
-            codeStream.position.y -= 0.05; if (codeStream.position.y < -200) codeStream.position.y = 200;
-            pointLight.position.x = Math.sin(Date.now() * 0.0002) * 50;
+            particleMaterial.uniforms.uTime.value = time;
+            pointLight.position.x = Math.sin(time * 0.2) * 50;
+
+            // Animasi AI Core Baru
+            outerCore.rotation.y += 0.002;
+            outerCore.rotation.z -= 0.001;
+
+            // Efek Interaktif Mouse pada Core (Tilt)
+            coreGroup.rotation.x = mouse.y * 0.2;
+            coreGroup.rotation.z = -mouse.x * 0.2;
+            coreGroup.rotation.y += 0.001; // Rotasi lambat grup
+
+            innerMat.uniforms.uTime.value = time;
+
+            ring1.rotation.x = Math.PI / 2 + Math.sin(time * 0.5) * 0.1;
+            ring1.rotation.y += 0.01;
+            ring2.rotation.x = Math.PI / 1.8 + Math.cos(time * 0.5) * 0.1;
+            ring2.rotation.y -= 0.01;
+
             renderer.render(scene, camera);
         }
+
+        window.addEventListener('mousemove', (event) => {
+            // Normalisasi posisi mouse dari -1 ke 1
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -582,7 +745,7 @@
         animateThreeJS();
     </script>
 
-    <script src="scan.js" type="module"></script>
+    <script src="scan.js"></script>
 
 </body>
 

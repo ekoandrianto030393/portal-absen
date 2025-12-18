@@ -9,7 +9,6 @@ const video = document.getElementById('videoElement');
 const canvas = document.getElementById('overlay');
 const videoContainer = document.getElementById('videoContainer');
 const statusMessage = document.getElementById('statusMessage');
-const clockDisplay = document.getElementById('clock');
 const successOverlay = document.getElementById('successOverlay');
 const userIdDisplay = document.getElementById('userIdDisplay');
 const userStatusDisplay = document.getElementById('userStatusDisplay');
@@ -19,6 +18,12 @@ const userJabatanDisplay = document.getElementById('userJabatanDisplay');
 
 // ELEMEN HUD & DIAGNOSTIK (Diambil dari HTML Futuristik Anda)
 const systemLog = document.getElementById('systemLog');
+const mainTitle = document.getElementById('mainTitle');
+const clockH = document.getElementById('clock-h');
+const clockM = document.getElementById('clock-m');
+const clockS = document.getElementById('clock-s');
+
+
 const cameraSelect = document.getElementById('cameraSelect');
 const networkStatus = document.getElementById('networkStatus');
 const cameraStatus = document.getElementById('cameraStatus');
@@ -272,9 +277,44 @@ function updateGraph() {
 }
 
 // Panggil update HUD pada interval
-setInterval(() => {
-    if(clockDisplay) clockDisplay.textContent = new Date().toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}, 1000);
+function updateClock() {
+    const now = new Date();
+    if (clockH) clockH.textContent = String(now.getHours()).padStart(2, '0');
+    if (clockM) clockM.textContent = String(now.getMinutes()).padStart(2, '0');
+    if (clockS) clockS.textContent = String(now.getSeconds()).padStart(2, '0');
+}
+
+function animateTitle() {
+    if (!mainTitle) return;
+    mainTitle.style.opacity = 1;
+    const text = "PUSKESMAS WANA";
+    mainTitle.innerHTML = ''; // Kosongkan dulu
+
+    const chars = text.split('');
+    const totalChars = chars.length;
+    const animationCycleDuration = 3; // detik, harus sesuai dengan durasi @keyframes CSS
+    const staggerDelayPerChar = animationCycleDuration / totalChars; // Contoh: 3s / 15 chars = 0.2s
+
+    // Pastikan mainTitle memiliki gaya yang diperlukan untuk overflow dan posisi relatif
+    mainTitle.style.position = 'relative';
+    mainTitle.style.overflow = 'hidden';
+    mainTitle.style.minHeight = '1.2em'; // Sesuaikan sesuai ukuran font
+    mainTitle.style.whiteSpace = 'nowrap'; // Mencegah teks melipat
+
+    chars.forEach((char, index) => {
+        const span = document.createElement('span');
+        span.textContent = char === ' ' ? '\u00A0' : char; // Handle spasi
+        span.className = 'title-char';
+        // Hitung delay bertahap
+        const delay = index * staggerDelayPerChar;
+        span.style.animationDelay = `${delay}s`;
+        if (Math.random() > 0.7) span.classList.add('glitch-text'); // Tambahkan glitch acak ke span
+        mainTitle.appendChild(span);
+    });
+}
+
+
+setInterval(updateClock, 1000);
 setInterval(updateDataStream, 50);
 setInterval(updateGraph, 300);
 
@@ -782,5 +822,9 @@ async function processAttendance(karyawanId) {
 }
 
 
-// --- START APP ---
-initializeApp();
+// --- START APP (setelah semua HTML siap) ---
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+    animateTitle();
+    updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih
+});
