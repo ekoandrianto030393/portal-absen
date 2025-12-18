@@ -14,6 +14,8 @@ const successOverlay = document.getElementById('successOverlay');
 const userIdDisplay = document.getElementById('userIdDisplay');
 const userStatusDisplay = document.getElementById('userStatusDisplay');
 const lastActionDisplay = document.getElementById('lastActionDisplay');
+const userPhotoDisplay = document.getElementById('userPhotoDisplay'); 
+const userJabatanDisplay = document.getElementById('userJabatanDisplay');
 
 // ELEMEN HUD & DIAGNOSTIK (Diambil dari HTML Futuristik Anda)
 const systemLog = document.getElementById('systemLog');
@@ -39,8 +41,9 @@ let employeeMap = {};
 let currentStream = null;
 let videoDevices = []; 
 
-const FACE_MATCHING_THRESHOLD = 0.45; 
+const FACE_MATCHING_THRESHOLD = 0.45;
 const DETECTION_INTERVAL_MS = 100;
+const DEFAULT_PHOTO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0idy00IGgtNCI+PHBhdGggZD0iTTggOGE0IDQgMCAxIDAgMC04IDQgNCAwIDAgMCAwIDh6bTAtMWEzIDMgMCAxIDEtNiAwIDMgMyAwIDAgMSA2IDB6TTggOWE1IDUgMCAwIDAtNSA1djJBNiA2IDAgMCAwIDggMjFhNiA2IDAgMCAwIDYtNnYtMmE1IDUgMCAwIDAtNS01ek04IDE5YTUgNSAwIDAgMS00LTJ2LTFhNCA0IDAgMCAxIDQtNGM0IDAgMy44MiA0IDQgNGMtLjE4LjMyLS4zOC42My0uNTggLjkzQTUuMDAzIDUuMDAzIDAgMCAxIDggMTl6Ii8+PC9zdmc+'; // Placeholder photo
 
 // --- DEFINISI WARNA (Futuristik) ---
 const PROFESSIONAL_STATUS_COLOR = '#00FF7F'; 
@@ -280,6 +283,31 @@ setInterval(updateGraph, 300);
 // 3. FUNGSI LOGIKA SISTEM & KAMERA (Inti Face-API)
 // =============================================================================
 
+// --- API Handler (Contoh Modul Terpisah) ---
+const api = {
+    getDescriptors: async () => {
+        try {
+            const response = await fetch('/api/karyawan/get_descriptors'); 
+            if (!response.ok) throw new Error(`Network response was not ok (${response.status})`);
+            const data = await response.json();
+            if (!data.success) throw new Error(data.message || 'API returned failure.');
+            return data.descriptors;
+        } catch (error) {
+            console.error('Error loading descriptors:', error);
+            throw error; // Lemparkan error agar bisa ditangkap oleh pemanggil
+        }
+    },
+    postAttendance: async (karyawanId) => {
+        const response = await fetch('/absensi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_karyawan: karyawanId })
+        });
+        if (!response.ok) throw new Error(`Server returned an error status (${response.status}).`);
+        return await response.json();
+    }
+};
+
 async function loadLabeledImages() {
     setStatusVisual('BOOT SEQUENCE: Memuat Database Wajah...', 'text-cyan-500', true);
     if(dbStatus) {
@@ -289,22 +317,21 @@ async function loadLabeledImages() {
     logSystem('Database Sync Initiated.', 'text-cyan-500');
     
     try {
-        // ENDPOINT UNTUK MENGAMBIL DESKRIPTOR WAJAH DARI SERVER.JS
-        const response = await fetch('/api/get_descriptors'); 
-        if (!response.ok) throw new Error('Network response was not ok');
-        
-        const data = await response.json();
-        if (!data.success || data.descriptors.length === 0) {
-            throw new Error('Database is empty or failed to retrieve data.');
-        }
+        const descriptorsData = await api.getDescriptors();
+        if (descriptorsData.length === 0) throw new Error('Database is empty.');
 
-        const descriptors = data.descriptors.map(item => {
-            // Asumsi face_descriptor disimpan sebagai JSON string di DB/Server
-            const descriptorArray = JSON.parse(item.face_descriptor); 
-            employeeMap[item.id_karyawan] = item.nama;
+        const descriptors = descriptorsData.map(item => {
+            const descriptorArray = JSON.parse(item.face_descriptor);
+            // Simpan semua data yang dibutuhkan, termasuk foto base64
+            employeeMap[item.id_karyawan] = {
+                nama: item.nama,
+                jabatan: item.jabatan || 'N/A',
+                foto: item.foto || null
+            };
             return new faceapi.LabeledFaceDescriptors(item.id_karyawan, [new Float32Array(descriptorArray)]);
         });
 
+        
         setStatusVisual(`${descriptors.length} ID Karyawan dimuat. SYSTEM READY.`, 'text-green-500');
         if(dbStatus) {
             dbStatus.textContent = 'ONLINE';
@@ -451,8 +478,7 @@ video.addEventListener('play', async () => {
         labeledDescriptors = await loadLabeledImages();
     }
     
-    userIdDisplay.textContent = 'SCANNING...';
-    userStatusDisplay.textContent = 'LOCKED';
+    resetTargetData(); // Reset data saat video mulai
 
     if (detectionInterval === null) {
         detectionInterval = setInterval(detectFace, DETECTION_INTERVAL_MS);
@@ -461,24 +487,22 @@ video.addEventListener('play', async () => {
     }
 });
 
+function resetTargetData() {
+    if(userPhotoDisplay) userPhotoDisplay.src = DEFAULT_PHOTO;
+    if(userIdDisplay) userIdDisplay.textContent = 'SCANNING...';
+    if(userJabatanDisplay) userJabatanDisplay.textContent = '...';
+    if(userStatusDisplay) {
+        userStatusDisplay.textContent = 'LOCKED';
+        userStatusDisplay.className = 'text-lg font-bold text-red-500';
+    }
+}
+
+
 async function detectFace() {
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 🛑 LOGIKA COOLDOWN
-    if (isProcessing && lastKnownMatch) {
-        const { box, faceLabel, faceColor, landmarks, confidence } = lastKnownMatch;
-        if (box && landmarks) {
-            drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor);
-            drawMatchLabel(context, box, faceLabel, faceColor);
-            drawHolographicMesh(context, landmarks); 
-            drawDataTags(context, box, landmarks); 
-            updateSystemDiagnostics(confidence);
-        }
-        return; 
-    }
-
-    if (isProcessing) return;
+    if (isProcessing) return; // Jangan lakukan apapun jika sedang memproses absensi
     if (video.paused || video.ended || !faceapi.nets.tinyFaceDetector.params) return;
     
     const displaySize = { width: canvas.width, height: canvas.height };
@@ -506,7 +530,7 @@ async function detectFace() {
         if (labeledDescriptors && labeledDescriptors.length > 0) {
             const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, FACE_MATCHING_THRESHOLD);
             const bestMatch = faceMatcher.findBestMatch(detections.descriptor);
-
+            
             const matchDistance = bestMatch.distance;
             const confidenceRaw = Math.max(0, FACE_MATCHING_THRESHOLD - matchDistance); 
             confidence = (confidenceRaw / FACE_MATCHING_THRESHOLD) * 100;
@@ -514,62 +538,48 @@ async function detectFace() {
 
             if (bestMatch.label !== 'unknown' && matchDistance <= FACE_MATCHING_THRESHOLD) {
                 const recognizedId = bestMatch.label;
-                const recognizedName = employeeMap[recognizedId] || `ID:${recognizedId}`;
+                const employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
                 
-                faceLabel = recognizedName; 
+                faceLabel = employee.nama;
                 faceColor = '#00FF7F'; 
 
-                lastKnownMatch = {
-                    box: resizedDetections.detection.box,
-                    landmarks: resizedDetections.landmarks,
-                    faceLabel: faceLabel,
-                    faceColor: faceColor,
-                    confidence: confidence
-                };
-
-                userIdDisplay.textContent = recognizedName;
+                // Hanya update jika ID berubah atau belum ada match sebelumnya
+                if (!lastKnownMatch || lastKnownMatch.id !== recognizedId) {
+                    // Ambil data lengkap dari employeeMap yang sudah dimuat di awal
+                    const { nama, jabatan, foto } = employee;
+                    if (userPhotoDisplay) userPhotoDisplay.src = foto || DEFAULT_PHOTO;
+                    if (userIdDisplay) userIdDisplay.textContent = nama;
+                    if (userJabatanDisplay) userJabatanDisplay.textContent = jabatan || 'N/A';
+                }
+                
                 userStatusDisplay.textContent = 'VERIFYING...';
                 userStatusDisplay.className = 'text-lg font-bold text-amber-500';
                 
                 if (!isProcessing) { 
-                    setStatusVisual(`ID MATCH: ${recognizedName}. AUTHORIZING...`, 'text-cyan-400', true);
-                    isProcessing = true; 
+                    setStatusVisual(`ID MATCH: ${employee.nama}. AUTHORIZING...`, 'text-cyan-400', true);
+                    isProcessing = true;
+                    // Simpan match terakhir sebelum proses absensi
+                    lastKnownMatch = { id: recognizedId, box: resizedDetections.detection.box, landmarks: resizedDetections.landmarks, faceLabel: faceLabel, faceColor: faceColor };
                     await processAttendance(recognizedId);
                 }
 
             } else {
-                userIdDisplay.textContent = 'UNKNOWN SUBJECT';
+                resetTargetData();
                 userStatusDisplay.textContent = 'ACCESS DENIED';
-                userStatusDisplay.className = 'text-lg font-bold text-red-500';
                 faceLabel = 'DENIED ACCESS';
                 faceColor = '#FF0055'; 
-                
-                lastKnownMatch = {
-                    box: resizedDetections.detection.box, 
-                    landmarks: resizedDetections.landmarks,
-                    faceLabel: faceLabel,
-                    faceColor: faceColor,
-                    confidence: confidence
-                };
                 setStatusVisual('SUBJECT NOT AUTHORIZED. IDENTITY DENIED.', 'text-red-500');
+                lastKnownMatch = null;
             }
         } else {
             // DB Offline, hanya deteksi wajah
+            resetTargetData();
             updateSystemDiagnostics(0);
-            userIdDisplay.textContent = 'FACE DETECTED';
             userStatusDisplay.textContent = 'DB OFFLINE';
-            userStatusDisplay.className = 'text-lg font-bold text-red-500';
             faceLabel = 'DB OFFLINE';
             faceColor = '#FF00FF'; 
             setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-red-500');
-            
-            lastKnownMatch = {
-                box: resizedDetections.detection.box, 
-                landmarks: resizedDetections.landmarks,
-                faceLabel: faceLabel,
-                faceColor: faceColor,
-                confidence: 0
-            };
+            lastKnownMatch = null;
         }
         
         drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor);
@@ -577,10 +587,8 @@ async function detectFace() {
 
     } else {
         // Tidak ada deteksi wajah
+        resetTargetData();
         updateSystemDiagnostics(0);
-        userIdDisplay.textContent = 'SCANNING...';
-        userStatusDisplay.textContent = 'LOCKED';
-        userStatusDisplay.className = 'text-lg font-bold text-red-500';
         setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
         lastKnownMatch = null; 
     }
@@ -616,23 +624,19 @@ async function processAttendance(karyawanId) {
     }
 
     try {
-        // ENDPOINT ABSENSI KE SERVER.JS
-        const response = await fetch('/absensi', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_karyawan: karyawanId })
-        });
-
-        if (!response.ok) throw new Error('Server returned an error status.');
-        
-        const result = await response.json();
+        const result = await api.postAttendance(karyawanId);
         const serverTimestamp = new Date().toLocaleTimeString('id-ID');
+
         const statusColor = result.statusColor || 'red';
         const displayColor = (statusColor === 'green' ? 'text-green-500' : (statusColor === 'yellow' ? 'text-amber-500' : 'text-red-500'));
         
-        const cleanMessage = result.message.replace(/\*\*|✅\s*/g, ''); 
-        
-        const display_name = result.karyawanName || employeeMap[karyawanId] || karyawanId; 
+        const cleanMessage = result.message.replace(/\*\*|✅\s*/g, '');
+
+        // --- PERBAIKAN UTAMA: Ambil data langsung dari respons server ---
+        const employeeData = employeeMap[karyawanId] || {};
+        const display_name = result.nama || employeeData.nama || karyawanId;
+        const display_jabatan = result.jabatan || employeeData.jabatan || 'N/A';
+        const display_foto_base64 = result.foto || employeeData.foto;
         
         const coloredName = `<span class="font-bold text-shadow-lg" style="color: ${NAME_HIGHLIGHT_COLOR}; text-shadow: 0 0 10px ${NAME_HIGHLIGHT_COLOR}, 0 0 5px #000;">${display_name}</span>`;
 
@@ -644,29 +648,37 @@ async function processAttendance(karyawanId) {
         // LOGIKA SUKSES/GAGAL
         if (result.success) {
             
+            // Update panel "TARGET DATA" di sisi kiri
+            if (userIdDisplay) userIdDisplay.textContent = display_name;
+            if (userJabatanDisplay) userJabatanDisplay.textContent = display_jabatan;
+            if (userPhotoDisplay) userPhotoDisplay.src = display_foto_base64 || DEFAULT_PHOTO;
+
+
             setStatusVisual(cleanMessage, displayColor);
             userStatusDisplay.textContent = 'AUTHORIZED';
             userStatusDisplay.className = 'text-lg font-bold ' + displayColor;
             videoContainer.classList.add('scan-success'); 
 
-            if (cleanMessage.includes('telah tercatat') && !cleanMessage.includes('masa kerja')) { 
-                
-                finalStatusText = cleanMessage.includes('PULANG') 
-                    ? 'CHECK-OUT BERHASIL' 
-                    : 'CHECK-IN BERHASIL';
-                
-                finalMessageHTML = cleanMessage.includes('PULANG') 
-                    ? `Absensi PULANG atas nama ${coloredName} telah berhasil tercatat pada ${serverTimestamp}. Terima kasih.` 
-                    : `Absensi MASUK atas nama ${coloredName} telah berhasil dicatat. Selamat Bekerja.`;
-
+            // Gunakan result_code untuk logika yang lebih bersih
+            switch (result.result_code) {
+                case 'CHECK_IN_SUCCESS':
+                    finalStatusText = 'CHECK-IN BERHASIL';
+                    finalMessageHTML = `Absensi MASUK atas nama ${coloredName} (${display_jabatan}) telah berhasil dicatat. Selamat Bekerja.`;
+                    finalBackground = ABSEN_NORMAL_BG;
+                    finalStatusColor = NAME_HIGHLIGHT_COLOR;
+                    break;
+                case 'CHECK_OUT_SUCCESS':
+                    finalStatusText = 'CHECK-OUT BERHASIL';
+                    finalMessageHTML = `Absensi PULANG atas nama ${coloredName} (${display_jabatan}) telah berhasil tercatat pada ${serverTimestamp}. Terima kasih.`;
+                    finalBackground = ABSEN_NORMAL_BG;
+                    finalStatusColor = NAME_HIGHLIGHT_COLOR;
+                    break;
+                case 'STATUS_CONFIRMED':
+                default: // Fallback untuk kasus lain yang sukses
+                finalStatusText = 'STATUS CONFIRMED';
+                finalMessageHTML = `Sistem mengkonfirmasi ${coloredName}. Absensi Anda untuk hari ini telah tercatat.`;
                 finalBackground = ABSEN_NORMAL_BG;
                 finalStatusColor = NAME_HIGHLIGHT_COLOR; 
-                
-            } else {
-                finalStatusText = 'STATUS CONFIRMED';
-                finalMessageHTML = `Sistem mengkonfirmasi ${coloredName}. Absensi Anda berhasil tercatat selamat bekerja.`;
-                finalBackground = ABSEN_GANDA_BG;
-                finalStatusColor = NAME_HIGHLIGHT_COLOR;
             }
 
         } else {
@@ -720,7 +732,15 @@ async function processAttendance(karyawanId) {
             `;
         }
         
-        const currentAction = cleanMessage.includes('PULANG') ? 'Check-out' : (cleanMessage.includes('MASUK') ? 'Check-in' : 'Status');
+        let currentAction = 'Status';
+        if (result.result_code === 'CHECK_IN_SUCCESS') {
+            currentAction = 'Check-in';
+        } else if (result.result_code === 'CHECK_OUT_SUCCESS') {
+            currentAction = 'Check-out';
+        } else if (result.result_code && result.result_code.includes('FAIL')) {
+            currentAction = 'Failed';
+        }
+
 
         logSystem(`${currentAction} Success for ${display_name}. Cooldown active.`, 'text-green-500');
         lastActionDisplay.textContent = `${currentAction}: ${display_name.substring(0, 15)}... @ ${serverTimestamp}`;

@@ -392,7 +392,19 @@
 
                 <div class="widget-panel">
                     <h2 class="widget-title">:: TARGET DATA ::</h2>
-                    <div class="space-y-3">
+                    <div class="space-y-3 text-center">
+
+                        <!-- FOTO KARYAWAN -->
+                        <div
+                            class="w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-cyan-400 bg-gray-800 flex items-center justify-center mb-2 p-2">
+                            <img id="userPhotoDisplay" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0idy00IGgtNCI+PHBhdGggZD0iTTggOGE0IDQgMCAxIDAgMC04IDQgNCAwIDAgMCAwIDh6bTAtMWEzIDMgMCAxIDEtNiAwIDMgMyAwIDAgMSA2IDB6TTggOWE1IDUgMCAwIDAtNSA1djJBNiA2IDAgMCAwIDggMjFhNiA2IDAgMCAwIDYtNnYtMmE1IDUgMCAwIDAtNS01ek04IDE5YTUgNSAwIDAgMS00LTJ2LTFhNCA0IDAgMCAxIDQtNGM0IDAgMy44MiA0IDQgNGMtLjE4LjMyLS4zOC42My0uNTggLjkzQTUuMDAzIDUuMDAzIDAgMCAxIDggMTl6Ii8+PC9zdmc+" alt="User Photo" class="w-full h-full object-cover opacity-50">
+                        </div>
+
+                        <div>
+                            <p class="text-xs text-gray-400">JABATAN</p>
+                            <p id="userJabatanDisplay" class="text-lg font-bold text-amber-400 truncate">...</p>
+                        </div>
+
                         <div>
                             <p class="text-xs text-gray-400">IDENTITY</p>
                             <p id="userIdDisplay" class="text-xl font-bold text-cyan-400 truncate">SCANNING...</p>
@@ -568,7 +580,7 @@
         animateThreeJS();
     </script>
 
-    <script src="scan.js"></script>
+    <script src="scan.js" type="module"></script>
 
 </body>
 
