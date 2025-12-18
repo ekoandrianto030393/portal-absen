@@ -7,13 +7,14 @@ const snapCanvas = document.getElementById('snapshotCanvas');
 const thresholdFill = document.getElementById('thresholdFill');
 const thresholdStatus = document.getElementById('thresholdStatus');
 const faceStatus = document.getElementById('faceStatus');
-const submitRegisterBtn = document.getElementById('submitRegisterBtn');
+const submitStatusDisplay = document.getElementById('submitStatusDisplay');
 const regIdKaryawan = document.getElementById('regIdKaryawan');
 const regNama = document.getElementById('regNama');
 const regJabatan = document.getElementById('regJabatan');
 const btnText = document.getElementById('btnText');
 const logStream = document.getElementById('logStream');
 const cameraSelect = document.getElementById('cameraSelect');
+const flashEffect = document.getElementById('flashEffect');
 
 // --- 2. KONFIGURASI ---
 const MODEL_URL = './models';
@@ -116,6 +117,60 @@ async function init() {
     }
 }
 
+function triggerFlash() {
+    if (!flashEffect) return;
+    flashEffect.style.transition = 'opacity 0.1s ease-out';
+    flashEffect.style.opacity = '0.8';
+    setTimeout(() => {
+        flashEffect.style.opacity = '0';
+    }, 150);
+}
+// --- 7. FUNGSI PENDAFTARAN OTOMATIS ---
+async function performAutoRegistration() {
+    // Kunci proses agar tidak berjalan ganda
+    if (isProcessing) return;
+    isProcessing = true;
+
+    const id = regIdKaryawan.value.trim().toUpperCase();
+    const nama = regNama.value.trim();
+    const jabatan = regJabatan.value.trim() || 'Staff';
+
+    btnText.textContent = 'TRANSMITTING...';
+    submitStatusDisplay.classList.remove('opacity-50');
+    addToLogStream(`TRANSMITTING DATA: ${id}`, 'text-yellow-500');
+
+    // Picu efek flash
+    triggerFlash();
+
+    // Snapshot Instan
+    const sCtx = snapCanvas.getContext('2d');
+    sCtx.save();
+    sCtx.scale(-1, 1); // Balikkan gambar secara horizontal
+    sCtx.drawImage(video, -snapCanvas.width, 0, snapCanvas.width, snapCanvas.height);
+    sCtx.restore();
+    const fotoBase64 = snapCanvas.toDataURL('image/jpeg', 0.7);
+
+    try {
+        const res = await fetch('/api/karyawan/register_face', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_karyawan: id, nama, jabatan, descriptor: Array.from(faceDescriptor), foto: fotoBase64 })
+        });
+
+        const result = await res.json();
+        if (!result.success) throw new Error(result.message);
+
+        document.getElementById('overlayRegId').textContent = id;
+        document.getElementById('regSuccessOverlay').classList.remove('hidden');
+        addToLogStream(`SUCCESS: ${id} SYNCED`, 'text-green-400');
+        setTimeout(resetRegistrationForm, 2500);
+
+    } catch (error) {
+        addToLogStream(`SYNC FAILED: ${error.message}`, 'text-red-500');
+        isProcessing = false; // Buka kunci jika gagal agar bisa coba lagi
+    }
+}
+
 // --- 6. LOOP DETEKSI WAJAH ---
 video.addEventListener('play', () => {
     const displaySize = { width: video.videoWidth, height: video.videoHeight };
@@ -123,49 +178,68 @@ video.addEventListener('play', () => {
 
     async function detectFrame() {
         // Jangan proses jika sedang submit data
-        if (isProcessing) return requestAnimationFrame(detectFrame);
+        if (isProcessing) return; // Stop loop sementara saat proses
         if (video.paused || video.ended) return;
 
-        const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({
+        // Gunakan detectAllFaces untuk mendeteksi lebih dari satu wajah
+        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({
             inputSize: 160, // Optimal untuk kecepatan
             scoreThreshold: 0.5
-        })).withFaceLandmarks().withFaceDescriptor();
+        })).withFaceLandmarks().withFaceDescriptors();
 
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (detections) {
-            const resized = faceapi.resizeResults(detections, displaySize);
+        if (detections.length > 1) {
+            // KASUS: Lebih dari 1 wajah terdeteksi
+            faceStatus.textContent = 'MULTIPLE TARGETS DETECTED';
+            faceStatus.className = 'text-lg text-center mt-4 text-red-500 font-bold uppercase animate-pulse';
+            btnText.textContent = 'HANYA SATU WAJAH';
+            submitStatusDisplay.classList.remove('opacity-50');
 
-            // Gambar kotak deteksi (Box Custom)
-            ctx.strokeStyle = '#00eaff';
+            // Gambar kotak untuk semua wajah yang terdeteksi
+            detections.forEach(detection => {
+                const resized = faceapi.resizeResults(detection, displaySize);
+                ctx.strokeStyle = '#ff4757'; // Merah untuk peringatan
+                ctx.lineWidth = 2;
+                ctx.strokeRect(resized.detection.box.x, resized.detection.box.y, resized.detection.box.width, resized.detection.box.height);
+            });
+
+        } else if (detections.length === 1) {
+            // KASUS: Tepat 1 wajah terdeteksi (Normal)
+            const singleDetection = detections[0];
+            const resized = faceapi.resizeResults(singleDetection, displaySize);
+            const score = singleDetection.detection.score;
+            const percent = Math.round(score * 100);
+
+            ctx.strokeStyle = '#00eaff'; // Cyan untuk deteksi normal
             ctx.lineWidth = 2;
             ctx.strokeRect(resized.detection.box.x, resized.detection.box.y, resized.detection.box.width, resized.detection.box.height);
 
-            const score = detections.detection.score;
-            const percent = Math.round(score * 100);
             thresholdFill.style.width = percent + '%';
             thresholdStatus.textContent = percent + '%';
 
             if (score > FACE_THRESHOLD) {
                 faceStatus.textContent = 'FACE LOCKED';
                 faceStatus.className = 'text-lg text-center mt-4 text-green-400 font-bold uppercase';
-                submitRegisterBtn.disabled = false;
-                btnText.textContent = 'REGISTER SUBJECT';
-                faceDescriptor = detections.descriptor;
+                faceDescriptor = singleDetection.descriptor;
+
+                if (regIdKaryawan.value && regNama.value) {
+                    performAutoRegistration();
+                } else {
+                    btnText.textContent = 'DATA TIDAK LENGKAP';
+                    submitStatusDisplay.classList.remove('opacity-50');
+                }
             } else {
                 faceStatus.textContent = 'LOW SIGNAL';
                 faceStatus.className = 'text-lg text-center mt-4 text-yellow-500 font-bold uppercase';
-                submitRegisterBtn.disabled = true;
-                btnText.textContent = 'WAITING FOR FACE...';
             }
         } else {
-            thresholdFill.style.width = '0%';
-            thresholdStatus.textContent = '0%';
+            // KASUS: Tidak ada wajah terdeteksi
             faceStatus.textContent = 'SEARCHING...';
             faceStatus.className = 'text-lg text-center mt-4 text-red-500 font-bold uppercase';
-            submitRegisterBtn.disabled = true;
             btnText.textContent = 'WAITING FOR FACE...';
+            submitStatusDisplay.classList.add('opacity-50');
         }
         
         // Pastikan loop terus berjalan
@@ -177,65 +251,16 @@ video.addEventListener('play', () => {
     detectionInterval = setInterval(detectFrame, 100);
 });
 
-// --- 7. SUBMIT ACTION ---
-submitRegisterBtn.addEventListener('click', async () => {
-    const id = regIdKaryawan.value.trim().toUpperCase();
-    const nama = regNama.value.trim();
-    const jabatan = regJabatan.value.trim() || 'Staff';
+// --- 8. FUNGSI RESET ---
+function resetRegistrationForm() {
+    document.getElementById('regSuccessOverlay').classList.add('hidden');
+    regIdKaryawan.value = '';
+    regNama.value = '';
+    regJabatan.value = '';
+    isProcessing = false; // Buka kunci setelah semua selesai
+    btnText.textContent = 'WAITING FOR FACE...';
+    submitStatusDisplay.classList.add('opacity-50');
+}
 
-    if (!id || !nama || !jabatan || !faceDescriptor) return;
-
-    isProcessing = true;
-    submitRegisterBtn.disabled = true;
-    btnText.textContent = 'TRANSMITTING...';
-    addToLogStream(`TRANSMITTING DATA: ${id}`, 'text-yellow-500');
-
-    // Snapshot Instan
-    const sCtx = snapCanvas.getContext('2d');
-    sCtx.save();
-    sCtx.scale(-1, 1); // Balikkan gambar secara horizontal agar tidak terbalik
-    sCtx.drawImage(video, -snapCanvas.width, 0, snapCanvas.width, snapCanvas.height);
-    sCtx.restore();
-    const fotoBase64 = snapCanvas.toDataURL('image/jpeg', 0.7);
-
-    try {
-        const res = await fetch('/api/karyawan/register_face', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id_karyawan: id,
-                nama: nama,
-                jabatan: jabatan,
-                descriptor: Array.from(faceDescriptor),
-                foto: fotoBase64
-            })
-        });
-
-        const result = await res.json();
-        if (result.success) {
-            document.getElementById('overlayRegId').textContent = id;
-            const overlay = document.getElementById('regSuccessOverlay');
-            overlay.classList.remove('hidden');
-
-            setTimeout(() => {
-                overlay.classList.add('hidden');
-                regIdKaryawan.value = '';
-                regNama.value = '';
-                regJabatan.value = '';
-                isProcessing = false;
-                submitRegisterBtn.disabled = true; // Nonaktifkan lagi setelah berhasil
-            }, 2500);
-            addToLogStream(`SUCCESS: ${id} SYNCED`, 'text-green-400');
-        } else {
-            throw new Error(result.message);
-        }
-    } catch (error) {
-        addToLogStream(`SYNC FAILED: ${error.message}`, 'text-red-500');
-        isProcessing = false;
-        submitRegisterBtn.disabled = false;
-        btnText.textContent = 'RETRY';
-    }
-});
-
-// --- 8. MULAI APLIKASI ---
+// --- 9. MULAI APLIKASI ---
 init();

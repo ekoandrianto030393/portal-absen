@@ -136,10 +136,10 @@
                         </div>
                     </div>
 
-                    <button id="submitRegisterBtn" disabled
-                        class="mt-4 bg-indigo-700 hover:bg-indigo-600 text-white font-bold py-3 px-4 w-full rounded-lg uppercase transition-all disabled:opacity-30">
+                    <div id="submitStatusDisplay"
+                        class="mt-4 bg-indigo-900 text-white font-bold py-3 px-4 w-full rounded-lg uppercase text-center transition-all opacity-50">
                         <span id="btnText">WAITING FOR FACE...</span>
-                    </button>
+                    </div>
                 </div>
             </div>
 
@@ -149,6 +149,7 @@
                 <div class="video-container rounded-xl aspect-[4/3]">
                     <video id="videoElement" autoplay muted playsinline class="w-full h-full object-cover"></video>
                     <canvas id="overlay" class="absolute top-0 left-0 w-full h-full"></canvas>
+                    <div id="flashEffect" class="absolute inset-0 bg-white opacity-0 pointer-events-none"></div>
                     <div class="scanner-line"></div>
                 </div>
                 <p id="faceStatus" class="text-lg text-center mt-4 text-red-500 font-bold uppercase">INITIATING...</p>
