@@ -7,7 +7,7 @@ const snapCanvas = document.getElementById('snapshotCanvas');
 const thresholdFill = document.getElementById('thresholdFill');
 const thresholdStatus = document.getElementById('thresholdStatus');
 const faceStatus = document.getElementById('faceStatus');
-const submitStatusDisplay = document.getElementById('submitStatusDisplay');
+const btnRegister = document.getElementById('btnRegister');
 const regIdKaryawan = document.getElementById('regIdKaryawan');
 const regNama = document.getElementById('regNama');
 const regJabatan = document.getElementById('regJabatan');
@@ -18,7 +18,7 @@ const flashEffect = document.getElementById('flashEffect');
 
 // --- 2. KONFIGURASI ---
 const MODEL_URL = './models';
-const FACE_THRESHOLD = 0.55; // Ambang batas kepercayaan untuk mengunci wajah
+const FACE_THRESHOLD = 0.45; // Ambang batas kepercayaan untuk mengunci wajah
 let faceDescriptor = null;
 let isProcessing = false; // Flag untuk mencegah deteksi/submit ganda
 let currentStream = null;
@@ -126,17 +126,23 @@ function triggerFlash() {
     }, 150);
 }
 // --- 7. FUNGSI PENDAFTARAN OTOMATIS ---
-async function performAutoRegistration() {
+async function performRegistration() {
     // Kunci proses agar tidak berjalan ganda
     if (isProcessing) return;
-    isProcessing = true;
-
+    
     const id = regIdKaryawan.value.trim().toUpperCase();
     const nama = regNama.value.trim();
     const jabatan = regJabatan.value.trim() || 'Staff';
 
+    if (!id || !nama) {
+        alert('Mohon lengkapi ID dan Nama Karyawan terlebih dahulu!');
+        return;
+    }
+
+    isProcessing = true;
+
     btnText.textContent = 'TRANSMITTING...';
-    submitStatusDisplay.classList.remove('opacity-50');
+    btnRegister.classList.add('opacity-50', 'cursor-not-allowed'); // Disable visual saat loading
     addToLogStream(`TRANSMITTING DATA: ${id}`, 'text-yellow-500');
 
     // Picu efek flash
@@ -171,6 +177,9 @@ async function performAutoRegistration() {
     }
 }
 
+// Event Listener: Klik tombol untuk simpan
+btnRegister.addEventListener('click', performRegistration);
+
 // --- 6. LOOP DETEKSI WAJAH ---
 video.addEventListener('play', () => {
     const displaySize = { width: video.videoWidth, height: video.videoHeight };
@@ -184,7 +193,7 @@ video.addEventListener('play', () => {
         // Gunakan detectAllFaces untuk mendeteksi lebih dari satu wajah
         const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({
             inputSize: 160, // Optimal untuk kecepatan
-            scoreThreshold: 0.5
+            scoreThreshold: 0.45
         })).withFaceLandmarks().withFaceDescriptors();
 
         const ctx = canvas.getContext('2d');
@@ -195,7 +204,8 @@ video.addEventListener('play', () => {
             faceStatus.textContent = 'MULTIPLE TARGETS DETECTED';
             faceStatus.className = 'text-lg text-center mt-4 text-red-500 font-bold uppercase animate-pulse';
             btnText.textContent = 'HANYA SATU WAJAH';
-            submitStatusDisplay.classList.remove('opacity-50');
+            btnRegister.disabled = true;
+            btnRegister.classList.add('opacity-50', 'cursor-not-allowed');
 
             // Gambar kotak untuk semua wajah yang terdeteksi
             detections.forEach(detection => {
@@ -224,22 +234,29 @@ video.addEventListener('play', () => {
                 faceStatus.className = 'text-lg text-center mt-4 text-green-400 font-bold uppercase';
                 faceDescriptor = singleDetection.descriptor;
 
-                if (regIdKaryawan.value && regNama.value) {
-                    performAutoRegistration();
-                } else {
-                    btnText.textContent = 'DATA TIDAK LENGKAP';
-                    submitStatusDisplay.classList.remove('opacity-50');
-                }
+                // WAJAH TERKUNCI: Aktifkan Tombol
+                btnRegister.disabled = false;
+                btnRegister.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-indigo-900');
+                btnRegister.classList.add('bg-green-600', 'hover:bg-green-500', 'cursor-pointer');
+                btnText.textContent = 'KLIK UNTUK SIMPAN';
+
             } else {
                 faceStatus.textContent = 'LOW SIGNAL';
                 faceStatus.className = 'text-lg text-center mt-4 text-yellow-500 font-bold uppercase';
+                
+                btnRegister.disabled = true;
+                btnRegister.classList.add('opacity-50', 'cursor-not-allowed', 'bg-indigo-900');
+                btnRegister.classList.remove('bg-green-600', 'hover:bg-green-500', 'cursor-pointer');
+                btnText.textContent = 'POSISIKAN WAJAH';
             }
         } else {
             // KASUS: Tidak ada wajah terdeteksi
             faceStatus.textContent = 'SEARCHING...';
             faceStatus.className = 'text-lg text-center mt-4 text-red-500 font-bold uppercase';
             btnText.textContent = 'WAITING FOR FACE...';
-            submitStatusDisplay.classList.add('opacity-50');
+            btnRegister.disabled = true;
+            btnRegister.classList.add('opacity-50', 'cursor-not-allowed', 'bg-indigo-900');
+            btnRegister.classList.remove('bg-green-600', 'hover:bg-green-500', 'cursor-pointer');
         }
         
         // Pastikan loop terus berjalan
@@ -259,7 +276,9 @@ function resetRegistrationForm() {
     regJabatan.value = '';
     isProcessing = false; // Buka kunci setelah semua selesai
     btnText.textContent = 'WAITING FOR FACE...';
-    submitStatusDisplay.classList.add('opacity-50');
+    btnRegister.disabled = true;
+    btnRegister.classList.add('opacity-50', 'cursor-not-allowed', 'bg-indigo-900');
+    btnRegister.classList.remove('bg-green-600', 'hover:bg-green-500');
 }
 
 // --- 9. MULAI APLIKASI ---

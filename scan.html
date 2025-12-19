@@ -421,14 +421,33 @@
         <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 mt-0 p-2">
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
-                <div class="widget-panel">
-                    <h2 class="widget-title">:: SYSTEM TIME ::</h2>
-                    <div id="clock"
-                        class="flex justify-center items-baseline gap-1 text-5xl font-mono text-cyan-400 font-extrabold tracking-widest leading-none">
-                        <span id="clock-h" class="digit-flicker">00</span><span
-                            class="text-3xl opacity-50 animate-pulse">:</span><span id="clock-m"
-                            class="digit-flicker">00</span><span class="text-3xl opacity-50 animate-pulse">:</span><span
-                            id="clock-s" class="digit-flicker">00</span>
+                <div class="widget-panel relative overflow-hidden group">
+                    <h2 class="widget-title flex justify-between items-center relative z-10">
+                        <span>:: QUANTUM CHRONO ::</span>
+                        <span class="text-[10px] text-green-400 animate-pulse">● SYNC</span>
+                    </h2>
+                    
+                    <div class="relative z-10 flex flex-col items-center justify-center py-1">
+                        <div class="flex items-baseline gap-1">
+                            <span id="clock-h" class="text-6xl font-black text-cyan-300 leading-none tracking-tighter drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]">00</span>
+                            <span class="text-2xl text-cyan-600 animate-pulse">:</span>
+                            <span id="clock-m" class="text-6xl font-black text-cyan-300 leading-none tracking-tighter drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]">00</span>
+                            <span class="text-2xl text-cyan-600 animate-pulse">:</span>
+                            <span id="clock-s" class="text-6xl font-black text-white leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]">00</span>
+                        </div>
+                        
+                        <div class="w-full flex justify-between items-center mt-2 px-1 border-t border-cyan-800/50 pt-1">
+                            <div id="clock-date" class="text-xs font-mono text-cyan-500 tracking-widest">YYYY.MM.DD</div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-[8px] text-cyan-800">MS</span>
+                                <span id="clock-ms" class="text-lg font-mono text-amber-400 w-12 text-right leading-none">000</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="absolute bottom-0 left-0 h-0.5 bg-cyan-900 w-full">
+                        <div id="clock-bar" class="h-full bg-cyan-400 shadow-[0_0_10px_#00FFFF]" style="width: 0%"></div>
                     </div>
                 </div>
                 <div class="widget-panel">

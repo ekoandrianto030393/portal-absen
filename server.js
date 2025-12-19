@@ -67,6 +67,28 @@ function getStartOfDaySQL(dateObj) {
 const karyawanRoutes = require('./karyawan.js')(pool);
 app.use('/api/karyawan', karyawanRoutes);
 
+// 2. GET: Ambil Descriptors Wajah (Untuk Face-API)
+app.get('/get-descriptors', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [rows] = await connection.execute('SELECT id_karyawan, nama, jabatan, foto, face_descriptor FROM karyawan WHERE face_descriptor IS NOT NULL');
+        
+        const descriptors = rows.map(row => ({
+            ...row,
+            // Convert BLOB to Data URI for frontend usage
+            foto: row.foto ? `data:image/jpeg;base64,${Buffer.from(row.foto).toString('base64')}` : null
+        }));
+
+        res.json({ success: true, descriptors });
+    } catch (error) {
+        console.error('Get Descriptors Error:', error);
+        res.status(500).json({ success: false, message: 'Gagal memuat data wajah.' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
 // 3. POST: Proses Absensi 
 app.post('/absensi', async (req, res) => {
     let connection;

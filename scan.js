@@ -22,6 +22,9 @@ const mainTitle = document.getElementById('mainTitle');
 const clockH = document.getElementById('clock-h');
 const clockM = document.getElementById('clock-m');
 const clockS = document.getElementById('clock-s');
+const clockMs = document.getElementById('clock-ms');
+const clockDate = document.getElementById('clock-date');
+const clockBar = document.getElementById('clock-bar');
 
 
 const cameraSelect = document.getElementById('cameraSelect');
@@ -46,7 +49,7 @@ let employeeMap = {};
 let currentStream = null;
 let videoDevices = []; 
 
-const FACE_MATCHING_THRESHOLD = 0.45;
+const FACE_MATCHING_THRESHOLD = 0.32; // 0.40: Seimbang. Cukup ketat tapi tetap mengenali wajah asli.
 const DETECTION_INTERVAL_MS = 100;
 const DEFAULT_PHOTO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0idy00IGgtNCI+PHBhdGggZD0iTTggOGE0IDQgMCAxIDAgMC04IDQgNCAwIDAgMCAwIDh6bTAtMWEzIDMgMCAxIDEtNiAwIDMgMyAwIDAgMSA2IDB6TTggOWE1IDUgMCAwIDAtNSA1djJBNiA2IDAgMCAwIDggMjFhNiA2IDAgMCAwIDYtNnYtMmE1IDUgMCAwIDAtNS01ek04IDE5YTUgNSAwIDAgMS00LTJ2LTFhNCA0IDAgMCAxIDQtNGM0IDAgMy44MiA0IDQgNGMtLjE4LjMyLS4zOC42My0uNTggLjkzQTUuMDAzIDUuMDAzIDAgMCAxIDggMTl6Ii8+PC9zdmc+'; // Placeholder photo
 
@@ -107,9 +110,14 @@ function drawMatchLabel(ctx, box, label, color) {
 
 function drawHolographicMesh(ctx, landmarks) {
     const points = landmarks.positions;
+    
+    // Efek Denyut (Pulse) pada Mesh
+    const time = Date.now() / 500;
+    const alpha = 0.2 + 0.3 * Math.abs(Math.sin(time));
+
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0, 26, 255, 0.4)';
-    ctx.fillStyle = 'rgba(0, 255, 255, 0.05)';
+    ctx.strokeStyle = `rgba(0, 255, 255, ${alpha + 0.2})`; // Cyan Pulse
+    ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.1})`;
 
     const regions = [
         [0, 16, false], [17, 21, false], [22, 26, false], [27, 30, false],
@@ -129,6 +137,50 @@ function drawHolographicMesh(ctx, landmarks) {
     ctx.fill();
 }
 
+// --- FITUR BARU: SCANNING BEAM ---
+function drawScanningBeam(ctx, box) {
+    const time = Date.now() / 1000;
+    const scanHeight = box.height;
+    // Gerakan naik turun menggunakan Sinus
+    const yPos = box.y + (scanHeight * ((Math.sin(time * 4) + 1) / 2));
+
+    ctx.beginPath();
+    ctx.moveTo(box.x, yPos);
+    ctx.lineTo(box.x + box.width, yPos);
+    ctx.strokeStyle = 'rgba(0, 255, 127, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#00FF7F';
+    ctx.shadowBlur = 15;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+}
+
+// --- FITUR BARU: TARGET LOCK HUD ---
+function drawTargetLock(ctx, x, y, radius) {
+    const time = Date.now() / 1000;
+    ctx.save();
+    ctx.translate(x, y);
+    
+    // Cincin Luar (Berputar)
+    ctx.rotate(time * 1.5);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 1.5); // Lingkaran tidak penuh
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Cincin Dalam (Berputar Berlawanan)
+    ctx.rotate(time * -3); // Reset rotasi + putar balik
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.6, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 0, 255, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 8]); // Garis putus-putus
+    ctx.stroke();
+    
+    ctx.restore();
+}
+
 function drawDataTags(ctx, box, landmarks) {
     const tagX = box.right + 20;
     let tagY = box.top + 10;
@@ -142,9 +194,9 @@ function drawDataTags(ctx, box, landmarks) {
     const tilt = (nose.x - jaw.x).toFixed(2);
 
     const dataLines = [
-        { text: `ID_SIG: ${Math.floor(Math.random() * 99999)}`, color: '#00FFFF' },
-        { text: `DIST: ${(2500 / box.width).toFixed(2)}mm`, color: '#00FFFF' },
-        { text: `AXIS: ${tilt}`, color: '#00FF7F' },
+        { text: `SIG: 0x${Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase()}`, color: '#00FFFF' },
+        { text: `PROX: ${(2500 / box.width).toFixed(0)}mm`, color: '#00FFFF' },
+        { text: `TILT: ${tilt}°`, color: '#00FF7F' },
         { text: `SYNC: ACTIVE`, color: '#FF00FF' }
     ];
 
@@ -282,6 +334,22 @@ function updateClock() {
     if (clockH) clockH.textContent = String(now.getHours()).padStart(2, '0');
     if (clockM) clockM.textContent = String(now.getMinutes()).padStart(2, '0');
     if (clockS) clockS.textContent = String(now.getSeconds()).padStart(2, '0');
+    
+    // Update Milidetik & Tanggal (Fitur Canggih)
+    if (clockMs) clockMs.textContent = String(now.getMilliseconds()).padStart(3, '0');
+    
+    if (clockDate) {
+        const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+        const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} // ${days[now.getDay()]}`;
+        clockDate.textContent = dateStr;
+    }
+
+    if (clockBar) {
+        // Progress bar mengisi penuh setiap 60 detik (1 menit)
+        const totalMs = (now.getSeconds() * 1000) + now.getMilliseconds();
+        const percent = (totalMs / 60000) * 100;
+        clockBar.style.width = `${percent}%`;
+    }
 }
 
 function animateTitle() {
@@ -315,20 +383,14 @@ function animateTitle() {
 
 
 setInterval(updateClock, 1000);
-setInterval(updateDataStream, 50);
-setInterval(updateGraph, 300);
 
-
-// =============================================================================
-// 3. FUNGSI LOGIKA SISTEM & KAMERA (Inti Face-API)
-// =============================================================================
-
-// --- API Handler (Contoh Modul Terpisah) ---
 const api = {
     getDescriptors: async () => {
         try {
-            const response = await fetch('/api/karyawan/get_descriptors'); 
-            if (!response.ok) throw new Error(`Network response was not ok (${response.status})`);
+            const response = await fetch('/get-descriptors');
+            if (!response.ok) {
+                throw new Error(`Server endpoint /get-descriptors not found (Status: ${response.status})`);
+            }
             const data = await response.json();
             if (!data.success) throw new Error(data.message || 'API returned failure.');
             return data.descriptors;
@@ -547,7 +609,7 @@ async function detectFace() {
     
     const displaySize = { width: canvas.width, height: canvas.height };
 
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
         .withFaceLandmarks()
         .withFaceDescriptor();
 
@@ -559,6 +621,12 @@ async function detectFace() {
         const { landmarks } = resizedDetections;
 
         drawHolographicMesh(context, landmarks);
+        
+        // --- GAMBAR EFEK BARU ---
+        drawScanningBeam(context, box); // Sinar laser pada wajah
+        const nose = landmarks.getNose()[3]; // Titik tengah hidung
+        drawTargetLock(context, nose.x, nose.y, box.width * 0.3); // Lingkaran target lock
+        
         drawDataTags(context, box, landmarks);
 
         // Efek suara scanning ringan (opsional, bisa dimatikan jika terlalu berisik)
