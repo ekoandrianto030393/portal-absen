@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Biometric Gateway - Interstellar Ops</title>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Babylon.js Core & Loaders -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
 
@@ -25,15 +27,16 @@
         }
 
         /* --- 2. LAYOUT LAYERS --- */
-        /* Layer Belakang: Three.js */
-        #three-container {
+        /* Layer Belakang: Babylon.js Canvas */
+        #renderCanvas {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: 1;
-            pointer-events: none;
+            outline: none;
+            touch-action: none;
         }
 
         /* Layer Depan: UI Utama */
@@ -409,7 +412,7 @@
 
 <body>
 
-    <div id="three-container"></div>
+    <canvas id="renderCanvas"></canvas>
 
     <div id="main-content" class="w-full p-2 lg:p-4">
 
@@ -426,28 +429,35 @@
                         <span>:: QUANTUM CHRONO ::</span>
                         <span class="text-[10px] text-green-400 animate-pulse">● SYNC</span>
                     </h2>
-                    
+
                     <div class="relative z-10 flex flex-col items-center justify-center py-1">
                         <div class="flex items-baseline gap-1">
-                            <span id="clock-h" class="text-6xl font-black text-cyan-300 leading-none tracking-tighter drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]">00</span>
+                            <span id="clock-h"
+                                class="text-6xl font-black text-cyan-300 leading-none tracking-tighter drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]">00</span>
                             <span class="text-2xl text-cyan-600 animate-pulse">:</span>
-                            <span id="clock-m" class="text-6xl font-black text-cyan-300 leading-none tracking-tighter drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]">00</span>
+                            <span id="clock-m"
+                                class="text-6xl font-black text-cyan-300 leading-none tracking-tighter drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]">00</span>
                             <span class="text-2xl text-cyan-600 animate-pulse">:</span>
-                            <span id="clock-s" class="text-6xl font-black text-white leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]">00</span>
+                            <span id="clock-s"
+                                class="text-6xl font-black text-white leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]">00</span>
                         </div>
-                        
-                        <div class="w-full flex justify-between items-center mt-2 px-1 border-t border-cyan-800/50 pt-1">
-                            <div id="clock-date" class="text-xs font-mono text-cyan-500 tracking-widest">YYYY.MM.DD</div>
+
+                        <div
+                            class="w-full flex justify-between items-center mt-2 px-1 border-t border-cyan-800/50 pt-1">
+                            <div id="clock-date" class="text-xs font-mono text-cyan-500 tracking-widest">YYYY.MM.DD
+                            </div>
                             <div class="flex items-center gap-1">
                                 <span class="text-[8px] text-cyan-800">MS</span>
-                                <span id="clock-ms" class="text-lg font-mono text-amber-400 w-12 text-right leading-none">000</span>
+                                <span id="clock-ms"
+                                    class="text-lg font-mono text-amber-400 w-12 text-right leading-none">000</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Progress Bar -->
                     <div class="absolute bottom-0 left-0 h-0.5 bg-cyan-900 w-full">
-                        <div id="clock-bar" class="h-full bg-cyan-400 shadow-[0_0_10px_#00FFFF]" style="width: 0%"></div>
+                        <div id="clock-bar" class="h-full bg-cyan-400 shadow-[0_0_10px_#00FFFF]" style="width: 0%">
+                        </div>
                     </div>
                 </div>
                 <div class="widget-panel">
@@ -562,206 +572,221 @@
     </div>
 
     <script>
-        // --- THREE.JS BACKGROUND SCRIPT ---
-        const threeContainer = document.getElementById('three-container');
-        const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x05050A, 0.003);
+        // --- BABYLON.JS BACKGROUND SCRIPT ---
+        const renderCanvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(renderCanvas, true, { preserveDrawingBuffer: true, stencil: true });
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setClearColor(0x05050A, 1);
-        threeContainer.appendChild(renderer.domElement);
+        const createScene = function () {
+            const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color4(0.0, 0.0, 0.0, 1.0); // Absolute Black
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 10, 50);
-        camera.lookAt(0, 0, 0);
-        const mouse = new THREE.Vector2();
-        const raycaster = new THREE.Raycaster();
+            // 1. CAMERA
+            const camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, Math.PI / 2.5, 20, BABYLON.Vector3.Zero(), scene);
+            // camera.attachControl(renderCanvas, true); // Uncomment jika ingin kontrol mouse
+            camera.wheelPrecision = 50;
 
-        const directionalLight = new THREE.DirectionalLight(0x00FFFF, 0.8);
-        directionalLight.position.set(10, 50, 30);
-        scene.add(directionalLight);
+            // --- A. BACKGROUND: PROCEDURAL SKYBOX (CUSTOM SHADER) ---
+            BABYLON.Effect.ShadersStore["customSkyVertexShader"] = `
+                precision highp float;
+                attribute vec3 position;
+                uniform mat4 world;
+                uniform mat4 view;
+                uniform mat4 projection;
+                varying vec3 vPosition;
+                void main() {
+                    vec4 p = vec4(position, 1.0);
+                    vPosition = position;
+                    gl_Position = projection * view * world * p;
+                }
+            `;
 
-        const pointLight = new THREE.PointLight(0xFF00FF, 1.5, 200);
-        pointLight.position.set(-30, 20, -50);
-        scene.add(pointLight);
-        scene.add(new THREE.AmbientLight(0x0A0A0A));
+            BABYLON.Effect.ShadersStore["customSkyFragmentShader"] = `
+                precision highp float;
+                varying vec3 vPosition;
+                uniform float time;
+                
+                float rand(vec2 co) {
+                    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+                }
 
-        const createDynamicGrid = (size, divisions, color1, color2, yPosition) => {
-            const gridGroup = new THREE.Group();
-            const geometry = new THREE.BufferGeometry();
-            const positions = [], colors = [];
-            const material = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
+                void main() {
+                    vec3 dir = normalize(vPosition);
+                    
+                    // Procedural Stars
+                    float s = rand(dir.xy * 50.0 + dir.z * 50.0);
+                    float stars = step(0.995, s) * (0.5 + 0.5 * sin(time * 2.0 + s * 10.0));
+                    
+                    // Nebula / Atmosphere Gradient (Deep Blue/Purple)
+                    float atmosphere = max(0.0, dot(dir, vec3(0.0, 1.0, 0.0)));
+                    vec3 skyColor = mix(vec3(0.0, 0.0, 0.05), vec3(0.05, 0.0, 0.1), atmosphere);
+                    
+                    gl_FragColor = vec4(skyColor + vec3(stars), 1.0);
+                }
+            `;
 
-            for (let i = 0; i <= divisions; i++) {
-                const x = (i / divisions - 0.5) * size;
-                positions.push(x, yPosition, -size / 2, x, yPosition, size / 2);
-                colors.push(color1.r, color1.g, color1.b, color2.r, color2.g, color2.b);
-                const z = (i / divisions - 0.5) * size;
-                positions.push(-size / 2, yPosition, z, size / 2, yPosition, z);
-                colors.push(color1.r, color1.g, color1.b, color2.r, color2.g, color2.b);
-            }
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-            gridGroup.add(new THREE.LineSegments(geometry, material));
-            return gridGroup;
+            const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
+            const skyboxMaterial = new BABYLON.ShaderMaterial("skyBox", scene, {
+                vertex: "customSky",
+                fragment: "customSky",
+            }, {
+                attributes: ["position"],
+                uniforms: ["world", "view", "projection", "time"]
+            });
+            skyboxMaterial.backFaceCulling = false;
+            skybox.material = skyboxMaterial;
+
+
+            // --- B. FOUNDATION: HOLOGRAPHIC GRID (CUSTOM SHADER simulating Node Material) ---
+            BABYLON.Effect.ShadersStore["holoGridVertexShader"] = `
+                precision highp float;
+                attribute vec3 position;
+                attribute vec2 uv;
+                uniform mat4 world;
+                uniform mat4 view;
+                uniform mat4 projection;
+                varying vec3 vPosition;
+                varying vec2 vUV;
+                void main() {
+                    vPosition = position;
+                    vUV = uv;
+                    gl_Position = projection * view * world * vec4(position, 1.0);
+                }
+            `;
+
+            BABYLON.Effect.ShadersStore["holoGridFragmentShader"] = `
+                precision highp float;
+                varying vec3 vPosition;
+                varying vec2 vUV;
+                uniform float time;
+                uniform vec3 cameraPosition;
+
+                void main() {
+                    // Grid Logic
+                    float thickness = 0.05;
+                    
+                    // Moving Grid Effect
+                    float move = time * 0.5;
+                    
+                    float gridX = step(1.0 - thickness, fract(vPosition.x * 0.2));
+                    float gridZ = step(1.0 - thickness, fract(vPosition.z * 0.2));
+                    float grid = max(gridX, gridZ);
+
+                    // Distance Fade (Fresnel-like)
+                    float dist = distance(vPosition, cameraPosition);
+                    float alpha = max(0.0, 1.0 - dist / 60.0);
+                    
+                    // Color: Cyan/Teal
+                    vec3 color = vec3(0.0, 1.0, 1.0) * grid * 2.0;
+                    
+                    // Scanline Pulse
+                    float pulse = sin(vPosition.z * 0.5 - time * 2.0);
+                    color += vec3(0.0, 0.5, 1.0) * max(0.0, pulse) * 0.5 * alpha;
+
+                    if (alpha <= 0.01) discard;
+                    gl_FragColor = vec4(color, alpha * 0.8);
+                }
+            `;
+
+            const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 200, height: 200, subdivisions: 2 }, scene);
+            ground.position.y = -5;
+            const gridMat = new BABYLON.ShaderMaterial("gridMat", scene, {
+                vertex: "holoGrid",
+                fragment: "holoGrid",
+            }, {
+                attributes: ["position", "uv"],
+                uniforms: ["world", "view", "projection", "time", "cameraPosition"],
+                needAlphaBlending: true
+            });
+            ground.material = gridMat;
+
+
+            // --- C. ADDITION: VOLUMETRIC LIGHT SCATTERING (God Rays) ---
+            // Source Mesh (The "Sun" or "Core")
+            const sunMesh = BABYLON.MeshBuilder.CreateSphere("sun", { diameter: 2 }, scene);
+            sunMesh.position = new BABYLON.Vector3(0, 5, 30);
+            const sunMat = new BABYLON.StandardMaterial("sunMat", scene);
+            sunMat.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            sunMat.disableLighting = true;
+            sunMesh.material = sunMat;
+
+            // VLS Post Process
+            const vls = new BABYLON.VolumetricLightScatteringPostProcess("vls", 1.0, camera, sunMesh, 100, BABYLON.Texture.BILINEAR_SAMPLINGMODE, engine, false);
+            vls.exposure = 0.3;
+            vls.decay = 0.96815;
+            vls.weight = 0.98767;
+            vls.density = 0.926;
+
+
+            // --- D. DEPTH: GPU PARTICLE SYSTEM ---
+            const particleSystem = new BABYLON.GPUParticleSystem("particles", { capacity: 50000 }, scene);
+
+            // Generate Texture for Particles
+            const particleTexture = new BABYLON.DynamicTexture("pTex", 64, scene);
+            const ctx = particleTexture.getContext();
+            ctx.beginPath();
+            ctx.arc(32, 32, 30, 0, 2 * Math.PI);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.fill();
+            particleTexture.update();
+            particleSystem.particleTexture = particleTexture;
+
+            // Emitter
+            particleSystem.emitter = new BABYLON.Vector3(0, 0, 0);
+            particleSystem.minEmitBox = new BABYLON.Vector3(-50, -20, -50);
+            particleSystem.maxEmitBox = new BABYLON.Vector3(50, 20, 50);
+
+            // Colors
+            particleSystem.color1 = new BABYLON.Color4(0.0, 1.0, 1.0, 1.0);
+            particleSystem.color2 = new BABYLON.Color4(0.5, 0.0, 1.0, 1.0);
+            particleSystem.colorDead = new BABYLON.Color4(0, 0, 0, 0.0);
+
+            // Size
+            particleSystem.minSize = 0.1;
+            particleSystem.maxSize = 0.3;
+
+            // Life
+            particleSystem.minLifeTime = 2.0;
+            particleSystem.maxLifeTime = 5.0;
+
+            // Emission
+            particleSystem.emitRate = 2000;
+
+            // Gravity & Speed
+            particleSystem.gravity = new BABYLON.Vector3(0, 0, 0);
+            particleSystem.minEmitPower = 0.5;
+            particleSystem.maxEmitPower = 1.5;
+            particleSystem.updateSpeed = 0.005;
+
+            particleSystem.start();
+
+
+            // --- ANIMATION LOOP ---
+            let time = 0;
+            scene.registerBeforeRender(() => {
+                time += 0.01;
+
+                // Update Uniforms
+                skyboxMaterial.setFloat("time", time);
+                gridMat.setFloat("time", time);
+                gridMat.setVector3("cameraPosition", camera.position);
+
+                // Animate Sun
+                sunMesh.position.x = Math.sin(time * 0.2) * 20;
+                sunMesh.position.y = 5 + Math.cos(time * 0.3) * 5;
+            });
+
+            return scene;
         };
 
-        const grid1 = createDynamicGrid(200, 100, new THREE.Color(0x00FFFF), new THREE.Color(0x00FF7F), 0);
-        scene.add(grid1);
-        const grid2 = createDynamicGrid(150, 75, new THREE.Color(0xFF00FF), new THREE.Color(0x00FFFF), 20);
-        scene.add(grid2);
+        const scene = createScene();
 
-        const codeGeo = new THREE.BufferGeometry();
-        const codeCount = 8000;
-        const codePositions = new Float32Array(codeCount * 3), codeColors = new Float32Array(codeCount * 3);
-        const c1 = new THREE.Color(0x00FFFF), c2 = new THREE.Color(0xFF00FF), c3 = new THREE.Color(0x00FF7F);
-        const sizes = new Float32Array(codeCount);
-
-        for (let i = 0; i < codeCount * 3; i += 3) {
-            codePositions[i] = (Math.random() - 0.5) * 800;
-            codePositions[i + 1] = (Math.random() - 0.5) * 400 + 100;
-            codePositions[i + 2] = (Math.random() - 0.5) * 800;
-            sizes[i / 3] = Math.random() * 1.5 + 0.5; // Ukuran partikel acak
-            const r = Math.random();
-            if (r < 0.33) c1.toArray(codeColors, i); else if (r < 0.66) c2.toArray(codeColors, i); else c3.toArray(codeColors, i);
-        }
-        codeGeo.setAttribute('position', new THREE.BufferAttribute(codePositions, 3));
-        codeGeo.setAttribute('color', new THREE.BufferAttribute(codeColors, 3));
-        codeGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
-        // --- OPTIMASI: Gunakan ShaderMaterial untuk animasi di GPU ---
-        const particleMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                uTime: { value: 0.0 }
-            },
-            vertexShader: `
-                uniform float uTime;
-                attribute float size;
-                varying vec3 vColor;
-                void main() {
-                    vColor = color;
-                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-                    mvPosition.y += sin(position.x * 0.1 + uTime * 0.5) * 5.0;
-                    gl_PointSize = size * (20.0 / -mvPosition.z);
-                    gl_Position = projectionMatrix * mvPosition;
-                }
-            `,
-            fragmentShader: `
-                varying vec3 vColor;
-                void main() {
-                    gl_FragColor = vec4(vColor, 0.7);
-                }
-            `,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            transparent: true,
-            vertexColors: true
+        engine.runRenderLoop(function () {
+            scene.render();
         });
 
-        const codeStream = new THREE.Points(codeGeo, particleMaterial);
-        scene.add(codeStream);
-
-        const originalPositions = codePositions.slice();
-
-        // --- TAMBAHAN CANGGIH: HOLOGRAPHIC AI CORE ---
-        const coreGroup = new THREE.Group();
-        coreGroup.position.y = 10; // Sejajar dengan tinggi kamera
-        scene.add(coreGroup);
-
-        // 1. Outer Ring (Icosahedron Wireframe)
-        const outerGeo = new THREE.IcosahedronGeometry(12, 1);
-        const outerMat = new THREE.MeshBasicMaterial({
-            color: 0x00FFFF,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.1,
-            blending: THREE.AdditiveBlending
+        window.addEventListener("resize", function () {
+            engine.resize();
         });
-        const outerCore = new THREE.Mesh(outerGeo, outerMat);
-        coreGroup.add(outerCore);
-
-        // 2. Inner Nucleus (Energy Sphere)
-        const innerGeo = new THREE.SphereGeometry(5, 32, 32);
-        const innerMat = new THREE.ShaderMaterial({
-            uniforms: { uTime: { value: 0 } },
-            vertexShader: `
-                varying vec3 vNormal;
-                void main() {
-                    vNormal = normalize(normalMatrix * normal);
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }
-            `,
-            fragmentShader: `
-                uniform float uTime;
-                varying vec3 vNormal;
-                void main() {
-                    float intensity = pow(0.7 - dot(vNormal, vec3(0, 0, 1.0)), 4.0);
-                    vec3 color = vec3(0.0, 0.8, 1.0) * intensity;
-                    gl_FragColor = vec4(color, 1.0) * (0.8 + 0.2 * sin(uTime * 3.0));
-                }
-            `,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            side: THREE.DoubleSide
-        });
-        const innerCore = new THREE.Mesh(innerGeo, innerMat);
-        coreGroup.add(innerCore);
-
-        // 3. Orbiting Rings
-        const ringGeo = new THREE.TorusGeometry(18, 0.1, 16, 100);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0xFF00FF, transparent: true, opacity: 0.2 });
-        const ring1 = new THREE.Mesh(ringGeo, ringMat);
-        const ring2 = new THREE.Mesh(ringGeo, ringMat);
-        ring1.rotation.x = Math.PI / 2;
-        ring2.rotation.x = Math.PI / 1.8;
-        coreGroup.add(ring1);
-        coreGroup.add(ring2);
-
-        function animateThreeJS() {
-            requestAnimationFrame(animateThreeJS);
-            const time = Date.now() * 0.001;
-
-            // Animasi Grid & Partikel Lama
-            grid1.position.z += 0.1; if (grid1.position.z > 50) grid1.position.z = -150;
-            grid2.position.z += 0.08; if (grid2.position.z > 50) grid2.position.z = -150;
-            codeStream.rotation.y += 0.0005;
-            particleMaterial.uniforms.uTime.value = time;
-            pointLight.position.x = Math.sin(time * 0.2) * 50;
-
-            // Animasi AI Core Baru
-            outerCore.rotation.y += 0.002;
-            outerCore.rotation.z -= 0.001;
-
-            // Efek Interaktif Mouse pada Core (Tilt)
-            coreGroup.rotation.x = mouse.y * 0.2;
-            coreGroup.rotation.z = -mouse.x * 0.2;
-            coreGroup.rotation.y += 0.001; // Rotasi lambat grup
-
-            innerMat.uniforms.uTime.value = time;
-
-            ring1.rotation.x = Math.PI / 2 + Math.sin(time * 0.5) * 0.1;
-            ring1.rotation.y += 0.01;
-            ring2.rotation.x = Math.PI / 1.8 + Math.cos(time * 0.5) * 0.1;
-            ring2.rotation.y -= 0.01;
-
-            renderer.render(scene, camera);
-        }
-
-        window.addEventListener('mousemove', (event) => {
-            // Normalisasi posisi mouse dari -1 ke 1
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        });
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-        animateThreeJS();
     </script>
 
     <script src="scan.js"></script>
