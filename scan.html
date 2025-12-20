@@ -9,6 +9,8 @@
     <!-- Babylon.js Core & Loaders -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babylonjs/7.9.0/babylon.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babylonjs/7.9.0/loaders/babylonjs.loaders.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
     <!-- FONT SCI-FI: Rajdhani -->
@@ -73,32 +75,36 @@
         /* --- 3. WIDGET PANELS (KOTAK KIRI & KANAN) --- */
         .widget-panel {
             /* Tech Corners: Aksen siku di setiap sudut menggunakan Gradient */
-            background:
-                linear-gradient(to right, #00FFFF 2px, transparent 2px) 0 0,
-                linear-gradient(to bottom, #00FFFF 2px, transparent 2px) 0 0,
-                linear-gradient(to left, #00FFFF 2px, transparent 2px) 100% 0,
-                linear-gradient(to bottom, #00FFFF 2px, transparent 2px) 100% 0,
-                linear-gradient(to right, #00FFFF 2px, transparent 2px) 0 100%,
-                linear-gradient(to top, #00FFFF 2px, transparent 2px) 0 100%,
-                linear-gradient(to left, #00FFFF 2px, transparent 2px) 100% 100%,
-                linear-gradient(to top, #00FFFF 2px, transparent 2px) 100% 100%,
-                rgba(6, 15, 20, 0.85);
-            /* Warna dasar panel */
-            background-repeat: no-repeat;
-            background-size: 10px 10px, 10px 10px, 10px 10px, 10px 10px, 10px 10px, 10px 10px, 10px 10px, 10px 10px, 100% 100%;
-
-            border: 1px solid #00FFFF;
+            background: rgba(6, 15, 20, 0.75);
+            border: 1px solid rgba(0, 255, 255, 0.2);
             padding: 1rem;
-            border-radius: 4px;
-            box-shadow: 0 0 25px rgba(0, 255, 255, 0.3), inset 0 0 8px rgba(0, 255, 255, 0.2);
+            border-radius: 2px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
             position: relative;
             overflow: hidden;
-            backdrop-filter: blur(8px);
-            border-image: linear-gradient(45deg, #00FFFF, #FF00FF, #00FF7F) 1;
-            animation: border-anim 8s infinite alternate ease-in-out;
+            backdrop-filter: blur(12px);
+        }
+
+        /* Aksen Tech di sudut panel (Pengganti border pelangi) */
+        .widget-panel::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(to right, #00FFFF 2px, transparent 2px) 0 0,
+                linear-gradient(to bottom, #00FFFF 2px, transparent 2px) 0 0,
+                linear-gradient(to left, #00FFFF 2px, transparent 2px) 100% 100%,
+                linear-gradient(to top, #00FFFF 2px, transparent 2px) 100% 100%;
+            background-size: 10px 10px;
+            background-repeat: no-repeat;
+            opacity: 0.6;
         }
 
         /* EFEK GRID BERGERAK DI BACKGROUND PANEL */
@@ -133,22 +139,23 @@
         }
 
         .widget-title {
-            font-size: 1.2rem;
-            font-weight: bold;
+            font-size: 1.1rem;
+            font-weight: 700;
             color: #00FFFF;
-            border-bottom: 1px dashed rgba(0, 255, 255, 0.6);
-            padding-bottom: 0.6rem;
-            margin-bottom: 0.6rem;
-            text-shadow: 0 0 10px #00FFFF, 0 0 20px rgba(0, 255, 255, 0.3);
-            letter-spacing: 2px;
+            background: linear-gradient(90deg, rgba(0, 255, 255, 0.15), transparent);
+            border-left: 4px solid #00FFFF;
+            padding: 0.4rem 0.8rem;
+            margin-bottom: 0.8rem;
+            text-shadow: none;
+            letter-spacing: 3px;
             text-transform: uppercase;
+            display: flex;
+            align-items: center;
         }
 
         .widget-title::after {
-            content: '_';
-            opacity: 0.6;
-            color: #FF00FF;
-            animation: text-flicker 10s infinite step-end;
+            content: '';
+            display: none;
         }
 
         @keyframes text-flicker {
@@ -571,30 +578,81 @@
 
         /* --- 10. BOOT SCREEN (Intro) --- */
         #boot-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background-color: #000;
             z-index: 100000;
-            display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: flex-start;
             padding: 2rem;
             font-family: 'Courier New', monospace;
             color: #00FF7F;
             font-size: 14px;
             pointer-events: none;
         }
-        .boot-line { margin-bottom: 4px; opacity: 0.8; }
-        .boot-cursor { display: inline-block; width: 8px; height: 16px; background: #00FF7F; animation: blink 1s infinite; vertical-align: middle; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        .boot-line {
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .boot-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #00FF7F;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
 
         /* --- 11. PHOTO SCAN EFFECT --- */
         .photo-scan-active {
             position: relative;
         }
+
         .photo-scan-active::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: linear-gradient(to bottom, transparent, rgba(0, 255, 255, 0.8), transparent);
             animation: scanDownPhoto 1s ease-in-out;
         }
-        @keyframes scanDownPhoto { 0% { top: -100%; opacity: 0; } 50% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+
+        @keyframes scanDownPhoto {
+            0% {
+                top: -100%;
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                top: 100%;
+                opacity: 0;
+            }
+        }
 
         /* Perbaikan Scrollbar untuk Log */
         ::-webkit-scrollbar {
@@ -784,8 +842,8 @@
                     <div class="space-y-3 text-center">
 
                         <!-- FOTO KARYAWAN -->
-                        <div
-                            class="w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-cyan-400 bg-gray-800 flex items-center justify-center mb-2 p-2 relative" id="photoContainer">
+                        <div class="w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-cyan-400 bg-gray-800 flex items-center justify-center mb-2 p-2 relative"
+                            id="photoContainer">
                             <img id="userPhotoDisplay"
                                 src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0idy00IGgtNCI+PHBhdGggZD0iTTggOGE0IDQgMCAxIDAgMC04IDQgNCAwIDAgMCAwIDh6bTAtMWEzIDMgMCAxIDEtNiAwIDMgMyAwIDAgMSA2IDB6TTggOWE1IDUgMCAwIDAtNSA1djJBNiA2IDAgMCAwIDggMjFhNiA2IDAgMCAwIDYtNnYtMmE1IDUgMCAwIDAtNS01ek04IDE5YTUgNSAwIDAgMS00LTJ2LTFhNCA0IDAgMCAxIDQtNGM0IDAgMy44MiA0IDQgNGMtLjE4LjMyLS4zOC42My0uNTggLjkzQTUuMDAzIDUuMDAzIDAgMCAxIDggMTl6Ii8+PC9zdmc+"
                                 onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0idy00IGgtNCI+PHBhdGggZD0iTTggOGE0IDQgMCAxIDAgMC04IDQgNCAwIDAgMCAwIDh6bTAtMWEzIDMgMCAxIDEtNiAwIDMgMyAwIDAgMSA2IDB6TTggOWE1IDUgMCAwIDAtNSA1djJBNiA2IDAgMCAwIDggMjFhNiA2IDAgMCAwIDYtNnYtMmE1IDUgMCAwIDAtNS01ek04IDE5YTUgNSAwIDAgMS00LTJ2LTFhNCA0IDAgMCAxIDQtNGM0IDAgMy44MiA0IDQgNGMtLjE4LjMyLS4zOC42My0uNTggLjkzQTUuMDAzIDUuMDAzIDAgMCAxIDggMTl6Ii8+PC9zdmc+'"

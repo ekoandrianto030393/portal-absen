@@ -165,12 +165,13 @@ const AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
 // =============================================================================
 
 function drawTechBracket(ctx, x, y, w, h, color) {
-    const lineLen = w / 5;
+    const lineLen = w / 4;
+    const cornerSize = 3;
     ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'square';
-    ctx.shadowBlur = 15;
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 8;
     ctx.shadowColor = color;
+    
     // Kiri Atas
     ctx.beginPath(); ctx.moveTo(x, y + lineLen); ctx.lineTo(x, y); ctx.lineTo(x + lineLen, y); ctx.stroke();
     // Kanan Atas
@@ -179,33 +180,14 @@ function drawTechBracket(ctx, x, y, w, h, color) {
     ctx.beginPath(); ctx.moveTo(x + w, y + h - lineLen); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - lineLen, y + h); ctx.stroke();
     // Kiri Bawah
     ctx.beginPath(); ctx.moveTo(x + lineLen, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - lineLen); ctx.stroke();
-    ctx.shadowBlur = 0;
-}
-
-function drawMatchLabel(ctx, box, label, color) {
-    let fontSize = 24;
-    if (box.width < 100) fontSize = 18;
     
-    ctx.font = `bold ${fontSize}px "Courier New", monospace`;
-    ctx.font = `bold ${fontSize}px "Rajdhani", "Courier New", monospace`;
-    ctx.textAlign = 'center';
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = 1;
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = 'black';
-
-    const textWidth = ctx.measureText(label).width;
-    const padding = 10;
-    const bgX = box.x + (box.width / 2) - (textWidth / 2) - padding / 2;
-    const bgY = box.y - 40;
-    const bgW = textWidth + padding;
-    const bgH = 30;
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(bgX, bgY, bgW, bgH);
-
+    // Corner Dots (Aksen Tambahan)
     ctx.fillStyle = color;
-    ctx.fillText(label, box.x + box.width / 2, box.y - 18);
+    ctx.fillRect(x - 1, y - 1, cornerSize, cornerSize);
+    ctx.fillRect(x + w - cornerSize + 1, y - 1, cornerSize, cornerSize);
+    ctx.fillRect(x + w - cornerSize + 1, y + h - cornerSize + 1, cornerSize, cornerSize);
+    ctx.fillRect(x - 1, y + h - cornerSize + 1, cornerSize, cornerSize);
+    
     ctx.shadowBlur = 0;
 }
 
@@ -214,10 +196,10 @@ function drawHolographicMesh(ctx, landmarks) {
     
     // Efek Denyut (Pulse) pada Mesh
     const time = Date.now() / 500;
-    const alpha = 0.2 + 0.3 * Math.abs(Math.sin(time));
+    const alpha = 0.1 + 0.15 * Math.abs(Math.sin(time)); // Lebih transparan agar tidak menghalangi wajah
 
     ctx.lineWidth = 1;
-    ctx.strokeStyle = `rgba(0, 255, 255, ${alpha + 0.2})`; // Cyan Pulse
+    ctx.strokeStyle = `rgba(0, 255, 255, ${alpha + 0.1})`; // Cyan Pulse
     ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.1})`;
 
     const regions = [
@@ -378,33 +360,52 @@ async function runBootSequence() {
     setTimeout(() => bootScreen.remove(), 800);
 }
 
-function drawDataTags(ctx, box, landmarks) {
-    const tagX = box.right + 20;
-    let tagY = box.top + 10;
-    const fontSize = 12;
+// --- NEW FEATURE: SMART HUD LABEL ---
+function drawSmartHUD(ctx, box, label, color, confidence) {
+    const padding = 10;
+    const tagX = box.x + box.width + 30; // Posisi di kanan wajah
+    const tagY = box.y;
+    const hudWidth = 180;
+    const hudHeight = 70;
 
-    ctx.font = `bold ${fontSize}px "Courier New", monospace`;
-    ctx.font = `bold ${fontSize}px "Rajdhani", "Courier New", monospace`;
+    // 1. Garis Penghubung (Connector Line)
+    ctx.beginPath();
+    ctx.moveTo(box.x + box.width, box.y + (box.height * 0.2)); // Dari sisi kanan bracket
+    ctx.lineTo(tagX - 10, box.y + (box.height * 0.2)); // Horizontal
+    ctx.lineTo(tagX, tagY); // Miring ke sudut HUD
+    ctx.lineTo(tagX + hudWidth, tagY); // Garis atas HUD
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 2. Background Panel HUD
+    ctx.fillStyle = 'rgba(5, 15, 20, 0.85)';
+    ctx.fillRect(tagX, tagY, hudWidth, hudHeight);
+    
+    // 3. Border Kiri HUD (Aksen Warna Status)
+    ctx.fillStyle = color;
+    ctx.fillRect(tagX, tagY, 4, hudHeight);
+
+    // 4. Teks Informasi
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 16px "Rajdhani", sans-serif';
     ctx.textAlign = 'left';
+    ctx.fillText(label.length > 15 ? label.substring(0, 15) + '...' : label, tagX + 15, tagY + 25);
 
-    const nose = landmarks.getNose()[0];
-    const jaw = landmarks.getJawOutline()[8];
-    const tilt = (nose.x - jaw.x).toFixed(2);
+    // 5. Sub-info (ID & Confidence)
+    ctx.fillStyle = '#00FFFF';
+    ctx.font = '11px "Courier New", monospace';
+    ctx.fillText(`ID-SIG: ${Math.floor(Math.random() * 99999)}`, tagX + 15, tagY + 45);
 
-    const dataLines = [
-        { text: `SIG: 0x${Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase()}`, color: '#00FFFF' },
-        { text: `PROX: ${(2500 / box.width).toFixed(0)}mm`, color: '#00FFFF' },
-        { text: `TILT: ${tilt}°`, color: '#00FF7F' },
-        { text: `SYNC: ACTIVE`, color: '#FF00FF' }
-    ];
-
-    ctx.beginPath(); ctx.strokeStyle = 'rgba(38, 0, 255, 0.5)';
-    ctx.moveTo(box.right, box.top); ctx.lineTo(tagX - 10, box.top); ctx.stroke();
-
-    dataLines.forEach((item, i) => {
-        ctx.fillStyle = item.color;
-        ctx.fillText(item.text, tagX, tagY + (i * 18));
-    });
+    // 6. Confidence Bar Mini
+    const confVal = Math.min(100, Math.max(0, confidence));
+    ctx.fillStyle = '#333';
+    ctx.fillRect(tagX + 15, tagY + 55, 100, 4); // Track
+    ctx.fillStyle = confVal > 70 ? '#00FF7F' : (confVal > 40 ? '#FFD700' : '#FF0055');
+    ctx.fillRect(tagX + 15, tagY + 55, confVal, 4); // Fill
+    
+    ctx.fillStyle = '#AAAAAA';
+    ctx.fillText(`${confVal.toFixed(0)}%`, tagX + 125, tagY + 60);
 }
 
 // =============================================================================
@@ -581,30 +582,92 @@ function updateClock() {
     if (clockM) clockM.textContent = String(now.getMinutes()).padStart(2, '0');
     if (clockS) clockS.textContent = String(now.getSeconds()).padStart(2, '0');
     
-    // Update Milidetik (High Precision)
+    // Update Milidetik (High Precision & Simulation)
+    // Update Milidetik (High Precision & Nanosecond Simulation)
     if (clockMs) {
-        clockMs.textContent = String(now.getMilliseconds()).padStart(3, '0');
-        // Efek visual: Warna berubah sedikit setiap setengah detik
-        clockMs.style.color = now.getMilliseconds() < 500 ? '#00FFFF' : '#00FF7F';
+        const ms = String(now.getMilliseconds()).padStart(3, '0');
+        // Tambah 2 digit random untuk simulasi microsecond (kesan presisi tinggi)
+        const micro = String(Math.floor(Math.random() * 99)).padStart(2, '0');
+        clockMs.innerHTML = `${ms}<span style="font-size:0.5em; opacity:0.8; vertical-align:top; margin-left:1px;">${micro}</span>`;
+        // Simulasi Nanosecond (3 digit random)
+        const ns = String(Math.floor(Math.random() * 999)).padStart(3, '0');
+        
+        // Warna berputar cepat (RGB Cycle) untuk kesan aktif
+        // Warna Cycle Cepat
+        const hue = (Date.now() / 10) % 360;
+        clockMs.style.color = `hsl(${hue}, 100%, 70%)`;
+        clockMs.style.textShadow = `0 0 8px hsl(${hue}, 100%, 50%)`;
+        
+        clockMs.innerHTML = `
+            <span style="color:hsl(${hue}, 100%, 75%); text-shadow:0 0 8px hsl(${hue}, 100%, 50%);">${ms}</span>
+            <span style="font-size:0.5em; color:#666; vertical-align:top; margin-left:1px;">.${ns}</span>
+        `;
     }
     
     if (clockDate) {
         const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-        const hexStamp = Math.floor(now.getTime() / 1000).toString(16).toUpperCase().slice(-4);
-        // Format Taktis: YYYY.MM.DD | HEX | DAY
-        clockDate.innerHTML = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} <span style="color:#FFD700">::</span> 0x${hexStamp} <span style="color:#00FF7F">//</span> ${days[now.getDay()]}`;
+        // Hitung Day of Year (DOY)
+        const start = new Date(now.getFullYear(), 0, 0);
+        const diff = now - start;
+        const oneDay = 1000 * 60 * 60 * 24;
+        const dayOfYear = Math.floor(diff / oneDay);
+        
+        // Hex Timestamp (Last 6 chars)
+        const hexStamp = Math.floor(now.getTime() / 1000).toString(16).toUpperCase().slice(-6);
+        
+        // Format Taktis: YYYY.MM.DD | DOY | DAY | HEX
+        // UTC Time String
+        const utcH = String(now.getUTCHours()).padStart(2, '0');
+        const utcM = String(now.getUTCMinutes()).padStart(2, '0');
+        
+        // Binary Seconds Visualization (6 bits)
+        const sec = now.getSeconds();
+        let binVis = '';
+        for(let i=5; i>=0; i--) {
+            const bit = (sec >> i) & 1;
+            binVis += `<span style="display:inline-block; width:6px; height:6px; margin:0 1px; background-color:${bit ? '#00FF7F' : '#333'}; box-shadow:${bit ? '0 0 4px #00FF7F' : 'none'}; border-radius:50%;"></span>`;
+        }
+
+        clockDate.innerHTML = `
+            <span style="color:#00FFFF; text-shadow:0 0 5px #00FFFF;">${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}</span>
+            <span style="color:#555; margin:0 6px;">|</span>
+            <span style="color:#FFD700;">DOY.${String(dayOfYear).padStart(3, '0')}</span>
+            <span style="color:#555; margin:0 6px;">|</span>
+            <span style="color:#00FF7F;">${days[now.getDay()]}</span>
+            <span style="color:#555; margin:0 6px;">//</span>
+            <span style="color:#FF0055; font-family:'Courier New';">0x${hexStamp.slice(-4)}</span>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:2px; line-height:1.1;">
+                <div style="font-size:0.9em; letter-spacing:1px;">
+                    <span style="color:#00FFFF; text-shadow:0 0 5px rgba(0,255,255,0.5);">${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}</span>
+                    <span style="color:#444; margin:0 5px;">|</span>
+                    <span style="color:#FFD700;">DOY.${String(dayOfYear).padStart(3, '0')}</span>
+                    <span style="color:#444; margin:0 5px;">|</span>
+                    <span style="color:#00FF7F;">${days[now.getDay()]}</span>
+                </div>
+                <div style="font-size:0.75em; display:flex; align-items:center; gap:8px; opacity:0.9;">
+                    <span style="color:#AAA;">ZULU: ${utcH}:${utcM}</span>
+                    <span style="color:#444;">//</span>
+                    <span style="color:#FF0055; font-family:'Courier New';">0x${hexStamp}</span>
+                    <span style="color:#444;">//</span>
+                    <div style="display:flex; align-items:center;">${binVis}</div>
+                </div>
+            </div>
+        `;
     }
 
     if (clockBar) {
-        // Warna Dinamis (Cyan -> Magenta)
+        // Progress bar detik dengan efek gradient flow
         const totalMs = (now.getSeconds() * 1000) + now.getMilliseconds();
         const percent = (totalMs / 60000) * 100;
         clockBar.style.width = `${percent}%`;
         
-        // Warna Dinamis (Cyan -> Magenta)
-        const hue = 180 + (percent * 1.2); 
-        clockBar.style.backgroundColor = `hsl(${hue}, 100%, 60%)`;
-        clockBar.style.boxShadow = `0 0 15px hsl(${hue}, 100%, 60%)`;
+        // Warna Gradient Bergerak
+        const time = Date.now();
+        const hue1 = (time / 20) % 360;
+        const hue2 = (hue1 + 60) % 360;
+        
+        clockBar.style.background = `linear-gradient(90deg, hsl(${hue1}, 100%, 50%), hsl(${hue2}, 100%, 50%))`;
+        clockBar.style.boxShadow = `0 0 15px hsl(${hue1}, 100%, 60%)`;
     }
     
     requestAnimationFrame(updateClock);
@@ -627,10 +690,6 @@ function animateTitle() {
         // SVG Siger Stilasi (Gold Gradient) + Logo Kiri Kanan
         sigerContainer.innerHTML = `
         <div style="display: flex; align-items: center; gap: 20px;">
-            <!-- LOGO KIRI (Lambung Lampung Timur) -->
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Lambang_Kabupaten_Lampung_Timur.png/486px-Lambang_Kabupaten_Lampung_Timur.png" 
-                 style="height: 80px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); animation: floatLogo 4s ease-in-out infinite;">
-
             <svg width="240" height="90" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));">
                 <defs>
                     <linearGradient id="gradGold" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FFF8DC"/><stop offset="40%" stop-color="#FFD700"/><stop offset="100%" stop-color="#DAA520"/></linearGradient>
@@ -648,10 +707,6 @@ function animateTitle() {
                       fill="url(#gradShimmer)" style="mix-blend-mode: overlay;" pointer-events="none"/>
                 <circle cx="100" cy="80" r="4" fill="#FFF" opacity="0.9"/>
             </svg>
-
-            <!-- FOTO KANAN (Ganti URL di bawah ini dengan foto Anda) -->
-            <img src="${DEFAULT_PHOTO}" 
-                 style="height: 80px; width: auto; border: 2px solid #FFD700; border-radius: 10px; object-fit: cover; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); animation: floatLogo 4s ease-in-out infinite reverse;">
         </div>
         <style>
             @keyframes floatLogo {
@@ -1052,10 +1107,7 @@ async function detectFace() {
         drawScanningBeam(context, visualBox); // Sinar laser pada wajah
         const nose = landmarks.getNose()[3]; // Titik tengah hidung
         drawTargetLock(context, nose.x, nose.y, box.width * 0.3); // Lingkaran target lock
-        drawTargetLock(context, nose.x, nose.y, visualBox.width * 0.3); // Lingkaran target lock
-        
-        drawDataTags(context, box, landmarks);
-        drawDataTags(context, visualBox, landmarks);
+        drawTargetLock(context, nose.x, nose.y, visualBox.width * 0.3); // Lingkaran target lock (Visual)
 
         // Efek suara scanning ringan (opsional, bisa dimatikan jika terlalu berisik)
         if (Math.random() > 0.85) SoundFX.play('scan'); 
@@ -1145,9 +1197,10 @@ async function detectFace() {
         }
         
         drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor);
-        drawMatchLabel(context, box, faceLabel, faceColor); 
         drawTechBracket(context, visualBox.x, visualBox.y, visualBox.width, visualBox.height, faceColor);
-        drawMatchLabel(context, visualBox, faceLabel, faceColor); 
+        
+        // Gunakan Smart HUD baru
+        drawSmartHUD(context, visualBox, faceLabel, faceColor, confidence);
 
     } else {
         // Tidak ada deteksi wajah
@@ -1595,6 +1648,11 @@ function enhanceQuantumTitle() {
 
 // --- BABYLON.JS BACKGROUND LOGIC (Dipindahkan dari scan.html) ---
 function initBackground3D() {
+    // Safety check: Pastikan BABYLON sudah terload sebelum inisialisasi
+    if (typeof BABYLON === 'undefined') {
+        console.warn("Babylon.js resources failed to load. 3D Background disabled.");
+        return;
+    }
     const renderCanvas = document.getElementById("renderCanvas");
     if (!renderCanvas) return;
 
