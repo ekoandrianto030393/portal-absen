@@ -302,87 +302,304 @@ function updateSystemDiagnostics(confidence) {
 
 function updateDataStream() {
     if(!dataStream) return;
-    const chars = '01FfAaBbCcDdEe987654321';
-    let result = '';
-    for (let i = 0; i < 20; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-    const timestamp = new Date().toLocaleTimeString('id-ID', {hour12: false, second: '2-digit'});
+    
+    // Setup style agar horizontal (sekali jalan)
+    if (dataStream.style.whiteSpace !== 'nowrap') {
+        dataStream.innerHTML = '';
+        dataStream.style.display = 'flex';
+        dataStream.style.flexDirection = 'row';
+        dataStream.style.overflow = 'hidden';
+        dataStream.style.whiteSpace = 'nowrap';
+        dataStream.style.alignItems = 'center';
+    }
 
-    const newStreamEntry = document.createElement('p');
-    newStreamEntry.className = 'my-0.5 text-cyan-700';
-    newStreamEntry.innerHTML = `${timestamp}: <span class="text-amber-500">${result}</span>`;
-    dataStream.prepend(newStreamEntry);
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    const span = document.createElement('span');
+    span.textContent = chars[Math.floor(Math.random() * chars.length)];
+    span.className = 'text-cyan-500 text-xs font-mono';
+    span.style.minWidth = '10px';
+    span.style.textAlign = 'center';
+    
+    dataStream.appendChild(span);
 
-    if (dataStream.children.length > 8) dataStream.removeChild(dataStream.lastChild);
+    if (dataStream.children.length > 40) {
+        dataStream.removeChild(dataStream.firstChild);
+    }
 }
 
 function updateGraph() {
     if(!graphElement) return;
-    const barHeight = Math.floor(Math.random() * 90) + 5;
-    const bar = document.createElement('div');
-    bar.className = 'graph-bar';
-    bar.style.height = `${barHeight}%`;
-    const colors = ['#f0d90eff', '#00FF7F', '#FF00FF'];
-    bar.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-    bar.style.boxShadow = `0 0 5px ${bar.style.backgroundColor}`;
-    graphElement.appendChild(bar);
-    if (graphElement.children.length > 30) graphElement.removeChild(graphElement.firstChild);
+    
+    // Setup container utama agar menampung baris-baris (Matrix Style Penuh)
+    if (graphElement.style.flexDirection !== 'column') {
+        graphElement.innerHTML = '';
+        graphElement.style.display = 'flex';
+        graphElement.style.flexDirection = 'column'; // Stack vertikal
+        graphElement.style.justifyContent = 'space-between'; 
+        graphElement.style.alignItems = 'stretch'; // Lebar penuh
+        graphElement.style.overflow = 'hidden';
+        
+        // Buat 8 baris data untuk memenuhi panel
+        for(let i=0; i<8; i++) {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.flexDirection = 'row';
+            row.style.whiteSpace = 'nowrap';
+            row.style.height = '12px';
+            row.style.overflow = 'hidden';
+            graphElement.appendChild(row);
+        }
+    }
+
+    const rows = graphElement.children;
+    const chars = '0123456789ABCDEF';
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        
+        const span = document.createElement('span');
+        span.textContent = chars[Math.floor(Math.random() * chars.length)];
+        
+        // Style per karakter (Sangat Kecil & Rapat)
+        span.style.fontSize = '10px';
+        span.style.fontFamily = 'monospace';
+        span.style.color = '#00FF7F';
+        span.style.minWidth = '8px';
+        span.style.textAlign = 'center';
+        span.style.opacity = Math.random() * 0.5 + 0.4; 
+        
+        row.appendChild(span);
+
+        if (row.children.length > 50) {
+            row.removeChild(row.firstChild);
+        }
+    }
 }
 
 // Panggil update HUD pada interval
 function updateClock() {
     const now = new Date();
+    
+    // Update Jam, Menit, Detik
     if (clockH) clockH.textContent = String(now.getHours()).padStart(2, '0');
     if (clockM) clockM.textContent = String(now.getMinutes()).padStart(2, '0');
     if (clockS) clockS.textContent = String(now.getSeconds()).padStart(2, '0');
     
-    // Update Milidetik & Tanggal (Fitur Canggih)
-    if (clockMs) clockMs.textContent = String(now.getMilliseconds()).padStart(3, '0');
+    // Update Milidetik (High Precision)
+    if (clockMs) {
+        clockMs.textContent = String(now.getMilliseconds()).padStart(3, '0');
+        // Efek visual: Warna berubah sedikit setiap setengah detik
+        clockMs.style.color = now.getMilliseconds() < 500 ? '#00FFFF' : '#00FF7F';
+    }
     
     if (clockDate) {
         const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-        const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} // ${days[now.getDay()]}`;
-        clockDate.textContent = dateStr;
+        const hexStamp = Math.floor(now.getTime() / 1000).toString(16).toUpperCase().slice(-4);
+        // Format Taktis: YYYY.MM.DD | HEX | DAY
+        clockDate.innerHTML = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} <span style="color:#FFD700">::</span> 0x${hexStamp} <span style="color:#00FF7F">//</span> ${days[now.getDay()]}`;
     }
 
     if (clockBar) {
-        // Progress bar mengisi penuh setiap 60 detik (1 menit)
+        // Warna Dinamis (Cyan -> Magenta)
         const totalMs = (now.getSeconds() * 1000) + now.getMilliseconds();
         const percent = (totalMs / 60000) * 100;
         clockBar.style.width = `${percent}%`;
+        
+        // Warna Dinamis (Cyan -> Magenta)
+        const hue = 180 + (percent * 1.2); 
+        clockBar.style.backgroundColor = `hsl(${hue}, 100%, 60%)`;
+        clockBar.style.boxShadow = `0 0 15px hsl(${hue}, 100%, 60%)`;
     }
+    
+    requestAnimationFrame(updateClock);
 }
 
 function animateTitle() {
     if (!mainTitle) return;
-    mainTitle.style.opacity = 1;
-    const text = "PUSKESMAS WANA";
-    mainTitle.innerHTML = ''; // Kosongkan dulu
+    const targetText = "PUSKESMAS WANA";
+    
+    // --- TAMBAHAN: SIGER LAMPUNG GOLD (Inject Otomatis) ---
+    if (!document.getElementById('siger-header-icon')) {
+        const sigerContainer = document.createElement('div');
+        sigerContainer.id = 'siger-header-icon';
+        sigerContainer.style.display = 'flex';
+        sigerContainer.style.justifyContent = 'center';
+        sigerContainer.style.alignItems = 'center';
+        sigerContainer.style.width = '100%';
+        sigerContainer.style.marginBottom = '-5px'; // Rapat dengan teks
+        
+        // SVG Siger Stilasi (Gold Gradient) + Logo Kiri Kanan
+        sigerContainer.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <!-- LOGO KIRI (Lambung Lampung Timur) -->
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Lambang_Kabupaten_Lampung_Timur.png/486px-Lambang_Kabupaten_Lampung_Timur.png" 
+                 style="height: 80px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); animation: floatLogo 4s ease-in-out infinite;">
 
-    const chars = text.split('');
-    const totalChars = chars.length;
-    const animationCycleDuration = 3; // detik, harus sesuai dengan durasi @keyframes CSS
-    const staggerDelayPerChar = animationCycleDuration / totalChars; // Contoh: 3s / 15 chars = 0.2s
+            <svg width="240" height="90" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));">
+                <defs>
+                    <linearGradient id="gradGold" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FFF8DC"/><stop offset="40%" stop-color="#FFD700"/><stop offset="100%" stop-color="#DAA520"/></linearGradient>
+                    <linearGradient id="gradShimmer" x1="0%" y1="0%" x2="100%" y2="0%" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="rgba(255,255,255,0)"/>
+                        <stop offset="50%" stop-color="rgba(255,255,255,0.9)"/>
+                        <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                        <animate attributeName="x1" from="-200" to="400" dur="2.5s" repeatCount="indefinite" />
+                        <animate attributeName="x2" from="-100" to="500" dur="2.5s" repeatCount="indefinite" />
+                    </linearGradient>
+                </defs>
+                <path d="M10,90 L190,90 L185,70 Q170,85 160,50 Q150,75 140,40 Q130,70 120,30 Q110,60 100,10 Q90,60 80,30 Q70,70 60,40 Q50,75 40,50 Q30,85 15,70 Z" 
+                      fill="url(#gradGold)" stroke="#B8860B" stroke-width="2" stroke-linejoin="round" />
+                <path d="M10,90 L190,90 L185,70 Q170,85 160,50 Q150,75 140,40 Q130,70 120,30 Q110,60 100,10 Q90,60 80,30 Q70,70 60,40 Q50,75 40,50 Q30,85 15,70 Z" 
+                      fill="url(#gradShimmer)" style="mix-blend-mode: overlay;" pointer-events="none"/>
+                <circle cx="100" cy="80" r="4" fill="#FFF" opacity="0.9"/>
+            </svg>
 
-    // Pastikan mainTitle memiliki gaya yang diperlukan untuk overflow dan posisi relatif
-    mainTitle.style.position = 'relative';
-    mainTitle.style.overflow = 'hidden';
-    mainTitle.style.minHeight = '1.2em'; // Sesuaikan sesuai ukuran font
-    mainTitle.style.whiteSpace = 'nowrap'; // Mencegah teks melipat
+            <!-- FOTO KANAN (Ganti URL di bawah ini dengan foto Anda) -->
+            <img src="nama_file_foto_anda.jpg" 
+                 style="height: 80px; width: auto; border: 2px solid #FFD700; border-radius: 10px; object-fit: cover; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); animation: floatLogo 4s ease-in-out infinite reverse;">
+        </div>
+        <style>
+            @keyframes floatLogo {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-8px); }
+            }
+        </style>`;
+        
+        if(mainTitle.parentNode) mainTitle.parentNode.insertBefore(sigerContainer, mainTitle);
+    }
+    
+    // Setup awal: Buat span jika belum sesuai (Hanya sekali)
+    if (mainTitle.children.length !== targetText.length) {
+        mainTitle.innerHTML = '';
+        mainTitle.style.opacity = 1;
+        mainTitle.style.display = 'inline-flex';
+        mainTitle.style.justifyContent = 'center';
+        mainTitle.style.gap = '4px'; 
+        mainTitle.style.perspective = '1000px'; // Efek 3D
+        
+        // GAYA HURUF BARU: Lebih tebal, solid, dan futuristik
+        mainTitle.style.fontFamily = '"Arial Black", "Impact", "Segoe UI", sans-serif';
+        mainTitle.style.fontWeight = '900';
+        mainTitle.style.letterSpacing = '2px';
+        mainTitle.style.textTransform = 'uppercase';
+        // Hapus filter drop-shadow container agar tidak tumpang tindih dengan text-shadow per huruf
+        mainTitle.style.filter = 'none'; 
 
-    chars.forEach((char, index) => {
-        const span = document.createElement('span');
-        span.textContent = char === ' ' ? '\u00A0' : char; // Handle spasi
-        span.className = 'title-char';
-        // Hitung delay bertahap
-        const delay = index * staggerDelayPerChar;
-        span.style.animationDelay = `${delay}s`;
-        if (Math.random() > 0.7) span.classList.add('glitch-text'); // Tambahkan glitch acak ke span
-        mainTitle.appendChild(span);
-    });
+        for (let i = 0; i < targetText.length; i++) {
+            const span = document.createElement('span');
+            span.style.display = 'inline-block';
+            span.style.minWidth = '0.6em';
+            span.style.textAlign = 'center';
+            span.dataset.original = targetText[i]; // Simpan huruf asli
+            
+            if (targetText[i] === ' ') {
+                span.innerHTML = '&nbsp;';
+                span.style.minWidth = '0.5em';
+            } else {
+                span.textContent = targetText[i];
+            }
+            
+            // Style dasar span
+            span.style.color = '#008B8B'; // Dark Cyan (Base state)
+            span.style.textShadow = '0 0 5px rgba(0, 255, 255, 0.3)';
+            span.style.transition = 'transform 0.1s, color 0.1s, text-shadow 0.1s';
+            span.style.transformStyle = 'preserve-3d';
+            
+            mainTitle.appendChild(span);
+        }
+    }
+
+    let tick = 0;
+    
+    // Clear interval jika ada (disimpan di properti elemen untuk mencegah tumpuk)
+    if (mainTitle.animationInterval) clearInterval(mainTitle.animationInterval);
+
+    // Loop animasi: Efek "Metallic Shine & Glitch"
+    mainTitle.animationInterval = setInterval(() => {
+        tick++;
+        const spans = mainTitle.children;
+        
+        // 1. Gelombang Cahaya Utama (Lambat)
+        const wave1 = (tick * 0.15) % (spans.length + 8) - 4;
+        
+        // 2. Kilatan Cepat (Refleksi Tajam)
+        const wave2 = (tick * 0.4) % (spans.length + 20) - 10;
+
+        for (let i = 0; i < spans.length; i++) {
+            const span = spans[i];
+            const original = span.dataset.original;
+            
+            if (original === ' ') continue;
+
+            let char = original;
+            let color = '#008B8B'; // Base: Dark Cyan
+            let textShadow = '0 0 5px rgba(0, 255, 255, 0.3)';
+            let transform = 'scale(1) translateZ(0px)';
+            let opacity = 0.8;
+
+            // Hitung jarak dari gelombang
+            const dist1 = Math.abs(i - wave1);
+            const dist2 = Math.abs(i - wave2);
+
+            // Efek Gelombang Utama (Glow)
+            if (dist1 < 3) {
+                const intensity = 1 - (dist1 / 3);
+                color = '#FFD700'; // Gold
+                textShadow = `0 0 ${10 + (intensity * 15)}px #FFD700`;
+                transform = `scale(${1 + (intensity * 0.1)}) translateZ(${intensity * 10}px)`;
+                opacity = 1;
+            }
+
+            // Efek Kilatan Tajam (Refleksi Metalik)
+            if (dist2 < 1.5) {
+                color = '#FFFFFF';
+                textShadow = '0 0 10px #FFFFFF, 0 0 20px #FFD700, 0 0 40px #DAA520';
+                transform = 'scale(1.15) translateZ(20px)';
+                opacity = 1;
+            }
+
+            // Apply
+            if (span.textContent !== char) span.textContent = char;
+            span.style.color = color;
+            span.style.textShadow = textShadow;
+            span.style.transform = transform;
+            span.style.opacity = opacity;
+        }
+
+        // --- EFEK PARTIKEL EMAS JATUH ---
+        if (Math.random() < 0.3) { // Muncul acak (30% chance per tick)
+            const particle = document.createElement('div');
+            const size = Math.random() * 4 + 2;
+            particle.style.cssText = `
+                position: absolute; width: ${size}px; height: ${size}px;
+                background: radial-gradient(circle, #FFF, #FFD700);
+                border-radius: 50%; box-shadow: 0 0 8px #FFD700;
+                pointer-events: none; z-index: 20; opacity: 0;
+                left: 50%; top: 0px; margin-left: ${Math.random() * 400 - 200}px;
+            `;
+            
+            if (mainTitle.parentNode) {
+                if (getComputedStyle(mainTitle.parentNode).position === 'static') mainTitle.parentNode.style.position = 'relative';
+                mainTitle.parentNode.appendChild(particle);
+                
+                const anim = particle.animate([
+                    { transform: 'translateY(0) scale(0)', opacity: 0 },
+                    { transform: `translateY(${Math.random() * 20 + 20}px) scale(1)`, opacity: 1, offset: 0.2 },
+                    { transform: `translateY(${Math.random() * 100 + 100}px) scale(0)`, opacity: 0 }
+                ], { duration: 2000 + Math.random() * 1000, easing: 'linear' });
+                
+                anim.onfinish = () => particle.remove();
+            }
+        }
+    }, 50); 
 }
 
+updateClock(); // Start loop animasi jam (requestAnimationFrame)
 
-setInterval(updateClock, 1000);
+// Interval cepat untuk animasi data stream & waveform
+setInterval(() => {
+    updateDataStream();
+    updateGraph();
+}, 100);
 
 const api = {
     getDescriptors: async () => {
@@ -620,14 +837,28 @@ async function detectFace() {
         const { box } = resizedDetections.detection;
         const { landmarks } = resizedDetections;
 
+        // --- ADJUSTMENT: Geser area scan visual sedikit ke atas ---
+        const yShift = box.height * 0.15; // Naik 15%
+        const visualBox = {
+            x: box.x,
+            y: box.y - yShift,
+            width: box.width,
+            height: box.height,
+            right: box.x + box.width,
+            top: box.y - yShift
+        };
+
         drawHolographicMesh(context, landmarks);
         
         // --- GAMBAR EFEK BARU ---
         drawScanningBeam(context, box); // Sinar laser pada wajah
+        drawScanningBeam(context, visualBox); // Sinar laser pada wajah
         const nose = landmarks.getNose()[3]; // Titik tengah hidung
         drawTargetLock(context, nose.x, nose.y, box.width * 0.3); // Lingkaran target lock
+        drawTargetLock(context, nose.x, nose.y, visualBox.width * 0.3); // Lingkaran target lock
         
         drawDataTags(context, box, landmarks);
+        drawDataTags(context, visualBox, landmarks);
 
         // Efek suara scanning ringan (opsional, bisa dimatikan jika terlalu berisik)
         // if (Math.random() > 0.8) playSfx('scan'); 
@@ -695,6 +926,8 @@ async function detectFace() {
         
         drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor);
         drawMatchLabel(context, box, faceLabel, faceColor); 
+        drawTechBracket(context, visualBox.x, visualBox.y, visualBox.width, visualBox.height, faceColor);
+        drawMatchLabel(context, visualBox, faceLabel, faceColor); 
 
     } else {
         // Tidak ada deteksi wajah
@@ -965,4 +1198,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
     animateTitle();
     updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih
+
+    // CSS ADJUSTMENT: Geser area scan (Video Container) sedikit ke atas
+    if (videoContainer) {
+        videoContainer.style.marginTop = "-40px"; 
+    }
 });
