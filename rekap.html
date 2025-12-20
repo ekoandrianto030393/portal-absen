@@ -4,233 +4,406 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Kinerja Karyawan</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>Laporan Absensi - PUSKESMAS WANA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* CSS Umum untuk Halaman Laporan */
         body {
-            background-color: #f8f9fa;
+            font-family: 'Inter', sans-serif;
         }
 
-        .dashboard-header {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 0;
-            margin-bottom: 20px;
-        }
-
-        .card-summary {
-            background-color: white;
-            border-left: 5px solid #007bff;
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        /* --- STYLING KHUSUS CETAK (PRINT) --- */
         @media print {
-            .print-hide {
+            .no-print {
                 display: none !important;
+            }
+
+            @page {
+                margin: 1.5cm 2cm;
+                /* Margin Standar Surat Resmi */
+                size: A4;
             }
 
             body {
                 background-color: white;
-                margin: 0;
-                font-family: 'Times New Roman', Times, serif;
-                font-size: 11pt;
+                color: black;
+                font-family: "Times New Roman", Times, serif !important;
+                /* Font Resmi */
+                font-size: 12pt;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
-            .container {
-                width: 100%;
-                margin: 0;
-                padding: 0 15px;
+            .shadow-md,
+            .shadow,
+            .shadow-lg {
+                box-shadow: none !important;
+            }
+
+            .border {
+                border: none !important;
+                /* Hapus border container saat print */
+            }
+
+            /* Reset Container Width & Padding untuk Print Full Width */
+            .max-w-7xl,
+            main {
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            .overflow-x-auto {
+                overflow: visible !important;
             }
 
             table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 15px;
+                font-size: 11pt;
+                /* Ukuran font tabel yang nyaman dibaca */
+                margin-top: 10px;
             }
 
             th,
             td {
-                border: 1px solid black;
-                padding: 8px;
-                text-align: left;
+                border: 1px solid #000 !important;
+                padding: 4px 8px;
+                color: black !important;
             }
 
-            th {
-                background-color: #e9ecef;
+            thead {
+                display: table-header-group;
+                /* Header berulang di halaman baru */
+            }
+
+            /* Styling Header Tabel untuk Print (Override Tailwind) */
+            thead th {
+                background-color: #e5e7eb !important;
+                /* Abu-abu muda */
+                color: black !important;
+                font-weight: bold !important;
+                text-transform: uppercase;
+                text-align: center !important;
+                border: 1px solid #000 !important;
+            }
+
+            tr {
+                page-break-inside: avoid;
+            }
+
+            .page-break {
+                page-break-after: always;
+            }
+
+            /* Garis Bawah Kop Surat (Double Line Style) */
+            .kop-separator {
+                border-bottom: 3px double #000 !important;
+                margin-bottom: 20px !important;
+                padding-bottom: 10px !important;
+            }
+
+            .signature-section {
+                page-break-inside: avoid;
+                /* Mencegah tanda tangan terpotong halaman */
+                margin-top: 30px !important;
+                padding-right: 20px;
+            }
+
+            /* Judul Khusus Print */
+            .print-title-block {
+                display: block !important;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+
+            .print-title-main {
+                font-size: 14pt;
                 font-weight: bold;
-                text-align: center;
-            }
-
-            .kop-surat {
-                text-align: center;
-                margin-bottom: 30px;
-            }
-
-            .kop-surat h2 {
-                font-size: 18pt;
+                text-transform: uppercase;
                 margin-bottom: 5px;
             }
 
-            .kop-surat p {
+            .print-title-sub {
                 font-size: 12pt;
-                margin-top: 0;
             }
 
-            .tanda-tangan {
-                margin-top: 50px;
-                display: flex;
-                justify-content: space-between;
-            }
-
-            .ttd-box {
-                width: 45%;
-                text-align: center;
-            }
-
-            /* Hapus background dan border dari card di mode cetak */
-            .card-summary,
-            .alert {
-                border: none !important;
-                box-shadow: none !important;
-                margin-bottom: 0 !important;
-            }
-
-            .table-success {
-                background-color: #e9ecef !important;
-                -webkit-print-color-adjust: exact;
-                color-adjust: exact;
-            }
-
-            /* Agar total jam kerja rata kanan */
-            .text-end {
-                text-align: right !important;
-            }
-
-            .fw-bold {
-                font-weight: bold !important;
+            /* Sembunyikan judul layar saat print */
+            .screen-title {
+                display: none !important;
             }
         }
     </style>
 </head>
 
-<body>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
 
-    <nav class="navbar navbar-dark dashboard-header print-hide">
-        <div class="container">
-            <h1 class="navbar-brand mb-0 h1"><i class="fas fa-chart-line me-2"></i> Dashboard Kinerja Karyawan</h1>
-            <a href="scan.html" class="btn btn-outline-light btn-sm"><i class="fas fa-sign-out-alt me-1"></i> Ke
-                Terminal Absensi</a>
-        </div>
-    </nav>
-
-    <div class="container my-4">
-
-        <div class="kop-surat print-only">
-            <h2>LAPORAN REKAPITULASI ABSENSI </h2>
-            <p>
-            <h2>PUSKESMAS WANA</h2>
-            </p>
-            <hr style="border-top: 2px solid black;">
-            <p>PERIODE: <span id="periodeCetak">Semua Periode</span></p>
-        </div>
-
-        <div id="statusMessage" class="alert alert-info text-center print-hide" role="alert">
-            <i class="fas fa-info-circle me-2"></i> Data sedang dimuat...
-        </div>
-
-        <div class="row g-4 mb-5 print-hide">
-            <div class="col-md-4">
-                <div class="card p-3 card-summary">
-                    <h5>Total Karyawan</h5>
-                    <p class="fs-2 mb-0 fw-bold" id="totalKaryawan">0</p>
-                    <small class="text-muted">Periode: <span id="periodeDitampilkan">Semua Periode</span></small>
+    <!-- Navbar / Header Instansi -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-30 no-print shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <!-- Logo / Icon -->
+                    <div
+                        class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md transform transition hover:scale-105">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
+                            </path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-extrabold text-slate-800 leading-tight tracking-tight">PUSKESMAS WANA
+                        </h1>
+                        <p class="text-xs text-emerald-600 font-semibold tracking-wide uppercase">Sistem Informasi
+                            Absensi Biometrik</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="/scan.html"
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:text-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition shadow-sm">
+                        <svg class="mr-2 -ml-1 h-4 w-4 text-gray-500" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Kembali
+                    </a>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card p-3 card-summary">
-                    <h5>Total Jam Kerja</h5>
-                    <p class="fs-2 mb-0 fw-bold text-success" id="totalJamKerja">0.00 H</p>
-                    <small class="text-muted">Total waktu kerja agregat</small>
-                </div>
+        </div>
+    </header>
+
+    <!-- KOP SURAT (Hanya Tampil Saat Print) -->
+    <div class="hidden print:block text-center mb-6 pt-2 mx-4 kop-separator relative">
+        <!-- Placeholder Logo (Opsional: Bisa diaktifkan jika ada file gambar) -->
+        <!-- <img src="logo_lampung_timur.png" style="position: absolute; left: 0; top: 0; height: 75px;"> -->
+
+        <h3 class="text-lg font-bold uppercase leading-tight">PEMERINTAH KABUPATEN LAMPUNG TIMUR</h3>
+        <h3 class="text-lg font-bold uppercase leading-tight">DINAS KESEHATAN</h3>
+        <h1 class="text-3xl font-extrabold uppercase leading-tight mt-1">UPTD PUSKESMAS WANA</h1>
+        <p class="text-sm mt-1 italic">Alamat: Jl. Kesehatan No. 1, Desa Wana, Kec. Melinting, Kab. Lampung Timur -
+            34385</p>
+    </div>
+
+    <!-- Judul Khusus Print (Hidden di Layar) -->
+    <div class="hidden print-title-block">
+        <h2 class="print-title-main">Laporan Rekapitulasi Kehadiran</h2>
+        <p class="print-title-sub">Periode: <span id="printPeriodeLabel"></span></p>
+    </div>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Title Section -->
+        <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 screen-title">
+            <div>
+                <h2 class="text-3xl font-bold text-slate-900 tracking-tight">Rekapitulasi Kehadiran</h2>
+                <p class="text-sm text-slate-500 mt-1 flex items-center gap-2"><span
+                        class="w-2 h-2 rounded-full bg-emerald-500"></span> Laporan detail jam kerja pegawai per
+                    periode.</p>
             </div>
-            <div class="col-md-4">
-                <div class="card p-3 card-summary">
-                    <h5>Filter Periode</h5>
-                    <select id="periodeFilter" class="form-select form-select-lg mb-2">
-                        <option value="">Semua Periode</option>
+            <div class="flex items-center gap-3 no-print">
+                <div class="relative">
+                    <select id="periodeSelect"
+                        class="appearance-none bg-white border border-gray-300 text-gray-700 py-2.5 px-4 pr-10 rounded-lg leading-tight focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm text-sm font-medium transition cursor-pointer hover:border-emerald-400">
+                        <option>Memuat Periode...</option>
                     </select>
-                    <div class="d-flex justify-content-between">
-                        <button id="refreshButton" class="btn btn-primary btn-sm me-2"><i class="fas fa-sync-alt"></i>
-                            Refresh Data</button>
-                        <div class="dropdown">
-                            <button class="btn btn-success btn-sm dropdown-toggle" type="button" id="btnCetakDropdown"
-                                data-bs-toggle="dropdown" aria-expanded="false">
-                                Cetak Laporan
-                            </button>
-                            <ul class="dropdown-menu" aria-labelledby="btnCetakDropdown">
-                                <li><a class="dropdown-item" href="#" id="btnCetakPDF"><i
-                                            class="fas fa-file-pdf me-2"></i> Cetak PDF/Print</a></li>
-                                <li><a class="dropdown-item" href="#" id="btnExportCSV"><i
-                                            class="fas fa-file-csv me-2"></i> Export CSV</a></li>
-                            </ul>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                        </svg>
+                    </div>
+                </div>
+
+                <button id="btnRefresh"
+                    class="p-2.5 bg-white border border-gray-300 rounded-lg text-gray-500 hover:text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 transition shadow-sm"
+                    title="Refresh Data">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                        </path>
+                    </svg>
+                </button>
+
+                <button id="btnPrint"
+                    class="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-md text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition transform hover:-translate-y-0.5">
+                    <svg class="mr-2 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6m-4-2v-4m-4-2h8m-4-2a5 5 0 01-5-5h10a5 5 0 01-5 5z">
+                        </path>
+                    </svg>
+                    Cetak Laporan
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-8 no-print">
+            <!-- Card 1 -->
+            <div
+                class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-lg bg-emerald-100 p-3">
+                                <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 005.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                                    </path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate uppercase tracking-wider">Total
+                                    Pegawai</dt>
+                                <dd class="flex items-baseline">
+                                    <div id="totalRecords" class="text-3xl font-bold text-slate-800">0</div>
+                                    <div
+                                        class="ml-2 flex items-baseline text-sm font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                        Orang
+                                    </div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div
+                class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-lg bg-blue-100 p-3">
+                                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate uppercase tracking-wider">Total
+                                    Jam Kerja</dt>
+                                <dd class="flex items-baseline">
+                                    <div id="grandTotalHours" class="text-3xl font-bold text-slate-800">0.00</div>
+                                    <div
+                                        class="ml-2 flex items-baseline text-sm font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                                        Jam
+                                    </div>
+                                </dd>
+                            </dl>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <h3 class="mb-3">Laporan Bulanan</h3>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped" id="rekapTable">
-                <thead>
-                    <tr>
-                        <th style="width: 10%;">ID KARYAWAN</th>
-                        <th style="width: 35%;">NAMA</th>
-                        <th style="width: 25%;">PERIODE BULAN</th>
-                        <th style="width: 30%;" class="text-end">TOTAL JAM KERJA (H)</th>
-                    </tr>
-                </thead>
-                <tbody id="rekapTableBody">
-                    <tr>
-                        <td colspan="4" class="text-center">Memuat data...</td>
-                    </tr>
-                </tbody>
-                <tfoot id="rekapTableFooter">
-                </tfoot>
-            </table>
-        </div>
-
-        <div class="tanda-tangan print-only">
-            <div class="ttd-box text-start">
-                <p>Mengetahui,</p>
-                <p class="fw-bold" id="jabatanKepala">Kepala Bagian Operasional</p>
-                <br><br>
-                <p class="fw-bold text-decoration-underline" id="namaKepala">Fulan Bin Fulan</p>
-                <p>NIP. <span id="nipKepala">198001012005051001</span></p>
+        <!-- Table Container -->
+        <div class="bg-white shadow-lg rounded-xl border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-emerald-600 text-white">
+                        <tr>
+                            <th scope="col"
+                                class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-emerald-50">
+                                ID Pegawai</th>
+                            <th scope="col"
+                                class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-emerald-50">
+                                Nama Lengkap</th>
+                            <th scope="col"
+                                class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-emerald-50">
+                                Periode</th>
+                            <th scope="col"
+                                class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-emerald-50">
+                                Total Jam (Desimal)</th>
+                            <th scope="col"
+                                class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-emerald-50">
+                                Durasi (Jam:Menit:Detik)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rekapTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Data Rows Injected Here -->
+                    </tbody>
+                </table>
             </div>
 
-            <div class="ttd-box text-end">
-                <p><span id="kotaCetak">Lampung Timur</span>, <span id="tanggalCetak">14 Desember 2025</span></p>
-                <p>Dibuat oleh,</p>
-                <p class="fw-bold" id="jabatanKtu">Kepala Tata Usaha</p>
-                <br><br>
-                <p class="fw-bold text-decoration-underline" id="namaKtu">Ani Binti Anu</p>
-                <p>NIP. <span id="nipKtu">199002022010062002</span></p>
+            <!-- Pagination Controls -->
+            <div class="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6 no-print">
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Menampilkan <span class="font-medium" id="pageStart">0</span> sampai <span
+                                class="font-medium" id="pageEnd">0</span> dari <span class="font-medium"
+                                id="totalItems">0</span> data
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <button id="btnPrev"
+                                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                    fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            <button id="btnNext"
+                                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                    fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </nav>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <footer class="text-center py-4 text-muted print-hide">
-            &copy; 2025 Biometric Attendance System | Modern Dashboard
-        </footer>
+        <!-- Tanda Tangan (Hanya Print) -->
+        <div class="hidden print:flex justify-end mt-16 mx-8 signature-section">
+            <div class="text-center">
+                <p class="mb-20">Wana, <span id="printDateSignature"></span></p>
+                <p class="font-bold underline">KEPALA PUSKESMAS WANA</p>
+                <p>NIP. ...........................</p>
+            </div>
+        </div>
 
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loadingIndicator"
+        class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden transition-opacity">
+        <div class="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-3"></div>
+            <p class="text-gray-700 font-medium">Memuat Data...</p>
+        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="rekap.js"></script>
+    <script>
+        // Script tambahan khusus untuk tanggal tanda tangan saat print
+        window.addEventListener('beforeprint', () => {
+            const now = new Date();
+            const options = { day: 'numeric', month: 'long', year: 'numeric' };
+            document.getElementById('printDateSignature').textContent = now.toLocaleDateString('id-ID', options);
+
+            // Update Periode di Judul Print
+            const select = document.getElementById('periodeSelect');
+            const selectedText = select.options[select.selectedIndex]?.text || '-';
+            document.getElementById('printPeriodeLabel').textContent = selectedText;
+        });
+    </script>
 </body>
 
 </html>

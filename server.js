@@ -34,11 +34,11 @@ app.use((req, res, next) => {
 // --- 🛑 KONFIGURASI WAKTU KERJA (WIB) & KEAMANAN 🛑 ---
 // Nilai sekarang diambil dari file .env, dengan fallback jika tidak ada
 
-const JAM_MASUK_START_H = parseInt(process.env.JAM_MASUK_START_H || '7');
-const JAM_MASUK_START_M = parseInt(process.env.JAM_MASUK_START_M || '25');
+const JAM_MASUK_START_H = parseInt(process.env.JAM_MASUK_START_H || '21');
+const JAM_MASUK_START_M = parseInt(process.env.JAM_MASUK_START_M || '21');
 
-const JAM_MASUK_END_H = parseInt(process.env.JAM_MASUK_END_H || '7');
-const JAM_MASUK_END_M = parseInt(process.env.JAM_MASUK_END_M || '45');
+const JAM_MASUK_END_H = parseInt(process.env.JAM_MASUK_END_H || '22');
+const JAM_MASUK_END_M = parseInt(process.env.JAM_MASUK_END_M || '21');
 const JAM_PULANG_START_H = parseInt(process.env.JAM_PULANG_START_H || '14');
 const JAM_PULANG_START_M = parseInt(process.env.JAM_PULANG_START_M || '0');
 const JAM_KERJA_STANDAR_H = parseFloat(process.env.JAM_KERJA_STANDAR_H || '6.5');
@@ -138,9 +138,9 @@ app.post('/absensi', async (req, res) => {
         if (hangingAbsensi.length > 0) {
 
             const waktuMasukLama = new Date(hangingAbsensi[0].waktu_absensi);
-            const waktuPulangOtomatis = new Date(waktuMasukLama);
-            // Set waktu pulang default jam 14:00:00 
-            waktuPulangOtomatis.setHours(14, 0, 0); 
+            // Hitung waktu pulang otomatis: Waktu Masuk + 6.5 Jam (JAM_KERJA_STANDAR_H)
+            const durasiMs = JAM_KERJA_STANDAR_H * 60 * 60 * 1000;
+            const waktuPulangOtomatis = new Date(waktuMasukLama.getTime() + durasiMs);
             const waktuPulangDefaultSQL = toSqlDatetime(waktuPulangOtomatis);
             const jamKerjaDefault = JAM_KERJA_STANDAR_H.toFixed(2);
             
@@ -231,29 +231,31 @@ app.post('/absensi', async (req, res) => {
             // --- LOGIKA PULANG (PENOLAKAN DULU) ---
             
             const targetStartPulang = (JAM_PULANG_START_H * 60) + JAM_PULANG_START_M;
+            let isTooEarly = false;
 
-            if (currentTotalMinutes < targetStartPulang) {
-                
-                if (currentHour >= 10 && currentHour < 12) { 
-                    const startStr = `${String(JAM_PULANG_START_H).padStart(2,'0')}:${String(JAM_PULANG_START_M).padStart(2,'0')}`;
-                    return res.json({ 
-                        success: false, 
-                        message: `⛔ Absen PULANG Ditolak. Dimulai jam ${startStr}.`, 
-                        statusColor: 'red', 
-                        result_code: 'TOO_EARLY_OUT',
-                        nama: karyawanName,
-                        jabatan: karyawanJabatan,
-                        foto: fotoBase64
-                    });
+            // Cek apakah Shift Malam (Masuk > Pulang, misal 21:00 - 05:00)
+            if (JAM_MASUK_START_H > JAM_PULANG_START_H) {
+                // Shift Malam:
+                // 1. Jika waktu sekarang >= (Jam Masuk - 3 jam), berarti masih awal shift (Malam) -> Too Early
+                // 2. Jika waktu sekarang < Target Pulang, berarti pagi tapi belum waktunya -> Too Early
+                const masukThreshold = (JAM_MASUK_START_H - 3) * 60;
+                if (currentTotalMinutes >= masukThreshold || currentTotalMinutes < targetStartPulang) {
+                    isTooEarly = true;
                 }
+            } else {
+                // Shift Normal (Pagi - Sore): Cukup cek jika kurang dari target pulang
+                if (currentTotalMinutes < targetStartPulang) {
+                    isTooEarly = true;
+                }
+            }
 
-                // Fake Success untuk jam kerja normal 
-                // 🛑 PENYESUAIAN 2: Gunakan statusColor 'yellow' untuk 'Absen Lanjutan/Konfirmasi Ulang' 
+            if (isTooEarly) {
+                const startStr = `${String(JAM_PULANG_START_H).padStart(2,'0')}:${String(JAM_PULANG_START_M).padStart(2,'0')}`;
                 return res.json({ 
-                    success: true, 
-                    message: `Absen MASUK telah tercatat. Anda sedang dalam masa kerja.`, // Pemicu Absen Lanjutan
-                    statusColor: 'yellow', 
-                    result_code: 'STATUS_CONFIRMED',
+                    success: false, 
+                    message: `⛔ ABSEN PULANG Ditolak. Jadwal Pulang baru dimulai pukul ${startStr} WIB.`, 
+                    statusColor: 'red', 
+                    result_code: 'TOO_EARLY_OUT',
                     nama: karyawanName,
                     jabatan: karyawanJabatan,
                     foto: fotoBase64
@@ -264,6 +266,11 @@ app.post('/absensi', async (req, res) => {
             if (lastMasukTime) {
                 const diff_ms = currentTime.getTime() - new Date(lastMasukTime).getTime();
                 const jamKerja = (diff_ms / (1000 * 60 * 60)).toFixed(2);
+                
+                // Format jam untuk ditampilkan di layar (Bukti perhitungan Real)
+                const masukTime = new Date(lastMasukTime);
+                const masukStr = `${String(masukTime.getHours()).padStart(2,'0')}:${String(masukTime.getMinutes()).padStart(2,'0')}`;
+                const pulangStr = `${String(currentTime.getHours()).padStart(2,'0')}:${String(currentTime.getMinutes()).padStart(2,'0')}`;
 
                 // Absen PULANG menyertakan kolom 'keterangan' dengan nilai NULL
                 await connection.execute('INSERT INTO absensi (id_karyawan, tipe_absensi, waktu_absensi, jam_kerja, keterangan) VALUES (?, ?, ?, ?, NULL)', 
@@ -272,7 +279,7 @@ app.post('/absensi', async (req, res) => {
                 // 🛑 PENYESUAIAN 3: Pesan harus mengandung 'telah tercatat' dan 'PULANG' untuk memicu tampilan kustom Absen Pulang
                 return res.json({ 
                     success: true, 
-                    message: `✅ Absensi PULANG atas nama **${karyawanName}** telah tercatat. Total jam kerja: ${jamKerja} Jam`, 
+                    message: `✅ Absensi PULANG atas nama **${karyawanName}** telah tercatat. Durasi: ${jamKerja} Jam (${masukStr} - ${pulangStr})`, 
                     statusColor: 'green', 
                     result_code: 'CHECK_OUT_SUCCESS',
                     nama: karyawanName,
@@ -302,22 +309,24 @@ app.get('/api/rekap_data', async (req, res) => {
         const periodeFilter = req.query.periode;
         let sql = `
             SELECT 
-                id_karyawan, 
-                nama, 
-                CONCAT(Tahun, '-', LPAD(Bulan, 2, '0')) AS periode_bulan,
-                Total_Jam_Kerja AS total_jam_kerja_decimal,
-                SEC_TO_TIME(Total_Jam_Kerja * 3600) AS total_jam_kerja_hms 
-            FROM rekap_gaji_bulanan
+                a.id_karyawan, 
+                k.nama, 
+                DATE_FORMAT(a.waktu_absensi, '%Y-%m') AS periode_bulan,
+                COALESCE(SUM(a.jam_kerja), 0) AS total_jam_kerja_decimal,
+                SEC_TO_TIME(SUM(a.jam_kerja) * 3600) AS total_jam_kerja_hms 
+            FROM absensi a
+            JOIN karyawan k ON a.id_karyawan = k.id_karyawan
+            WHERE a.tipe_absensi = 'PULANG'
         `;
         const params = [];
 
         if (periodeFilter && periodeFilter.length === 7 && periodeFilter.includes('-')) {
             const [tahun, bulan] = periodeFilter.split('-');
-            sql += ' WHERE Tahun = ? AND Bulan = ?';
-            params.push(tahun, parseInt(bulan));
+            sql += ' AND YEAR(a.waktu_absensi) = ? AND MONTH(a.waktu_absensi) = ?';
+            params.push(tahun, bulan);
         }
 
-        sql += ' ORDER BY Tahun DESC, Bulan DESC, id_karyawan ASC;';
+        sql += ' GROUP BY a.id_karyawan, k.nama, periode_bulan ORDER BY periode_bulan DESC, a.id_karyawan ASC;';
         
         const [rows] = await connection.execute(sql, params);
         res.json({ success: true, data: rows });
@@ -337,9 +346,10 @@ app.get('/api/rekap_all_periodes', async (req, res) => {
         connection = await pool.getConnection();
         const sql = `
             SELECT DISTINCT 
-                CONCAT(Tahun, '-', LPAD(Bulan, 2, '0')) AS periode_bulan
-            FROM rekap_gaji_bulanan
-            ORDER BY Tahun DESC, Bulan DESC;`;
+                DATE_FORMAT(waktu_absensi, '%Y-%m') AS periode_bulan
+            FROM absensi
+            WHERE tipe_absensi = 'PULANG'
+            ORDER BY periode_bulan DESC;`;
         
         const [rows] = await connection.execute(sql);
         res.json({ success: true, data: rows });

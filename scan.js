@@ -728,13 +728,13 @@ function animateTitle() {
         mainTitle.style.perspective = '1000px'; // Efek 3D
         
         // GAYA HURUF BARU: Lebih tebal, solid, dan futuristik
-        mainTitle.style.fontFamily = '"Arial Black", "Impact", "Segoe UI", sans-serif';
-        mainTitle.style.fontFamily = '"Rajdhani", "Arial Black", "Impact", sans-serif';
+        mainTitle.style.fontFamily = '"Rajdhani", "Orbitron", "Arial Black", sans-serif';
         mainTitle.style.fontWeight = '900';
-        mainTitle.style.letterSpacing = '2px';
+        mainTitle.style.fontSize = 'clamp(2rem, 4vw, 3.5rem)'; // Responsif Besar
+        mainTitle.style.letterSpacing = '6px';
         mainTitle.style.textTransform = 'uppercase';
         // Hapus filter drop-shadow container agar tidak tumpang tindih dengan text-shadow per huruf
-        mainTitle.style.filter = 'none'; 
+        mainTitle.style.filter = 'drop-shadow(0 0 15px rgba(0,255,255,0.15))'; 
 
         for (let i = 0; i < targetText.length; i++) {
             const span = document.createElement('span');
@@ -751,8 +751,8 @@ function animateTitle() {
             }
             
             // Style dasar span
-            span.style.color = '#008B8B'; // Dark Cyan (Base state)
-            span.style.textShadow = '0 0 5px rgba(0, 255, 255, 0.3)';
+            span.style.color = '#00FFFF'; 
+            span.style.textShadow = '0 0 10px rgba(0, 255, 255, 0.5)';
             span.style.transition = 'transform 0.1s, color 0.1s, text-shadow 0.1s';
             span.style.transformStyle = 'preserve-3d';
             
@@ -765,16 +765,14 @@ function animateTitle() {
     // Clear interval jika ada (disimpan di properti elemen untuk mencegah tumpuk)
     if (mainTitle.animationInterval) clearInterval(mainTitle.animationInterval);
 
-    // Loop animasi: Efek "Metallic Shine & Glitch"
+    // Loop animasi: Efek "Quantum Glitch & Neon Flow"
     mainTitle.animationInterval = setInterval(() => {
         tick++;
         const spans = mainTitle.children;
+        const time = Date.now() / 1000;
         
-        // 1. Gelombang Cahaya Utama (Lambat)
-        const wave1 = (tick * 0.15) % (spans.length + 8) - 4;
-        
-        // 2. Kilatan Cepat (Refleksi Tajam)
-        const wave2 = (tick * 0.4) % (spans.length + 20) - 10;
+        // Gelombang Cahaya Bergerak
+        const wavePos = (time * 2.5) % (spans.length + 6) - 3;
 
         for (let i = 0; i < spans.length; i++) {
             const span = spans[i];
@@ -783,29 +781,33 @@ function animateTitle() {
             if (original === ' ') continue;
 
             let char = original;
-            let color = '#008B8B'; // Base: Dark Cyan
-            let textShadow = '0 0 5px rgba(0, 255, 255, 0.3)';
+            let color = '#00FFFF'; // Base: Cyan Neon
+            let textShadow = '0 0 8px rgba(0, 255, 255, 0.6)';
             let transform = 'scale(1) translateZ(0px)';
-            let opacity = 0.8;
+            let opacity = 0.8 + (Math.sin(time * 3 + i) * 0.1); // Breathing effect
 
             // Hitung jarak dari gelombang
-            const dist1 = Math.abs(i - wave1);
-            const dist2 = Math.abs(i - wave2);
+            const dist = Math.abs(i - wavePos);
 
-            // Efek Gelombang Utama (Glow)
-            if (dist1 < 3) {
-                const intensity = 1 - (dist1 / 3);
-                color = '#FFD700'; // Gold
-                textShadow = `0 0 ${10 + (intensity * 15)}px #FFD700`;
-                transform = `scale(${1 + (intensity * 0.1)}) translateZ(${intensity * 10}px)`;
+            // Efek Highlight (Passing Beam)
+            if (dist < 1.5) {
+                color = '#FFFFFF'; // White Hot
+                textShadow = '0 0 20px #FFFFFF, 0 0 40px #00FFFF, 0 0 60px #0088FF';
+                transform = 'scale(1.2) translateZ(20px)';
                 opacity = 1;
+            } else if (dist < 3) {
+                color = '#0088FF'; // Blue Trail
+                textShadow = '0 0 15px #0088FF';
+                transform = 'scale(1.1) translateZ(10px)';
             }
 
-            // Efek Kilatan Tajam (Refleksi Metalik)
-            if (dist2 < 1.5) {
-                color = '#FFFFFF';
-                textShadow = '0 0 10px #FFFFFF, 0 0 20px #FFD700, 0 0 40px #DAA520';
-                transform = 'scale(1.15) translateZ(20px)';
+            // Efek Glitch Acak (Digital Noise)
+            if (Math.random() < 0.01) {
+                const glitchChars = "X@#$%=+<>?01";
+                char = glitchChars[Math.floor(Math.random() * glitchChars.length)];
+                color = '#FF0055'; // Error Red
+                textShadow = '2px 0 0 #00FFFF, -2px 0 0 #FF0055'; // Chromatic Aberration
+                transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
                 opacity = 1;
             }
 
