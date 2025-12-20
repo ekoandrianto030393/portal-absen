@@ -11,6 +11,8 @@
     <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+    <!-- FONT SCI-FI: Rajdhani -->
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 
     <style>
         /* --- 1. GLOBAL STYLES & FONTS --- */
@@ -18,12 +20,26 @@
             margin: 0;
             overflow: hidden;
             /* Mencegah scrollbar ganda */
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-family: 'Rajdhani', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
             background-color: #05050A;
             /* Dark Abyss */
             color: #00FFFF;
             /* Default Neon Cyan */
             cursor: crosshair;
+        }
+
+        /* EFEK CRT SCANLINE (Garis TV Tabung) */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.15) 50%, rgba(0, 0, 0, 0.15));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.7;
         }
 
         /* --- 2. LAYOUT LAYERS --- */
@@ -56,7 +72,21 @@
 
         /* --- 3. WIDGET PANELS (KOTAK KIRI & KANAN) --- */
         .widget-panel {
-            background-color: rgba(6, 15, 20, 0.85);
+            /* Tech Corners: Aksen siku di setiap sudut menggunakan Gradient */
+            background:
+                linear-gradient(to right, #00FFFF 2px, transparent 2px) 0 0,
+                linear-gradient(to bottom, #00FFFF 2px, transparent 2px) 0 0,
+                linear-gradient(to left, #00FFFF 2px, transparent 2px) 100% 0,
+                linear-gradient(to bottom, #00FFFF 2px, transparent 2px) 100% 0,
+                linear-gradient(to right, #00FFFF 2px, transparent 2px) 0 100%,
+                linear-gradient(to top, #00FFFF 2px, transparent 2px) 0 100%,
+                linear-gradient(to left, #00FFFF 2px, transparent 2px) 100% 100%,
+                linear-gradient(to top, #00FFFF 2px, transparent 2px) 100% 100%,
+                rgba(6, 15, 20, 0.85);
+            /* Warna dasar panel */
+            background-repeat: no-repeat;
+            background-size: 10px 10px, 10px 10px, 10px 10px, 10px 10px, 10px 10px, 10px 10px, 10px 10px, 10px 10px, 100% 100%;
+
             border: 1px solid #00FFFF;
             padding: 1rem;
             border-radius: 4px;
@@ -413,6 +443,7 @@
 <body>
 
     <canvas id="renderCanvas"></canvas>
+    <div class="scanlines"></div> <!-- Overlay CRT -->
 
     <div id="main-content" class="w-full p-2 lg:p-4">
 
@@ -424,39 +455,119 @@
         <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 mt-0 p-2">
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
-                <div class="widget-panel relative overflow-hidden group">
-                    <h2 class="widget-title flex justify-between items-center relative z-10">
-                        <span>:: QUANTUM CHRONO ::</span>
-                        <span class="text-[10px] text-green-400 animate-pulse">● SYNC</span>
-                    </h2>
+                <div class="widget-panel relative overflow-hidden group p-0 border-cyan-500/50">
+                    <!-- Tech Background -->
+                    <div class="absolute inset-0 opacity-30 pointer-events-none"
+                        style="background-image: radial-gradient(circle at 50% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 60%), repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.05) 3px); background-size: 100% 100%, 100% 4px;">
+                    </div>
 
-                    <div class="relative z-10 flex flex-col items-center justify-center py-1">
-                        <div class="flex items-baseline gap-1">
-                            <span id="clock-h"
-                                class="text-6xl font-black text-cyan-300 leading-none tracking-tighter drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]">00</span>
-                            <span class="text-2xl text-cyan-600 animate-pulse">:</span>
-                            <span id="clock-m"
-                                class="text-6xl font-black text-cyan-300 leading-none tracking-tighter drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]">00</span>
-                            <span class="text-2xl text-cyan-600 animate-pulse">:</span>
-                            <span id="clock-s"
-                                class="text-6xl font-black text-white leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]">00</span>
+                    <!-- Header with JS Hook -->
+                    <div
+                        class="relative z-10 flex justify-between items-center px-4 py-2 bg-black/40 border-b border-cyan-500/30 backdrop-blur-md">
+                        <h2
+                            class="widget-title text-sm font-bold text-cyan-400 tracking-[0.2em] m-0 p-0 border-none shadow-none flex items-center gap-2">
+                            <span>QUANTUM CHRONO</span>
+                        </h2>
+                        <div class="flex items-center gap-1">
+                            <span
+                                class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_5px_#00FF00]"></span>
+                            <span class="text-[9px] font-mono text-cyan-600">SYNC.OK</span>
+                        </div>
+                    </div>
+
+                    <!-- Main Clock Display -->
+                    <div class="relative z-10 flex flex-col items-center justify-center py-6">
+
+                        <!-- Rotating Rings (CSS Animation) -->
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+                            <div
+                                class="w-56 h-56 border border-cyan-500/30 rounded-full animate-[spin_20s_linear_infinite]">
+                            </div>
+                            <div
+                                class="w-48 h-48 border border-dashed border-cyan-500/40 rounded-full animate-[spin_15s_linear_infinite_reverse]">
+                            </div>
+                            <div class="w-64 h-64 border border-cyan-500/10 rounded-full animate-pulse"></div>
                         </div>
 
-                        <div
-                            class="w-full flex justify-between items-center mt-2 px-1 border-t border-cyan-800/50 pt-1">
-                            <div id="clock-date" class="text-xs font-mono text-cyan-500 tracking-widest">YYYY.MM.DD
+                        <!-- Time Digits -->
+                        <div class="flex items-baseline gap-2 relative z-20">
+                            <!-- Hours -->
+                            <div
+                                class="flex flex-col items-center group-hover:scale-105 transition-transform duration-500">
+                                <span id="clock-h"
+                                    class="text-6xl lg:text-7xl font-black text-white tracking-tighter drop-shadow-[0_0_15px_rgba(0,255,255,0.9)]"
+                                    style="font-family: 'Courier New', monospace; -webkit-text-stroke: 1px rgba(0,255,255,0.3);">00</span>
+                                <span class="text-[9px] text-cyan-600 tracking-[0.3em] mt-[-5px]">HRS</span>
                             </div>
-                            <div class="flex items-center gap-1">
-                                <span class="text-[8px] text-cyan-800">MS</span>
-                                <span id="clock-ms"
-                                    class="text-lg font-mono text-amber-400 w-12 text-right leading-none">000</span>
+
+                            <div class="flex flex-col justify-center h-16 space-y-2 opacity-80">
+                                <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></div>
+                                <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse delay-75"></div>
+                            </div>
+
+                            <!-- Minutes -->
+                            <div
+                                class="flex flex-col items-center group-hover:scale-105 transition-transform duration-500 delay-75">
+                                <span id="clock-m"
+                                    class="text-6xl lg:text-7xl font-black text-white tracking-tighter drop-shadow-[0_0_15px_rgba(0,255,255,0.9)]"
+                                    style="font-family: 'Courier New', monospace; -webkit-text-stroke: 1px rgba(0,255,255,0.3);">00</span>
+                                <span class="text-[9px] text-cyan-600 tracking-[0.3em] mt-[-5px]">MIN</span>
+                            </div>
+
+                            <div class="flex flex-col justify-center h-16 space-y-2 opacity-80">
+                                <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></div>
+                                <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse delay-75"></div>
+                            </div>
+
+                            <!-- Seconds (Highlighted) -->
+                            <div
+                                class="flex flex-col items-center relative group-hover:scale-105 transition-transform duration-500 delay-150">
+                                <div class="absolute inset-0 bg-cyan-400/10 blur-2xl rounded-full"></div>
+                                <span id="clock-s"
+                                    class="text-6xl lg:text-7xl font-black text-cyan-300 tracking-tighter drop-shadow-[0_0_25px_#00FFFF]"
+                                    style="font-family: 'Courier New', monospace;">00</span>
+                                <span class="text-[9px] text-cyan-400 tracking-[0.3em] mt-[-5px]">SEC</span>
+                            </div>
+                        </div>
+
+                        <!-- Sub-Data Row -->
+                        <div class="w-full flex justify-between items-end px-6 mt-6 relative z-20">
+                            <!-- Date Block -->
+                            <div class="flex flex-col items-start">
+                                <div class="flex items-center gap-1 mb-1">
+                                    <div class="w-1 h-1 bg-cyan-500"></div>
+                                    <span class="text-[8px] text-cyan-700 tracking-widest">CALENDAR.SYS</span>
+                                </div>
+                                <div id="clock-date"
+                                    class="text-xs font-bold font-mono text-cyan-400 tracking-wider pl-2 border-l-2 border-cyan-600/50">
+                                    YYYY.MM.DD
+                                </div>
+                            </div>
+
+                            <!-- Milliseconds Block -->
+                            <div class="flex flex-col items-end">
+                                <span class="text-[8px] text-cyan-700 tracking-widest mb-1">MS.OFFSET</span>
+                                <div
+                                    class="flex items-center gap-1 bg-black/60 px-3 py-1 rounded border border-cyan-800/60 shadow-[inset_0_0_10px_rgba(0,255,255,0.1)]">
+                                    <span id="clock-ms"
+                                        class="text-xl font-mono text-amber-400 w-12 text-right leading-none tracking-widest">000</span>
+                                    <span class="text-[8px] text-cyan-600">ms</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Progress Bar -->
-                    <div class="absolute bottom-0 left-0 h-0.5 bg-cyan-900 w-full">
-                        <div id="clock-bar" class="h-full bg-cyan-400 shadow-[0_0_10px_#00FFFF]" style="width: 0%">
+                    <!-- Bottom Status Bar -->
+                    <div
+                        class="relative z-10 bg-black/80 border-t border-cyan-800/50 px-3 py-1.5 flex justify-between items-center mt-auto">
+                        <div class="flex items-center gap-3 w-full">
+                            <span class="text-[8px] text-cyan-800 font-mono whitespace-nowrap">CYCLE LOAD</span>
+                            <div class="flex-grow h-1 bg-gray-900 rounded-full overflow-hidden relative">
+                                <div id="clock-bar"
+                                    class="h-full bg-gradient-to-r from-cyan-600 via-cyan-400 to-white w-0 shadow-[0_0_10px_#00FFFF] transition-all duration-100 ease-linear">
+                                </div>
+                            </div>
+                            <span class="text-[8px] text-cyan-600 font-mono whitespace-nowrap">UTC+7</span>
                         </div>
                     </div>
                 </div>
@@ -475,6 +586,7 @@
                             class="w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-cyan-400 bg-gray-800 flex items-center justify-center mb-2 p-2">
                             <img id="userPhotoDisplay"
                                 src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0idy00IGgtNCI+PHBhdGggZD0iTTggOGE0IDQgMCAxIDAgMC04IDQgNCAwIDAgMCAwIDh6bTAtMWEzIDMgMCAxIDEtNiAwIDMgMyAwIDAgMSA2IDB6TTggOWE1IDUgMCAwIDAtNSA1djJBNiA2IDAgMCAwIDggMjFhNiA2IDAgMCAwIDYtNnYtMmE1IDUgMCAwIDAtNS01ek04IDE5YTUgNSAwIDAgMS00LTJ2LTFhNCA0IDAgMCAxIDQtNGM0IDAgMy44MiA0IDQgNGMtLjE4LjMyLS4zOC42My0uNTggLjkzQTUuMDAzIDUuMDAzIDAgMCAxIDggMTl6Ii8+PC9zdmc+"
+                                onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0idy00IGgtNCI+PHBhdGggZD0iTTggOGE0IDQgMCAxIDAgMC04IDQgNCAwIDAgMCAwIDh6bTAtMWEzIDMgMCAxIDEtNiAwIDMgMyAwIDAgMSA2IDB6TTggOWE1IDUgMCAwIDAtNSA1djJBNiA2IDAgMCAwIDggMjFhNiA2IDAgMCAwIDYtNnYtMmE1IDUgMCAwIDAtNS01ek04IDE5YTUgNSAwIDAgMS00LTJ2LTFhNCA0IDAgMCAxIDQtNGM0IDAgMy44MiA0IDQgNGMtLjE4LjMyLS4zOC42My0uNTggLjkzQTUuMDAzIDUuMDAzIDAgMCAxIDggMTl6Ii8+PC9zdmc+'"
                                 alt="User Photo" class="w-full h-full object-cover opacity-50">
                         </div>
 
@@ -570,224 +682,6 @@
 
         </div>
     </div>
-
-    <script>
-        // --- BABYLON.JS BACKGROUND SCRIPT ---
-        const renderCanvas = document.getElementById("renderCanvas");
-        const engine = new BABYLON.Engine(renderCanvas, true, { preserveDrawingBuffer: true, stencil: true });
-
-        const createScene = function () {
-            const scene = new BABYLON.Scene(engine);
-            scene.clearColor = new BABYLON.Color4(0.0, 0.0, 0.0, 1.0); // Absolute Black
-
-            // 1. CAMERA
-            const camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, Math.PI / 2.5, 20, BABYLON.Vector3.Zero(), scene);
-            // camera.attachControl(renderCanvas, true); // Uncomment jika ingin kontrol mouse
-            camera.wheelPrecision = 50;
-
-            // --- A. BACKGROUND: PROCEDURAL SKYBOX (CUSTOM SHADER) ---
-            BABYLON.Effect.ShadersStore["customSkyVertexShader"] = `
-                precision highp float;
-                attribute vec3 position;
-                uniform mat4 world;
-                uniform mat4 view;
-                uniform mat4 projection;
-                varying vec3 vPosition;
-                void main() {
-                    vec4 p = vec4(position, 1.0);
-                    vPosition = position;
-                    gl_Position = projection * view * world * p;
-                }
-            `;
-
-            BABYLON.Effect.ShadersStore["customSkyFragmentShader"] = `
-                precision highp float;
-                varying vec3 vPosition;
-                uniform float time;
-                
-                float rand(vec2 co) {
-                    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-                }
-
-                void main() {
-                    vec3 dir = normalize(vPosition);
-                    
-                    // Procedural Stars
-                    float s = rand(dir.xy * 50.0 + dir.z * 50.0);
-                    float stars = step(0.995, s) * (0.5 + 0.5 * sin(time * 2.0 + s * 10.0));
-                    
-                    // Nebula / Atmosphere Gradient (Deep Blue/Purple)
-                    float atmosphere = max(0.0, dot(dir, vec3(0.0, 1.0, 0.0)));
-                    vec3 skyColor = mix(vec3(0.0, 0.0, 0.05), vec3(0.05, 0.0, 0.1), atmosphere);
-                    
-                    gl_FragColor = vec4(skyColor + vec3(stars), 1.0);
-                }
-            `;
-
-            const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
-            const skyboxMaterial = new BABYLON.ShaderMaterial("skyBox", scene, {
-                vertex: "customSky",
-                fragment: "customSky",
-            }, {
-                attributes: ["position"],
-                uniforms: ["world", "view", "projection", "time"]
-            });
-            skyboxMaterial.backFaceCulling = false;
-            skybox.material = skyboxMaterial;
-
-
-            // --- B. FOUNDATION: HOLOGRAPHIC GRID (CUSTOM SHADER simulating Node Material) ---
-            BABYLON.Effect.ShadersStore["holoGridVertexShader"] = `
-                precision highp float;
-                attribute vec3 position;
-                attribute vec2 uv;
-                uniform mat4 world;
-                uniform mat4 view;
-                uniform mat4 projection;
-                varying vec3 vPosition;
-                varying vec2 vUV;
-                void main() {
-                    vPosition = position;
-                    vUV = uv;
-                    gl_Position = projection * view * world * vec4(position, 1.0);
-                }
-            `;
-
-            BABYLON.Effect.ShadersStore["holoGridFragmentShader"] = `
-                precision highp float;
-                varying vec3 vPosition;
-                varying vec2 vUV;
-                uniform float time;
-                uniform vec3 cameraPosition;
-
-                void main() {
-                    // Grid Logic
-                    float thickness = 0.05;
-                    
-                    // Moving Grid Effect
-                    float move = time * 0.5;
-                    
-                    float gridX = step(1.0 - thickness, fract(vPosition.x * 0.2));
-                    float gridZ = step(1.0 - thickness, fract(vPosition.z * 0.2));
-                    float grid = max(gridX, gridZ);
-
-                    // Distance Fade (Fresnel-like)
-                    float dist = distance(vPosition, cameraPosition);
-                    float alpha = max(0.0, 1.0 - dist / 60.0);
-                    
-                    // Color: Cyan/Teal
-                    vec3 color = vec3(0.0, 1.0, 1.0) * grid * 2.0;
-                    
-                    // Scanline Pulse
-                    float pulse = sin(vPosition.z * 0.5 - time * 2.0);
-                    color += vec3(0.0, 0.5, 1.0) * max(0.0, pulse) * 0.5 * alpha;
-
-                    if (alpha <= 0.01) discard;
-                    gl_FragColor = vec4(color, alpha * 0.8);
-                }
-            `;
-
-            const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 200, height: 200, subdivisions: 2 }, scene);
-            ground.position.y = -5;
-            const gridMat = new BABYLON.ShaderMaterial("gridMat", scene, {
-                vertex: "holoGrid",
-                fragment: "holoGrid",
-            }, {
-                attributes: ["position", "uv"],
-                uniforms: ["world", "view", "projection", "time", "cameraPosition"],
-                needAlphaBlending: true
-            });
-            ground.material = gridMat;
-
-
-            // --- C. ADDITION: VOLUMETRIC LIGHT SCATTERING (God Rays) ---
-            // Source Mesh (The "Sun" or "Core")
-            const sunMesh = BABYLON.MeshBuilder.CreateSphere("sun", { diameter: 2 }, scene);
-            sunMesh.position = new BABYLON.Vector3(0, 5, 30);
-            const sunMat = new BABYLON.StandardMaterial("sunMat", scene);
-            sunMat.emissiveColor = new BABYLON.Color3(1, 1, 1);
-            sunMat.disableLighting = true;
-            sunMesh.material = sunMat;
-
-            // VLS Post Process
-            const vls = new BABYLON.VolumetricLightScatteringPostProcess("vls", 1.0, camera, sunMesh, 100, BABYLON.Texture.BILINEAR_SAMPLINGMODE, engine, false);
-            vls.exposure = 0.3;
-            vls.decay = 0.96815;
-            vls.weight = 0.98767;
-            vls.density = 0.926;
-
-
-            // --- D. DEPTH: GPU PARTICLE SYSTEM ---
-            const particleSystem = new BABYLON.GPUParticleSystem("particles", { capacity: 50000 }, scene);
-
-            // Generate Texture for Particles
-            const particleTexture = new BABYLON.DynamicTexture("pTex", 64, scene);
-            const ctx = particleTexture.getContext();
-            ctx.beginPath();
-            ctx.arc(32, 32, 30, 0, 2 * Math.PI);
-            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-            ctx.fill();
-            particleTexture.update();
-            particleSystem.particleTexture = particleTexture;
-
-            // Emitter
-            particleSystem.emitter = new BABYLON.Vector3(0, 0, 0);
-            particleSystem.minEmitBox = new BABYLON.Vector3(-50, -20, -50);
-            particleSystem.maxEmitBox = new BABYLON.Vector3(50, 20, 50);
-
-            // Colors
-            particleSystem.color1 = new BABYLON.Color4(0.0, 1.0, 1.0, 1.0);
-            particleSystem.color2 = new BABYLON.Color4(0.5, 0.0, 1.0, 1.0);
-            particleSystem.colorDead = new BABYLON.Color4(0, 0, 0, 0.0);
-
-            // Size
-            particleSystem.minSize = 0.1;
-            particleSystem.maxSize = 0.3;
-
-            // Life
-            particleSystem.minLifeTime = 2.0;
-            particleSystem.maxLifeTime = 5.0;
-
-            // Emission
-            particleSystem.emitRate = 2000;
-
-            // Gravity & Speed
-            particleSystem.gravity = new BABYLON.Vector3(0, 0, 0);
-            particleSystem.minEmitPower = 0.5;
-            particleSystem.maxEmitPower = 1.5;
-            particleSystem.updateSpeed = 0.005;
-
-            particleSystem.start();
-
-
-            // --- ANIMATION LOOP ---
-            let time = 0;
-            scene.registerBeforeRender(() => {
-                time += 0.01;
-
-                // Update Uniforms
-                skyboxMaterial.setFloat("time", time);
-                gridMat.setFloat("time", time);
-                gridMat.setVector3("cameraPosition", camera.position);
-
-                // Animate Sun
-                sunMesh.position.x = Math.sin(time * 0.2) * 20;
-                sunMesh.position.y = 5 + Math.cos(time * 0.3) * 5;
-            });
-
-            return scene;
-        };
-
-        const scene = createScene();
-
-        engine.runRenderLoop(function () {
-            scene.render();
-        });
-
-        window.addEventListener("resize", function () {
-            engine.resize();
-        });
-    </script>
 
     <script src="scan.js"></script>
 

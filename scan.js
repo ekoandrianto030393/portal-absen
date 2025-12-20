@@ -87,6 +87,7 @@ function drawMatchLabel(ctx, box, label, color) {
     if (box.width < 100) fontSize = 18;
     
     ctx.font = `bold ${fontSize}px "Courier New", monospace`;
+    ctx.font = `bold ${fontSize}px "Rajdhani", "Courier New", monospace`;
     ctx.textAlign = 'center';
     ctx.strokeStyle = 'black';
     ctx.lineWidth = 1;
@@ -187,6 +188,7 @@ function drawDataTags(ctx, box, landmarks) {
     const fontSize = 12;
 
     ctx.font = `bold ${fontSize}px "Courier New", monospace`;
+    ctx.font = `bold ${fontSize}px "Rajdhani", "Courier New", monospace`;
     ctx.textAlign = 'left';
 
     const nose = landmarks.getNose()[0];
@@ -303,26 +305,35 @@ function updateSystemDiagnostics(confidence) {
 function updateDataStream() {
     if(!dataStream) return;
     
-    // Setup style agar horizontal (sekali jalan)
-    if (dataStream.style.whiteSpace !== 'nowrap') {
+    // Setup style agar memenuhi panel (Matrix style block)
+    if (dataStream.style.flexWrap !== 'wrap') {
         dataStream.innerHTML = '';
         dataStream.style.display = 'flex';
         dataStream.style.flexDirection = 'row';
+        dataStream.style.flexWrap = 'wrap'; // FILL THE PANEL
         dataStream.style.overflow = 'hidden';
-        dataStream.style.whiteSpace = 'nowrap';
-        dataStream.style.alignItems = 'center';
+        dataStream.style.alignContent = 'flex-start';
     }
 
     const chars = 'abcdefghijklmnopqrstuvwxyz';
-    const span = document.createElement('span');
-    span.textContent = chars[Math.floor(Math.random() * chars.length)];
-    span.className = 'text-cyan-500 text-xs font-mono';
-    span.style.minWidth = '10px';
-    span.style.textAlign = 'center';
     
-    dataStream.appendChild(span);
+    // Tambah beberapa karakter sekaligus agar terlihat cepat dan penuh
+    for (let i = 0; i < 4; i++) {
+        const span = document.createElement('span');
+        span.textContent = chars[Math.floor(Math.random() * chars.length)];
+        
+        // Style Gold & Huruf Kecil
+        span.className = 'text-xs font-mono';
+        span.style.color = '#FFD700'; // GOLD COLOR
+        span.style.textShadow = '0 0 4px rgba(255, 215, 0, 0.6)'; // Glow Gold
+        span.style.width = '10px'; // Fixed width
+        span.style.textAlign = 'center';
+        
+        dataStream.appendChild(span);
+    }
 
-    if (dataStream.children.length > 40) {
+    // Jaga agar panel penuh tapi tidak overflow memory (misal 400 karakter)
+    while (dataStream.children.length > 400) {
         dataStream.removeChild(dataStream.firstChild);
     }
 }
@@ -455,6 +466,7 @@ function animateTitle() {
 
             <!-- FOTO KANAN (Ganti URL di bawah ini dengan foto Anda) -->
             <img src="nama_file_foto_anda.jpg" 
+            <img src="${DEFAULT_PHOTO}" 
                  style="height: 80px; width: auto; border: 2px solid #FFD700; border-radius: 10px; object-fit: cover; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); animation: floatLogo 4s ease-in-out infinite reverse;">
         </div>
         <style>
@@ -478,6 +490,7 @@ function animateTitle() {
         
         // GAYA HURUF BARU: Lebih tebal, solid, dan futuristik
         mainTitle.style.fontFamily = '"Arial Black", "Impact", "Segoe UI", sans-serif';
+        mainTitle.style.fontFamily = '"Rajdhani", "Arial Black", "Impact", sans-serif';
         mainTitle.style.fontWeight = '900';
         mainTitle.style.letterSpacing = '2px';
         mainTitle.style.textTransform = 'uppercase';
@@ -1192,12 +1205,195 @@ async function processAttendance(karyawanId) {
     }
 }
 
+function enhanceQuantumTitle() {
+    const titles = document.querySelectorAll('.widget-title');
+    titles.forEach(title => {
+        if (title.textContent.includes('QUANTUM CHRONO')) {
+            const textSpan = title.querySelector('span');
+            if (textSpan) {
+                // Inject CSS khusus untuk efek laser merah pada QUANTUM
+                if (!document.getElementById('quantum-laser-css')) {
+                    const style = document.createElement('style');
+                    style.id = 'quantum-laser-css';
+                    style.innerHTML = `
+                        .quantum-text {
+                            position: relative;
+                            display: inline-block;
+                            color: #00FFFF;
+                        }
+                        .laser-beam-red {
+                            position: absolute;
+                            top: 0;
+                            left: -100%;
+                            width: 50%;
+                            height: 100%;
+                            background: linear-gradient(90deg, transparent, rgba(255, 0, 0, 0.8), #FF0000, rgba(255, 0, 0, 0.8), transparent);
+                            transform: skewX(-25deg);
+                            animation: laserPassRed 3s infinite cubic-bezier(0.4, 0.0, 0.2, 1);
+                            mix-blend-mode: screen;
+                            filter: drop-shadow(0 0 5px #FF0000);
+                        }
+                        @keyframes laserPassRed {
+                            0% { left: -100%; opacity: 0; }
+                            10% { opacity: 1; }
+                            90% { opacity: 1; }
+                            100% { left: 200%; opacity: 0; }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+                
+                textSpan.innerHTML = `:: <span class="quantum-text">QUANTUM<div class="laser-beam-red"></div></span> CHRONO ::`;
+            }
+        }
+    });
+}
+
+// --- BABYLON.JS BACKGROUND LOGIC (Dipindahkan dari scan.html) ---
+function initBackground3D() {
+    const renderCanvas = document.getElementById("renderCanvas");
+    if (!renderCanvas) return;
+
+    const engine = new BABYLON.Engine(renderCanvas, true, { preserveDrawingBuffer: true, stencil: true });
+
+    const createScene = function () {
+        const scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color4(0.0, 0.0, 0.0, 1.0); // Absolute Black
+
+        // 1. CAMERA
+        const camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, Math.PI / 2.5, 20, BABYLON.Vector3.Zero(), scene);
+        camera.wheelPrecision = 50;
+
+        // --- A. BACKGROUND: PROCEDURAL SKYBOX (CUSTOM SHADER) ---
+        BABYLON.Effect.ShadersStore["customSkyVertexShader"] = `
+            precision highp float;
+            attribute vec3 position;
+            uniform mat4 world;
+            uniform mat4 view;
+            uniform mat4 projection;
+            varying vec3 vPosition;
+            void main() {
+                vec4 p = vec4(position, 1.0);
+                vPosition = position;
+                gl_Position = projection * view * world * p;
+            }
+        `;
+
+        BABYLON.Effect.ShadersStore["customSkyFragmentShader"] = `
+            precision highp float;
+            varying vec3 vPosition;
+            uniform float time;
+            float rand(vec2 co) { return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453); }
+            void main() {
+                vec3 dir = normalize(vPosition);
+                float s = rand(dir.xy * 50.0 + dir.z * 50.0);
+                float stars = step(0.995, s) * (0.5 + 0.5 * sin(time * 2.0 + s * 10.0));
+                float atmosphere = max(0.0, dot(dir, vec3(0.0, 1.0, 0.0)));
+                vec3 skyColor = mix(vec3(0.0, 0.0, 0.05), vec3(0.05, 0.0, 0.1), atmosphere);
+                gl_FragColor = vec4(skyColor + vec3(stars), 1.0);
+            }
+        `;
+
+        const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
+        const skyboxMaterial = new BABYLON.ShaderMaterial("skyBox", scene, {
+            vertex: "customSky", fragment: "customSky",
+        }, { attributes: ["position"], uniforms: ["world", "view", "projection", "time"] });
+        skyboxMaterial.backFaceCulling = false;
+        skybox.material = skyboxMaterial;
+
+        // --- B. FOUNDATION: HOLOGRAPHIC GRID ---
+        BABYLON.Effect.ShadersStore["holoGridVertexShader"] = `
+            precision highp float;
+            attribute vec3 position; attribute vec2 uv;
+            uniform mat4 world; uniform mat4 view; uniform mat4 projection;
+            varying vec3 vPosition; varying vec2 vUV;
+            void main() { vPosition = position; vUV = uv; gl_Position = projection * view * world * vec4(position, 1.0); }
+        `;
+
+        BABYLON.Effect.ShadersStore["holoGridFragmentShader"] = `
+            precision highp float;
+            varying vec3 vPosition; varying vec2 vUV;
+            uniform float time; uniform vec3 cameraPosition;
+            void main() {
+                float thickness = 0.05;
+                float gridX = step(1.0 - thickness, fract(vPosition.x * 0.2));
+                float gridZ = step(1.0 - thickness, fract(vPosition.z * 0.2));
+                float grid = max(gridX, gridZ);
+                float dist = distance(vPosition, cameraPosition);
+                float alpha = max(0.0, 1.0 - dist / 60.0);
+                vec3 color = vec3(0.0, 1.0, 1.0) * grid * 2.0;
+                float pulse = sin(vPosition.z * 0.5 - time * 2.0);
+                color += vec3(0.0, 0.5, 1.0) * max(0.0, pulse) * 0.5 * alpha;
+                if (alpha <= 0.01) discard;
+                gl_FragColor = vec4(color, alpha * 0.8);
+            }
+        `;
+
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 200, height: 200, subdivisions: 2 }, scene);
+        ground.position.y = -5;
+        const gridMat = new BABYLON.ShaderMaterial("gridMat", scene, {
+            vertex: "holoGrid", fragment: "holoGrid",
+        }, { attributes: ["position", "uv"], uniforms: ["world", "view", "projection", "time", "cameraPosition"], needAlphaBlending: true });
+        ground.material = gridMat;
+
+        // --- C. VOLUMETRIC LIGHT & GLOBE ---
+        const sunMesh = BABYLON.MeshBuilder.CreateSphere("sun", { diameter: 2 }, scene);
+        sunMesh.position = new BABYLON.Vector3(0, 5, 30);
+        const sunMat = new BABYLON.StandardMaterial("sunMat", scene);
+        sunMat.emissiveColor = new BABYLON.Color3(1, 1, 1);
+        sunMat.disableLighting = true;
+        sunMesh.material = sunMat;
+
+        const vls = new BABYLON.VolumetricLightScatteringPostProcess("vls", 1.0, camera, sunMesh, 100, BABYLON.Texture.BILINEAR_SAMPLINGMODE, engine, false);
+        vls.exposure = 0.3; vls.decay = 0.96815; vls.weight = 0.98767; vls.density = 0.926;
+
+        const globe = BABYLON.MeshBuilder.CreateSphere("globe", { diameter: 40, segments: 16 }, scene);
+        globe.position = new BABYLON.Vector3(0, 10, 40);
+        const globeMat = new BABYLON.StandardMaterial("globeMat", scene);
+        globeMat.wireframe = true;
+        globeMat.emissiveColor = new BABYLON.Color3(0, 0.5, 0.5);
+        globeMat.disableLighting = true;
+        globe.material = globeMat;
+        globe.rotation.z = Math.PI / 4;
+
+        // --- D. PARTICLES ---
+        const particleSystem = new BABYLON.GPUParticleSystem("particles", { capacity: 5000 }, scene);
+        const particleTexture = new BABYLON.DynamicTexture("pTex", 64, scene);
+        const ctx = particleTexture.getContext();
+        ctx.beginPath(); ctx.arc(32, 32, 30, 0, 2 * Math.PI); ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; ctx.fill();
+        particleTexture.update();
+        particleSystem.particleTexture = particleTexture;
+        particleSystem.emitter = new BABYLON.Vector3(0, 0, 0);
+        particleSystem.minEmitBox = new BABYLON.Vector3(-50, -20, -50); particleSystem.maxEmitBox = new BABYLON.Vector3(50, 20, 50);
+        particleSystem.color1 = new BABYLON.Color4(0.0, 1.0, 1.0, 1.0); particleSystem.color2 = new BABYLON.Color4(0.5, 0.0, 1.0, 1.0);
+        particleSystem.minSize = 0.1; particleSystem.maxSize = 0.3;
+        particleSystem.emitRate = 500;
+        particleSystem.start();
+
+        let time = 0;
+        scene.registerBeforeRender(() => {
+            time += 0.01;
+            skyboxMaterial.setFloat("time", time);
+            gridMat.setFloat("time", time);
+            gridMat.setVector3("cameraPosition", camera.position);
+            sunMesh.position.x = Math.sin(time * 0.2) * 20; sunMesh.position.y = 5 + Math.cos(time * 0.3) * 5;
+            globe.rotation.y += 0.002; globe.rotation.x += 0.001;
+        });
+        return scene;
+    };
+
+    const scene = createScene();
+    engine.runRenderLoop(() => scene.render());
+    window.addEventListener("resize", () => engine.resize());
+}
 
 // --- START APP (setelah semua HTML siap) ---
 document.addEventListener('DOMContentLoaded', () => {
+    initBackground3D(); // Inisialisasi Background 3D
     initializeApp();
     animateTitle();
     updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih
+    enhanceQuantumTitle(); // Tambahkan efek laser pada judul jam
 
     // CSS ADJUSTMENT: Geser area scan (Video Container) sedikit ke atas
     if (videoContainer) {
