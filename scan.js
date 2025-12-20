@@ -14,6 +14,7 @@ const userIdDisplay = document.getElementById('userIdDisplay');
 const userStatusDisplay = document.getElementById('userStatusDisplay');
 const lastActionDisplay = document.getElementById('lastActionDisplay');
 const userPhotoDisplay = document.getElementById('userPhotoDisplay'); 
+const photoContainer = document.getElementById('photoContainer'); // Container foto untuk efek scan
 const userJabatanDisplay = document.getElementById('userJabatanDisplay');
 
 // ELEMEN HUD & DIAGNOSTIK (Diambil dari HTML Futuristik Anda)
@@ -31,6 +32,9 @@ const cameraSelect = document.getElementById('cameraSelect');
 const networkStatus = document.getElementById('networkStatus');
 const cameraStatus = document.getElementById('cameraStatus');
 const dbStatus = document.getElementById('dbStatus');
+
+const stealthToggle = document.getElementById('stealthToggle');
+const stealthIcon = document.getElementById('stealthIcon');
 
 const cpuLoadBar = document.getElementById('cpuLoadBar');
 const cpuLoadText = document.getElementById('cpuLoad');
@@ -53,9 +57,99 @@ let videoDevices = [];
 let targetLabel = '';
 let currentDisplayLabel = '';
 let decryptionFrame = 0;
+let isStealthMode = false; // Default: Suara Aktif
 
-const FACE_MATCHING_THRESHOLD = 0.32; // 0.40: Seimbang. Cukup ketat tapi tetap mengenali wajah asli.
-const DETECTION_INTERVAL_MS = 100;
+// --- AUDIO & VOICE ENGINE (WEB AUDIO API) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// Resume audio context saat user berinteraksi pertama kali (Browser Policy)
+document.addEventListener('click', () => {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}, { once: true });
+
+const SoundFX = {
+    play: (type) => {
+        if (isStealthMode) return; // Mute jika Stealth Mode aktif
+        if (audioCtx.state === 'suspended') return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'scan') {
+            // High tech chirp
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, now);
+            osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+        } else if (type === 'success') {
+            // Ascending Chime
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(440, now); // A4
+            osc.frequency.setValueAtTime(554, now + 0.1); // C#5
+            osc.frequency.setValueAtTime(659, now + 0.2); // E5
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.6);
+            osc.start(now);
+            osc.stop(now + 0.6);
+        } else if (type === 'error') {
+            // Low Buzz
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+    },
+    speak: (text) => {
+        if (isStealthMode) return; // Mute jika Stealth Mode aktif
+        if ('speechSynthesis' in window) {
+            // Cancel previous speech
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.1; // Sedikit lebih cepat
+            utterance.pitch = 0.9; // Sedikit lebih rendah (wibawa)
+            utterance.volume = 1.0;
+            
+            // Coba cari suara bahasa Inggris yang bagus (Google US English biasanya ada)
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices[0];
+            if (preferredVoice) utterance.voice = preferredVoice;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+};
+
+// --- STEALTH MODE LISTENER ---
+if (stealthToggle) {
+    stealthToggle.addEventListener('click', () => {
+        isStealthMode = !isStealthMode;
+        
+        if (isStealthMode) {
+            // MODE SENYAP AKTIF
+            stealthToggle.textContent = '[ ON ]';
+            stealthToggle.className = 'bg-red-900/20 border border-red-500 text-red-500 text-[10px] px-3 py-1 font-mono shadow-[0_0_10px_rgba(255,0,0,0.5)] transition-all';
+            if(stealthIcon) stealthIcon.className = 'w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_#FF0000]';
+            logSystem('STEALTH MODE: ACTIVE. Audio Output Disabled.', 'text-red-500');
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel(); // Hentikan suara yg sedang bicara
+        } else {
+            // MODE NORMAL
+            stealthToggle.textContent = '[ OFF ]';
+            stealthToggle.className = 'bg-transparent border border-cyan-500 text-cyan-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all';
+            if(stealthIcon) stealthIcon.className = 'w-2 h-2 rounded-full bg-gray-600';
+            logSystem('STEALTH MODE: DISENGAGED. Audio Online.', 'text-cyan-500');
+        }
+    });
+}
+
+let FACE_MATCHING_THRESHOLD = 0.28; // Diubah ke LET agar bisa di-override Admin
+let DETECTION_INTERVAL_MS = 100;
 const DEFAULT_PHOTO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0idy00IGgtNCI+PHBhdGggZD0iTTggOGE0IDQgMCAxIDAgMC04IDQgNCAwIDAgMCAwIDh6bTAtMWEzIDMgMCAxIDEtNiAwIDMgMyAwIDAgMSA2IDB6TTggOWE1IDUgMCAwIDAtNSA1djJBNiA2IDAgMCAwIDggMjFhNiA2IDAgMCAwIDYtNnYtMmE1IDUgMCAwIDAtNS01ek04IDE5YTUgNSAwIDAgMS00LTJ2LTFhNCA0IDAgMCAxIDQtNGM0IDAgMy44MiA0IDQgNGMtLjE4LjMyLS4zOC42My0uNTggLjkzQTUuMDAzIDUuMDAzIDAgMCAxIDggMTl6Ii8+PC9zdmc+'; // Placeholder photo
 
 // --- DEFINISI WARNA (Futuristik) ---
@@ -64,6 +158,7 @@ const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
 const HEADER_COLOR = '#00FFFF'; 
 const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(204,133,0,0.95) 100%)'; 
 const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(0,255,127,0.8) 0%, rgba(0,100,0,0.95) 100%)'; 
+const AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
 
 // =============================================================================
 // 1. MESIN RENDERING VISUAL CANVAS (DRAWING Face-API)
@@ -187,6 +282,32 @@ function drawTargetLock(ctx, x, y, radius) {
     ctx.restore();
 }
 
+// --- VISUAL FX: SCREEN FLASH ---
+function triggerScreenFlash(color) {
+    const flash = document.getElementById('screenFlash');
+    if (flash) {
+        flash.style.backgroundColor = color;
+        flash.style.opacity = 0.4;
+        setTimeout(() => flash.style.opacity = 0, 100);
+    }
+}
+
+// --- VISUAL FX: PARTICLE BURST ---
+function createParticleBurst(x, y, color) {
+    for (let i = 0; i < 20; i++) {
+        const p = document.createElement('div');
+        p.style.cssText = `position:fixed; left:${x}px; top:${y}px; width:4px; height:4px; background:${color}; pointer-events:none; z-index:9999; border-radius:50%; box-shadow:0 0 5px ${color};`;
+        document.body.appendChild(p);
+        const angle = Math.random() * Math.PI * 2;
+        const velocity = Math.random() * 100 + 50;
+        const anim = p.animate([
+            { transform: 'translate(0,0) scale(1)', opacity: 1 },
+            { transform: `translate(${Math.cos(angle)*velocity}px, ${Math.sin(angle)*velocity}px) scale(0)`, opacity: 0 }
+        ], { duration: 600, easing: 'cubic-bezier(0, .9, .57, 1)' });
+        anim.onfinish = () => p.remove();
+    }
+}
+
 // --- HELPER: TEXT DECRYPTION EFFECT ---
 function resolveText(target, frame, totalFrames) {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&";
@@ -200,6 +321,61 @@ function resolveText(target, frame, totalFrames) {
         }
     }
     return output;
+}
+
+// --- HELPER: TYPEWRITER EFFECT ---
+function animateText(element, text, speed = 30) {
+    if (!element) return;
+    element.textContent = '';
+    let i = 0;
+    
+    // Hentikan interval lama jika ada (mencegah tumpuk)
+    if (element.dataset.typingInterval) clearInterval(element.dataset.typingInterval);
+    
+    const interval = setInterval(() => {
+        if (i < text.length) {
+            element.textContent += text.charAt(i);
+            i++;
+            // Efek suara tik sangat halus (opsional)
+            // if (i % 2 === 0) SoundFX.play('tick'); 
+        } else {
+            clearInterval(interval);
+            element.dataset.typingInterval = null;
+        }
+    }, speed);
+    
+    element.dataset.typingInterval = interval;
+}
+
+// --- HELPER: BOOT SEQUENCE ---
+async function runBootSequence() {
+    const bootScreen = document.getElementById('boot-screen');
+    const bootLog = document.getElementById('boot-log');
+    if (!bootScreen || !bootLog) return;
+
+    const lines = [
+        "INITIALIZING BIOMETRIC KERNEL v4.2...",
+        "LOADING NEURAL MODULES [TINY_FACE_DETECTOR]... OK",
+        "LOADING NEURAL MODULES [LANDMARK_68_NET]... OK",
+        "LOADING NEURAL MODULES [RECOGNITION_NET]... OK",
+        "MOUNTING SECURE DATABASE CONNECTION...",
+        "CALIBRATING OPTICAL SENSORS...",
+        "ESTABLISHING CAMERA FEED...",
+        "SYSTEM READY. WELCOME ADMIN."
+    ];
+
+    for (const line of lines) {
+        const p = document.createElement('div');
+        p.className = 'boot-line';
+        p.innerHTML = `> ${line}`;
+        bootLog.appendChild(p);
+        await new Promise(r => setTimeout(r, Math.random() * 200 + 100)); // Random delay
+    }
+
+    await new Promise(r => setTimeout(r, 600));
+    bootScreen.style.transition = "opacity 0.8s ease-out";
+    bootScreen.style.opacity = "0";
+    setTimeout(() => bootScreen.remove(), 800);
 }
 
 function drawDataTags(ctx, box, landmarks) {
@@ -436,7 +612,7 @@ function updateClock() {
 
 function animateTitle() {
     if (!mainTitle) return;
-    const targetText = "PUSKESMAS WANA";
+    const targetText = AGENCY_NAME;
     
     // --- TAMBAHAN: SIGER LAMPUNG GOLD (Inject Otomatis) ---
     if (!document.getElementById('siger-header-icon')) {
@@ -474,7 +650,6 @@ function animateTitle() {
             </svg>
 
             <!-- FOTO KANAN (Ganti URL di bawah ini dengan foto Anda) -->
-            <img src="nama_file_foto_anda.jpg" 
             <img src="${DEFAULT_PHOTO}" 
                  style="height: 80px; width: auto; border: 2px solid #FFD700; border-radius: 10px; object-fit: cover; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); animation: floatLogo 4s ease-in-out infinite reverse;">
         </div>
@@ -883,7 +1058,7 @@ async function detectFace() {
         drawDataTags(context, visualBox, landmarks);
 
         // Efek suara scanning ringan (opsional, bisa dimatikan jika terlalu berisik)
-        // if (Math.random() > 0.8) playSfx('scan'); 
+        if (Math.random() > 0.85) SoundFX.play('scan'); 
 
         setStatusVisual('SUBJECT DETECTED. PROCESSING BIOMETRICS...', 'text-amber-500', true);
 
@@ -922,9 +1097,19 @@ async function detectFace() {
                 if (!lastKnownMatch || lastKnownMatch.id !== recognizedId) {
                     // Ambil data lengkap dari employeeMap yang sudah dimuat di awal
                     const { nama, jabatan, foto } = employee;
-                    if (userPhotoDisplay) userPhotoDisplay.src = foto || DEFAULT_PHOTO;
-                    if (userIdDisplay) userIdDisplay.textContent = nama;
-                    if (userJabatanDisplay) userJabatanDisplay.textContent = jabatan || 'N/A';
+                    
+                    // Update Foto dengan Efek Scan
+                    if (userPhotoDisplay) {
+                        userPhotoDisplay.src = foto || DEFAULT_PHOTO;
+                        if (photoContainer) {
+                            photoContainer.classList.remove('photo-scan-active');
+                            void photoContainer.offsetWidth; // Trigger reflow
+                            photoContainer.classList.add('photo-scan-active');
+                        }
+                    }
+                    // Update Teks dengan Efek Mengetik
+                    if (userIdDisplay) animateText(userIdDisplay, nama);
+                    if (userJabatanDisplay) animateText(userJabatanDisplay, jabatan || 'N/A');
                 }
                 
                 userStatusDisplay.textContent = 'VERIFYING...';
@@ -1009,7 +1194,7 @@ async function processAttendance(karyawanId) {
                     padding-bottom: 20px;
                     display: inline-block;
                 ">
-                    SELAMAT DATANG DI PUSKESMAS WANA
+                    SELAMAT DATANG DI ${AGENCY_NAME}
                 </h1>
                 <h2 class="text-4xl font-bold mb-6 animate-pulse" id="overlayStatus" style="
                     font-family: 'Courier New', monospace;
@@ -1048,6 +1233,10 @@ async function processAttendance(karyawanId) {
         
         // LOGIKA SUKSES/GAGAL
         if (result.success) {
+            // AUDIO & VISUAL SUCCESS
+            SoundFX.play('success');
+            SoundFX.speak(`Welcome, ${display_name}`);
+            triggerScreenFlash('#00FF7F');
             
             // Update panel "TARGET DATA" di sisi kiri
             if (userIdDisplay) userIdDisplay.textContent = display_name;
@@ -1084,6 +1273,10 @@ async function processAttendance(karyawanId) {
 
         } else {
             // --- GAGAL (MERAH) ---
+            SoundFX.play('error');
+            SoundFX.speak('Access Denied');
+            triggerScreenFlash('#FF0055');
+
             setStatusVisual(cleanMessage, 'text-red-500');
             userStatusDisplay.textContent = 'DENIED';
             userStatusDisplay.className = 'text-lg font-bold text-red-500';
@@ -1112,12 +1305,18 @@ async function processAttendance(karyawanId) {
                     position: relative;
                     max-width: 90%;
                     backdrop-filter: blur(5px);
+                    /* EFEK 3D HOLOGRAM */
+                    transform-style: preserve-3d;
+                    animation: holoPopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
                 ">
                     <!-- Decorative Corners -->
                     <div style="position: absolute; top: 20px; left: 20px; width: 40px; height: 40px; border-top: 4px solid ${finalStatusColor}; border-left: 4px solid ${finalStatusColor};"></div>
                     <div style="position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-top: 4px solid ${finalStatusColor}; border-right: 4px solid ${finalStatusColor};"></div>
                     <div style="position: absolute; bottom: 20px; left: 20px; width: 40px; height: 40px; border-bottom: 4px solid ${finalStatusColor}; border-left: 4px solid ${finalStatusColor};"></div>
                     <div style="position: absolute; bottom: 20px; right: 20px; width: 40px; height: 40px; border-bottom: 4px solid ${finalStatusColor}; border-right: 4px solid ${finalStatusColor};"></div>
+
+                    <!-- Holo Scan Line -->
+                    <div class="holo-scan-line"></div>
 
                     <h1 class="text-5xl lg:text-7xl font-extrabold mb-8 tracking-widest" style="
                         font-family: 'Courier New', monospace;
@@ -1129,7 +1328,7 @@ async function processAttendance(karyawanId) {
                         padding-bottom: 10px;
                         display: inline-block;
                     ">
-                        SELAMAT DATANG DI PUSKESMAS WANA
+                        SELAMAT DATANG DI ${AGENCY_NAME}
                     </h1>
                     
                     <h2 class="text-4xl lg:text-6xl font-extrabold mt-2 mb-8" id="overlayStatus" style="
@@ -1153,6 +1352,10 @@ async function processAttendance(karyawanId) {
                     </div>
                 </div>
             `;
+            
+            // Trigger Particle Burst di tengah layar
+            const rect = successOverlay.getBoundingClientRect();
+            createParticleBurst(rect.left + rect.width/2, rect.top + rect.height/2, finalStatusColor);
         }
         
         let currentAction = 'Status';
@@ -1170,6 +1373,9 @@ async function processAttendance(karyawanId) {
         await new Promise(resolve => setTimeout(resolve, 5000)); 
 
     } catch (error) {
+        SoundFX.play('error');
+        triggerScreenFlash('#FF0000');
+        
         logSystem(`Attendance Failed: ${error.message}`, 'text-red-500');
         setStatusVisual(`❌ FAILED: ${error.message}`, 'text-red-500');
         userStatusDisplay.textContent = 'FAILED';
@@ -1188,6 +1394,9 @@ async function processAttendance(karyawanId) {
                     border-radius: 20px;
                     max-width: 900px;
                     backdrop-filter: blur(10px);
+                    /* EFEK 3D HOLOGRAM */
+                    transform-style: preserve-3d;
+                    animation: holoPopIn 0.5s ease-out forwards;
                 ">
                      <h1 class="text-5xl lg:text-7xl font-extrabold mb-8 tracking-widest" style="
                         font-family: 'Courier New', monospace;
@@ -1196,7 +1405,7 @@ async function processAttendance(karyawanId) {
                         text-transform: uppercase;
                         letter-spacing: 5px;
                     ">
-                        SELAMAT DATANG DI PUSKESMAS WANA
+                        SELAMAT DATANG DI ${AGENCY_NAME}
                     </h1>
                     <h2 class="text-5xl font-extrabold mb-6 glitch-text" style="
                         font-family: 'Courier New', monospace;
@@ -1226,6 +1435,118 @@ async function processAttendance(karyawanId) {
         logSystem('System ready for next scan.', 'text-gray-300');
         videoContainer.classList.remove('scan-success');
     }
+}
+
+// =============================================================================
+// 5. ADMIN OVERRIDE SYSTEM (SECRET MENU)
+// =============================================================================
+
+const adminOverlay = document.getElementById('adminOverlay');
+const adminThresholdInput = document.getElementById('adminThreshold');
+const adminThresholdVal = document.getElementById('adminThresholdVal');
+const btnCloseAdmin = document.getElementById('btnCloseAdmin');
+const btnAdminSave = document.getElementById('btnAdminSave');
+const btnAdminReload = document.getElementById('btnAdminReload');
+
+const autofixToggle = document.getElementById('autofixToggle');
+const autofixIcon = document.getElementById('autofixIcon');
+
+const btnSecretAdmin = document.getElementById('btnSecretAdmin');
+
+// Toggle Admin Panel dengan CTRL + SHIFT + A
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        toggleAdminPanel();
+    }
+    // Tutup dengan ESC
+    if (e.key === 'Escape' && adminOverlay && !adminOverlay.classList.contains('hidden')) {
+        toggleAdminPanel();
+    }
+});
+
+function toggleAdminPanel() {
+    if (!adminOverlay) return;
+    
+    if (adminOverlay.classList.contains('hidden')) {
+        // BUKA PANEL
+        console.log("Opening Admin Panel...");
+        adminOverlay.classList.remove('hidden');
+        SoundFX.play('scan'); // Efek suara
+        // Set nilai saat ini ke input
+        if(adminThresholdInput) {
+            adminThresholdInput.value = FACE_MATCHING_THRESHOLD;
+            adminThresholdVal.textContent = FACE_MATCHING_THRESHOLD.toFixed(2);
+        }
+    } else {
+        // TUTUP PANEL
+        adminOverlay.classList.add('hidden');
+    }
+}
+
+// --- AUTO-FIX CONFIGURATION LISTENER
+let isAutoFixActive = true; // Secara default AUTOFIX ON
+
+if (autofixToggle) {
+    autofixToggle.addEventListener('click', () => {
+        isAutoFixActive = !isAutoFixActive;
+        
+        if (isAutoFixActive) {
+            // AUTOFIX AKTIF
+            autofixToggle.textContent = '[ ON ]';
+            autofixToggle.className = 'bg-green-900/20 border border-green-500 text-green-400 text-[10px] px-3 py-1 font-mono hover:border-red-500 hover:text-red-400 transition-all duration-300';
+            if(autofixIcon) autofixIcon.className = 'w-2 h-2 rounded-full bg-green-500 shadow-[0_0_5px_#00FF00]';
+            logSystem('AUTO-FIX: ACTIVE.', 'text-green-500');
+        } else {
+            // AUTOFIX MATI
+            autofixToggle.textContent = '[ OFF ]';
+            autofixToggle.className = 'bg-red-900/20 border border-red-500 text-red-400 text-[10px] px-3 py-1 font-mono hover:border-green-500 hover:text-green-400 transition-all duration-300';
+            if(autofixIcon) autofixIcon.className = 'w-2 h-2 rounded-full bg-red-500';
+            logSystem('AUTO-FIX: DISABLED.', 'text-red-500');
+        }
+    });
+}
+
+
+
+
+
+// Event Listeners Admin Panel
+if (btnSecretAdmin) {
+    btnSecretAdmin.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleAdminPanel();
+    });
+}
+if (btnCloseAdmin) btnCloseAdmin.addEventListener('click', toggleAdminPanel);
+
+if (adminThresholdInput) {
+    adminThresholdInput.addEventListener('input', (e) => {
+        adminThresholdVal.textContent = parseFloat(e.target.value).toFixed(2);
+    });
+}
+
+if (btnAdminSave) {
+    btnAdminSave.addEventListener('click', () => {
+        FACE_MATCHING_THRESHOLD = parseFloat(adminThresholdInput.value);
+        logSystem(`ADMIN OVERRIDE: Threshold set to ${FACE_MATCHING_THRESHOLD}`, 'text-red-500');
+        SoundFX.play('success');
+        toggleAdminPanel();
+        setStatusVisual(`SECURITY LEVEL UPDATED: ${FACE_MATCHING_THRESHOLD}`, 'text-red-500', true);
+    });
+}
+
+if (btnAdminReload) {
+    btnAdminReload.addEventListener('click', async () => {
+        toggleAdminPanel();
+        labeledDescriptors = null; // Reset cache
+        await loadLabeledImages(); // Reload
+        SoundFX.play('scan');
+    });
+}
+
+function isAutofixEnabled() {
+    return isAutoFixActive;
 }
 
 function enhanceQuantumTitle() {
@@ -1413,6 +1734,7 @@ function initBackground3D() {
 // --- START APP (setelah semua HTML siap) ---
 document.addEventListener('DOMContentLoaded', () => {
     initBackground3D(); // Inisialisasi Background 3D
+    runBootSequence(); // Jalankan Intro Booting
     initializeApp();
     animateTitle();
     updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih

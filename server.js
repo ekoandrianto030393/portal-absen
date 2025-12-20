@@ -33,8 +33,10 @@ app.use((req, res, next) => {
 
 // --- 🛑 KONFIGURASI WAKTU KERJA (WIB) & KEAMANAN 🛑 ---
 // Nilai sekarang diambil dari file .env, dengan fallback jika tidak ada
+
 const JAM_MASUK_START_H = parseInt(process.env.JAM_MASUK_START_H || '7');
 const JAM_MASUK_START_M = parseInt(process.env.JAM_MASUK_START_M || '25');
+
 const JAM_MASUK_END_H = parseInt(process.env.JAM_MASUK_END_H || '7');
 const JAM_MASUK_END_M = parseInt(process.env.JAM_MASUK_END_M || '45');
 const JAM_PULANG_START_H = parseInt(process.env.JAM_PULANG_START_H || '14');
@@ -132,7 +134,9 @@ app.post('/absensi', async (req, res) => {
         const [hangingAbsensi] = await connection.execute(sqlHangingAbsensi, [karyawanId]);
         
         
+
         if (hangingAbsensi.length > 0) {
+
             const waktuMasukLama = new Date(hangingAbsensi[0].waktu_absensi);
             const waktuPulangOtomatis = new Date(waktuMasukLama);
             // Set waktu pulang default jam 14:00:00 
