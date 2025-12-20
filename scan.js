@@ -49,6 +49,11 @@ let employeeMap = {};
 let currentStream = null;
 let videoDevices = []; 
 
+// VARS UNTUK EFEK DECRYPT TEXT
+let targetLabel = '';
+let currentDisplayLabel = '';
+let decryptionFrame = 0;
+
 const FACE_MATCHING_THRESHOLD = 0.32; // 0.40: Seimbang. Cukup ketat tapi tetap mengenali wajah asli.
 const DETECTION_INTERVAL_MS = 100;
 const DEFAULT_PHOTO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0idy00IGgtNCI+PHBhdGggZD0iTTggOGE0IDQgMCAxIDAgMC04IDQgNCAwIDAgMCAwIDh6bTAtMWEzIDMgMCAxIDEtNiAwIDMgMyAwIDAgMSA2IDB6TTggOWE1IDUgMCAwIDAtNSA1djJBNiA2IDAgMCAwIDggMjFhNiA2IDAgMCAwIDYtNnYtMmE1IDUgMCAwIDAtNS01ek04IDE5YTUgNSAwIDAgMS00LTJ2LTFhNCA0IDAgMCAxIDQtNGM0IDAgMy44MiA0IDQgNGMtLjE4LjMyLS4zOC42My0uNTggLjkzQTUuMDAzIDUuMDAzIDAgMCAxIDggMTl6Ii8+PC9zdmc+'; // Placeholder photo
@@ -180,6 +185,21 @@ function drawTargetLock(ctx, x, y, radius) {
     ctx.stroke();
     
     ctx.restore();
+}
+
+// --- HELPER: TEXT DECRYPTION EFFECT ---
+function resolveText(target, frame, totalFrames) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&";
+    let output = "";
+    const progress = frame / totalFrames;
+    for (let i = 0; i < target.length; i++) {
+        if (i / target.length < progress) {
+            output += target[i];
+        } else {
+            output += chars[Math.floor(Math.random() * chars.length)];
+        }
+    }
+    return output;
 }
 
 function drawDataTags(ctx, box, landmarks) {
@@ -341,49 +361,38 @@ function updateDataStream() {
 function updateGraph() {
     if(!graphElement) return;
     
-    // Setup container utama agar menampung baris-baris (Matrix Style Penuh)
-    if (graphElement.style.flexDirection !== 'column') {
+    // UBAH KE VISUALIZER BAR (Audio Spectrum Style)
+    if (!graphElement.classList.contains('visualizer-mode')) {
         graphElement.innerHTML = '';
+        graphElement.classList.add('visualizer-mode');
         graphElement.style.display = 'flex';
-        graphElement.style.flexDirection = 'column'; // Stack vertikal
-        graphElement.style.justifyContent = 'space-between'; 
-        graphElement.style.alignItems = 'stretch'; // Lebar penuh
-        graphElement.style.overflow = 'hidden';
+        graphElement.style.alignItems = 'flex-end';
+        graphElement.style.gap = '2px';
+        graphElement.style.height = '100%';
         
-        // Buat 8 baris data untuk memenuhi panel
-        for(let i=0; i<8; i++) {
-            const row = document.createElement('div');
-            row.style.display = 'flex';
-            row.style.flexDirection = 'row';
-            row.style.whiteSpace = 'nowrap';
-            row.style.height = '12px';
-            row.style.overflow = 'hidden';
-            graphElement.appendChild(row);
+        // Buat 30 bar
+        for(let i=0; i<30; i++) {
+            const bar = document.createElement('div');
+            bar.style.flex = '1';
+            bar.style.backgroundColor = '#00FFFF';
+            bar.style.opacity = '0.7';
+            bar.style.transition = 'height 0.1s ease, background-color 0.1s';
+            graphElement.appendChild(bar);
         }
     }
 
-    const rows = graphElement.children;
-    const chars = '0123456789ABCDEF';
-
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
+    const bars = graphElement.children;
+    const time = Date.now() / 200;
+    
+    for (let i = 0; i < bars.length; i++) {
+        // Simulasikan gelombang sinus bergerak
+        const height = Math.max(5, Math.abs(Math.sin(time + i * 0.3)) * 100);
+        bars[i].style.height = `${height}%`;
         
-        const span = document.createElement('span');
-        span.textContent = chars[Math.floor(Math.random() * chars.length)];
-        
-        // Style per karakter (Sangat Kecil & Rapat)
-        span.style.fontSize = '10px';
-        span.style.fontFamily = 'monospace';
-        span.style.color = '#00FF7F';
-        span.style.minWidth = '8px';
-        span.style.textAlign = 'center';
-        span.style.opacity = Math.random() * 0.5 + 0.4; 
-        
-        row.appendChild(span);
-
-        if (row.children.length > 50) {
-            row.removeChild(row.firstChild);
-        }
+        // Warna berdasarkan ketinggian (Heatmap)
+        if (height > 80) bars[i].style.backgroundColor = '#FF0055'; // Merah Puncak
+        else if (height > 50) bars[i].style.backgroundColor = '#FFD700'; // Kuning Tengah
+        else bars[i].style.backgroundColor = '#00FFFF'; // Cyan Dasar
     }
 }
 
@@ -896,6 +905,17 @@ async function detectFace() {
                 const employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
                 
                 faceLabel = employee.nama;
+                
+                // --- LOGIKA DECRYPT TEXT ---
+                if (faceLabel !== targetLabel) {
+                    targetLabel = faceLabel;
+                    decryptionFrame = 0;
+                }
+                if (decryptionFrame < 15) { // 15 frame untuk decrypt
+                    decryptionFrame++;
+                    faceLabel = resolveText(targetLabel, decryptionFrame, 15);
+                }
+                
                 faceColor = '#00FF7F'; 
 
                 // Hanya update jika ID berubah atau belum ada match sebelumnya
@@ -922,6 +942,7 @@ async function detectFace() {
                 resetTargetData();
                 userStatusDisplay.textContent = 'ACCESS DENIED';
                 faceLabel = 'DENIED ACCESS';
+                targetLabel = ''; // Reset decrypt target
                 faceColor = '#FF0055'; 
                 setStatusVisual('SUBJECT NOT AUTHORIZED. IDENTITY DENIED.', 'text-red-500');
                 lastKnownMatch = null;
@@ -932,6 +953,7 @@ async function detectFace() {
             updateSystemDiagnostics(0);
             userStatusDisplay.textContent = 'DB OFFLINE';
             faceLabel = 'DB OFFLINE';
+            targetLabel = '';
             faceColor = '#FF00FF'; 
             setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-red-500');
             lastKnownMatch = null;
@@ -947,6 +969,7 @@ async function detectFace() {
         resetTargetData();
         updateSystemDiagnostics(0);
         setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
+        targetLabel = '';
         lastKnownMatch = null; 
     }
 }
