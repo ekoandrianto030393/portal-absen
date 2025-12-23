@@ -67,21 +67,44 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--aether-blue), transparent);
-            animation: scan 3s infinite linear;
-            box-shadow: 0 0 15px var(--aether-blue);
+            height: 3px;
+            background: var(--aether-blue);
+            box-shadow: 0 0 10px var(--aether-blue), 0 0 20px var(--aether-blue);
+            animation: scan-move 2s infinite ease-in-out alternate;
             z-index: 10;
+            opacity: 0.9;
         }
 
-        @keyframes scan {
+        .scanner-line::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: linear-gradient(to top, rgba(0, 234, 255, 0.4), transparent);
+        }
+
+        .scanner-line::after {
+            content: 'SCANNING_TARGET_ID...';
+            position: absolute;
+            right: 0;
+            bottom: 5px;
+            background: rgba(0, 234, 255, 0.2);
+            color: #fff;
+            font-size: 9px;
+            padding: 2px 5px;
+            border-left: 2px solid var(--aether-blue);
+            backdrop-filter: blur(2px);
+        }
+
+        @keyframes scan-move {
             0% {
-                transform: translateY(0);
+                top: 0%;
             }
 
             100% {
-                transform: translateY(100% / 1);
-                top: 100%;
+                top: 98%;
             }
         }
 
@@ -91,6 +114,149 @@
             background-color: var(--aether-blue);
             transition: width 0.1s linear;
             box-shadow: 0 0 10px var(--aether-blue);
+        }
+
+        /* --- HUD CORNERS (Aksen Sudut Futuristik) --- */
+        .hud-corner {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 2px solid var(--aether-blue);
+            transition: all 0.3s ease;
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .hud-corner.tl {
+            top: -1px;
+            left: -1px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .hud-corner.tr {
+            top: -1px;
+            right: -1px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .hud-corner.bl {
+            bottom: -1px;
+            left: -1px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .hud-corner.br {
+            bottom: -1px;
+            right: -1px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .holo-panel:hover .hud-corner {
+            width: 25px;
+            height: 25px;
+            border-color: var(--status-green);
+            box-shadow: 0 0 10px var(--status-green);
+            opacity: 1;
+        }
+
+        /* --- ADVANCED SCANNER HUD --- */
+        .scan-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 234, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 234, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .scan-reticle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 60%;
+            height: 60%;
+            transform: translate(-50%, -50%);
+            border: 1px dashed rgba(0, 234, 255, 0.3);
+            border-radius: 50%;
+            animation: rotate-reticle 20s linear infinite;
+            z-index: 6;
+            pointer-events: none;
+            box-shadow: 0 0 20px rgba(0, 234, 255, 0.1);
+        }
+
+        .scan-reticle::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            bottom: -10px;
+            left: -10px;
+            right: -10px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--aether-blue);
+            border-bottom-color: var(--aether-blue);
+            animation: rotate-reticle-rev 8s linear infinite;
+        }
+
+        .scan-data {
+            position: absolute;
+            font-size: 10px;
+            font-family: 'Share Tech Mono', monospace;
+            color: rgba(0, 234, 255, 0.8);
+            z-index: 8;
+            text-shadow: 0 0 2px var(--aether-blue);
+            line-height: 1.2;
+        }
+
+        .scan-data.tl {
+            top: 10px;
+            left: 10px;
+            text-align: left;
+        }
+
+        .scan-data.tr {
+            top: 10px;
+            right: 10px;
+            text-align: right;
+        }
+
+        .scan-data.bl {
+            bottom: 10px;
+            left: 10px;
+            text-align: left;
+        }
+
+        .scan-data.br {
+            bottom: 10px;
+            right: 10px;
+            text-align: right;
+        }
+
+        @keyframes rotate-reticle {
+            from {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        @keyframes rotate-reticle-rev {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(-360deg);
+            }
         }
     </style>
 </head>
@@ -110,6 +276,11 @@
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div class="holo-panel p-6 rounded-2xl">
+                <!-- HUD Corners -->
+                <div class="hud-corner tl"></div>
+                <div class="hud-corner tr"></div>
+                <div class="hud-corner bl"></div>
+                <div class="hud-corner br"></div>
                 <h2 class="text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase">SUBJECT DATA INPUT</h2>
 
                 <div class="space-y-5">
@@ -159,11 +330,25 @@
 
 
             <div class="holo-panel p-4 rounded-2xl">
+                <!-- HUD Corners -->
+                <div class="hud-corner tl"></div>
+                <div class="hud-corner tr"></div>
+                <div class="hud-corner bl"></div>
+                <div class="hud-corner br"></div>
                 <h2 class="text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase text-center">VISUAL ANALYZER
                 </h2>
                 <div class="video-container rounded-xl aspect-[4/3]">
                     <video id="videoElement" autoplay muted playsinline class="w-full h-full object-cover"></video>
                     <canvas id="overlay" class="absolute top-0 left-0 w-full h-full"></canvas>
+
+                    <!-- Advanced HUD Elements -->
+                    <div class="scan-grid"></div>
+                    <div class="scan-reticle"></div>
+                    <div class="scan-data tl">SYS: ONLINE<br>MODE: RECOG</div>
+                    <div class="scan-data tr">ISO: 800<br>WB: AUTO</div>
+                    <div class="scan-data bl">COORD: <span id="scanCoord">000,000</span></div>
+                    <div class="scan-data br">NET: SECURE<br>V.2.0</div>
+
                     <div id="flashEffect" class="absolute inset-0 bg-white opacity-0 pointer-events-none"></div>
                     <div class="scanner-line"></div>
                 </div>
@@ -172,6 +357,11 @@
             </div>
 
             <div class="holo-panel p-6 rounded-2xl flex flex-col">
+                <!-- HUD Corners -->
+                <div class="hud-corner tl"></div>
+                <div class="hud-corner tr"></div>
+                <div class="hud-corner bl"></div>
+                <div class="hud-corner br"></div>
                 <h2 class="text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase">SYSTEM LOG STREAM</h2>
                 <div id="logStream" class="flex-1 overflow-y-auto text-[10px] space-y-1 font-mono text-cyan-400"></div>
             </div>
@@ -189,6 +379,50 @@
 
     <script src="admin.js"></script>
     <script>
+        // --- UI SOUND FX ENGINE (Suara Ketikan & Hover) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        const playUiSound = (type) => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'type') { // Suara ketikan (High Pitch Blip)
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800 + Math.random() * 200, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'hover') { // Suara hover (Low Hum)
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, now);
+                gain.gain.setValueAtTime(0.02, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            }
+        };
+
+        // Pasang Event Listener untuk Suara
+        document.querySelectorAll('input, select').forEach(el => {
+            el.addEventListener('input', () => playUiSound('type'));
+        });
+        document.querySelectorAll('button, .holo-panel').forEach(el => {
+            el.addEventListener('mouseenter', () => playUiSound('hover'));
+        });
+
+        // --- HUD ANIMATION (Random Numbers) ---
+        setInterval(() => {
+            const x = Math.floor(Math.random() * 999);
+            const y = Math.floor(Math.random() * 999);
+            const coordEl = document.getElementById('scanCoord');
+            if (coordEl) coordEl.innerText = `${x},${y}`;
+        }, 200);
+
         // --- BABYLON.JS 3D BACKGROUND INIT ---
         window.addEventListener('DOMContentLoaded', () => {
             const canvas = document.getElementById("renderCanvas");
@@ -199,7 +433,7 @@
 
             const createScene = function () {
                 const scene = new BABYLON.Scene(engine);
-                scene.clearColor = new BABYLON.Color4(0.05, 0.05, 0.08, 1.0); // Dark Cyber Background
+                scene.clearColor = new BABYLON.Color4(0.01, 0.01, 0.02, 1.0); // Deep Void
 
                 // Camera
                 const camera = new BABYLON.ArcRotateCamera("Camera", 0, 0, 10, BABYLON.Vector3.Zero(), scene);
@@ -209,51 +443,114 @@
 
                 // Light
                 const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-                light.intensity = 0.5;
+                light.intensity = 0.3;
 
-                // 1. WIREFRAME SPHERE (CORE)
-                const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 8, segments: 16 }, scene);
-                const sphereMat = new BABYLON.StandardMaterial("sphereMat", scene);
-                sphereMat.wireframe = true;
-                sphereMat.emissiveColor = new BABYLON.Color3(0, 1, 1); // Cyan Neon
-                sphereMat.disableLighting = true;
-                sphere.material = sphereMat;
+                // GLOW LAYER (Neon Effect)
+                const gl = new BABYLON.GlowLayer("glow", scene);
+                gl.intensity = 1.2;
 
-                // 2. ROTATING RINGS (GYROSCOPE EFFECT)
-                const ring1 = BABYLON.MeshBuilder.CreateTorus("ring1", { diameter: 12, thickness: 0.1, tessellation: 64 }, scene);
-                const ringMat = new BABYLON.StandardMaterial("ringMat", scene);
-                ringMat.emissiveColor = new BABYLON.Color3(0.5, 0, 1); // Purple Neon
-                ring1.material = ringMat;
+                // 1. CENTRAL CORE (Quantum Polyhedron)
+                const core = BABYLON.MeshBuilder.CreatePolyhedron("core", { type: 2, size: 2.5 }, scene);
+                const coreMat = new BABYLON.StandardMaterial("coreMat", scene);
+                coreMat.wireframe = true;
+                coreMat.emissiveColor = new BABYLON.Color3(0, 1, 1); // Cyan
+                core.material = coreMat;
 
-                const ring2 = ring1.clone("ring2");
-                ring2.rotation.x = Math.PI / 2;
+                const innerCore = BABYLON.MeshBuilder.CreateSphere("innerCore", { diameter: 2.5 }, scene);
+                const innerMat = new BABYLON.StandardMaterial("innerMat", scene);
+                innerMat.emissiveColor = new BABYLON.Color3(0, 0.2, 0.5);
+                innerMat.alpha = 0.8;
+                innerCore.material = innerMat;
 
-                // 3. PARTICLES (DATA DUST)
-                const particleSystem = new BABYLON.ParticleSystem("particles", 1000, scene);
+                // 2. ROTATING RINGS
+                const ring1 = BABYLON.MeshBuilder.CreateTorus("ring1", { diameter: 8, thickness: 0.05, tessellation: 64 }, scene);
+                const ringMat1 = new BABYLON.StandardMaterial("ringMat1", scene);
+                ringMat1.emissiveColor = new BABYLON.Color3(0.8, 0, 1); // Violet
+                ring1.material = ringMat1;
+
+                const ring2 = BABYLON.MeshBuilder.CreateTorus("ring2", { diameter: 12, thickness: 0.05, tessellation: 64 }, scene);
+                const ringMat2 = new BABYLON.StandardMaterial("ringMat2", scene);
+                ringMat2.emissiveColor = new BABYLON.Color3(0, 0.8, 0.2); // Green
+                ring2.material = ringMat2;
+
+                const ring3 = BABYLON.MeshBuilder.CreateTorus("ring3", { diameter: 16, thickness: 0.02, tessellation: 64 }, scene);
+                const ringMat3 = new BABYLON.StandardMaterial("ringMat3", scene);
+                ringMat3.emissiveColor = new BABYLON.Color3(1, 1, 1); // White
+                ring3.material = ringMat3;
+
+                // 3. FLOATING GEOMETRY (Data Bits)
+                const boxSize = 0.3;
+                const boxCount = 40;
+                const boxes = [];
+                const boxMat = new BABYLON.StandardMaterial("boxMat", scene);
+                boxMat.emissiveColor = new BABYLON.Color3(0.2, 0.5, 1);
+
+                for (let i = 0; i < boxCount; i++) {
+                    const box = BABYLON.MeshBuilder.CreateBox("b" + i, { size: boxSize }, scene);
+                    box.material = boxMat;
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = 10 + Math.random() * 10;
+                    const height = (Math.random() - 0.5) * 10;
+                    box.position = new BABYLON.Vector3(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
+                    box.rotation = new BABYLON.Vector3(Math.random(), Math.random(), Math.random());
+                    boxes.push({ mesh: box, speed: Math.random() * 0.02 + 0.01 });
+                }
+
+                // 4. PARTICLES
+                const particleSystem = new BABYLON.ParticleSystem("particles", 2000, scene);
                 particleSystem.particleTexture = new BABYLON.Texture("https://www.babylonjs-playground.com/textures/flare.png", scene);
                 particleSystem.emitter = new BABYLON.Vector3(0, 0, 0);
-                particleSystem.minEmitBox = new BABYLON.Vector3(-20, -10, -20);
-                particleSystem.maxEmitBox = new BABYLON.Vector3(20, 10, 20);
-                particleSystem.color1 = new BABYLON.Color4(0, 1, 1, 0.5);
-                particleSystem.color2 = new BABYLON.Color4(0, 0.5, 1, 0.0);
+                particleSystem.minEmitBox = new BABYLON.Vector3(-30, -20, -30);
+                particleSystem.maxEmitBox = new BABYLON.Vector3(30, 20, 30);
+                particleSystem.color1 = new BABYLON.Color4(0, 1, 1, 0.2);
+                particleSystem.color2 = new BABYLON.Color4(0.5, 0, 1, 0.2);
                 particleSystem.minSize = 0.05;
-                particleSystem.maxSize = 0.2;
+                particleSystem.maxSize = 0.15;
                 particleSystem.minLifeTime = 2;
                 particleSystem.maxLifeTime = 5;
-                particleSystem.emitRate = 100;
-                particleSystem.gravity = new BABYLON.Vector3(0, 0.1, 0); // Float up
+                particleSystem.emitRate = 300;
+                particleSystem.gravity = new BABYLON.Vector3(0, 0, 0);
+                particleSystem.direction1 = new BABYLON.Vector3(-1, -1, -1);
+                particleSystem.direction2 = new BABYLON.Vector3(1, 1, 1);
                 particleSystem.start();
 
                 // ANIMATION LOOP
+                let alpha = 0;
                 scene.registerBeforeRender(() => {
-                    sphere.rotation.y += 0.005;
-                    sphere.rotation.x += 0.002;
+                    alpha += 0.01;
 
-                    ring1.rotation.y -= 0.01;
-                    ring1.rotation.z += 0.005;
+                    // Core
+                    core.rotation.y += 0.01;
+                    core.rotation.x += 0.005;
+                    innerCore.scaling = new BABYLON.Vector3(1 + Math.sin(alpha * 2) * 0.05, 1 + Math.sin(alpha * 2) * 0.05, 1 + Math.sin(alpha * 2) * 0.05);
 
-                    ring2.rotation.x += 0.01;
-                    ring2.rotation.y += 0.005;
+                    // Rings
+                    ring1.rotation.x = Math.sin(alpha * 0.5) * 0.5;
+                    ring1.rotation.y += 0.02;
+
+                    ring2.rotation.z = Math.cos(alpha * 0.3) * 0.5;
+                    ring2.rotation.y -= 0.015;
+
+                    ring3.rotation.x += 0.005;
+                    ring3.rotation.y += 0.005;
+
+                    // Boxes
+                    boxes.forEach(b => {
+                        b.mesh.rotation.x += b.speed;
+                        b.mesh.rotation.y += b.speed;
+                        // Simple orbit
+                        const r = Math.sqrt(b.mesh.position.x ** 2 + b.mesh.position.z ** 2);
+                        const currentAngle = Math.atan2(b.mesh.position.z, b.mesh.position.x);
+                        const newAngle = currentAngle + 0.002;
+                        b.mesh.position.x = r * Math.cos(newAngle);
+                        b.mesh.position.z = r * Math.sin(newAngle);
+                    });
+
+                    // --- PARALLAX EFFECT (Background Bergerak Mengikuti Mouse) ---
+                    const targetAlpha = (scene.pointerX / window.innerWidth - 0.5) * 0.5;
+                    const targetBeta = (scene.pointerY / window.innerHeight - 0.5) * 0.5;
+                    camera.alpha += (targetAlpha - camera.alpha) * 0.05;
+                    camera.beta += (targetBeta - camera.beta) * 0.05;
                 });
 
                 return scene;
