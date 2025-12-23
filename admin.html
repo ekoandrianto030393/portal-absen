@@ -7,6 +7,7 @@
     <title>Aether Control - Biometric Registration</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
@@ -95,6 +96,9 @@
 </head>
 
 <body class="flex items-center justify-center min-h-screen p-4">
+    <!-- BABYLON.JS BACKGROUND CANVAS -->
+    <canvas id="renderCanvas" class="fixed inset-0 w-full h-full -z-10 pointer-events-none"></canvas>
+
     <div class="w-full max-w-7xl relative z-10">
         <a href="index.html"
             class="absolute top-0 left-0 text-cyan-400 hover:text-white border border-cyan-400 px-3 py-1 rounded uppercase text-xs tracking-widest transition-colors">
@@ -184,6 +188,82 @@
     </div>
 
     <script src="admin.js"></script>
+    <script>
+        // --- BABYLON.JS 3D BACKGROUND INIT ---
+        window.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById("renderCanvas");
+            // Cek jika Babylon terload
+            if (!canvas || typeof BABYLON === 'undefined') return;
+
+            const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+
+            const createScene = function () {
+                const scene = new BABYLON.Scene(engine);
+                scene.clearColor = new BABYLON.Color4(0.05, 0.05, 0.08, 1.0); // Dark Cyber Background
+
+                // Camera
+                const camera = new BABYLON.ArcRotateCamera("Camera", 0, 0, 10, BABYLON.Vector3.Zero(), scene);
+                camera.setPosition(new BABYLON.Vector3(0, 0, -20));
+                camera.attachControl(canvas, true);
+                camera.inputs.clear(); // Nonaktifkan interaksi mouse user
+
+                // Light
+                const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+                light.intensity = 0.5;
+
+                // 1. WIREFRAME SPHERE (CORE)
+                const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 8, segments: 16 }, scene);
+                const sphereMat = new BABYLON.StandardMaterial("sphereMat", scene);
+                sphereMat.wireframe = true;
+                sphereMat.emissiveColor = new BABYLON.Color3(0, 1, 1); // Cyan Neon
+                sphereMat.disableLighting = true;
+                sphere.material = sphereMat;
+
+                // 2. ROTATING RINGS (GYROSCOPE EFFECT)
+                const ring1 = BABYLON.MeshBuilder.CreateTorus("ring1", { diameter: 12, thickness: 0.1, tessellation: 64 }, scene);
+                const ringMat = new BABYLON.StandardMaterial("ringMat", scene);
+                ringMat.emissiveColor = new BABYLON.Color3(0.5, 0, 1); // Purple Neon
+                ring1.material = ringMat;
+
+                const ring2 = ring1.clone("ring2");
+                ring2.rotation.x = Math.PI / 2;
+
+                // 3. PARTICLES (DATA DUST)
+                const particleSystem = new BABYLON.ParticleSystem("particles", 1000, scene);
+                particleSystem.particleTexture = new BABYLON.Texture("https://www.babylonjs-playground.com/textures/flare.png", scene);
+                particleSystem.emitter = new BABYLON.Vector3(0, 0, 0);
+                particleSystem.minEmitBox = new BABYLON.Vector3(-20, -10, -20);
+                particleSystem.maxEmitBox = new BABYLON.Vector3(20, 10, 20);
+                particleSystem.color1 = new BABYLON.Color4(0, 1, 1, 0.5);
+                particleSystem.color2 = new BABYLON.Color4(0, 0.5, 1, 0.0);
+                particleSystem.minSize = 0.05;
+                particleSystem.maxSize = 0.2;
+                particleSystem.minLifeTime = 2;
+                particleSystem.maxLifeTime = 5;
+                particleSystem.emitRate = 100;
+                particleSystem.gravity = new BABYLON.Vector3(0, 0.1, 0); // Float up
+                particleSystem.start();
+
+                // ANIMATION LOOP
+                scene.registerBeforeRender(() => {
+                    sphere.rotation.y += 0.005;
+                    sphere.rotation.x += 0.002;
+
+                    ring1.rotation.y -= 0.01;
+                    ring1.rotation.z += 0.005;
+
+                    ring2.rotation.x += 0.01;
+                    ring2.rotation.y += 0.005;
+                });
+
+                return scene;
+            };
+
+            const scene = createScene();
+            engine.runRenderLoop(() => scene.render());
+            window.addEventListener("resize", () => engine.resize());
+        });
+    </script>
 </body>
 
 </html>
