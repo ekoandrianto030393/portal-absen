@@ -53,6 +53,10 @@ let employeeMap = {};
 let currentStream = null;
 let videoDevices = []; 
 
+const DETECTION_INTERVAL_MS = 100; // Interval scan dalam milidetik
+const DEFAULT_PHOTO = ''; // Path ke foto default/placeholder jika diperlukan
+const SUCCESS_COOLDOWN_MS = 15000; // Jeda 15 detik setelah berhasil scan (Mencegah spam)
+
 // VARS UNTUK EFEK DECRYPT TEXT
 let targetLabel = '';
 let currentDisplayLabel = '';
@@ -148,10 +152,7 @@ if (stealthToggle) {
     });
 }
 
-let FACE_MATCHING_THRESHOLD = 0.28; // Diubah ke LET agar bisa di-override Admin
-let DETECTION_INTERVAL_MS = 100;
-const DEFAULT_PHOTO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0idy00IGgtNCI+PHBhdGggZD0iTTggOGE0IDQgMCAxIDAgMC04IDQgNCAwIDAgMCAwIDh6bTAtMWEzIDMgMCAxIDEtNiAwIDMgMyAwIDAgMSA2IDB6TTggOWE1IDUgMCAwIDAtNSA1djJBNiA2IDAgMCAwIDggMjFhNiA2IDAgMCAwIDYtNnYtMmE1IDUgMCAwIDAtNS01ek04IDE5YTUgNSAwIDAgMS00LTJ2LTFhNCA0IDAgMCAxIDQtNGM0IDAgMy44MiA0IDQgNGMtLjE4LjMyLS4zOC42My0uNTggLjkzQTUuMDAzIDUuMDAzIDAgMCAxIDggMTl6Ii8+PC9zdmc+'; // Placeholder photo
-
+let FACE_MATCHING_THRESHOLD = 0.5;
 // --- DEFINISI WARNA (Futuristik) ---
 const PROFESSIONAL_STATUS_COLOR = '#00FF7F'; 
 const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
@@ -860,11 +861,19 @@ const api = {
         try {
             const response = await fetch('/get-descriptors');
             if (!response.ok) {
-                throw new Error(`Server endpoint /get-descriptors not found (Status: ${response.status})`);
+                throw new Error(`Server Error: ${response.status} ${response.statusText}`);
             }
-            const data = await response.json();
-            if (!data.success) throw new Error(data.message || 'API returned failure.');
-            return data.descriptors;
+            
+            // FIX: Baca sebagai text dulu untuk debugging jika server mengirim HTML error (bukan JSON)
+            const text = await response.text();
+            try {
+                const data = JSON.parse(text);
+                if (!data.success) throw new Error(data.message || 'API returned failure.');
+                return data.descriptors;
+            } catch (e) {
+                console.error("RAW SERVER RESPONSE (Bukan JSON):", text);
+                throw new Error(`Invalid JSON received. Cek Console (F12) untuk melihat respons server.`);
+            }
         } catch (error) {
             console.error('Error loading descriptors:', error);
             throw error; // Lemparkan error agar bisa ditangkap oleh pemanggil
@@ -891,7 +900,36 @@ async function loadLabeledImages() {
     
     try {
         const descriptorsData = await api.getDescriptors();
-        if (descriptorsData.length === 0) throw new Error('Database is empty.');
+        // console.log("DEBUG SERVER DATA:", descriptorsData);
+        logSystem(`DIAGNOSTIK: Diterima ${descriptorsData ? descriptorsData.length : 0} data dari server.`, 'text-cyan-400');
+        
+        if (!descriptorsData || descriptorsData.length === 0) {
+            // --- FALLBACK: Cek Local Storage jika Server Kosong ---
+            const localData = JSON.parse(localStorage.getItem('aether_users') || '[]');
+            if (localData.length > 0) {
+                logSystem(`⚠️ SERVER EMPTY. Menggunakan ${localData.length} data Local Storage.`, 'text-amber-400');
+                setStatusVisual(`⚠️ MODE HYBRID: ${localData.length} Data Lokal Aktif.`, 'text-amber-500');
+                
+                const localDescriptors = localData.map(item => {
+                    employeeMap[item.id] = {
+                        nama: item.name,
+                        jabatan: item.role || 'N/A',
+                        foto: null // LocalStorage biasanya tidak simpan foto
+                    };
+                    return new faceapi.LabeledFaceDescriptors(item.id, [new Float32Array(item.descriptor)]);
+                });
+                return localDescriptors;
+            }
+            // -----------------------------------------------------
+
+            setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-amber-500');
+            if(dbStatus) {
+                dbStatus.textContent = 'EMPTY';
+                dbStatus.className = 'text-amber-500 font-bold';
+            }
+            logSystem(`Database loaded: 0 records.`, 'text-amber-500');
+            return [];
+        }
 
         const descriptors = descriptorsData.map(item => {
             const descriptorArray = JSON.parse(item.face_descriptor);
@@ -899,7 +937,6 @@ async function loadLabeledImages() {
             employeeMap[item.id_karyawan] = {
                 nama: item.nama,
                 jabatan: item.jabatan || 'N/A',
-                foto: item.foto || null
             };
             return new faceapi.LabeledFaceDescriptors(item.id_karyawan, [new Float32Array(descriptorArray)]);
         });
@@ -915,6 +952,19 @@ async function loadLabeledImages() {
 
     } catch (error) {
         console.error('Error loading descriptors:', error);
+        logSystem(`DIAGNOSTIK ERROR: ${error.message}`, 'text-red-500');
+        
+        // FIX: Jika server merespon error "Database is empty", anggap sebagai KOSONG (Amber), bukan OFFLINE (Merah)
+        if (error.message && (error.message.includes('empty') || error.message.includes('Database is empty'))) {
+            setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-amber-500');
+            if(dbStatus) {
+                dbStatus.textContent = 'EMPTY';
+                dbStatus.className = 'text-amber-500 font-bold';
+            }
+            logSystem(`Database loaded: 0 records (Server Message).`, 'text-amber-500');
+            return [];
+        }
+
         setStatusVisual(`⚠️ DB OFFLINE. Hanya Deteksi Wajah Aktif.`, 'text-red-500');
         if(dbStatus) {
             dbStatus.textContent = 'OFFLINE';
@@ -1150,11 +1200,11 @@ async function detectFace() {
                 // Hanya update jika ID berubah atau belum ada match sebelumnya
                 if (!lastKnownMatch || lastKnownMatch.id !== recognizedId) {
                     // Ambil data lengkap dari employeeMap yang sudah dimuat di awal
-                    const { nama, jabatan, foto } = employee;
+                    const { nama, jabatan } = employee;
                     
                     // Update Foto dengan Efek Scan
                     if (userPhotoDisplay) {
-                        userPhotoDisplay.src = foto || DEFAULT_PHOTO;
+                        userPhotoDisplay.src = DEFAULT_PHOTO; // Gunakan default icon (tanpa foto asli)
                         if (photoContainer) {
                             photoContainer.classList.remove('photo-scan-active');
                             void photoContainer.offsetWidth; // Trigger reflow
@@ -1277,7 +1327,6 @@ async function processAttendance(karyawanId) {
         const employeeData = employeeMap[karyawanId] || {};
         const display_name = result.nama || employeeData.nama || karyawanId;
         const display_jabatan = result.jabatan || employeeData.jabatan || 'N/A';
-        const display_foto_base64 = result.foto || employeeData.foto;
         
         const coloredName = `<span class="font-bold text-shadow-lg" style="color: ${NAME_HIGHLIGHT_COLOR}; text-shadow: 0 0 10px ${NAME_HIGHLIGHT_COLOR}, 0 0 5px #000;">${display_name}</span>`;
 
@@ -1296,7 +1345,7 @@ async function processAttendance(karyawanId) {
             // Update panel "TARGET DATA" di sisi kiri
             if (userIdDisplay) userIdDisplay.textContent = display_name;
             if (userJabatanDisplay) userJabatanDisplay.textContent = display_jabatan;
-            if (userPhotoDisplay) userPhotoDisplay.src = display_foto_base64 || DEFAULT_PHOTO;
+            if (userPhotoDisplay) userPhotoDisplay.src = DEFAULT_PHOTO;
 
 
             setStatusVisual(cleanMessage, displayColor);
@@ -1327,19 +1376,26 @@ async function processAttendance(karyawanId) {
             }
 
         } else {
-            // --- GAGAL (MERAH) ---
+            // --- GAGAL (MERAH atau KUNING) ---
+            const isWarning = statusColor === 'yellow'; // Cek apakah ini peringatan atau error fatal
+
             SoundFX.play('error');
-            SoundFX.speak('Access Denied');
-            triggerScreenFlash('#FF0055');
+            SoundFX.speak(isWarning ? 'Notice' : 'Access Denied');
+            triggerScreenFlash(isWarning ? '#FFD700' : '#FF0055');
 
-            setStatusVisual(cleanMessage, 'text-red-500');
-            userStatusDisplay.textContent = 'DENIED';
-            userStatusDisplay.className = 'text-lg font-bold text-red-500';
+            setStatusVisual(cleanMessage, isWarning ? 'text-amber-500' : 'text-red-500');
+            userStatusDisplay.textContent = isWarning ? 'NOTICE' : 'DENIED';
+            userStatusDisplay.className = 'text-lg font-bold ' + (isWarning ? 'text-amber-500' : 'text-red-500');
 
-            finalStatusText = 'ACCESS DENIED';
+            finalStatusText = isWarning ? 'PERINGATAN' : 'ACCESS DENIED';
             finalMessageHTML = `${coloredName} | ${cleanMessage}`;
-            finalBackground = `radial-gradient(circle, rgba(255,0,85,0.7) 0%, rgba(153,0,0,0.9) 100%)`;
-            finalStatusColor = '#FF0055';
+            
+            // Background: Kuning untuk Warning (Waktu), Merah untuk Error (Wajah Tidak Dikenal)
+            finalBackground = isWarning 
+                ? `radial-gradient(circle, rgba(200, 150, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`
+                : `radial-gradient(circle, rgba(255,0,85,0.7) 0%, rgba(153,0,0,0.9) 100%)`;
+            
+            finalStatusColor = isWarning ? '#FFD700' : '#FF0055';
         }
         
         // FINAL OVERLAY RENDER (Profesional & Pesan Sambutan)
@@ -1425,7 +1481,7 @@ async function processAttendance(karyawanId) {
 
         logSystem(`${currentAction} Success for ${display_name}. Cooldown active.`, 'text-green-500');
         lastActionDisplay.textContent = `${currentAction}: ${display_name.substring(0, 15)}... @ ${serverTimestamp}`;
-        await new Promise(resolve => setTimeout(resolve, 5000)); 
+        await new Promise(resolve => setTimeout(resolve, SUCCESS_COOLDOWN_MS)); 
 
     } catch (error) {
         SoundFX.play('error');
@@ -1655,6 +1711,10 @@ function initBackground3D() {
         console.warn("Babylon.js resources failed to load. 3D Background disabled.");
         return;
     }
+
+    // Suppress Babylon.js info logs (like version and engine status)
+    BABYLON.Logger.LogLevel = BABYLON.Logger.Error;
+
     const renderCanvas = document.getElementById("renderCanvas");
     if (!renderCanvas) return;
 
@@ -1805,3 +1865,17 @@ document.addEventListener('DOMContentLoaded', () => {
         videoContainer.style.marginTop = "-40px"; 
     }
 });
+
+// --- DEBUGGING TOOL (Tambahan) ---
+// Ketik window.cekKoneksi() di Console browser untuk tes manual
+window.cekKoneksi = async () => {
+    console.log("🔍 TEST KONEKSI DATABASE...");
+    try {
+        const data = await api.getDescriptors();
+        console.log("✅ DATA DITERIMA:", data);
+        alert(`KONEKSI SUKSES!\nTotal Wajah: ${data.length}\nLihat Console (F12) untuk detail data.`);
+    } catch (e) {
+        console.error("❌ ERROR KONEKSI:", e);
+        alert(`KONEKSI GAGAL:\n${e.message}`);
+    }
+};

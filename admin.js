@@ -1,285 +1,201 @@
-// admin.js - Aether Control - Biometric Registration Logic
-
-// --- 1. DEFINISI ELEMEN DOM ---
 const video = document.getElementById('videoElement');
-const canvas = document.getElementById('overlay');
-const snapCanvas = document.getElementById('snapshotCanvas');
+const overlay = document.getElementById('overlay');
+const btnRegister = document.getElementById('btnRegister');
+const btnReset = document.getElementById('btnReset');
+const btnText = document.getElementById('btnText');
 const thresholdFill = document.getElementById('thresholdFill');
 const thresholdStatus = document.getElementById('thresholdStatus');
-const faceStatus = document.getElementById('faceStatus');
-const btnRegister = document.getElementById('btnRegister');
-const regIdKaryawan = document.getElementById('regIdKaryawan');
-const regNama = document.getElementById('regNama');
-const regJabatan = document.getElementById('regJabatan');
-const btnText = document.getElementById('btnText');
-const logStream = document.getElementById('logStream');
 const cameraSelect = document.getElementById('cameraSelect');
-const flashEffect = document.getElementById('flashEffect');
+const logStream = document.getElementById('logStream');
 
-// --- 2. KONFIGURASI ---
-const MODEL_URL = './models';
-const FACE_THRESHOLD = 0.45; // Ambang batas kepercayaan untuk mengunci wajah
-let faceDescriptor = null;
-let isProcessing = false; // Flag untuk mencegah deteksi/submit ganda
+let modelsLoaded = false;
 let currentStream = null;
-let videoDevices = [];
-let detectionInterval = null;
 
-// --- 3. FUNGSI UTILITAS ---
-function addToLogStream(msg, color = 'text-cyan-400') {
-    const p = document.createElement('p');
-    p.className = color;
-    p.textContent = `> [${new Date().toLocaleTimeString()}] ${msg}`;
-    logStream.prepend(p);
-    // Batasi jumlah log agar tidak membebani memori
-    if (logStream.children.length > 50) {
-        logStream.removeChild(logStream.lastChild);
-    }
-}
+// Load Models
+Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri('./models'),
+    faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
+    faceapi.nets.faceRecognitionNet.loadFromUri('./models'),
+    faceapi.nets.ssdMobilenetv1.loadFromUri('./models') // Better accuracy for registration
+]).then(() => {
+    modelsLoaded = true;
+    log("System", "Biometric models loaded.");
+    startVideo();
+});
 
-// --- 4. MANAJEMEN KAMERA ---
-function stopCamera() {
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-        currentStream = null;
-    }
-    if (detectionInterval) {
-        clearInterval(detectionInterval);
-        detectionInterval = null;
-    }
-}
-
-async function getCameraDevices() {
-    videoDevices = [];
-    cameraSelect.innerHTML = '';
-
-    try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        devices.forEach(device => {
-            if (device.kind === 'videoinput') {
-                videoDevices.push(device);
-                const option = document.createElement('option');
-                option.value = device.deviceId;
-                option.text = device.label || `Camera ${videoDevices.length}`;
-                cameraSelect.appendChild(option);
-            }
-        });
-
-        if (!cameraSelect.dataset.listenerAttached) {
-            cameraSelect.addEventListener('change', (e) => startCamera(e.target.value));
-            cameraSelect.dataset.listenerAttached = 'true';
-        }
-
-    } catch (error) {
-        addToLogStream(`Error enumerating devices: ${error.message}`, 'text-red-500');
-    }
-}
-
-async function startCamera(deviceId = null) {
-    stopCamera();
-    addToLogStream('Starting camera stream...', 'text-cyan-500');
-
-    const constraints = {
-        video: {
-            deviceId: deviceId ? { exact: deviceId } : undefined,
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-            frameRate: { ideal: 30 }
-        }
-    };
-
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        currentStream = stream;
-        video.srcObject = stream;
-        addToLogStream('Camera stream active.', 'text-green-400');
-    } catch (err) {
-        addToLogStream('HARDWARE ERROR: ' + err.message, 'text-red-500');
-    }
-}
-
-// --- 5. INISIALISASI APLIKASI ---
-async function init() {
-    try {
-        addToLogStream('LOADING NEURAL MODELS...', 'text-yellow-500');
-        await Promise.all([
-            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
-        addToLogStream('Neural models loaded.', 'text-green-400');
-
-        await getCameraDevices();
-        await startCamera(cameraSelect.value);
-
-    } catch (err) {
-        addToLogStream('INIT FAILED: ' + err.message, 'text-red-500');
-    }
-}
-
-function triggerFlash() {
-    if (!flashEffect) return;
-    flashEffect.style.transition = 'opacity 0.1s ease-out';
-    flashEffect.style.opacity = '0.8';
-    setTimeout(() => {
-        flashEffect.style.opacity = '0';
-    }, 150);
-}
-// --- 7. FUNGSI PENDAFTARAN OTOMATIS ---
-async function performRegistration() {
-    // Kunci proses agar tidak berjalan ganda
-    if (isProcessing) return;
+async function startVideo() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(device => device.kind === 'videoinput');
     
-    const id = regIdKaryawan.value.trim().toUpperCase();
-    const nama = regNama.value.trim();
-    const jabatan = regJabatan.value.trim() || 'Staff';
+    cameraSelect.innerHTML = '';
+    videoDevices.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.text = device.label || `Camera ${cameraSelect.length + 1}`;
+        cameraSelect.appendChild(option);
+    });
 
-    if (!id || !nama) {
-        alert('Mohon lengkapi ID dan Nama Karyawan terlebih dahulu!');
+    navigator.mediaDevices.getUserMedia({ video: {} })
+        .then(stream => {
+            video.srcObject = stream;
+            currentStream = stream;
+            log("System", "Video stream initialized.");
+        })
+        .catch(err => log("Error", "Camera access denied."));
+}
+
+video.addEventListener('play', () => {
+    const canvas = overlay;
+    const displaySize = { width: video.clientWidth, height: video.clientHeight };
+    faceapi.matchDimensions(canvas, displaySize);
+
+    setInterval(async () => {
+        if (!modelsLoaded) return;
+
+        // Use TinyFace for fast detection loop
+        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks();
+
+        const resizedDetections = faceapi.resizeResults(detections, displaySize);
+        
+        // Clear canvas
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+
+        if (detections.length > 0) {
+            const face = detections[0];
+            const score = Math.round(face.detection.score * 100);
+            
+            // Draw UI
+            faceapi.draw.drawDetections(canvas, resizedDetections);
+            
+            // Update Threshold UI
+            thresholdFill.style.width = `${score}%`;
+            thresholdStatus.innerText = `${score}%`;
+            
+            if (score > 80) {
+                thresholdFill.style.backgroundColor = '#39FF14'; // Green
+                btnRegister.disabled = false;
+                btnRegister.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnText.innerText = "CAPTURE & REGISTER";
+                document.getElementById('faceStatus').innerText = "TARGET LOCKED";
+                document.getElementById('faceStatus').className = "text-lg text-center mt-4 text-green-500 font-bold uppercase";
+            } else {
+                thresholdFill.style.backgroundColor = '#00eaff'; // Blue
+                resetBtn();
+            }
+        } else {
+            thresholdFill.style.width = '0%';
+            thresholdStatus.innerText = '0%';
+            resetBtn();
+        }
+    }, 100);
+});
+
+function resetBtn() {
+    btnRegister.disabled = true;
+    btnRegister.classList.add('opacity-50', 'cursor-not-allowed');
+    btnText.innerText = "WAITING FOR FACE...";
+    document.getElementById('faceStatus').innerText = "SEARCHING...";
+    document.getElementById('faceStatus').className = "text-lg text-center mt-4 text-red-500 font-bold uppercase";
+}
+
+btnRegister.addEventListener('click', async () => {
+    const id = document.getElementById('regIdKaryawan').value;
+    const name = document.getElementById('regNama').value;
+    const role = document.getElementById('regJabatan').value;
+
+    if (!id || !name) {
+        alert("Please fill in ID and Name.");
         return;
     }
 
-    isProcessing = true;
+    btnText.innerText = "PROCESSING...";
+    
+    // Use SSD MobileNet for high quality descriptor extraction
+    const detection = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
 
-    btnText.textContent = 'TRANSMITTING...';
-    btnRegister.classList.add('opacity-50', 'cursor-not-allowed'); // Disable visual saat loading
-    addToLogStream(`TRANSMITTING DATA: ${id}`, 'text-yellow-500');
+    if (detection) {
+        // 1. Ambil Snapshot Foto untuk Database
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const photoData = canvas.toDataURL('image/jpeg', 0.7);
 
-    // Picu efek flash
-    triggerFlash();
-
-    // Snapshot Instan
-    const sCtx = snapCanvas.getContext('2d');
-    sCtx.save();
-    sCtx.scale(-1, 1); // Balikkan gambar secara horizontal
-    sCtx.drawImage(video, -snapCanvas.width, 0, snapCanvas.width, snapCanvas.height);
-    sCtx.restore();
-    const fotoBase64 = snapCanvas.toDataURL('image/jpeg', 0.7);
-
-    try {
-        const res = await fetch('/api/karyawan/register_face', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_karyawan: id, nama, jabatan, descriptor: Array.from(faceDescriptor), foto: fotoBase64 })
-        });
-
-        const result = await res.json();
-        if (!result.success) throw new Error(result.message);
-
-        document.getElementById('overlayRegId').textContent = id;
-        document.getElementById('regSuccessOverlay').classList.remove('hidden');
-        addToLogStream(`SUCCESS: ${id} SYNCED`, 'text-green-400');
-        setTimeout(resetRegistrationForm, 2500);
-
-    } catch (error) {
-        addToLogStream(`SYNC FAILED: ${error.message}`, 'text-red-500');
-        isProcessing = false; // Buka kunci jika gagal agar bisa coba lagi
-    }
-}
-
-// Event Listener: Klik tombol untuk simpan
-btnRegister.addEventListener('click', performRegistration);
-
-// --- 6. LOOP DETEKSI WAJAH ---
-video.addEventListener('play', () => {
-    const displaySize = { width: video.videoWidth, height: video.videoHeight };
-    faceapi.matchDimensions(canvas, displaySize);
-
-    async function detectFrame() {
-        // Jangan proses jika sedang submit data
-        if (isProcessing) return; // Stop loop sementara saat proses
-        if (video.paused || video.ended) return;
-
-        // Gunakan detectAllFaces untuk mendeteksi lebih dari satu wajah
-        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({
-            inputSize: 160, // Optimal untuk kecepatan
-            scoreThreshold: 0.45
-        })).withFaceLandmarks().withFaceDescriptors();
-
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        if (detections.length > 1) {
-            // KASUS: Lebih dari 1 wajah terdeteksi
-            faceStatus.textContent = 'MULTIPLE TARGETS DETECTED';
-            faceStatus.className = 'text-lg text-center mt-4 text-red-500 font-bold uppercase animate-pulse';
-            btnText.textContent = 'HANYA SATU WAJAH';
-            btnRegister.disabled = true;
-            btnRegister.classList.add('opacity-50', 'cursor-not-allowed');
-
-            // Gambar kotak untuk semua wajah yang terdeteksi
-            detections.forEach(detection => {
-                const resized = faceapi.resizeResults(detection, displaySize);
-                ctx.strokeStyle = '#ff4757'; // Merah untuk peringatan
-                ctx.lineWidth = 2;
-                ctx.strokeRect(resized.detection.box.x, resized.detection.box.y, resized.detection.box.width, resized.detection.box.height);
-            });
-
-        } else if (detections.length === 1) {
-            // KASUS: Tepat 1 wajah terdeteksi (Normal)
-            const singleDetection = detections[0];
-            const resized = faceapi.resizeResults(singleDetection, displaySize);
-            const score = singleDetection.detection.score;
-            const percent = Math.round(score * 100);
-
-            ctx.strokeStyle = '#00eaff'; // Cyan untuk deteksi normal
-            ctx.lineWidth = 2;
-            ctx.strokeRect(resized.detection.box.x, resized.detection.box.y, resized.detection.box.width, resized.detection.box.height);
-
-            thresholdFill.style.width = percent + '%';
-            thresholdStatus.textContent = percent + '%';
-
-            if (score > FACE_THRESHOLD) {
-                faceStatus.textContent = 'FACE LOCKED';
-                faceStatus.className = 'text-lg text-center mt-4 text-green-400 font-bold uppercase';
-                faceDescriptor = singleDetection.descriptor;
-
-                // WAJAH TERKUNCI: Aktifkan Tombol
-                btnRegister.disabled = false;
-                btnRegister.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-indigo-900');
-                btnRegister.classList.add('bg-green-600', 'hover:bg-green-500', 'cursor-pointer');
-                btnText.textContent = 'KLIK UNTUK SIMPAN';
-
-            } else {
-                faceStatus.textContent = 'LOW SIGNAL';
-                faceStatus.className = 'text-lg text-center mt-4 text-yellow-500 font-bold uppercase';
-                
-                btnRegister.disabled = true;
-                btnRegister.classList.add('opacity-50', 'cursor-not-allowed', 'bg-indigo-900');
-                btnRegister.classList.remove('bg-green-600', 'hover:bg-green-500', 'cursor-pointer');
-                btnText.textContent = 'POSISIKAN WAJAH';
-            }
-        } else {
-            // KASUS: Tidak ada wajah terdeteksi
-            faceStatus.textContent = 'SEARCHING...';
-            faceStatus.className = 'text-lg text-center mt-4 text-red-500 font-bold uppercase';
-            btnText.textContent = 'WAITING FOR FACE...';
-            btnRegister.disabled = true;
-            btnRegister.classList.add('opacity-50', 'cursor-not-allowed', 'bg-indigo-900');
-            btnRegister.classList.remove('bg-green-600', 'hover:bg-green-500', 'cursor-pointer');
-        }
+        saveToLocalStorage(id, name, role, detection.descriptor);
+        saveToServer(id, name, role, detection.descriptor, photoData); // Kirim ke Server
         
-        // Pastikan loop terus berjalan
-        if (detectionInterval) {
-            requestAnimationFrame(detectFrame);
-        }
-    }
+        // Flash effect
+        const flash = document.getElementById('flashEffect');
+        flash.style.opacity = 1;
+        setTimeout(() => flash.style.opacity = 0, 200);
 
-    detectionInterval = setInterval(detectFrame, 100);
+        // Show Success Overlay
+        document.getElementById('overlayRegId').innerText = id;
+        document.getElementById('regSuccessOverlay').classList.remove('hidden');
+        log("Success", `Subject ${name} (${id}) archived.`);
+        
+        setTimeout(() => {
+            document.getElementById('regSuccessOverlay').classList.add('hidden');
+            document.getElementById('regIdKaryawan').value = '';
+            document.getElementById('regNama').value = '';
+        }, 3000);
+    } else {
+        alert("Face capture failed. Please hold still.");
+    }
 });
 
-// --- 8. FUNGSI RESET ---
-function resetRegistrationForm() {
-    document.getElementById('regSuccessOverlay').classList.add('hidden');
-    regIdKaryawan.value = '';
-    regNama.value = '';
-    regJabatan.value = '';
-    isProcessing = false; // Buka kunci setelah semua selesai
-    btnText.textContent = 'WAITING FOR FACE...';
-    btnRegister.disabled = true;
-    btnRegister.classList.add('opacity-50', 'cursor-not-allowed', 'bg-indigo-900');
-    btnRegister.classList.remove('bg-green-600', 'hover:bg-green-500');
+// --- TOMBOL RESET FORM ---
+if (btnReset) {
+    btnReset.addEventListener('click', () => {
+        document.getElementById('regIdKaryawan').value = '';
+        document.getElementById('regNama').value = '';
+        document.getElementById('regJabatan').value = '';
+        log("System", "Form input cleared.");
+    });
 }
 
-// --- 9. MULAI APLIKASI ---
-init();
+function saveToLocalStorage(id, name, role, descriptor) {
+    let db = JSON.parse(localStorage.getItem('aether_users') || '[]');
+    // Convert Float32Array to normal array for JSON storage
+    const descriptorArray = Array.from(descriptor);
+    
+    db.push({ id, name, role, descriptor: descriptorArray });
+    localStorage.setItem('aether_users', JSON.stringify(db));
+}
+
+async function saveToServer(id, name, role, descriptor, photo) {
+    try {
+        const descriptorArray = Array.from(descriptor);
+        const response = await fetch('/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_karyawan: id,
+                nama: name,
+                jabatan: role,
+                face_descriptor: JSON.stringify(descriptorArray),
+                foto: photo
+            })
+        });
+
+        if (response.status === 404) {
+            log("Server", "⚠️ Endpoint /register belum ada di Server (404).");
+            return;
+        }
+
+        const result = await response.json();
+        if (result.success) log("Server", "Data synced to database ✅");
+        else log("Server Error", result.message || "Upload failed ❌");
+    } catch (error) {
+        log("Network", "Gagal koneksi ke server database (Mode Offline).");
+    }
+}
+
+function log(type, message) {
+    const div = document.createElement('div');
+    div.innerHTML = `<span class="text-gray-500">[${new Date().toLocaleTimeString()}]</span> <span class="${type === 'Error' ? 'text-red-500' : 'text-cyan-400'}">${type}: ${message}</span>`;
+    logStream.prepend(div);
+}

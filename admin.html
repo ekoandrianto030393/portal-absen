@@ -96,6 +96,10 @@
 
 <body class="flex items-center justify-center min-h-screen p-4">
     <div class="w-full max-w-7xl relative z-10">
+        <a href="index.html"
+            class="absolute top-0 left-0 text-cyan-400 hover:text-white border border-cyan-400 px-3 py-1 rounded uppercase text-xs tracking-widest transition-colors">
+            &lt; ACCESS CONTROL
+        </a>
         <h1 class="text-4xl font-extrabold mb-8 text-center uppercase tracking-widest text-white">
             AETHER-QCM: QUANTUM CONTROL MATRIX
         </h1>
@@ -136,12 +140,19 @@
                         </div>
                     </div>
 
-                    <button id="btnRegister" disabled
-                        class="mt-4 bg-indigo-900 text-white font-bold py-3 px-4 w-full rounded-lg uppercase text-center transition-all opacity-50 cursor-not-allowed hover:bg-indigo-800 shadow-lg border border-indigo-500">
-                        <span id="btnText">WAITING FOR FACE...</span>
-                    </button>
+                    <div class="flex gap-3 mt-4">
+                        <button id="btnReset" type="button"
+                            class="flex-1 bg-gray-800 text-gray-400 font-bold py-3 px-2 rounded-lg uppercase hover:bg-gray-700 border border-gray-600 transition-all text-sm">
+                            RESET
+                        </button>
+                        <button id="btnRegister" disabled
+                            class="flex-[2] bg-indigo-900 text-white font-bold py-3 px-4 rounded-lg uppercase text-center transition-all opacity-50 cursor-not-allowed hover:bg-indigo-800 shadow-lg border border-indigo-500">
+                            <span id="btnText">WAITING...</span>
+                        </button>
+                    </div>
                 </div>
             </div>
+
 
             <div class="holo-panel p-4 rounded-2xl">
                 <h2 class="text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase text-center">VISUAL ANALYZER

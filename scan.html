@@ -908,4 +908,98 @@
                     <h2 class="widget-title">:: DIAGNOSTICS ::</h2>
                     <div class="flex flex-col gap-4">
                         <div>
-                            <div class=... (file truncated for brevity)
+                            <div class="flex justify-between text-xs mb-1"><span>CPU LOAD</span><span
+                                    id="cpuLoad">12%</span></div>
+                            <div class="loader-bar">
+                                <div id="cpuLoadBar" class="loader-fill" style="width: 12%;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1"><span>MEMORY</span><span
+                                    id="memUsage">30%</span></div>
+                            <div class="loader-bar">
+                                <div id="memUsageBar" class="loader-fill"
+                                    style="width: 30%; background: linear-gradient(90deg, #FF00FF, #8A2BE2);"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1"><span>CONFIDENCE</span><span
+                                    id="matchConfidenceText">0%</span></div>
+                            <div class="loader-bar">
+                                <div id="matchThresholdBar" class="loader-fill-red" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="widget-panel h-40">
+                    <h2 class="widget-title">:: WAVEFORM ::</h2>
+                    <div id="graph" class="h-full flex items-end justify-between gap-px overflow-hidden"></div>
+                </div>
+
+                <div class="widget-panel flex-grow h-40 lg:h-auto">
+                    <h2 class="widget-title">:: DATA STREAM ::</h2>
+                    <div id="dataStream" class="h-full overflow-y-auto font-mono text-xs opacity-75">
+                        <p class="text-cyan-700">Handshaking...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ADMIN OVERRIDE PANEL (HIDDEN) -->
+    <div id="adminOverlay"
+        class="fixed inset-0 z-[99999] hidden flex items-center justify-center bg-black/90 backdrop-blur-sm transition-opacity duration-300">
+        <div class="widget-panel w-full max-w-md border-red-500 shadow-[0_0_30px_rgba(255,0,0,0.5)] bg-gray-900/90">
+            <div class="flex justify-between items-center border-b border-red-500/50 pb-2 mb-4">
+                <h2 class="text-xl font-bold text-red-500 tracking-widest flex items-center gap-2">
+                    <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    :: ADMIN OVERRIDE ::
+                </h2>
+                <button id="btnCloseAdmin" class="text-red-500 hover:text-white font-mono">[ ESC ]</button>
+            </div>
+
+            <div class="space-y-5 font-mono text-xs">
+                <div>
+                    <label class="block text-red-400 mb-2 font-bold">SECURITY THRESHOLD (SENSITIVITY)</label>
+                    <div class="flex items-center gap-3">
+                        <input type="range" id="adminThreshold" min="0.1" max="0.6" step="0.01"
+                            class="flex-grow accent-red-500 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                        <span id="adminThresholdVal" class="text-white font-bold text-lg w-12 text-right">0.32</span>
+                    </div>
+                    <p class="text-[10px] text-gray-500 mt-1">Lower value = Stricter (More Secure). Higher = Easier
+                        Match.</p>
+                </div>
+
+                <!-- AUTO-FIX CONFIG -->
+                <div class="flex items-center justify-between border-t border-red-500/30 pt-4">
+                    <div class="flex items-center gap-2">
+                        <div id="autofixIcon" class="w-2 h-2 rounded-full bg-green-500 transition-colors duration-300">
+                        </div>
+                        <span class="text-xs font-mono text-red-400 tracking-wider">AUTO-FIX ABSEN</span>
+                    </div>
+                    <button id="autofixToggle"
+                        class="bg-green-900/20 border border-green-500 text-green-400 text-[10px] px-3 py-1 font-mono hover:border-red-500 hover:text-red-400 transition-all duration-300">
+                        [ ON ]
+                    </button>
+
+                    <div class="pt-4 border-t border-red-500/30 grid grid-cols-2 gap-3">
+                        <button id="btnAdminReload"
+                            class="bg-red-900/20 border border-red-500 text-red-400 py-3 hover:bg-red-600 hover:text-white transition-all font-bold tracking-wider">
+                            FORCE RELOAD DB
+                        </button>
+                        <button id="btnAdminSave"
+                            class="bg-red-600 text-white py-3 hover:bg-red-500 transition-all shadow-[0_0_15px_rgba(255,0,0,0.6)] font-bold tracking-wider">
+                            APPLY CHANGES
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="scan.js"></script>
+
+</body>
+
+</html>

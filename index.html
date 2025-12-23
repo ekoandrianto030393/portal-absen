@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aether Control - Biometric Access</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --aether-blue: #00eaff;
+            --holo-violet: #8a2be2;
+            --border-color: rgba(0, 234, 255, 0.5);
+            --bg-dark: rgba(0, 0, 0, 0.4);
+            --grid-color: rgba(0, 234, 255, 0.1);
+            --status-green: #39FF14;
+            --status-red: #FF003C;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--aether-blue);
+            background-color: #0d0d0d;
+            overflow-x: hidden;
+        }
+
+        .holo-panel {
+            background-color: var(--bg-dark);
+            box-shadow: 0 0 15px rgba(0, 234, 255, 0.2);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(5px);
+        }
+
+        .video-container {
+            position: relative;
+            border: 2px solid var(--aether-blue);
+            overflow: hidden;
+            background: #000;
+        }
+
+        #videoElement {
+            transform: scaleX(-1);
+        }
+
+        .scanner-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--aether-blue), transparent);
+            animation: scan 3s infinite linear;
+            box-shadow: 0 0 15px var(--aether-blue);
+            z-index: 10;
+        }
+
+        @keyframes scan {
+            0% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(100% / 1);
+                top: 100%;
+            }
+        }
+
+        .status-indicator {
+            transition: all 0.3s ease;
+            text-shadow: 0 0 10px currentColor;
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-6xl relative z-10">
+        <h1 class="text-4xl font-extrabold mb-8 text-center uppercase tracking-widest text-white">
+            AETHER-ACS: ACCESS CONTROL SYSTEM
+        </h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Visual Analyzer (Camera) -->
+            <div class="holo-panel p-4 rounded-2xl">
+                <h2 class="text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase text-center">
+                    VISUAL SENSOR ARRAY
+                </h2>
+                <div class="video-container rounded-xl aspect-[4/3]">
+                    <video id="videoElement" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                    <canvas id="overlay" class="absolute top-0 left-0 w-full h-full"></canvas>
+                    <div class="scanner-line"></div>
+                </div>
+                <div class="mt-4 flex justify-between items-center px-4">
+                    <span class="text-xs text-indigo-400">SENSOR STATUS: <span
+                            class="text-green-400">ACTIVE</span></span>
+                    <span class="text-xs text-indigo-400">FPS: <span id="fpsCounter">0</span></span>
+                </div>
+            </div>
+
+            <!-- Access Status Panel -->
+            <div class="holo-panel p-6 rounded-2xl flex flex-col">
+                <h2 class="text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase">IDENTITY VERIFICATION</h2>
+
+                <div class="flex-1 flex flex-col items-center justify-center space-y-6 py-8">
+                    <div id="statusIcon"
+                        class="w-32 h-32 rounded-full border-4 border-gray-600 flex items-center justify-center bg-gray-900/50 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+                        <svg class="w-16 h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.131A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.2-2.858.59-4.18M5.5 5.5A16.08 16.08 0 008 4m8 0a16.08 16.08 0 002.5 1.5" />
+                        </svg>
+                    </div>
+
+                    <div class="text-center space-y-2 w-full">
+                        <h3 id="subjectName" class="text-3xl font-bold text-white tracking-wider">UNKNOWN</h3>
+                        <p id="subjectRole" class="text-indigo-400 text-lg tracking-widest">---</p>
+                        <p id="subjectId" class="text-xs text-gray-500 font-mono">ID: ---</p>
+                    </div>
+
+                    <div id="accessStatus"
+                        class="text-4xl font-black uppercase tracking-widest text-gray-600 status-indicator">
+                        STANDBY
+                    </div>
+                </div>
+
+                <div class="mt-auto pt-4 border-t border-indigo-500/30">
+                    <h4 class="text-xs text-indigo-400 mb-2 uppercase">Recent Access Logs</h4>
+                    <div id="accessLogs" class="h-32 overflow-y-auto text-xs font-mono space-y-1 pr-2">
+                        <div class="flex justify-between text-gray-500">
+                            <span>[SYSTEM]</span>
+                            <span>System Initialized...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+
+</html>
