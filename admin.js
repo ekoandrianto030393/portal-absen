@@ -66,7 +66,48 @@ video.addEventListener('play', () => {
             const score = Math.round(face.detection.score * 100);
             
             // Draw UI
-            faceapi.draw.drawDetections(canvas, resizedDetections);
+            // Custom High-Tech HUD Drawing
+            const ctx = canvas.getContext('2d');
+            resizedDetections.forEach(det => {
+                const { x, y, width, height } = det.detection.box;
+                const detScore = Math.round(det.detection.score * 100);
+                const color = detScore > 80 ? '#39FF14' : '#00eaff'; // Green if high conf, else Cyan
+
+                ctx.save();
+                
+                // 1. Corner Brackets (Thick & Glowing)
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 15;
+                const lineLen = 25;
+
+                // Top-Left
+                ctx.beginPath(); ctx.moveTo(x, y + lineLen); ctx.lineTo(x, y); ctx.lineTo(x + lineLen, y); ctx.stroke();
+                // Top-Right
+                ctx.beginPath(); ctx.moveTo(x + width - lineLen, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + lineLen); ctx.stroke();
+                // Bottom-Right
+                ctx.beginPath(); ctx.moveTo(x + width, y + height - lineLen); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width - lineLen, y + height); ctx.stroke();
+                // Bottom-Left
+                ctx.beginPath(); ctx.moveTo(x + lineLen, y + height); ctx.lineTo(x, y + height); ctx.lineTo(x, y + height - lineLen); ctx.stroke();
+
+                // 2. Inner Frame (Thin & Transparent)
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.4;
+                ctx.strokeRect(x + 5, y + 5, width - 10, height - 10);
+                ctx.globalAlpha = 1.0;
+
+                // 3. Header Label
+                ctx.fillStyle = color;
+                ctx.font = 'bold 12px "Share Tech Mono"';
+                ctx.fillText(`TARGET_ID [${detScore}%]`, x, y - 10);
+                
+                // 4. Bottom Scanning Bar
+                ctx.fillRect(x, y + height + 5, width * (detScore / 100), 3);
+                
+                ctx.restore();
+            });
             
             // Update Threshold UI
             thresholdFill.style.width = `${score}%`;

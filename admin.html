@@ -23,7 +23,7 @@
         body {
             font-family: 'Share Tech Mono', monospace;
             color: var(--aether-blue);
-            background-color: #0d0d0d;
+            background-color: transparent;
             overflow-x: hidden;
         }
 
@@ -67,44 +67,53 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 3px;
-            background: var(--aether-blue);
-            box-shadow: 0 0 10px var(--aether-blue), 0 0 20px var(--aether-blue);
-            animation: scan-move 2s infinite ease-in-out alternate;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--aether-blue), transparent);
+            animation: scan 3s infinite linear;
+            box-shadow: 0 0 15px var(--aether-blue);
+            box-shadow: 0 0 25px var(--aether-blue);
+            /* Intensitas awal glow */
+            animation: scan 3s infinite linear, pulsate 1.5s infinite alternate;
+            /* Tambahkan animasi pulsate */
             z-index: 10;
-            opacity: 0.9;
         }
 
-        .scanner-line::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 60px;
-            background: linear-gradient(to top, rgba(0, 234, 255, 0.4), transparent);
-        }
-
-        .scanner-line::after {
-            content: 'SCANNING_TARGET_ID...';
-            position: absolute;
-            right: 0;
-            bottom: 5px;
-            background: rgba(0, 234, 255, 0.2);
-            color: #fff;
-            font-size: 9px;
-            padding: 2px 5px;
-            border-left: 2px solid var(--aether-blue);
-            backdrop-filter: blur(2px);
-        }
-
-        @keyframes scan-move {
+        @keyframes scan {
             0% {
-                top: 0%;
+                transform: translateY(0);
             }
 
             100% {
-                top: 98%;
+                transform: translateY(100% / 1);
+                top: 100%;
+            }
+        }
+
+        @keyframes pulsate {
+            0% {
+                box-shadow: 0 0 15px var(--aether-blue);
+            }
+
+            /* Glow redup */
+            100% {
+                box-shadow: 0 0 30px var(--aether-blue);
+            }
+
+            /* Glow lebih terang */
+        }
+
+        /* --- TEXT GLITCH ANIMATION --- */
+        .glitch {
+            animation: glitch-skew 0.8s steps(2, end) infinite;
+        }
+
+        @keyframes glitch-skew {
+            0% {
+                transform: skew(0deg);
+            }
+
+            50% {
+                transform: skew(3deg);
             }
         }
 
@@ -198,6 +207,10 @@
             bottom: -10px;
             left: -10px;
             right: -10px;
+            top: -10px;
+            bottom: -10px;
+            left: -10px;
+            right: -10px;
             border-radius: 50%;
             border: 2px solid transparent;
             border-top-color: var(--aether-blue);
@@ -258,10 +271,43 @@
                 transform: rotate(-360deg);
             }
         }
+
+        /* --- SUCCESS OVERLAY ANIMATIONS --- */
+        @keyframes success-pop {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .success-card-anim {
+            animation: success-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* --- CRT SCANLINE EFFECT --- */
+        .crt-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.1));
+            background-size: 100% 4px;
+            z-index: 9999;
+            pointer-events: none;
+        }
     </style>
 </head>
 
 <body class="flex items-center justify-center min-h-screen p-4">
+    <!-- CRT OVERLAY -->
+    <div class="crt-lines"></div>
+
     <!-- BABYLON.JS BACKGROUND CANVAS -->
     <canvas id="renderCanvas" class="fixed inset-0 w-full h-full -z-10 pointer-events-none"></canvas>
 
@@ -270,7 +316,8 @@
             class="absolute top-0 left-0 text-cyan-400 hover:text-white border border-cyan-400 px-3 py-1 rounded uppercase text-xs tracking-widest transition-colors">
             &lt; ACCESS CONTROL
         </a>
-        <h1 class="text-4xl font-extrabold mb-8 text-center uppercase tracking-widest text-white">
+        <h1 class="cyber-text text-4xl font-extrabold mb-8 text-center uppercase tracking-widest text-white"
+            data-value="AETHER-QCM: QUANTUM CONTROL MATRIX">
             AETHER-QCM: QUANTUM CONTROL MATRIX
         </h1>
 
@@ -281,7 +328,8 @@
                 <div class="hud-corner tr"></div>
                 <div class="hud-corner bl"></div>
                 <div class="hud-corner br"></div>
-                <h2 class="text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase">SUBJECT DATA INPUT</h2>
+                <h2 class="cyber-text text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase"
+                    data-value="SUBJECT DATA INPUT">SUBJECT DATA INPUT</h2>
 
                 <div class="space-y-5">
                     <div>
@@ -335,11 +383,13 @@
                 <div class="hud-corner tr"></div>
                 <div class="hud-corner bl"></div>
                 <div class="hud-corner br"></div>
-                <h2 class="text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase text-center">VISUAL ANALYZER
+                <h2 class="cyber-text text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase text-center"
+                    data-value="VISUAL ANALYZER">VISUAL ANALYZER
                 </h2>
                 <div class="video-container rounded-xl aspect-[4/3]">
                     <video id="videoElement" autoplay muted playsinline class="w-full h-full object-cover"></video>
                     <canvas id="overlay" class="absolute top-0 left-0 w-full h-full"></canvas>
+
 
                     <!-- Advanced HUD Elements -->
                     <div class="scan-grid"></div>
@@ -352,7 +402,8 @@
                     <div id="flashEffect" class="absolute inset-0 bg-white opacity-0 pointer-events-none"></div>
                     <div class="scanner-line"></div>
                 </div>
-                <p id="faceStatus" class="text-lg text-center mt-4 text-red-500 font-bold uppercase">INITIATING...</p>
+                <p id="faceStatus" class="text-lg text-center mt-4 text-red-500 font-bold uppercase">
+                    INITIATING...</p>
                 <canvas id="snapshotCanvas" style="display:none;" width="640" height="480"></canvas>
             </div>
 
@@ -362,18 +413,69 @@
                 <div class="hud-corner tr"></div>
                 <div class="hud-corner bl"></div>
                 <div class="hud-corner br"></div>
-                <h2 class="text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase">SYSTEM LOG STREAM</h2>
-                <div id="logStream" class="flex-1 overflow-y-auto text-[10px] space-y-1 font-mono text-cyan-400"></div>
+                <h2 class="cyber-text text-xl font-bold mb-4 pb-2 border-b border-indigo-500 uppercase"
+                    data-value="SYSTEM LOG STREAM">SYSTEM LOG STREAM</h2>
+                <div id="logStream" class="flex-1 overflow-y-auto text-[10px] space-y-1 font-mono text-cyan-400">
+                </div>
             </div>
         </div>
     </div>
 
     <div id="regSuccessOverlay"
-        class="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-[100] hidden">
-        <div class="text-center p-10 border-2 border-green-500 rounded-2xl">
-            <h2 class="text-4xl font-bold text-green-500 mb-4 uppercase tracking-tighter">:: ARCHIVED ::</h2>
-            <p class="text-white text-lg">DATA BIOMETRIK BERHASIL DISIMPAN</p>
-            <p class="text-gray-400 mt-2">ID: <span id="overlayRegId" class="text-white"></span></p>
+        class="fixed inset-0 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center z-[100] hidden">
+
+        <!-- Background Grid -->
+        <div class="absolute inset-0"
+            style="background-image: radial-gradient(circle, rgba(0, 255, 0, 0.1) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.3;">
+        </div>
+
+        <div
+            class="relative z-10 p-16 border-2 border-green-500/50 bg-gray-900/90 rounded-3xl shadow-[0_0_150px_rgba(0,255,0,0.2)] success-card-anim max-w-3xl w-full mx-4">
+
+            <!-- Tech Corners -->
+            <div class="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-green-500 -mt-2 -ml-2"></div>
+            <div class="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-green-500 -mt-2 -mr-2"></div>
+            <div class="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-green-500 -mb-2 -ml-2">
+            </div>
+            <div class="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-green-500 -mb-2 -mr-2">
+            </div>
+
+            <div class="flex flex-col items-center text-center space-y-8">
+                <!-- Icon -->
+                <div class="relative">
+                    <div class="absolute inset-0 bg-green-500 blur-xl opacity-40 animate-pulse rounded-full"></div>
+                    <div
+                        class="relative w-40 h-40 rounded-full border-4 border-green-400 flex items-center justify-center bg-black/50 shadow-[0_0_50px_rgba(0,255,0,0.4)]">
+                        <svg class="w-24 h-24 text-green-400 drop-shadow-[0_0_10px_rgba(0,255,0,0.8)]" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Text -->
+                <div class="space-y-4">
+                    <h2 class="text-7xl font-black text-white uppercase tracking-tighter"
+                        style="text-shadow: 0 0 30px rgba(0,255,0,0.6);">
+                        SUCCESS
+                    </h2>
+                    <p class="text-2xl text-green-400 font-mono tracking-[0.2em] border-y border-green-500/30 py-2">
+                        BIOMETRIC DATA ENCRYPTED
+                    </p>
+                </div>
+
+                <!-- ID Display -->
+                <div class="bg-green-900/20 border border-green-500/30 px-12 py-6 rounded-xl w-full">
+                    <p class="text-green-300 text-sm uppercase tracking-widest mb-2">ASSIGNED IDENTITY ID</p>
+                    <p class="text-5xl font-mono font-bold text-white tracking-widest"
+                        style="text-shadow: 0 0 15px currentColor;" id="overlayRegId">---</p>
+                </div>
+
+                <p class="text-xs text-gray-500 font-mono animate-pulse pt-4">
+                    > SYSTEM AUTO-RESET INITIATED...
+                </p>
+            </div>
         </div>
     </div>
 
@@ -422,6 +524,54 @@
             const coordEl = document.getElementById('scanCoord');
             if (coordEl) coordEl.innerText = `${x},${y}`;
         }, 200);
+
+        // --- CYBER TEXT DECODING EFFECT ---
+        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;':,./<>?";
+
+
+        const animateText = (element) => {
+            let iterations = 0;
+            const originalText = element.dataset.value;
+            const interval = setInterval(() => {
+                element.innerText = originalText.split("")
+                    .map((letter, index) => {
+                        if (index < iterations) return originalText[index];
+                        return letters[Math.floor(Math.random() * letters.length)];
+                    })
+                    .join("");
+
+                if (iterations >= originalText.length) clearInterval(interval);
+                iterations += 1 / 3;
+            }, 30);
+        }
+
+        // Animate headers on load
+        document.querySelectorAll('.cyber-text').forEach(el => {
+            // Add hover effect
+            el.addEventListener('mouseover', () => animateText(el));
+            // Initial animation
+            animateText(el);
+        });
+
+        // --- SYSTEM BOOT LOG SEQUENCE ---
+        const bootLogs = [
+            "INITIALIZING AETHER KERNEL v4.2...",
+            "LOADING BIOMETRIC MODULES [OK]",
+            "CONNECTING TO NEURAL NET... [CONNECTED]",
+            "CALIBRATING OPTICAL SENSORS...",
+            "SYSTEM READY. WAITING FOR INPUT."
+        ];
+        const bootLogStream = document.getElementById('logStream');
+        let logIndex = 0;
+        const logInterval = setInterval(() => {
+            if (logIndex >= bootLogs.length) { clearInterval(logInterval); return; }
+            const div = document.createElement('div');
+            div.innerText = `> [${new Date().toLocaleTimeString()}] ${bootLogs[logIndex]}`;
+            bootLogStream.appendChild(div);
+            bootLogStream.scrollTop = bootLogStream.scrollHeight;
+            playUiSound('type'); // Sound effect sync
+            logIndex++;
+        }, 500);
 
         // --- BABYLON.JS 3D BACKGROUND INIT ---
         window.addEventListener('DOMContentLoaded', () => {
