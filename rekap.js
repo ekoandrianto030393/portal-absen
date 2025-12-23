@@ -89,7 +89,10 @@ function renderTable() {
     
     // Hitung Total Keseluruhan
     let grandTotal = 0;
-    allData.forEach(row => grandTotal += parseFloat(row.total_jam_kerja_decimal));
+    allData.forEach(row => {
+        const val = parseFloat(row.total_jam_kerja_decimal);
+        grandTotal += isNaN(val) ? 0 : val;
+    });
     
     totalRecordsDisplay.textContent = allData.length;
     grandTotalHoursDisplay.textContent = formatDecimal(grandTotal);
@@ -108,7 +111,8 @@ function renderTable() {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-emerald-50 transition-colors text-sm even:bg-slate-50';
             
-            const jamDecimal = parseFloat(row.total_jam_kerja_decimal);
+            let jamDecimal = parseFloat(row.total_jam_kerja_decimal);
+            if (isNaN(jamDecimal)) jamDecimal = 0;
 
             tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${row.id_karyawan}</td>

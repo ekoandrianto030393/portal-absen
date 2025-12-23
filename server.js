@@ -247,13 +247,34 @@ app.get('/api/rekap_data', async (req, res) => {
     let conn;
     try {
         conn = await pool.getConnection();
-        const [rows] = await conn.execute(`
-            SELECT *
-            FROM rekap_gaji_bulanan
-            ORDER BY Tahun DESC, Bulan DESC, id_karyawan ASC
-        `);
+        
+        // Ambil parameter periode dari frontend (rekap.js)
+        const periode = req.query.periode;
+        
+        let sql = `
+            SELECT 
+                a.id_karyawan,
+                COALESCE(k.nama, a.id_karyawan) as nama,
+                DATE_FORMAT(a.waktu_absensi, '%Y-%m') as periode_bulan,
+                COALESCE(SUM(a.jam_kerja), 0) as total_jam_kerja_decimal,
+                SEC_TO_TIME(SUM(a.jam_kerja) * 3600) as total_jam_kerja_hms
+            FROM absensi a
+            LEFT JOIN karyawan k ON a.id_karyawan = k.id_karyawan
+            WHERE a.tipe_absensi = 'PULANG'
+        `;
+        
+        const params = [];
+        if (periode) {
+            sql += ` AND DATE_FORMAT(a.waktu_absensi, '%Y-%m') = ?`;
+            params.push(periode);
+        }
+        
+        sql += ` GROUP BY a.id_karyawan, k.nama, periode_bulan ORDER BY periode_bulan DESC, a.id_karyawan ASC`;
+
+        const [rows] = await conn.execute(sql, params);
         res.json({ success: true, data: rows });
     } catch (e) {
+        console.error("Rekap Data Error:", e);
         res.status(500).json({ success: false });
     } finally {
         if (conn) conn.release();
@@ -293,6 +314,20 @@ app.get('/api/monitoring/terlambat_lupa', async (req, res) => {
     res.json({ success: true, data: rows });
 });
 
+app.get('/api/rekap_all_periodes', async (req, res) => {
+    try {
+        const [rows] = await pool.execute(`
+            SELECT DISTINCT DATE_FORMAT(waktu_absensi, '%Y-%m') as periode_bulan 
+            FROM absensi 
+            WHERE waktu_absensi IS NOT NULL 
+            ORDER BY periode_bulan DESC
+        `);
+        res.json({ success: true, data: rows });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // ===================================================
 // STATIC ROUTES
 // ===================================================
@@ -304,6 +339,12 @@ app.get('/scan', (req, res) =>
 );
 app.get('/admin', (req, res) =>
     res.sendFile(path.join(__dirname, 'admin.html'))
+);
+app.get('/rekap', (req, res) =>
+    res.sendFile(path.join(__dirname, 'rekap.html'))
+);
+app.get('/monitor', (req, res) =>
+    res.sendFile(path.join(__dirname, 'monitor.html'))
 );
 
 // ===================================================
@@ -321,6 +362,10 @@ pool.getConnection()
 app.listen(PORT, '0.0.0.0', () => {
     console.log('====================================');
     console.log('🚀 BIOMETRIC SERVER RUNNING');
-    console.log(`🌐 http://localhost:${PORT}`);
+    console.log(`🌐 DASHBOARD: http://localhost:${PORT}`);
+    console.log(`📷 SCANNER:   http://localhost:${PORT}/scan`);
+    console.log(`🔧 ADMIN:     http://localhost:${PORT}/admin`);
+    console.log(`📊 REKAP:     http://localhost:${PORT}/rekap`);
+    console.log(`🖥️ MONITOR:   http://localhost:${PORT}/monitor`);
     console.log('====================================');
 });

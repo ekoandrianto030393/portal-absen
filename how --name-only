@@ -1,0 +1,34 @@
+[33mcommit fed719522a9cbf854295ad64eacd6ebc12839b27[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfix/restore-scan[m[33m)[m
+Author: ekoandrianto030393 <edane7810@gmail.com>
+Date:   Tue Dec 23 13:00:43 2025 +0700
+
+    perubahan yang tadinya tidak berfunsi jadi funsi dan pembuatan dat base baru
+
+.env
+admin.html
+admin.js
+index.html
+index.js
+karyawan.js
+libs/babylon.js
+libs/babylonjs.loaders.min.js
+libs/face-api.js
+my-project/index.html
+node_modules/.package-lock.json
+node_modules/lib/LICENSE
+node_modules/lib/README.md
+node_modules/lib/lib.js
+node_modules/lib/lib/append.js
+node_modules/lib/lib/local.js
+node_modules/lib/lib/parse.js
+node_modules/lib/lib/remote.js
+node_modules/lib/lib/request.js
+node_modules/lib/lib/ssehandler.js
+node_modules/lib/package.json
+package-lock.json
+package.json
+register_face.php
+rekap.html
+scan.html
+scan.js
+server.js
