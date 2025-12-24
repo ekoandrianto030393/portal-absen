@@ -49,87 +49,96 @@ video.addEventListener('play', () => {
     const displaySize = { width: video.clientWidth, height: video.clientHeight };
     faceapi.matchDimensions(canvas, displaySize);
 
-    setInterval(async () => {
-        if (!modelsLoaded) return;
+    // FIX: Gunakan recursive function daripada setInterval untuk mencegah tumpukan proses (Memory Leak)
+    const onPlay = async () => {
+        if (!video.paused && !video.ended && modelsLoaded) {
+            // Use TinyFace for fast detection loop
+            const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                .withFaceLandmarks();
 
-        // Use TinyFace for fast detection loop
-        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-            .withFaceLandmarks();
+            const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
-        const resizedDetections = faceapi.resizeResults(detections, displaySize);
-        
-        // Clear canvas
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+            // Clear canvas
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
 
-        if (detections.length > 0) {
-            const face = detections[0];
-            const score = Math.round(face.detection.score * 100);
-            
-            // Draw UI
-            // Custom High-Tech HUD Drawing
-            const ctx = canvas.getContext('2d');
-            resizedDetections.forEach(det => {
-                const { x, y, width, height } = det.detection.box;
-                const detScore = Math.round(det.detection.score * 100);
-                const color = detScore > 80 ? '#39FF14' : '#00eaff'; // Green if high conf, else Cyan
-
-                ctx.save();
+            if (detections.length > 0) {
+                // FIX: Pilih wajah dengan area terbesar (terdekat), bukan sembarang index [0]
+                const face = detections.reduce((prev, current) => {
+                    return (prev.detection.box.area > current.detection.box.area) ? prev : current;
+                });
                 
-                // 1. Corner Brackets (Thick & Glowing)
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 3;
-                ctx.shadowColor = color;
-                ctx.shadowBlur = 15;
-                const lineLen = 25;
-
-                // Top-Left
-                ctx.beginPath(); ctx.moveTo(x, y + lineLen); ctx.lineTo(x, y); ctx.lineTo(x + lineLen, y); ctx.stroke();
-                // Top-Right
-                ctx.beginPath(); ctx.moveTo(x + width - lineLen, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + lineLen); ctx.stroke();
-                // Bottom-Right
-                ctx.beginPath(); ctx.moveTo(x + width, y + height - lineLen); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width - lineLen, y + height); ctx.stroke();
-                // Bottom-Left
-                ctx.beginPath(); ctx.moveTo(x + lineLen, y + height); ctx.lineTo(x, y + height); ctx.lineTo(x, y + height - lineLen); ctx.stroke();
-
-                // 2. Inner Frame (Thin & Transparent)
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 1;
-                ctx.globalAlpha = 0.4;
-                ctx.strokeRect(x + 5, y + 5, width - 10, height - 10);
-                ctx.globalAlpha = 1.0;
-
-                // 3. Header Label
-                ctx.fillStyle = color;
-                ctx.font = 'bold 12px "Share Tech Mono"';
-                ctx.fillText(`TARGET_ID [${detScore}%]`, x, y - 10);
+                const score = Math.round(face.detection.score * 100);
                 
-                // 4. Bottom Scanning Bar
-                ctx.fillRect(x, y + height + 5, width * (detScore / 100), 3);
+                // Draw UI
+                // Custom High-Tech HUD Drawing
+                const ctx = canvas.getContext('2d');
+                resizedDetections.forEach(det => {
+                    const { x, y, width, height } = det.detection.box;
+                    const detScore = Math.round(det.detection.score * 100);
+                    const color = detScore > 80 ? '#39FF14' : '#00eaff'; // Green if high conf, else Cyan
+
+                    ctx.save();
+                    
+                    // 1. Corner Brackets (Thick & Glowing)
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = 15;
+                    const lineLen = 25;
+
+                    // Top-Left
+                    ctx.beginPath(); ctx.moveTo(x, y + lineLen); ctx.lineTo(x, y); ctx.lineTo(x + lineLen, y); ctx.stroke();
+                    // Top-Right
+                    ctx.beginPath(); ctx.moveTo(x + width - lineLen, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + lineLen); ctx.stroke();
+                    // Bottom-Right
+                    ctx.beginPath(); ctx.moveTo(x + width, y + height - lineLen); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width - lineLen, y + height); ctx.stroke();
+                    // Bottom-Left
+                    ctx.beginPath(); ctx.moveTo(x + lineLen, y + height); ctx.lineTo(x, y + height); ctx.lineTo(x, y + height - lineLen); ctx.stroke();
+
+                    // 2. Inner Frame (Thin & Transparent)
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1;
+                    ctx.globalAlpha = 0.4;
+                    ctx.strokeRect(x + 5, y + 5, width - 10, height - 10);
+                    ctx.globalAlpha = 1.0;
+
+                    // 3. Header Label
+                    ctx.fillStyle = color;
+                    ctx.font = 'bold 12px "Share Tech Mono"';
+                    ctx.fillText(`TARGET_ID [${detScore}%]`, x, y - 10);
+                    
+                    // 4. Bottom Scanning Bar
+                    ctx.fillRect(x, y + height + 5, width * (detScore / 100), 3);
+                    
+                    ctx.restore();
+                });
                 
-                ctx.restore();
-            });
-            
-            // Update Threshold UI
-            thresholdFill.style.width = `${score}%`;
-            thresholdStatus.innerText = `${score}%`;
-            
-            if (score > 80) {
-                thresholdFill.style.backgroundColor = '#39FF14'; // Green
-                btnRegister.disabled = false;
-                btnRegister.classList.remove('opacity-50', 'cursor-not-allowed');
-                btnText.innerText = "CAPTURE & REGISTER";
-                document.getElementById('faceStatus').innerText = "TARGET LOCKED";
-                document.getElementById('faceStatus').className = "text-lg text-center mt-4 text-green-500 font-bold uppercase";
+                // Update Threshold UI
+                thresholdFill.style.width = `${score}%`;
+                thresholdStatus.innerText = `${score}%`;
+                
+                if (score > 80) {
+                    thresholdFill.style.backgroundColor = '#39FF14'; // Green
+                    btnRegister.disabled = false;
+                    btnRegister.classList.remove('opacity-50', 'cursor-not-allowed');
+                    btnText.innerText = "CAPTURE & REGISTER";
+                    document.getElementById('faceStatus').innerText = "TARGET LOCKED";
+                    document.getElementById('faceStatus').className = "text-lg text-center mt-4 text-green-500 font-bold uppercase";
+                } else {
+                    thresholdFill.style.backgroundColor = '#00eaff'; // Blue
+                    resetBtn();
+                }
             } else {
-                thresholdFill.style.backgroundColor = '#00eaff'; // Blue
+                thresholdFill.style.width = '0%';
+                thresholdStatus.innerText = '0%';
                 resetBtn();
             }
-        } else {
-            thresholdFill.style.width = '0%';
-            thresholdStatus.innerText = '0%';
-            resetBtn();
         }
-    }, 100);
+        // Schedule next frame
+        setTimeout(onPlay, 100);
+    };
+    
+    onPlay();
 });
 
 function resetBtn() {

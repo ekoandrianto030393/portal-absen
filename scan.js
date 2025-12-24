@@ -26,12 +26,10 @@ const clockS = document.getElementById('clock-s');
 const clockMs = document.getElementById('clock-ms');
 const clockDate = document.getElementById('clock-date');
 const clockBar = document.getElementById('clock-bar');
+const dbStatus = document.getElementById('dbStatus');
 
 
 const cameraSelect = document.getElementById('cameraSelect');
-const networkStatus = document.getElementById('networkStatus');
-const cameraStatus = document.getElementById('cameraStatus');
-const dbStatus = document.getElementById('dbStatus');
 
 const stealthToggle = document.getElementById('stealthToggle');
 const stealthIcon = document.getElementById('stealthIcon');
@@ -46,11 +44,11 @@ const dataStream = document.getElementById('dataStream');
 const graphElement = document.getElementById('graph');
 
 let labeledDescriptors = null;
-let detectionInterval = null;
+let isDetectionActive = false; // Ganti interval ID dengan flag boolean
 let isProcessing = false; // Kunci: true saat sedang kirim data/cooldown
 let lastKnownMatch = null; 
 let employeeMap = {}; 
-let currentStream = null;
+let currentStream = null; // Variabel untuk stream kamera aktif
 let videoDevices = []; 
 
 const DETECTION_INTERVAL_MS = 100; // Interval scan dalam milidetik
@@ -138,27 +136,27 @@ if (stealthToggle) {
         if (isStealthMode) {
             // MODE SENYAP AKTIF
             stealthToggle.textContent = '[ ON ]';
-            stealthToggle.className = 'bg-red-900/20 border border-red-500 text-red-500 text-[10px] px-3 py-1 font-mono shadow-[0_0_10px_rgba(255,0,0,0.5)] transition-all';
+            stealthToggle.className = 'bg-red-900/20 border border-red-500 text-red-500 text-[10px] px-3 py-1 font-mono shadow-[0_0_10px_rgba(255,0,0,0.5)] transition-all duration-300';
             if(stealthIcon) stealthIcon.className = 'w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_#FF0000]';
             logSystem('STEALTH MODE: ACTIVE. Audio Output Disabled.', 'text-red-500');
             if ('speechSynthesis' in window) window.speechSynthesis.cancel(); // Hentikan suara yg sedang bicara
         } else {
             // MODE NORMAL
             stealthToggle.textContent = '[ OFF ]';
-            stealthToggle.className = 'bg-transparent border border-cyan-500 text-cyan-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all';
+            stealthToggle.className = 'bg-transparent border border-cyan-500/50 text-cyan-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all duration-300';
             if(stealthIcon) stealthIcon.className = 'w-2 h-2 rounded-full bg-gray-600';
             logSystem('STEALTH MODE: DISENGAGED. Audio Online.', 'text-cyan-500');
         }
     });
 }
 
-let FACE_MATCHING_THRESHOLD = 0.5;
+let FACE_MATCHING_THRESHOLD = 0.36;
 // --- DEFINISI WARNA (Futuristik) ---
 const PROFESSIONAL_STATUS_COLOR = '#00FF7F'; 
 const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
 const HEADER_COLOR = '#00FFFF'; 
 const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(204,133,0,0.95) 100%)'; 
-const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(0,255,127,0.8) 0%, rgba(0,100,0,0.95) 100%)'; 
+const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(0,255,127,0.8) 0%, rgba(0,100,0,0.95) 100%)';
 const AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
 
 // =============================================================================
@@ -272,6 +270,22 @@ function triggerScreenFlash(color) {
         flash.style.backgroundColor = color;
         flash.style.opacity = 0.4;
         setTimeout(() => flash.style.opacity = 0, 100);
+    }
+}
+
+// --- VISUAL FX: PARTICLE BURST ---
+function createParticleBurst(x, y, color) {
+    for (let i = 0; i < 20; i++) {
+        const p = document.createElement('div');
+        p.style.cssText = `position:fixed; left:${x}px; top:${y}px; width:4px; height:4px; background:${color}; pointer-events:none; z-index:9999; border-radius:50%; box-shadow:0 0 5px ${color};`;
+        document.body.appendChild(p);
+        const angle = Math.random() * Math.PI * 2;
+        const velocity = Math.random() * 100 + 50;
+        const anim = p.animate([
+            { transform: 'translate(0,0) scale(1)', opacity: 1 },
+            { transform: `translate(${Math.cos(angle)*velocity}px, ${Math.sin(angle)*velocity}px) scale(0)`, opacity: 0 }
+        ], { duration: 600, easing: 'cubic-bezier(0, .9, .57, 1)' });
+        anim.onfinish = () => p.remove();
     }
 }
 
@@ -419,7 +433,7 @@ function logSystem(message, color = 'text-green-500') {
     const newLog = document.createElement('p');
     newLog.className = `${color} my-0.5 text-xs`;
     newLog.innerHTML = `[${timestamp}] > ${message}`;
-    newLog.style.opacity = 0;
+    newLog.style.opacity = '0';
     setTimeout(() => newLog.style.opacity = 1, 10);
     systemLog.prepend(newLog);
     while (systemLog.children.length > 10) {
@@ -460,7 +474,7 @@ function resizeCanvas() {
         canvas.style.height = `${videoH}px`;
 
         // PENTING: Untuk Face-API
-        faceapi.matchDimensions(canvas, { width: W, height: videoH });
+        faceapi.matchDimensions(canvas, { width: W, height: videoH});
         logSystem(`Canvas resized to ${W}x${videoH}.`, 'text-cyan-500');
     }
 }
@@ -471,12 +485,12 @@ window.addEventListener('resize', resizeCanvas);
 function updateSystemDiagnostics(confidence) {
     // 1. CPU/Memory (Simulasi)
     const newCpu = Math.floor(Math.random() * 5) + 10; // 10% - 14%
-    const newMem = Math.floor(Math.random() * 8) + 28; // 28% - 35%
+    const newMem = Math.floor(Math.random() * 8) + 28; // 28% - 35% 
     if(cpuLoadBar) {
         cpuLoadBar.style.width = `${newCpu}%`;
         cpuLoadText.textContent = `${newCpu}%`;
     }
-    if(memUsageBar) {
+    if(memUsageBar) { 
         memUsageBar.style.width = `${newMem}%`;
         memUsageText.textContent = `${newMem}%`;
     }
@@ -487,13 +501,13 @@ function updateSystemDiagnostics(confidence) {
         matchThresholdBar.style.width = `${confPercent}%`;
         
         if (confPercent >= 70) {
-            matchThresholdBar.className = 'loader-fill';
+            matchThresholdBar.className = 'loader-fill'; // Hijau
             matchThresholdBar.style.background = 'linear-gradient(90deg, #00FF7F, #00FFFF)';
         } else if (confPercent >= 40) {
-            matchThresholdBar.className = 'loader-fill';
+            matchThresholdBar.className = 'loader-fill'; // Kuning
             matchThresholdBar.style.background = 'linear-gradient(90deg, #FFD700, #FF00FF)';
         } else {
-            matchThresholdBar.className = 'loader-fill-red';
+            matchThresholdBar.className = 'loader-fill-red'; // Merah
             matchThresholdBar.style.background = 'linear-gradient(90deg, #FF0055, #FF5500)';
         }
         matchConfidenceText.textContent = `${confPercent.toFixed(0)}%`;
@@ -507,7 +521,7 @@ function updateDataStream() {
     if (dataStream.style.flexWrap !== 'wrap') {
         dataStream.innerHTML = '';
         dataStream.style.display = 'flex';
-        dataStream.style.flexDirection = 'row';
+        dataStream.style.flexDirection = 'row'; // Horizontal
         dataStream.style.flexWrap = 'wrap'; // FILL THE PANEL
         dataStream.style.overflow = 'hidden';
         dataStream.style.alignContent = 'flex-start';
@@ -515,15 +529,15 @@ function updateDataStream() {
 
     const chars = 'abcdefghijklmnopqrstuvwxyz';
     
-    // Tambah beberapa karakter sekaligus agar terlihat cepat dan penuh
+    // Tambah beberapa karakter sekaligus agar terlihat cepat
     for (let i = 0; i < 4; i++) {
         const span = document.createElement('span');
         span.textContent = chars[Math.floor(Math.random() * chars.length)];
         
         // Style Gold & Huruf Kecil
         span.className = 'text-xs font-mono';
-        span.style.color = '#FFD700'; // GOLD COLOR
-        span.style.textShadow = '0 0 4px rgba(255, 215, 0, 0.6)'; // Glow Gold
+        span.style.color = '#FFD700'; // GOLD
+        span.style.textShadow = '0 0 4px rgba(255, 215, 0, 0.6)'; // Glow
         span.style.width = '10px'; // Fixed width
         span.style.textAlign = 'center';
         
@@ -539,7 +553,7 @@ function updateDataStream() {
 function updateGraph() {
     if(!graphElement) return;
     
-    // UBAH KE VISUALIZER BAR (Audio Spectrum Style)
+    // UBAH KE VISUALIZER BAR (Gaya Spektrum Audio)
     if (!graphElement.classList.contains('visualizer-mode')) {
         graphElement.innerHTML = '';
         graphElement.classList.add('visualizer-mode');
@@ -578,26 +592,24 @@ function updateGraph() {
 function updateClock() {
     const now = new Date();
     
+    // FIX: Definisi variabel animasi warna dan waktu UTC yang hilang
+    const time = Date.now();
+    const hue = (time / 20) % 360;
+    const hue1 = hue;
+    const hue2 = (hue + 60) % 360;
+    const utcH = String(now.getUTCHours()).padStart(2, '0');
+    const utcM = String(now.getUTCMinutes()).padStart(2, '0');
+    
     // Update Jam, Menit, Detik
     if (clockH) clockH.textContent = String(now.getHours()).padStart(2, '0');
     if (clockM) clockM.textContent = String(now.getMinutes()).padStart(2, '0');
     if (clockS) clockS.textContent = String(now.getSeconds()).padStart(2, '0');
     
-    // Update Milidetik (High Precision & Simulation)
     // Update Milidetik (High Precision & Nanosecond Simulation)
     if (clockMs) {
         const ms = String(now.getMilliseconds()).padStart(3, '0');
-        // Tambah 2 digit random untuk simulasi microsecond (kesan presisi tinggi)
-        const micro = String(Math.floor(Math.random() * 99)).padStart(2, '0');
-        clockMs.innerHTML = `${ms}<span style="font-size:0.5em; opacity:0.8; vertical-align:top; margin-left:1px;">${micro}</span>`;
         // Simulasi Nanosecond (3 digit random)
         const ns = String(Math.floor(Math.random() * 999)).padStart(3, '0');
-        
-        // Warna berputar cepat (RGB Cycle) untuk kesan aktif
-        // Warna Cycle Cepat
-        const hue = (Date.now() / 10) % 360;
-        clockMs.style.color = `hsl(${hue}, 100%, 70%)`;
-        clockMs.style.textShadow = `0 0 8px hsl(${hue}, 100%, 50%)`;
         
         clockMs.innerHTML = `
             <span style="color:hsl(${hue}, 100%, 75%); text-shadow:0 0 8px hsl(${hue}, 100%, 50%);">${ms}</span>
@@ -616,11 +628,6 @@ function updateClock() {
         // Hex Timestamp (Last 6 chars)
         const hexStamp = Math.floor(now.getTime() / 1000).toString(16).toUpperCase().slice(-6);
         
-        // Format Taktis: YYYY.MM.DD | DOY | DAY | HEX
-        // UTC Time String
-        const utcH = String(now.getUTCHours()).padStart(2, '0');
-        const utcM = String(now.getUTCMinutes()).padStart(2, '0');
-        
         // Binary Seconds Visualization (6 bits)
         const sec = now.getSeconds();
         let binVis = '';
@@ -630,13 +637,6 @@ function updateClock() {
         }
 
         clockDate.innerHTML = `
-            <span style="color:#00FFFF; text-shadow:0 0 5px #00FFFF;">${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}</span>
-            <span style="color:#555; margin:0 6px;">|</span>
-            <span style="color:#FFD700;">DOY.${String(dayOfYear).padStart(3, '0')}</span>
-            <span style="color:#555; margin:0 6px;">|</span>
-            <span style="color:#00FF7F;">${days[now.getDay()]}</span>
-            <span style="color:#555; margin:0 6px;">//</span>
-            <span style="color:#FF0055; font-family:'Courier New';">0x${hexStamp.slice(-4)}</span>
             <div style="display:flex; flex-direction:column; align-items:center; gap:2px; line-height:1.1;">
                 <div style="font-size:0.9em; letter-spacing:1px;">
                     <span style="color:#00FFFF; text-shadow:0 0 5px rgba(0,255,255,0.5);">${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}</span>
@@ -661,11 +661,6 @@ function updateClock() {
         const totalMs = (now.getSeconds() * 1000) + now.getMilliseconds();
         const percent = (totalMs / 60000) * 100;
         clockBar.style.width = `${percent}%`;
-        
-        // Warna Gradient Bergerak
-        const time = Date.now();
-        const hue1 = (time / 20) % 360;
-        const hue2 = (hue1 + 60) % 360;
         
         clockBar.style.background = `linear-gradient(90deg, hsl(${hue1}, 100%, 50%), hsl(${hue2}, 100%, 50%))`;
         clockBar.style.boxShadow = `0 0 15px hsl(${hue1}, 100%, 60%)`;
@@ -722,7 +717,7 @@ function animateTitle() {
     // Setup awal: Buat span jika belum sesuai (Hanya sekali)
     if (mainTitle.children.length !== targetText.length) {
         mainTitle.innerHTML = '';
-        mainTitle.style.opacity = 1;
+        mainTitle.style.opacity = '1';
         mainTitle.style.display = 'inline-flex';
         mainTitle.style.justifyContent = 'center';
         mainTitle.style.gap = '4px'; 
@@ -734,7 +729,7 @@ function animateTitle() {
         mainTitle.style.fontSize = 'clamp(2rem, 4vw, 3.5rem)'; // Responsif Besar
         mainTitle.style.letterSpacing = '6px';
         mainTitle.style.textTransform = 'uppercase';
-        // Hapus filter drop-shadow container agar tidak tumpang tindih dengan text-shadow per huruf
+        // Hapus filter drop-shadow container agar tidak tumpang tindih
         mainTitle.style.filter = 'drop-shadow(0 0 15px rgba(0,255,255,0.15))'; 
 
         for (let i = 0; i < targetText.length; i++) {
@@ -795,7 +790,7 @@ function animateTitle() {
                 color = '#FFFFFF'; // White Hot
                 textShadow = '0 0 20px #FFFFFF, 0 0 40px #00FFFF, 0 0 60px #0088FF';
                 transform = 'scale(1.2) translateZ(20px)';
-                opacity = 1;
+                opacity = '1';
             } else if (dist < 3) {
                 color = '#0088FF'; // Blue Trail
                 textShadow = '0 0 15px #0088FF';
@@ -809,7 +804,7 @@ function animateTitle() {
                 color = '#FF0055'; // Error Red
                 textShadow = '2px 0 0 #00FFFF, -2px 0 0 #FF0055'; // Chromatic Aberration
                 transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
-                opacity = 1;
+                opacity = '1';
             }
 
             // Apply
@@ -904,24 +899,6 @@ async function loadLabeledImages() {
         logSystem(`DIAGNOSTIK: Diterima ${descriptorsData ? descriptorsData.length : 0} data dari server.`, 'text-cyan-400');
         
         if (!descriptorsData || descriptorsData.length === 0) {
-            // --- FALLBACK: Cek Local Storage jika Server Kosong ---
-            const localData = JSON.parse(localStorage.getItem('aether_users') || '[]');
-            if (localData.length > 0) {
-                logSystem(`⚠️ SERVER EMPTY. Menggunakan ${localData.length} data Local Storage.`, 'text-amber-400');
-                setStatusVisual(`⚠️ MODE HYBRID: ${localData.length} Data Lokal Aktif.`, 'text-amber-500');
-                
-                const localDescriptors = localData.map(item => {
-                    employeeMap[item.id] = {
-                        nama: item.name,
-                        jabatan: item.role || 'N/A',
-                        foto: null // LocalStorage biasanya tidak simpan foto
-                    };
-                    return new faceapi.LabeledFaceDescriptors(item.id, [new Float32Array(item.descriptor)]);
-                });
-                return localDescriptors;
-            }
-            // -----------------------------------------------------
-
             setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-amber-500');
             if(dbStatus) {
                 dbStatus.textContent = 'EMPTY';
@@ -937,6 +914,7 @@ async function loadLabeledImages() {
             employeeMap[item.id_karyawan] = {
                 nama: item.nama,
                 jabatan: item.jabatan || 'N/A',
+                foto: item.foto // Simpan foto base64
             };
             return new faceapi.LabeledFaceDescriptors(item.id_karyawan, [new Float32Array(descriptorArray)]);
         });
@@ -993,11 +971,11 @@ async function getCameraDevices() {
         });
 
         // Tampilkan/sembunyikan select berdasarkan jumlah kamera
-        const cameraSelectDiv = cameraSelect.closest('.widget-panel');
-        if (videoDevices.length > 1 && cameraSelectDiv) { 
-            cameraSelectDiv.style.display = 'flex'; 
-        } else if (cameraSelectDiv) {
-             cameraSelectDiv.style.display = 'none';
+        const cameraWidget = cameraSelect.closest('.widget-panel');
+        if (videoDevices.length > 1 && cameraWidget) { 
+            cameraWidget.style.display = 'flex'; 
+        } else if (cameraWidget) {
+             cameraWidget.style.display = 'none';
         }
 
         if (!cameraSelect.dataset.listenerAttached) {
@@ -1015,19 +993,12 @@ function stopCamera() {
         currentStream.getTracks().forEach(track => track.stop());
         currentStream = null;
     }
-    if (detectionInterval) {
-        clearInterval(detectionInterval);
-        detectionInterval = null;
-    }
+    isDetectionActive = false; // Hentikan loop deteksi
 }
 
 async function startCamera(deviceId = null) {
     stopCamera(); 
     
-    if(cameraStatus) {
-        cameraStatus.textContent = 'CONNECTING...';
-        cameraStatus.className = 'text-amber-500 font-bold';
-    }
     logSystem('Camera stream starting...', 'text-cyan-500');
 
     try {
@@ -1043,22 +1014,13 @@ async function startCamera(deviceId = null) {
         currentStream = stream;
         video.srcObject = stream;
         
-        if(cameraStatus) {
-            cameraStatus.textContent = 'ACTIVE';
-            cameraStatus.className = 'text-green-500 font-bold';
-        }
         logSystem(`Camera Stream Established.`, 'text-green-500');
 
         await new Promise(resolve => video.onloadedmetadata = resolve);
         video.play();
         resizeCanvas(); 
-
     } catch (err) {
         setStatusVisual(`❌ Gagal Start Kamera: Pastikan Izin Diberikan.`, 'text-red-500');
-        if(cameraStatus) {
-            cameraStatus.textContent = 'FAULT';
-            cameraStatus.className = 'text-red-500 font-bold';
-        }
         logSystem(`FATAL: Camera failure. ${err.message}.`, 'text-red-500');
     }
 }
@@ -1103,12 +1065,22 @@ video.addEventListener('play', async () => {
     
     resetTargetData(); // Reset data saat video mulai
 
-    if (detectionInterval === null) {
-        detectionInterval = setInterval(detectFace, DETECTION_INTERVAL_MS);
+    // FIX: Gunakan Recursive Timeout menggantikan setInterval untuk mencegah Memory Leak
+    if (!isDetectionActive) {
+        isDetectionActive = true;
+        detectFaceLoop();
         setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
         logSystem('Scanning Loop Activated.', 'text-green-500');
     }
 });
+
+async function detectFaceLoop() {
+    if (!isDetectionActive) return;
+    await detectFace();
+    if (isDetectionActive) {
+        setTimeout(detectFaceLoop, DETECTION_INTERVAL_MS);
+    }
+}
 
 function resetTargetData() {
     if(userPhotoDisplay) userPhotoDisplay.src = DEFAULT_PHOTO;
@@ -1126,11 +1098,11 @@ async function detectFace() {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     if (isProcessing) return; // Jangan lakukan apapun jika sedang memproses absensi
-    if (video.paused || video.ended || !faceapi.nets.tinyFaceDetector.params) return;
+    if (video.paused || video.ended || !faceapi.nets.tinyFaceDetector.params || !labeledDescriptors) return;
     
     const displaySize = { width: canvas.width, height: canvas.height };
 
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.5 }))
         .withFaceLandmarks()
         .withFaceDescriptor();
 
@@ -1141,25 +1113,12 @@ async function detectFace() {
         const { box } = resizedDetections.detection;
         const { landmarks } = resizedDetections;
 
-        // --- ADJUSTMENT: Geser area scan visual sedikit ke atas ---
-        const yShift = box.height * 0.15; // Naik 15%
-        const visualBox = {
-            x: box.x,
-            y: box.y - yShift,
-            width: box.width,
-            height: box.height,
-            right: box.x + box.width,
-            top: box.y - yShift
-        };
-
         drawHolographicMesh(context, landmarks);
         
         // --- GAMBAR EFEK BARU ---
         drawScanningBeam(context, box); // Sinar laser pada wajah
-        drawScanningBeam(context, visualBox); // Sinar laser pada wajah
         const nose = landmarks.getNose()[3]; // Titik tengah hidung
         drawTargetLock(context, nose.x, nose.y, box.width * 0.3); // Lingkaran target lock
-        drawTargetLock(context, nose.x, nose.y, visualBox.width * 0.3); // Lingkaran target lock (Visual)
 
         // Efek suara scanning ringan (opsional, bisa dimatikan jika terlalu berisik)
         if (Math.random() > 0.85) SoundFX.play('scan'); 
@@ -1204,7 +1163,7 @@ async function detectFace() {
                     
                     // Update Foto dengan Efek Scan
                     if (userPhotoDisplay) {
-                        userPhotoDisplay.src = DEFAULT_PHOTO; // Gunakan default icon (tanpa foto asli)
+                        userPhotoDisplay.src = `data:image/jpeg;base64,${employee.foto}`;
                         if (photoContainer) {
                             photoContainer.classList.remove('photo-scan-active');
                             void photoContainer.offsetWidth; // Trigger reflow
@@ -1249,10 +1208,9 @@ async function detectFace() {
         }
         
         drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor);
-        drawTechBracket(context, visualBox.x, visualBox.y, visualBox.width, visualBox.height, faceColor);
         
         // Gunakan Smart HUD baru
-        drawSmartHUD(context, visualBox, faceLabel, faceColor, confidence);
+        drawSmartHUD(context, box, faceLabel, faceColor, confidence);
 
     } else {
         // Tidak ada deteksi wajah
@@ -1273,7 +1231,7 @@ async function processAttendance(karyawanId) {
 
     if(successOverlay) {
         successOverlay.style.opacity = 0;
-        successOverlay.style.pointerEvents = 'auto';
+        successOverlay.style.pointerEvents = 'none';
         
         // INIT OVERLAY BARU
         successOverlay.innerHTML = `
@@ -1281,13 +1239,13 @@ async function processAttendance(karyawanId) {
                 position: relative;
                 text-align: center;
                 padding: 60px;
-                color: white;
+                color: #fff;
                 background: rgba(5, 10, 15, 0.95);
                 border: 2px solid ${HEADER_COLOR};
                 box-shadow: 0 0 50px rgba(0, 255, 255, 0.2);
                 border-radius: 15px;
                 max-width: 90%;
-                backdrop-filter: blur(10px);
+                backdrop-filter: blur(10px); /* Kaca Buram */
             ">
                 <h1 class="text-5xl font-extrabold mb-8 glitch-text" style="
                     font-family: 'Courier New', monospace;
@@ -1345,7 +1303,7 @@ async function processAttendance(karyawanId) {
             // Update panel "TARGET DATA" di sisi kiri
             if (userIdDisplay) userIdDisplay.textContent = display_name;
             if (userJabatanDisplay) userJabatanDisplay.textContent = display_jabatan;
-            if (userPhotoDisplay) userPhotoDisplay.src = DEFAULT_PHOTO;
+            if (userPhotoDisplay) userPhotoDisplay.src = `data:image/jpeg;base64,${employeeData.foto}`;
 
 
             setStatusVisual(cleanMessage, displayColor);
@@ -1353,7 +1311,7 @@ async function processAttendance(karyawanId) {
             userStatusDisplay.className = 'text-lg font-bold ' + displayColor;
             videoContainer.classList.add('scan-success'); 
 
-            // Gunakan result_code untuk logika yang lebih bersih
+            // Gunakan result_code untuk logika lebih bersih (jika ada dari server)
             switch (result.result_code) {
                 case 'CHECK_IN_SUCCESS':
                     finalStatusText = 'CHECK-IN BERHASIL';
@@ -1367,12 +1325,19 @@ async function processAttendance(karyawanId) {
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR;
                     break;
+                case 'ALREADY_CHECKED_IN':
+                case 'ALREADY_CHECKED_OUT':
+                    finalStatusText = 'DUPLICATE ENTRY';
+                    finalMessageHTML = `Anda sudah melakukan absensi sebelumnya. Data ganda ditolak.`;
+                    finalBackground = ABSEN_GANDA_BG;
+                    finalStatusColor = '#FFD700'; // Gold Warning
+                    break;
                 case 'STATUS_CONFIRMED':
-                default: // Fallback untuk kasus lain yang sukses
-                finalStatusText = 'STATUS CONFIRMED';
-                finalMessageHTML = `Sistem mengkonfirmasi ${coloredName}. Absensi Anda untuk hari ini telah tercatat.`;
-                finalBackground = ABSEN_NORMAL_BG;
-                finalStatusColor = NAME_HIGHLIGHT_COLOR; 
+                default: // Fallback untuk kasus sukses lainnya
+                    finalStatusText = 'STATUS CONFIRMED';
+                    finalMessageHTML = `Sistem mengkonfirmasi ${coloredName}. Absensi Anda untuk hari ini telah tercatat.`;
+                    finalBackground = ABSEN_NORMAL_BG;
+                    finalStatusColor = NAME_HIGHLIGHT_COLOR; 
             }
 
         } else {
@@ -1409,7 +1374,7 @@ async function processAttendance(karyawanId) {
                     justify-content: center; 
                     text-align: center;
                     padding: 50px;
-                    background: rgba(0, 0, 0, 0.8);
+                    background: rgba(0, 0, 0, 0.8); /* Latar belakang gelap transparan */
                     border: 3px solid ${finalStatusColor};
                     box-shadow: 0 0 60px ${finalStatusColor}40, inset 0 0 30px ${finalStatusColor}20;
                     border-radius: 20px;
@@ -1466,7 +1431,7 @@ async function processAttendance(karyawanId) {
             
             // Trigger Particle Burst di tengah layar
             const rect = successOverlay.getBoundingClientRect();
-            createParticleBurst(rect.left + rect.width/2, rect.top + rect.height/2, finalStatusColor);
+            createParticleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, finalStatusColor);
         }
         
         let currentAction = 'Status';
@@ -1497,7 +1462,7 @@ async function processAttendance(karyawanId) {
              successOverlay.innerHTML = `
                 <div style="
                     text-align: center; 
-                    padding: 60px; 
+                    padding: 60px;
                     color: white;
                     background: rgba(20, 0, 0, 0.8);
                     border: 4px solid #FF0055;
@@ -1537,8 +1502,6 @@ async function processAttendance(karyawanId) {
         await new Promise(resolve => setTimeout(resolve, 3000)); 
     } finally {
         isProcessing = false;
-        // Kembalikan tema ke IDLE (Cyan)
-        if (window.setSystemTheme) window.setSystemTheme('IDLE');
         if(successOverlay) {
             successOverlay.style.opacity = 0;
             successOverlay.style.pointerEvents = 'none';
@@ -1586,7 +1549,7 @@ function toggleAdminPanel() {
         SoundFX.play('scan'); // Efek suara
         // Set nilai saat ini ke input
         if(adminThresholdInput) {
-            adminThresholdInput.value = FACE_MATCHING_THRESHOLD;
+            adminThresholdInput.value = String(FACE_MATCHING_THRESHOLD);
             adminThresholdVal.textContent = FACE_MATCHING_THRESHOLD.toFixed(2);
         }
     } else {
@@ -1660,50 +1623,6 @@ function isAutofixEnabled() {
     return isAutoFixActive;
 }
 
-function enhanceQuantumTitle() {
-    const titles = document.querySelectorAll('.widget-title');
-    titles.forEach(title => {
-        if (title.textContent.includes('QUANTUM CHRONO')) {
-            const textSpan = title.querySelector('span');
-            if (textSpan) {
-                // Inject CSS khusus untuk efek laser merah pada QUANTUM
-                if (!document.getElementById('quantum-laser-css')) {
-                    const style = document.createElement('style');
-                    style.id = 'quantum-laser-css';
-                    style.innerHTML = `
-                        .quantum-text {
-                            position: relative;
-                            display: inline-block;
-                            color: #00FFFF;
-                        }
-                        .laser-beam-red {
-                            position: absolute;
-                            top: 0;
-                            left: -100%;
-                            width: 50%;
-                            height: 100%;
-                            background: linear-gradient(90deg, transparent, rgba(255, 0, 0, 0.8), #FF0000, rgba(255, 0, 0, 0.8), transparent);
-                            transform: skewX(-25deg);
-                            animation: laserPassRed 3s infinite cubic-bezier(0.4, 0.0, 0.2, 1);
-                            mix-blend-mode: screen;
-                            filter: drop-shadow(0 0 5px #FF0000);
-                        }
-                        @keyframes laserPassRed {
-                            0% { left: -100%; opacity: 0; }
-                            10% { opacity: 1; }
-                            90% { opacity: 1; }
-                            100% { left: 200%; opacity: 0; }
-                        }
-                    `;
-                    document.head.appendChild(style);
-                }
-                
-                textSpan.innerHTML = `:: <span class="quantum-text">QUANTUM<div class="laser-beam-red"></div></span> CHRONO ::`;
-            }
-        }
-    });
-}
-
 // --- BABYLON.JS BACKGROUND LOGIC (Dipindahkan dari scan.html) ---
 function initBackground3D() {
     // Safety check: Pastikan BABYLON sudah terload sebelum inisialisasi
@@ -1722,7 +1641,7 @@ function initBackground3D() {
 
     const createScene = function () {
         const scene = new BABYLON.Scene(engine);
-        scene.clearColor = new BABYLON.Color4(0.0, 0.0, 0.0, 1.0); // Absolute Black
+        scene.clearColor = new BABYLON.Color4(0.0, 0.0, 0.0, 0.0); // Transparan
 
         // 1. CAMERA
         const camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, Math.PI / 2.5, 20, BABYLON.Vector3.Zero(), scene);
@@ -1858,7 +1777,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
     animateTitle();
     updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih
-    enhanceQuantumTitle(); // Tambahkan efek laser pada judul jam
 
     // CSS ADJUSTMENT: Geser area scan (Video Container) sedikit ke atas
     if (videoContainer) {
