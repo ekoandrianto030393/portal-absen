@@ -50,7 +50,7 @@ let lastKnownMatch = null;
 let employeeMap = {}; 
 let currentStream = null; // Variabel untuk stream kamera aktif
 let videoDevices = []; 
-
+// turunkan jadi 80, namun jangan dibawah itu
 const DETECTION_INTERVAL_MS = 100; // Interval scan dalam milidetik
 const DEFAULT_PHOTO = ''; // Path ke foto default/placeholder jika diperlukan
 const SUCCESS_COOLDOWN_MS = 15000; // Jeda 15 detik setelah berhasil scan (Mencegah spam)
@@ -157,7 +157,7 @@ const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
 const HEADER_COLOR = '#00FFFF'; 
 const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(204,133,0,0.95) 100%)'; 
 const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(0,255,127,0.8) 0%, rgba(0,100,0,0.95) 100%)';
-const AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
+const AGENCY_NAME = 'PUSKESMASWANA'; // Nama Instansi Global
 
 // =============================================================================
 // 1. MESIN RENDERING VISUAL CANVAS (DRAWING Face-API)
@@ -226,6 +226,15 @@ function drawScanningBeam(ctx, box) {
     // Gerakan naik turun menggunakan Sinus
     const yPos = box.y + (scanHeight * ((Math.sin(time * 4) + 1) / 2));
 
+    // 1. Electric Trail (Reflection Behind)
+    const gradient = ctx.createLinearGradient(box.x, yPos, box.x, yPos - 50);
+    gradient.addColorStop(0, 'rgba(0, 255, 255, 0.6)');
+    gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(box.x, yPos - 50, box.width, 50);
+
+    // 2. Electric Core Line
     ctx.beginPath();
     ctx.moveTo(box.x, yPos);
     ctx.lineTo(box.x + box.width, yPos);
@@ -233,8 +242,62 @@ function drawScanningBeam(ctx, box) {
     ctx.lineWidth = 2;
     ctx.shadowColor = '#00FF7F';
     ctx.shadowBlur = 15;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#00FFFF';
+    ctx.shadowBlur = 20;
     ctx.stroke();
     ctx.shadowBlur = 0;
+}
+
+// --- FITUR BARU: COMPLEX SCI-FI HUD ---
+function drawSciFiHUD(ctx, x, y, w, h, color) {
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const radius = Math.max(w, h) * 0.65;
+    const time = Date.now() / 1000;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // Ring 1: Putus-putus, Rotasi CW (Cepat)
+    ctx.rotate(time * 0.8);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([15, 25]); // Garis putus-putus panjang
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Ring 2: Solid Tipis, Rotasi CCW (Lambat)
+    ctx.rotate(-time * 1.2); // Rotasi relatif terbalik
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.85, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Ring 3: Tech Ticks (Gerigi)
+    ctx.rotate(time * 0.2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 1.1, -0.2, 0.2); // Busur di 4 sisi
+        ctx.stroke();
+    }
+
+    ctx.restore();
+
+    // Crosshair Tengah
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
+    ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.stroke();
 }
 
 // --- FITUR BARU: TARGET LOCK HUD ---
@@ -263,6 +326,22 @@ function drawTargetLock(ctx, x, y, radius) {
     ctx.restore();
 }
 
+// --- FITUR BARU: DATA WATERFALL (MATRIX RAIN MINI) ---
+function drawDataWaterfall(ctx, x, y, height, color) {
+    const chars = "01XYZ789";
+    const fontSize = 10;
+    const columns = 3;
+    
+    ctx.font = `${fontSize}px monospace`;
+    ctx.fillStyle = color;
+    
+    for(let c = 0; c < columns; c++) {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        const yPos = y + (Date.now() / (20 + c*5) % height); // Gerakan turun
+        ctx.fillText(char, x + (c * 12), yPos);
+    }
+}
+
 // --- VISUAL FX: SCREEN FLASH ---
 function triggerScreenFlash(color) {
     const flash = document.getElementById('screenFlash');
@@ -270,22 +349,6 @@ function triggerScreenFlash(color) {
         flash.style.backgroundColor = color;
         flash.style.opacity = 0.4;
         setTimeout(() => flash.style.opacity = 0, 100);
-    }
-}
-
-// --- VISUAL FX: PARTICLE BURST ---
-function createParticleBurst(x, y, color) {
-    for (let i = 0; i < 20; i++) {
-        const p = document.createElement('div');
-        p.style.cssText = `position:fixed; left:${x}px; top:${y}px; width:4px; height:4px; background:${color}; pointer-events:none; z-index:9999; border-radius:50%; box-shadow:0 0 5px ${color};`;
-        document.body.appendChild(p);
-        const angle = Math.random() * Math.PI * 2;
-        const velocity = Math.random() * 100 + 50;
-        const anim = p.animate([
-            { transform: 'translate(0,0) scale(1)', opacity: 1 },
-            { transform: `translate(${Math.cos(angle)*velocity}px, ${Math.sin(angle)*velocity}px) scale(0)`, opacity: 0 }
-        ], { duration: 600, easing: 'cubic-bezier(0, .9, .57, 1)' });
-        anim.onfinish = () => p.remove();
     }
 }
 
@@ -360,6 +423,9 @@ async function runBootSequence() {
         "ESTABLISHING CAMERA FEED...",
         "SYSTEM READY. WELCOME ADMIN."
     ];
+    
+    // Voice Greeting
+    setTimeout(() => SoundFX.speak("System Online. Optical Sensors Calibrated."), 1000);
 
     for (const line of lines) {
         const p = document.createElement('div');
@@ -854,7 +920,7 @@ setInterval(() => {
 const api = {
     getDescriptors: async () => {
         try {
-            const response = await fetch('/get-descriptors');
+            const response = await fetch('/api/karyawan/descriptors');
             if (!response.ok) {
                 throw new Error(`Server Error: ${response.status} ${response.statusText}`);
             }
@@ -875,7 +941,7 @@ const api = {
         }
     },
     postAttendance: async (karyawanId) => {
-        const response = await fetch('/absensi', {
+        const response = await fetch('/api/absensi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id_karyawan: karyawanId })
@@ -909,8 +975,9 @@ async function loadLabeledImages() {
         }
 
         const descriptors = descriptorsData.map(item => {
-            const descriptorArray = JSON.parse(item.face_descriptor);
-            // Simpan semua data yang dibutuhkan, termasuk foto base64
+            const descriptorArray = typeof item.face_descriptor === 'string' 
+                ? JSON.parse(item.face_descriptor) 
+                : item.face_descriptor;
             employeeMap[item.id_karyawan] = {
                 nama: item.nama,
                 jabatan: item.jabatan || 'N/A',
@@ -1103,7 +1170,7 @@ async function detectFace() {
     const displaySize = { width: canvas.width, height: canvas.height };
 
     const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.5 }))
-        .withFaceLandmarks()
+	.withFaceLandmarks()
         .withFaceDescriptor();
 
     if(!isProcessing) videoContainer.classList.remove('scan-success');
@@ -1114,13 +1181,15 @@ async function detectFace() {
         const { landmarks } = resizedDetections;
 
         drawHolographicMesh(context, landmarks);
-        
-        // --- GAMBAR EFEK BARU ---
-        drawScanningBeam(context, box); // Sinar laser pada wajah
-        const nose = landmarks.getNose()[3]; // Titik tengah hidung
-        drawTargetLock(context, nose.x, nose.y, box.width * 0.3); // Lingkaran target lock
 
-        // Efek suara scanning ringan (opsional, bisa dimatikan jika terlalu berisik)
+        // --- GAMBAR EFEK BARU ---
+        // drawScanningBeam(context, box); // Diganti dengan HUD Sci-Fi
+        drawSciFiHUD(context, box.x, box.y, box.width, box.height, '#00FFFF');
+        
+        const nose = landmarks.getNose()[3]; // Titik tengah hidung
+        // drawTargetLock(context, nose.x, nose.y, box.width * 0.3); // Diganti Sci-Fi HUD
+        
+ 	    // Efek suara scanning ringan (opsional, bisa dimatikan jika terlalu berisik)
         if (Math.random() > 0.85) SoundFX.play('scan'); 
 
         setStatusVisual('SUBJECT DETECTED. PROCESSING BIOMETRICS...', 'text-amber-500', true);
@@ -1132,7 +1201,7 @@ async function detectFace() {
         if (labeledDescriptors && labeledDescriptors.length > 0) {
             const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, FACE_MATCHING_THRESHOLD);
             const bestMatch = faceMatcher.findBestMatch(detections.descriptor);
-            
+
             const matchDistance = bestMatch.distance;
             const confidenceRaw = Math.max(0, FACE_MATCHING_THRESHOLD - matchDistance); 
             confidence = (confidenceRaw / FACE_MATCHING_THRESHOLD) * 100;
@@ -1141,7 +1210,7 @@ async function detectFace() {
             if (bestMatch.label !== 'unknown' && matchDistance <= FACE_MATCHING_THRESHOLD) {
                 const recognizedId = bestMatch.label;
                 const employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
-                
+
                 faceLabel = employee.nama;
                 
                 // --- LOGIKA DECRYPT TEXT ---
@@ -1153,7 +1222,7 @@ async function detectFace() {
                     decryptionFrame++;
                     faceLabel = resolveText(targetLabel, decryptionFrame, 15);
                 }
-                
+
                 faceColor = '#00FF7F'; 
 
                 // Hanya update jika ID berubah atau belum ada match sebelumnya
@@ -1183,12 +1252,12 @@ async function detectFace() {
                     isProcessing = true;
                     // Simpan match terakhir sebelum proses absensi
                     lastKnownMatch = { id: recognizedId, box: resizedDetections.detection.box, landmarks: resizedDetections.landmarks, faceLabel: faceLabel, faceColor: faceColor };
-                    await processAttendance(recognizedId);
+ 		    await processAttendance(recognizedId);
                 }
 
             } else {
                 resetTargetData();
-                userStatusDisplay.textContent = 'ACCESS DENIED';
+ 		userStatusDisplay.textContent = 'ACCESS DENIED';
                 faceLabel = 'DENIED ACCESS';
                 targetLabel = ''; // Reset decrypt target
                 faceColor = '#FF0055'; 
@@ -1207,10 +1276,12 @@ async function detectFace() {
             lastKnownMatch = null;
         }
         
-        drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor);
+        // drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor); // Diganti Sci-Fi HUD
+        drawSciFiHUD(context, box.x, box.y, box.width, box.height, faceColor);
         
         // Gunakan Smart HUD baru
         drawSmartHUD(context, box, faceLabel, faceColor, confidence);
+        drawDataWaterfall(context, box.x - 40, box.y, box.height, faceColor); // Matrix rain di kiri wajah
 
     } else {
         // Tidak ada deteksi wajah
@@ -1282,7 +1353,7 @@ async function processAttendance(karyawanId) {
         const cleanMessage = result.message.replace(/\*\*|✅\s*/g, '');
 
         // --- PERBAIKAN UTAMA: Ambil data langsung dari respons server ---
-        const employeeData = employeeMap[karyawanId] || {};
+ 	    const employeeData = employeeMap[karyawanId] || {};
         const display_name = result.nama || employeeData.nama || karyawanId;
         const display_jabatan = result.jabatan || employeeData.jabatan || 'N/A';
         
@@ -1325,13 +1396,6 @@ async function processAttendance(karyawanId) {
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR;
                     break;
-                case 'ALREADY_CHECKED_IN':
-                case 'ALREADY_CHECKED_OUT':
-                    finalStatusText = 'DUPLICATE ENTRY';
-                    finalMessageHTML = `Anda sudah melakukan absensi sebelumnya. Data ganda ditolak.`;
-                    finalBackground = ABSEN_GANDA_BG;
-                    finalStatusColor = '#FFD700'; // Gold Warning
-                    break;
                 case 'STATUS_CONFIRMED':
                 default: // Fallback untuk kasus sukses lainnya
                     finalStatusText = 'STATUS CONFIRMED';
@@ -1352,9 +1416,30 @@ async function processAttendance(karyawanId) {
             userStatusDisplay.textContent = isWarning ? 'NOTICE' : 'DENIED';
             userStatusDisplay.className = 'text-lg font-bold ' + (isWarning ? 'text-amber-500' : 'text-red-500');
 
-            finalStatusText = isWarning ? 'PERINGATAN' : 'ACCESS DENIED';
-            finalMessageHTML = `${coloredName} | ${cleanMessage}`;
-            
+            // --- UPDATE: Penanganan Overlay Spesifik Berdasarkan Kode Server ---
+            switch (result.result_code) {
+                case 'OUT_OF_TIME_IN':
+                    finalStatusText = 'DILUAR JAM MASUK';
+                    // Pesan dari server sudah mengandung jam dari .env (misal: "Waktu diizinkan: 07:00 s/d 11:00")
+                    finalMessageHTML = `<span style="color:#FF0055;">${cleanMessage}</span>`; 
+                    break;
+                case 'TOO_EARLY_OUT':
+                    finalStatusText = 'PULANG TERLALU AWAL';
+                    finalMessageHTML = `<span style="color:#FFD700;">${cleanMessage}</span>`;
+                    break;
+                case 'ALREADY_CHECKED_IN':
+                    finalStatusText = 'MOHON TUNGGU'; // Cooldown
+                    finalMessageHTML = cleanMessage;
+                    break;
+                case 'ALREADY_CHECKED_OUT':
+                    finalStatusText = 'SUDAH PULANG';
+                    finalMessageHTML = cleanMessage;
+                    break;
+                default:
+                    finalStatusText = isWarning ? 'PERINGATAN' : 'ACCESS DENIED';
+                    finalMessageHTML = `${coloredName} | ${cleanMessage}`;
+            }
+
             // Background: Kuning untuk Warning (Waktu), Merah untuk Error (Wajah Tidak Dikenal)
             finalBackground = isWarning 
                 ? `radial-gradient(circle, rgba(200, 150, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`
@@ -1753,6 +1838,122 @@ function initBackground3D() {
         particleSystem.emitRate = 500;
         particleSystem.start();
 
+        // --- E. INDONESIAN FLAG ORBITER ---
+        const flagPivot = new BABYLON.TransformNode("flagPivot", scene);
+        flagPivot.position = globe.position;
+
+        const flag = BABYLON.MeshBuilder.CreatePlane("flag", { width: 12, height: 8, subdivisions: 25 }, scene);
+        flag.parent = flagPivot;
+        flag.position.x = 35; 
+        flag.rotation.y = Math.PI / 2; 
+
+        const flagMat = new BABYLON.StandardMaterial("flagMat", scene);
+        const flagTexture = new BABYLON.DynamicTexture("flagTex", {width:512, height:256}, scene);
+        const ctxFlag = flagTexture.getContext();
+        ctxFlag.fillStyle = "#FF0000"; 
+        ctxFlag.fillRect(0, 0, 512, 128);
+        ctxFlag.fillStyle = "#FFFFFF"; 
+        ctxFlag.fillRect(0, 128, 512, 128);
+        flagTexture.update();
+        flagMat.diffuseTexture = flagTexture;
+        flagMat.emissiveColor = new BABYLON.Color3(1, 1, 1);
+        flagMat.backFaceCulling = false;
+        flagMat.disableLighting = true; 
+        flag.material = flagMat;
+        
+        const originalPositions = flag.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+
+        // --- F. CYBER ELEPHANTS (Gajah Futuristik) ---
+        const elephants = [];
+        const createElephant = (id, radius, startAngle, scale) => {
+            const pivot = new BABYLON.TransformNode("pivot" + id, scene);
+            pivot.position = globe.position;
+            pivot.rotation.y = startAngle;
+
+            const group = new BABYLON.TransformNode("elephant" + id, scene);
+            group.parent = pivot;
+            group.position.x = radius;
+
+            const mat = new BABYLON.StandardMaterial("eleMat" + id, scene);
+            mat.emissiveColor = new BABYLON.Color3(0.4, 0.8, 1); // Cyan Blue
+            mat.wireframe = true;
+
+            // Body
+            const body = BABYLON.MeshBuilder.CreateBox("body" + id, {width: 4, height: 3.5, depth: 5}, scene);
+            body.parent = group;
+            body.material = mat;
+
+            // Head
+            const head = BABYLON.MeshBuilder.CreateBox("head" + id, {width: 3, height: 3, depth: 3}, scene);
+            head.parent = group;
+            head.position.z = -3.5;
+            head.position.y = 1;
+            head.material = mat;
+
+            // Trunk (Belalai)
+            const trunk = BABYLON.MeshBuilder.CreateTube("trunk" + id, {
+                path: [
+                    new BABYLON.Vector3(0, -0.5, -1.6),
+                    new BABYLON.Vector3(0, -2, -2),
+                    new BABYLON.Vector3(0, -3, -1.5)
+                ],
+                radius: 0.5,
+                cap: BABYLON.Mesh.CAP_ALL
+            }, scene);
+            trunk.parent = head;
+            trunk.material = mat;
+
+            // Legs
+            const legSize = {width: 1.2, height: 3, depth: 1.2};
+            const l1 = BABYLON.MeshBuilder.CreateBox("l1"+id, legSize, scene); l1.parent = group; l1.position = new BABYLON.Vector3(-1.5, -2.5, 1.5); l1.material = mat;
+            const l2 = BABYLON.MeshBuilder.CreateBox("l2"+id, legSize, scene); l2.parent = group; l2.position = new BABYLON.Vector3(1.5, -2.5, 1.5); l2.material = mat;
+            const l3 = BABYLON.MeshBuilder.CreateBox("l3"+id, legSize, scene); l3.parent = group; l3.position = new BABYLON.Vector3(-1.5, -2.5, -1.5); l3.material = mat;
+            const l4 = BABYLON.MeshBuilder.CreateBox("l4"+id, legSize, scene); l4.parent = group; l4.position = new BABYLON.Vector3(1.5, -2.5, -1.5); l4.material = mat;
+
+            // Ears (Holographic Discs)
+            const earMat = mat.clone("earMat"+id);
+            earMat.wireframe = false;
+            earMat.alpha = 0.3;
+            const ear1 = BABYLON.MeshBuilder.CreateDisc("e1"+id, {radius: 2, tessellation: 16}, scene);
+            ear1.parent = head; ear1.position.x = -1.6; ear1.rotation.y = Math.PI/4; ear1.material = earMat; ear1.sideOrientation = BABYLON.Mesh.DOUBLESIDE;
+            const ear2 = BABYLON.MeshBuilder.CreateDisc("e2"+id, {radius: 2, tessellation: 16}, scene);
+            ear2.parent = head; ear2.position.x = 1.6; ear2.rotation.y = -Math.PI/4; ear2.material = earMat; ear2.sideOrientation = BABYLON.Mesh.DOUBLESIDE;
+
+            group.scaling = new BABYLON.Vector3(scale, scale, scale);
+            return { pivot, group };
+        };
+
+        // Tambahkan 3 Gajah Mengorbit
+        elephants.push(createElephant(1, 60, 0, 0.5));
+        elephants.push(createElephant(2, 70, 2, 0.4));
+        elephants.push(createElephant(3, 55, 4, 0.6));
+
+        // --- G. DRONE SWARM (Armada Penjaga) ---
+        const drones = [];
+        const createDrone = (radius, speed, offsetY) => {
+            const drone = new BABYLON.TransformNode("drone", scene);
+            
+            // Bentuk Drone (Pyramid)
+            const body = BABYLON.MeshBuilder.CreateCylinder("dBody", {diameterTop: 0, diameterBottom: 1.5, height: 2, tessellation: 3}, scene);
+            body.parent = drone;
+            body.rotation.x = Math.PI / 2; // Menghadap depan
+            
+            const mat = new BABYLON.StandardMaterial("dMat", scene);
+            mat.emissiveColor = new BABYLON.Color3(1, 0.2, 0); // Oranye Neon
+            mat.wireframe = true;
+            body.material = mat;
+
+            // Engine Glow
+            const glow = BABYLON.MeshBuilder.CreateSphere("dGlow", {diameter: 0.5}, scene);
+            glow.parent = drone;
+            glow.position.z = -1;
+            glow.material = mat;
+
+            drones.push({ mesh: drone, radius, speed, angle: Math.random() * Math.PI * 2, offsetY });
+        };
+
+        for(let i=0; i<8; i++) createDrone(45 + Math.random()*10, 0.01 + Math.random()*0.01, (Math.random()-0.5)*10);
+
         let time = 0;
         scene.registerBeforeRender(() => {
             time += 0.01;
@@ -1761,6 +1962,30 @@ function initBackground3D() {
             gridMat.setVector3("cameraPosition", camera.position);
             sunMesh.position.x = Math.sin(time * 0.2) * 20; sunMesh.position.y = 5 + Math.cos(time * 0.3) * 5;
             globe.rotation.y += 0.002; globe.rotation.x += 0.001;
+
+            // Flag Animation
+            flagPivot.rotation.y -= 0.015; 
+            const positions = flag.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+            for (let i = 0; i < positions.length; i += 3) {
+                positions[i + 2] = Math.sin(originalPositions[i] * 0.5 + time * 5) * 1.0; 
+            }
+            flag.updateVerticesData(BABYLON.VertexBuffer.PositionKind, positions);
+
+            // Elephant Animation
+            elephants.forEach((el, idx) => {
+                el.pivot.rotation.y += 0.003 * (idx + 1); // Kecepatan orbit variatif
+                el.group.position.y = Math.sin(time * 2 + idx) * 2; // Efek melayang naik turun
+                el.group.rotation.z = Math.sin(time * 5 + idx) * 0.05; // Sedikit goyangan
+            });
+
+            // Drone Animation
+            drones.forEach(d => {
+                d.angle += d.speed;
+                d.mesh.position.x = Math.cos(d.angle) * d.radius;
+                d.mesh.position.z = Math.sin(d.angle) * d.radius;
+                d.mesh.position.y = d.offsetY + Math.sin(time * 3 + d.angle) * 2;
+                d.mesh.lookAt(new BABYLON.Vector3(0, 0, 0)); // Selalu menghadap pusat (Globe)
+            });
         });
         return scene;
     };

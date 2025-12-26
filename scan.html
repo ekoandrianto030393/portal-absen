@@ -244,6 +244,8 @@
             overflow: hidden;
             border-radius: 10px;
             transition: all 0.3s ease-in-out;
+            filter: contrast(1.1) saturate(1.1);
+            /* Sedikit boost warna agar lebih pop */
         }
 
         /* Efek Grid Overlay Halus pada Video */
@@ -283,17 +285,69 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 4px;
-            background: linear-gradient(to right, transparent, #00FF7F, #00FF7F, #00FF7F, transparent);
-            box-shadow: 0 0 15px #00FF7F, 0 0 30px #00FF7F;
-            opacity: 0.8;
+            height: 2px;
             z-index: 20;
-            animation: scan-move 2.5s infinite linear;
+            animation: scan-move 3s infinite cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+        }
+
+        /* 1. INTI LISTRIK (Electric Core) */
+        .scanner-beam::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            width: 100%;
+            height: 4px;
+            background:
+                linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0) 10%, #00FFFF 50%, rgba(0, 255, 255, 0) 90%, transparent 100%),
+                repeating-linear-gradient(90deg, transparent 0, transparent 2px, rgba(255, 255, 255, 0.8) 3px, transparent 4px);
+            background-size: 100% 100%, 10px 100%;
+            box-shadow:
+                0 0 10px #00FFFF,
+                0 0 20px #00FFFF,
+                0 0 30px #FFFFFF;
+            filter: brightness(1.5);
+            animation: electric-jitter 0.1s infinite;
+        }
+
+        /* 2. PANTULAN CAHAYA / TRAIL (Light Reflection Behind) */
+        .scanner-beam::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 120px;
+            /* Panjang ekor cahaya */
+            background: linear-gradient(to top,
+                    rgba(0, 255, 255, 0.6) 0%,
+                    rgba(0, 255, 255, 0.2) 30%,
+                    transparent 100%);
+            opacity: 0.6;
+        }
+
+        @keyframes electric-jitter {
+            0% {
+                opacity: 0.9;
+                transform: translateY(-50%) scaleY(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translateY(-50%) scaleY(1.3);
+            }
+
+            100% {
+                opacity: 0.9;
+                transform: translateY(-50%) scaleY(1);
+            }
         }
 
         @keyframes scan-move {
             0% {
-                top: 0%;
+                top: -10%;
                 opacity: 0;
             }
 
@@ -306,7 +360,7 @@
             }
 
             100% {
-                top: 100%;
+                top: 110%;
                 opacity: 0;
             }
         }
@@ -599,6 +653,33 @@
             }
         }
 
+        /* --- 12. HOLO EMITTER (Visual Bawah) --- */
+        .holo-emitter {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 20px;
+            background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.8) 0%, rgba(0, 0, 0, 0) 70%);
+            filter: blur(10px);
+            z-index: 2;
+            opacity: 0.6;
+            animation: emitter-pulse 2s infinite alternate;
+        }
+
+        @keyframes emitter-pulse {
+            0% {
+                opacity: 0.4;
+                width: 70%;
+            }
+
+            100% {
+                opacity: 0.8;
+                width: 85%;
+            }
+        }
+
         /* Perbaikan Scrollbar untuk Log */
         ::-webkit-scrollbar {
             width: 6px;
@@ -834,6 +915,7 @@
                     <div class="cyber-corner cc-tr"></div>
                     <div class="cyber-corner cc-bl"></div>
                     <div class="cyber-corner cc-br"></div>
+                    <div class="holo-emitter"></div> <!-- Efek Cahaya Proyektor -->
                 </div>
 
                 <div class="w-full bg-gray-900/80 border border-cyan-500/30 p-3 rounded text-center backdrop-blur-sm">

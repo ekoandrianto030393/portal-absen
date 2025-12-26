@@ -1,169 +1,60 @@
-/**
- * rekap.js - Logic untuk Halaman Rekapitulasi
- * Mengambil data real-time dari server.js (Tabel Absensi)
- */
+// Frontend Logic untuk rekap.html
 
-const periodeSelect = document.getElementById('periodeSelect');
-const tableBody = document.getElementById('rekapTableBody');
-const totalRecordsDisplay = document.getElementById('totalRecords');
-const grandTotalHoursDisplay = document.getElementById('grandTotalHours');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const btnRefresh = document.getElementById('btnRefresh');
-const btnPrint = document.getElementById('btnPrint');
-const btnPrev = document.getElementById('btnPrev');
-const btnNext = document.getElementById('btnNext');
-const pageStartDisplay = document.getElementById('pageStart');
-const pageEndDisplay = document.getElementById('pageEnd');
-const totalItemsDisplay = document.getElementById('totalItems');
+async function loadRekap() {
+    const periodeInput = document.getElementById('periode');
+    const tbody = document.getElementById('rekapBody');
+    
+    let url = '/api/rekap';
+    if (periodeInput && periodeInput.value) {
+        // Kirim format YYYY-MM langsung ke API
+        url += `?periode=${periodeInput.value}`;
+    }
 
-let allData = []; // Menyimpan semua data untuk pagination
-let currentPage = 1;
-const rowsPerPage = 10;
+    tbody.innerHTML = '<tr><td colspan="9" class="muted">Memuat data...</td></tr>';
 
-// Format angka desimal
-const formatDecimal = (num) => parseFloat(num).toFixed(2);
-
-// Fungsi Fetch Data Periode
-async function loadPeriods() {
     try {
-        const response = await fetch('/api/rekap_all_periodes');
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Server Error: ${response.status}`);
+        
         const result = await response.json();
         
-        periodeSelect.innerHTML = '';
-        
-        if (result.success && result.data.length > 0) {
-            result.data.forEach(item => {
-                const option = document.createElement('option');
-                option.value = item.periode_bulan;
-                option.textContent = formatPeriodeLabel(item.periode_bulan);
-                periodeSelect.appendChild(option);
-            });
-            // Pilih periode terbaru secara otomatis
-            periodeSelect.selectedIndex = 0;
-            loadRekapData(periodeSelect.value);
-        } else {
-            const option = document.createElement('option');
-            option.textContent = "TIDAK ADA DATA";
-            periodeSelect.appendChild(option);
+        if (!result.success) {
+            throw new Error(result.message || 'Gagal memuat data dari server');
         }
-    } catch (error) {
-        console.error('Error loading periods:', error);
-        alert('Gagal memuat daftar periode.');
-    }
-}
 
-// Helper: Ubah "2023-10" jadi "Oktober 2023"
-function formatPeriodeLabel(yyyymm) {
-    const [year, month] = yyyymm.split('-');
-    const date = new Date(year, month - 1);
-    return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }).toUpperCase();
-}
-
-// Fungsi Fetch Data Rekap Utama
-async function loadRekapData(periode) {
-    if (!periode) return;
-    
-    showLoading(true);
-    try {
-        const response = await fetch(`/api/rekap_data?periode=${periode}`);
-        const result = await response.json();
-
-        if (result.success && result.data.length > 0) {
-            allData = result.data;
-            currentPage = 1; // Reset ke halaman pertama
-            renderTable();
-        } else {
-            allData = [];
-            renderTable();
-        }
-    } catch (error) {
-        console.error('Error loading rekap data:', error);
-        tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Gagal Menghubungi Server</td></tr>`;
-    } finally {
-        showLoading(false);
-    }
-}
-
-function renderTable() {
-    tableBody.innerHTML = '';
-    
-    // Hitung Total Keseluruhan
-    let grandTotal = 0;
-    allData.forEach(row => {
-        const val = parseFloat(row.total_jam_kerja_decimal);
-        grandTotal += isNaN(val) ? 0 : val;
-    });
-    
-    totalRecordsDisplay.textContent = allData.length;
-    grandTotalHoursDisplay.textContent = formatDecimal(grandTotal);
-    totalItemsDisplay.textContent = allData.length;
-
-    // Logika Pagination
-    const start = (currentPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    const paginatedData = allData.slice(start, end);
-    
-    pageStartDisplay.textContent = allData.length > 0 ? start + 1 : 0;
-    pageEndDisplay.textContent = Math.min(end, allData.length);
-
-    if (paginatedData.length > 0) {
-        paginatedData.forEach(row => {
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-emerald-50 transition-colors text-sm even:bg-slate-50';
+        if (result.data && result.data.length > 0) {
+            tbody.innerHTML = '';
             
-            let jamDecimal = parseFloat(row.total_jam_kerja_decimal);
-            if (isNaN(jamDecimal)) jamDecimal = 0;
+            // Data sudah dihitung oleh Database (View), tinggal tampilkan
+            result.data.forEach(row => {
+                // Hitung Lupa Pulang berdasarkan potongan jam (Potongan / 2)
+                // Karena di database: Potongan = 2 jam * jumlah lupa pulang
+                const lupaPulangCount = Math.floor(row.potongan_jam / 2);
+                
+                const tr = `
+                    <tr>
+                        <td>${row.id_karyawan}</td>
+                        <td class="left">${row.nama}</td>
+                        <td style="text-align:center; font-weight:bold; color:#00eaff;">${row.total_masuk}</td>
+                        <td style="text-align:center; color:#ff4444; font-weight:bold;">${row.alpa}</td>
+                        <td style="${row.telat_kali > 0 ? 'color:orange;' : ''}">${row.telat_kali}</td>
+                        <td>${row.telat_menit}</td>
+                        <td>${row.pulang_kali}</td>
+                        <td style="${lupaPulangCount > 0 ? 'color:red;font-weight:bold;' : ''}">${lupaPulangCount}</td>
+                        <td style="color:#ef4444;">${row.potongan_jam} Jam</td>
+                        <td style="color:#22c55e; font-weight:bold;">${row.total_jam_kerja || '00:00:00'}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += tr;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="9" class="muted">Tidak ada data absensi untuk periode ini.</td></tr>';
+        }
 
-            tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${row.id_karyawan}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-gray-700">${row.nama}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-center text-gray-500">${row.periode_bulan}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-gray-900 font-mono">${formatDecimal(jamDecimal)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-gray-500 font-mono">${row.total_jam_kerja_hms || '00:00:00'}</td>
-            `;
-            tableBody.appendChild(tr);
-        });
-    } else {
-        tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500 italic">Tidak ada data absensi untuk periode ini.</td></tr>`;
+    } catch (error) {
+        console.error('Failed to load rekap:', error);
+        tbody.innerHTML = `<tr><td colspan="9" class="muted" style="color:red;">Error: ${error.message}</td></tr>`;
     }
-
-    // Update Status Tombol Pagination
-    btnPrev.disabled = currentPage === 1;
-    btnNext.disabled = end >= allData.length;
-    
-    // Visual Feedback untuk tombol disabled
-    btnPrev.classList.toggle('opacity-50', currentPage === 1);
-    btnPrev.classList.toggle('cursor-not-allowed', currentPage === 1);
-    btnNext.classList.toggle('opacity-50', end >= allData.length);
-    btnNext.classList.toggle('cursor-not-allowed', end >= allData.length);
 }
-
-function showLoading(show) {
-    if (show) loadingIndicator.classList.remove('hidden');
-    else loadingIndicator.classList.add('hidden');
-}
-
-// Event Listeners
-periodeSelect.addEventListener('change', (e) => loadRekapData(e.target.value));
-btnRefresh.addEventListener('click', () => loadRekapData(periodeSelect.value));
-
-btnPrev.addEventListener('click', () => {
-    if (currentPage > 1) {
-        currentPage--;
-        renderTable();
-    }
-});
-
-btnNext.addEventListener('click', () => {
-    if ((currentPage * rowsPerPage) < allData.length) {
-        currentPage++;
-        renderTable();
-    }
-});
-
-btnPrint.addEventListener('click', () => {
-    window.print();
-});
-
-// Init
-document.addEventListener('DOMContentLoaded', loadPeriods);
+// Load otomatis saat halaman dibuka
+document.addEventListener('DOMContentLoaded', loadRekap);

@@ -72,6 +72,9 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$id_karyawan, $nama, $jabatan, $foto_binary, $descriptor_json]);
 
+    // Debugging: Buat file log untuk bukti bahwa data berhasil diproses server
+    file_put_contents('debug_register.txt', date('Y-m-d H:i:s') . " - SUKSES Simpan ID: $id_karyawan - Nama: $nama\n", FILE_APPEND);
+
     echo json_encode(['success' => true, 'message' => 'Data wajah berhasil disimpan untuk ID: ' . $id_karyawan]);
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Database Error: ' . $e->getMessage()]);

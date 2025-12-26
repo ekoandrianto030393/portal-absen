@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Executive - Puskesmas Wana</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Rajdhani:wght@500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b1120;
+            color: #e2e8f0;
+        }
+
+        .font-heading {
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, rgba(0, 0, 0, 0) 100%);
+            border-left: 3px solid #10b981;
+            color: #34d399;
+            font-weight: 600;
+        }
+
+        /* Scrollbar Kustom */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20">
+        <div class="p-6 flex items-center gap-3 border-b border-slate-800">
+            <i class="fa-solid fa-dna text-emerald-400 text-2xl"></i>
+            <div>
+                <h1 class="text-xl font-heading font-bold text-white tracking-wider">PUSKESMASWANA</h1>
+                <p class="text-xs text-emerald-500 tracking-[0.2em] font-medium">EXECUTIVE DASHBOARD</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 py-6 space-y-1">
+            <button onclick="switchTab('overview')" id="nav-overview"
+                class="nav-item w-full text-left px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-3 active">
+                <i class="fa-solid fa-chart-pie w-5"></i> Ringkasan
+            </button>
+            <button onclick="switchTab('daily')" id="nav-daily"
+                class="nav-item w-full text-left px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-3">
+                <i class="fa-solid fa-clock w-5"></i> Absensi Harian
+            </button>
+            <button onclick="switchTab('monthly')" id="nav-monthly"
+                class="nav-item w-full text-left px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-3">
+                <i class="fa-solid fa-calendar-days w-5"></i> Rekap Bulanan
+            </button>
+            <button onclick="switchTab('performance')" id="nav-performance"
+                class="nav-item w-full text-left px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-3">
+                <i class="fa-solid fa-user-shield w-5"></i> Monitoring Kinerja
+            </button>
+            <button onclick="switchTab('employees')" id="nav-employees"
+                class="nav-item w-full text-left px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-3">
+                <i class="fa-solid fa-users w-5"></i> Data Pegawai
+            </button>
+            <button onclick="switchTab('settings')" id="nav-settings"
+                class="nav-item w-full text-left px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-3">
+                <i class="fa-solid fa-sliders w-5"></i> Pengaturan
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800">
+            <a href="/scan.html"
+                class="block w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-center rounded font-bold transition-colors shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                <i class="fa-solid fa-camera mr-2"></i> MODE SCAN
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col relative overflow-hidden">
+        <!-- Header -->
+        <header
+            class="h-16 bg-slate-900/50 backdrop-blur border-b border-slate-800 flex items-center justify-between px-8">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-emerald-500 font-bold tracking-widest uppercase">System Panel</span>
+                <h2 id="page-title" class="text-xl font-heading font-bold text-white">Dashboard Overview</h2>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <!-- Search Bar -->
+                <div class="relative hidden md:block group">
+                    <i
+                        class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors"></i>
+                    <input type="text" placeholder="Cari data..."
+                        class="bg-slate-800/50 text-sm text-white pl-10 pr-4 py-1.5 rounded-full border border-slate-700 focus:outline-none focus:border-emerald-500 focus:bg-slate-800 w-64 transition-all">
+                </div>
+
+                <!-- Clock Widget -->
+                <div class="hidden lg:block text-right border-r border-slate-700 pr-6">
+                    <p id="clock-time" class="text-xl font-heading font-bold text-emerald-400 leading-none">00:00:00</p>
+                    <p id="clock-date" class="text-[10px] text-slate-400 uppercase tracking-wide">Senin, 1 Jan 2024</p>
+                </div>
+
+                <!-- Notification Center -->
+                <div class="relative">
+                    <button onclick="toggleNotifications()"
+                        class="text-slate-400 hover:text-white transition-colors p-2 rounded-full hover:bg-slate-800 relative">
+                        <i class="fa-solid fa-bell"></i>
+                        <span id="notif-badge"
+                            class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-slate-900 hidden animate-pulse"></span>
+                    </button>
+                    <!-- Dropdown Notifikasi -->
+                    <div id="notif-dropdown"
+                        class="absolute right-0 mt-4 w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden hidden z-50 transform origin-top-right transition-all">
+                        <div class="p-3 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
+                            <h3 class="text-xs font-bold text-white uppercase tracking-wider">System Notifications</h3>
+                            <button onclick="clearNotifications()"
+                                class="text-[10px] text-emerald-400 hover:text-emerald-300">Mark all read</button>
+                        </div>
+                        <div id="notif-list" class="max-h-64 overflow-y-auto divide-y divide-slate-800">
+                            <!-- Items injected by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fullscreen Toggle -->
+                <button onclick="toggleFullscreen()"
+                    class="text-slate-400 hover:text-white transition-colors p-2 rounded-full hover:bg-slate-800"
+                    title="Mode Layar Penuh">
+                    <i id="icon-fullscreen" class="fa-solid fa-expand"></i>
+                </button>
+
+                <!-- User Profile -->
+                <div class="flex items-center gap-3 cursor-pointer">
+                    <div
+                        class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-slate-900 font-bold shadow-lg shadow-emerald-500/20">
+                        A</div>
+                    <div class="hidden md:block">
+                        <p class="text-sm font-bold text-white leading-none">Administrator</p>
+                        <p class="text-[10px] text-slate-400">Super User</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Container -->
+        <div class="flex-1 overflow-y-auto p-8 relative">
+
+            <!-- VIEW: OVERVIEW -->
+            <div id="view-overview" class="space-y-6 animate-fade-in">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <!-- Card 1 -->
+                    <div class="glass-panel p-6 rounded-xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <i class="fa-solid fa-users text-6xl text-blue-500"></i>
+                        </div>
+                        <div class="relative z-10">
+                            <p class="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Pegawai</p>
+                            <h3 class="text-4xl font-heading font-bold text-white mt-2" id="stat-total-emp">-</h3>
+                            <div class="mt-2 text-xs text-blue-400 flex items-center gap-1"><i
+                                    class="fa-solid fa-database"></i> Terdaftar</div>
+                        </div>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-transparent">
+                        </div>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="glass-panel p-6 rounded-xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <i class="fa-solid fa-user-check text-6xl text-emerald-500"></i>
+                        </div>
+                        <div class="relative z-10">
+                            <p class="text-slate-400 text-xs font-bold uppercase tracking-wider">Hadir Hari Ini</p>
+                            <h3 class="text-4xl font-heading font-bold text-emerald-400 mt-2" id="stat-present">-</h3>
+                            <div class="mt-2 text-xs text-emerald-400 flex items-center gap-1"><i
+                                    class="fa-solid fa-arrow-trend-up"></i> Active Now</div>
+                        </div>
+                        <div
+                            class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-transparent">
+                        </div>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div class="glass-panel p-6 rounded-xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <i class="fa-solid fa-clock text-6xl text-yellow-500"></i>
+                        </div>
+                        <div class="relative z-10">
+                            <p class="text-slate-400 text-xs font-bold uppercase tracking-wider">Terlambat</p>
+                            <h3 class="text-4xl font-heading font-bold text-yellow-400 mt-2" id="stat-late">-</h3>
+                            <div class="mt-2 text-xs text-yellow-500 flex items-center gap-1"><i
+                                    class="fa-solid fa-triangle-exclamation"></i> Perlu Perhatian</div>
+                        </div>
+                        <div
+                            class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 to-transparent">
+                        </div>
+                    </div>
+
+                    <!-- Card 4 -->
+                    <div class="glass-panel p-6 rounded-xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <i class="fa-solid fa-user-xmark text-6xl text-red-500"></i>
+                        </div>
+                        <div class="relative z-10">
+                            <p class="text-slate-400 text-xs font-bold uppercase tracking-wider">Belum Hadir / Alpa</p>
+                            <h3 class="text-4xl font-heading font-bold text-red-400 mt-2" id="stat-absent">-</h3>
+                            <div class="mt-2 text-xs text-red-400 flex items-center gap-1"><i
+                                    class="fa-solid fa-circle-xmark"></i> Absen</div>
+                        </div>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-transparent">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Area -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Main Chart -->
+                    <div class="glass-panel p-6 rounded-xl col-span-2 flex flex-col h-96">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-heading font-bold text-white flex items-center gap-2"><i
+                                    class="fa-solid fa-chart-area text-emerald-500"></i> Tren Kehadiran</h3>
+                            <select
+                                class="bg-slate-800 text-xs text-slate-300 border border-slate-700 rounded px-2 py-1 focus:outline-none">
+                                <option>7 Hari Terakhir</option>
+                                <option>Bulan Ini</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 relative">
+                            <canvas id="attendanceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Activity Feed & Pie -->
+                    <div class="flex flex-col gap-6 h-96">
+                        <!-- Pie Chart (Mini) -->
+                        <div class="glass-panel p-4 rounded-xl flex-1 flex flex-col">
+                            <h3 class="text-sm font-heading font-bold text-white mb-2">Komposisi</h3>
+                            <div class="flex-1 relative flex justify-center">
+                                <canvas id="pieChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity Feed -->
+                        <div class="glass-panel p-4 rounded-xl flex-1 flex flex-col overflow-hidden">
+                            <h3
+                                class="text-sm font-heading font-bold text-white mb-3 flex justify-between items-center">
+                                <span>Aktivitas Terbaru</span>
+                                <span class="text-[10px] text-emerald-400 animate-pulse">● LIVE</span>
+                            </h3>
+                            <div class="flex-1 overflow-y-auto space-y-3 pr-2" id="recent-activity-list">
+                                <!-- Injected by JS -->
+                                <div class="text-center text-xs text-slate-500 mt-4">Memuat feed...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: DAILY ATTENDANCE -->
+            <div id="view-daily" class="hidden space-y-6">
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead
+                            class="bg-slate-800/50 text-slate-400 uppercase text-xs font-bold tracking-wider border-b border-slate-700">
+                            <tr>
+                                <th class="p-5">Waktu</th>
+                                <th class="p-5">Nama Pegawai</th>
+                                <th class="p-5">Jabatan</th>
+                                <th class="p-5">Status Masuk</th>
+                                <th class="p-5">Telat (Min)</th>
+                                <th class="p-5">Jam Pulang</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-daily-body" class="text-slate-300 divide-y divide-slate-700">
+                            <!-- Data injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: MONTHLY RECAP -->
+            <div id="view-monthly" class="hidden space-y-6">
+                <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl">
+                    <input type="month" id="filter-month"
+                        class="bg-slate-700 text-white px-4 py-2 rounded border border-slate-600 focus:outline-none focus:border-emerald-500">
+                    <button onclick="exportExcel()"
+                        class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded font-bold transition"><i
+                            class="fa-solid fa-file-excel mr-2"></i> Export Excel</button>
+                </div>
+                <div class="glass-panel rounded-xl overflow-hidden overflow-x-auto">
+                    <table class="w-full text-left border-collapse" id="table-rekap">
+                        <!-- Header injected by JS to match rekap.html logic -->
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: PERFORMANCE MONITORING -->
+            <div id="view-performance" class="hidden">
+                <div id="performance-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Cards injected by JS -->
+                </div>
+            </div>
+
+            <!-- VIEW: DATA PEGAWAI (NEW) -->
+            <div id="view-employees" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="relative">
+                        <i
+                            class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
+                        <input type="text" id="search-employee" placeholder="Cari Nama / ID..."
+                            class="bg-slate-800 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-emerald-500 w-64">
+                    </div>
+                    <div class="text-sm text-slate-400">Total: <span id="total-emp-count"
+                            class="text-white font-bold">0</span> Pegawai</div>
+                </div>
+                <div id="employees-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- VIEW: SETTINGS (NEW) -->
+            <div id="view-settings" class="hidden max-w-4xl mx-auto">
+                <div class="glass-panel rounded-xl p-8">
+                    <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-700 pb-4">Personalisasi Tampilan
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-3 uppercase tracking-wider font-bold">Tema
+                                Warna Dashboard</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button onclick="changeTheme('emerald')"
+                                    class="flex items-center gap-3 p-3 rounded-lg border border-emerald-500/50 bg-emerald-900/20 hover:bg-emerald-900/40 transition">
+                                    <div class="w-6 h-6 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></div>
+                                    <span class="text-emerald-100 font-bold">Emerald Green</span>
+                                </button>
+                                <button onclick="changeTheme('cyan')"
+                                    class="flex items-center gap-3 p-3 rounded-lg border border-cyan-500/50 bg-cyan-900/20 hover:bg-cyan-900/40 transition">
+                                    <div class="w-6 h-6 rounded-full bg-cyan-500 shadow-[0_0_10px_#06b6d4]"></div>
+                                    <span class="text-cyan-100 font-bold">Cyber Blue</span>
+                                </button>
+                                <button onclick="changeTheme('violet')"
+                                    class="flex items-center gap-3 p-3 rounded-lg border border-violet-500/50 bg-violet-900/20 hover:bg-violet-900/40 transition">
+                                    <div class="w-6 h-6 rounded-full bg-violet-500 shadow-[0_0_10px_#8b5cf6]"></div>
+                                    <span class="text-violet-100 font-bold">Royal Purple</span>
+                                </button>
+                                <button onclick="changeTheme('amber')"
+                                    class="flex items-center gap-3 p-3 rounded-lg border border-amber-500/50 bg-amber-900/20 hover:bg-amber-900/40 transition">
+                                    <div class="w-6 h-6 rounded-full bg-amber-500 shadow-[0_0_10px_#f59e0b]"></div>
+                                    <span class="text-amber-100 font-bold">Luxury Gold</span>
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-3">* Klik untuk langsung mengubah aksen warna aplikasi.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL: EMPLOYEE DETAIL (Hidden by default) -->
+    <div id="modal-employee"
+        class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-2xl rounded-2xl p-8 relative transform scale-95 transition-transform duration-300"
+            id="modal-content">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+
+            <div class="flex flex-col md:flex-row gap-8 items-center md:items-start">
+                <!-- Foto Profil Besar -->
+                <div class="relative">
+                    <div
+                        class="w-32 h-32 rounded-full border-4 border-emerald-500 overflow-hidden shadow-[0_0_20px_rgba(16,185,129,0.5)] bg-slate-800">
+                        <img id="modal-foto" src="" alt="Foto Pegawai" class="w-full h-full object-cover">
+                    </div>
+                    <div id="modal-score-badge"
+                        class="absolute -bottom-2 -right-2 bg-slate-900 text-white font-bold px-3 py-1 rounded-full border border-emerald-500 shadow-lg">
+                        100
+                    </div>
+                </div>
+
+                <!-- Info Detail -->
+                <div class="flex-1 w-full text-center md:text-left">
+                    <h2 id="modal-nama" class="text-3xl font-heading font-bold text-white mb-1">Nama Pegawai</h2>
+                    <p id="modal-jabatan" class="text-emerald-400 font-mono text-sm tracking-wider mb-6 font-bold">
+                        JABATAN</p>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-800/50 p-3 rounded border border-slate-700">
+                            <p class="text-xs text-slate-400 uppercase">ID Karyawan</p>
+                            <p id="modal-id" class="font-mono text-white font-bold">-</p>
+                        </div>
+                        <div class="bg-slate-800/50 p-3 rounded border border-slate-700">
+                            <p class="text-xs text-slate-400 uppercase">Status Kinerja</p>
+                            <p id="modal-status" class="font-bold text-white">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistik Bulan Ini -->
+            <div class="mt-8 pt-6 border-t border-slate-700 grid grid-cols-4 gap-2 text-center" id="modal-stats-grid">
+                <!-- Injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT EMPLOYEE -->
+    <div id="modal-edit-employee"
+        class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-8 relative transform scale-95 transition-transform duration-300"
+            id="modal-edit-content">
+            <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-700 pb-2">Edit Data Pegawai</h3>
+
+            <form id="form-edit-employee" onsubmit="event.preventDefault(); updateEmployee();">
+                <input type="hidden" id="edit-id">
+
+                <div class="mb-4">
+                    <label class="block text-xs text-slate-400 uppercase font-bold mb-2">ID Karyawan</label>
+                    <input type="text" id="edit-id-display"
+                        class="w-full bg-slate-800 text-slate-500 px-4 py-2 rounded border border-slate-700 cursor-not-allowed"
+                        disabled>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs text-slate-400 uppercase font-bold mb-2">Nama Lengkap</label>
+                    <input type="text" id="edit-nama"
+                        class="w-full bg-slate-900 text-white px-4 py-2 rounded border border-slate-600 focus:border-emerald-500 focus:outline-none"
+                        required>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-xs text-slate-400 uppercase font-bold mb-2">Jabatan</label>
+                    <input type="text" id="edit-jabatan"
+                        class="w-full bg-slate-900 text-white px-4 py-2 rounded border border-slate-600 focus:border-emerald-500 focus:outline-none"
+                        required>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeEditModal()"
+                        class="px-4 py-2 rounded text-slate-300 hover:text-white hover:bg-slate-800 transition">Batal</button>
+                    <button type="submit"
+                        class="px-6 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition shadow-[0_0_15px_rgba(16,185,129,0.4)]">Simpan
+                        Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+
+</html>

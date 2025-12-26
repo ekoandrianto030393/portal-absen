@@ -205,39 +205,6 @@
             pointer-events: none;
         }
 
-        .scan-reticle {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 60%;
-            height: 60%;
-            transform: translate(-50%, -50%);
-            border: 1px dashed rgba(0, 234, 255, 0.3);
-            border-radius: 50%;
-            animation: rotate-reticle 20s linear infinite;
-            z-index: 6;
-            pointer-events: none;
-            box-shadow: 0 0 20px rgba(0, 234, 255, 0.1);
-        }
-
-        .scan-reticle::before {
-            content: '';
-            position: absolute;
-            top: -10px;
-            bottom: -10px;
-            left: -10px;
-            right: -10px;
-            top: -10px;
-            bottom: -10px;
-            left: -10px;
-            right: -10px;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            border-top-color: var(--aether-blue);
-            border-bottom-color: var(--aether-blue);
-            animation: rotate-reticle-rev 8s linear infinite;
-        }
-
         .scan-data {
             position: absolute;
             font-size: 10px;
@@ -270,26 +237,6 @@
             bottom: 10px;
             right: 10px;
             text-align: right;
-        }
-
-        @keyframes rotate-reticle {
-            from {
-                transform: translate(-50%, -50%) rotate(0deg);
-            }
-
-            to {
-                transform: translate(-50%, -50%) rotate(360deg);
-            }
-        }
-
-        @keyframes rotate-reticle-rev {
-            from {
-                transform: rotate(0deg);
-            }
-
-            to {
-                transform: rotate(-360deg);
-            }
         }
 
         /* --- SUCCESS OVERLAY ANIMATIONS --- */
@@ -462,7 +409,6 @@
 
                     <!-- Advanced HUD Elements -->
                     <div class="scan-grid"></div>
-                    <div class="scan-reticle"></div>
                     <div class="scan-data tl">SYS: ONLINE<br>MODE: RECOG</div>
                     <div class="scan-data tr">ISO: 800<br>WB: AUTO</div>
                     <div class="scan-data bl">COORD: <span id="scanCoord">000,000</span></div>
