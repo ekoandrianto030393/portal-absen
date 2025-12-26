@@ -1257,11 +1257,28 @@ async function detectFace() {
 
             } else {
                 resetTargetData();
- 		userStatusDisplay.textContent = 'ACCESS DENIED';
+                const potentialMatch = (bestMatch.label !== 'unknown') ? employeeMap[bestMatch.label] : null;
+                const potentialName = potentialMatch ? potentialMatch.nama : 'Unknown';
+
+                // Panggil nama jika ada kandidat, bahkan jika ditolak
+                if (potentialMatch) {
+                    setStatusVisual(`IDENTITY MISMATCH: ${potentialName}. ACCESS DENIED.`, 'text-red-500');
+                    SoundFX.speak(`Access Denied, ${potentialName}`);
+                } else {
+                    setStatusVisual('SUBJECT NOT AUTHORIZED. IDENTITY DENIED.', 'text-red-500');
+                    SoundFX.speak('Access Denied');
+                }
+                
+ 		        userStatusDisplay.textContent = 'ACCESS DENIED';
                 faceLabel = 'DENIED ACCESS';
                 targetLabel = ''; // Reset decrypt target
-                faceColor = '#FF0055'; 
-                setStatusVisual('SUBJECT NOT AUTHORIZED. IDENTITY DENIED.', 'text-red-500');
+                
+                // Efek Berkedip Merah (Blinking Red)
+                if (Math.floor(Date.now() / 200) % 2 === 0) {
+                    faceColor = '#FF0055'; 
+                } else {
+                    faceColor = 'rgba(255, 0, 85, 0.1)'; 
+                }
                 lastKnownMatch = null;
             }
         } else {
@@ -1409,7 +1426,8 @@ async function processAttendance(karyawanId) {
             const isWarning = statusColor === 'yellow'; // Cek apakah ini peringatan atau error fatal
 
             SoundFX.play('error');
-            SoundFX.speak(isWarning ? 'Notice' : 'Access Denied');
+            // Panggil nama dalam notifikasi suara
+            SoundFX.speak(isWarning ? `Notice, ${display_name}` : `Access Denied, ${display_name}`);
             triggerScreenFlash(isWarning ? '#FFD700' : '#FF0055');
 
             setStatusVisual(cleanMessage, isWarning ? 'text-amber-500' : 'text-red-500');
@@ -1433,7 +1451,8 @@ async function processAttendance(karyawanId) {
                     break;
                 case 'ALREADY_CHECKED_OUT':
                     finalStatusText = 'SUDAH PULANG';
-                    finalMessageHTML = cleanMessage;
+                    finalMessageHTML = `${coloredName}, ${cleanMessage}`;
+                    break;`${coloredName}, ${cleanMessage}`;
                     break;
                 default:
                     finalStatusText = isWarning ? 'PERINGATAN' : 'ACCESS DENIED';
