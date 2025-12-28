@@ -9,9 +9,14 @@ const app = express();
 const port = 3000;
 
 // --- KONFIGURASI JAM OPERASIONAL (Bisa disesuaikan) ---
-const JAM_MASUK_START  = process.env.JAM_MASUK_START  || '06:00:00'; // Awal boleh absen masuk
-const JAM_MASUK_END    = process.env.JAM_MASUK_END    || '12:00:00'; // Lewat jam ini, absen masuk ditolak
-const JAM_PULANG_START = process.env.JAM_PULANG_START || '16:00:00'; // Awal boleh absen pulang
+const JAM_MASUK_START      = process.env.JAM_MASUK_START      || '06:00:00';
+const JAM_MASUK_END        = process.env.JAM_MASUK_END        || '12:00:00';
+const JAM_PULANG_START     = process.env.JAM_PULANG_START     || '16:00:00';
+const JAM_PULANG_JUMAT     = process.env.JAM_PULANG_JUMAT     || '12:00:00'; // Khusus Hari Jumat
+const JAM_KERJA_MULAI      = process.env.JAM_KERJA_MULAI      || '08:00:00'; // Jam resmi masuk
+const BATAS_TELAT          = process.env.BATAS_TELAT          || '08:20:00'; // Toleransi telat
+const POTONGAN_LUPA_PULANG = process.env.POTONGAN_LUPA_PULANG || 2;          // Jam potongan
+const AUTO_PULANG_DEFAULT  = process.env.AUTO_PULANG_DEFAULT  || '14:00:00'; // Jam pulang default
 
 // Middleware untuk parsing JSON body (limit besar untuk upload foto)
 app.use(bodyParser.json({ limit: '50mb' }));
@@ -49,6 +54,11 @@ pool.getConnection((err, connection) => {
         console.log('💡 Pastikan XAMPP MySQL sudah di-Start!');
     } else {
         console.log('✅ Terkoneksi ke Database MySQL (Pool)');
+        console.log('📋 Konfigurasi Absensi (dari .env):');
+        console.log(`   - Batas Telat: ${BATAS_TELAT}`);
+        console.log(`   - Potongan Lupa Pulang: ${POTONGAN_LUPA_PULANG} Jam`);
+        console.log(`   - Auto Pulang Default: ${AUTO_PULANG_DEFAULT}`);
+        console.log(`   - Jam Pulang Jumat: ${JAM_PULANG_JUMAT}`);
         
         // --- SINKRONISASI SKEMA DATABASE (Berdasarkan skema_final.sql) ---
         
@@ -91,20 +101,20 @@ pool.getConnection((err, connection) => {
                 m.periode,
                 COUNT(a.jam_masuk) AS total_masuk,
                 GREATEST(0, m.total_hari_kerja - COUNT(a.jam_masuk)) AS alpa, -- Alpa = Total Hari Kerja Nyata - Total Masuk
-                SUM(CASE WHEN a.jam_masuk > '08:10:00' THEN 1 ELSE 0 END) AS telat_kali,
-                COALESCE(SUM(CASE WHEN a.jam_masuk > '08:10:00' THEN FLOOR((TIME_TO_SEC(a.jam_masuk) - TIME_TO_SEC('08:00:00')) / 60) ELSE 0 END), 0) AS telat_menit, -- Sinkron dengan JS (Basis Detik)
+                SUM(CASE WHEN a.jam_masuk > '${BATAS_TELAT}' THEN 1 ELSE 0 END) AS telat_kali,
+                COALESCE(SUM(CASE WHEN a.jam_masuk > '${BATAS_TELAT}' THEN FLOOR((TIME_TO_SEC(a.jam_masuk) - TIME_TO_SEC('${JAM_KERJA_MULAI}')) / 60) ELSE 0 END), 0) AS telat_menit,
                 SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN 1 ELSE 0 END) AS tanpa_absen_pulang,
                 SUM(CASE WHEN a.jam_keluar IS NOT NULL THEN 1 ELSE 0 END) AS pulang_kali,
-                SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN 2 ELSE 0 END) AS potongan_jam,
+                SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN ${POTONGAN_LUPA_PULANG} ELSE 0 END) AS potongan_jam,
                 SEC_TO_TIME(SUM(
                     CASE 
                         WHEN a.jam_keluar IS NOT NULL THEN TIMESTAMPDIFF(SECOND, a.jam_masuk, a.jam_keluar)
-                        WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN GREATEST(0, TIMESTAMPDIFF(SECOND, a.jam_masuk, '14:00:00'))
+                        WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN GREATEST(0, TIMESTAMPDIFF(SECOND, a.jam_masuk, '${AUTO_PULANG_DEFAULT}'))
                         ELSE 0 
                     END
                 )) AS total_jam_kerja
             FROM karyawan k
-            JOIN (
+            CROSS JOIN (
                 SELECT DATE_FORMAT(tanggal, '%Y-%m') AS periode, COUNT(DISTINCT tanggal) AS total_hari_kerja
                 FROM absensi
                 GROUP BY DATE_FORMAT(tanggal, '%Y-%m')
@@ -353,11 +363,17 @@ app.post('/api/absensi', (req, res) => {
                 } else {
                     // --- KASUS 3: SUDAH MASUK, BELUM PULANG -> CHECK OUT (AUTO FIX) ---
                     
+                    // LOGIKA KHUSUS HARI JUMAT (Pulang lebih awal)
+                    let jamPulangEfektif = JAM_PULANG_START;
+                    if (now.getDay() === 5) { // 0=Minggu, 5=Jumat, 6=Sabtu
+                        jamPulangEfektif = JAM_PULANG_JUMAT;
+                    }
+
                     // VALIDASI WAKTU PULANG: Cegah pulang sebelum waktunya
-                    if (currentTime < JAM_PULANG_START) {
+                    if (currentTime < jamPulangEfektif) {
                         return res.json({
                             success: false,
-                            message: `Anda sudah Absen Masuk. Absen Pulang baru dibuka jam ${JAM_PULANG_START}.`,
+                            message: `Anda sudah Absen Masuk. Absen Pulang baru dibuka jam ${jamPulangEfektif}.`,
                             nama: k.nama,
                             jabatan: k.jabatan,
                             result_code: 'TOO_EARLY_OUT',

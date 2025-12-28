@@ -1,3 +1,9 @@
+-- ======================================================
+-- 0. BUAT DATABASE BARU (Khusus Install Ulang)
+-- ======================================================
+CREATE DATABASE IF NOT EXISTS biometrik_absensi_wajah_db;
+USE biometrik_absensi_wajah_db;
+
 -- 1. Hapus View lama yang rusak (Penyebab Error #1356)
 -- 1. Bersihkan View lama
 DROP VIEW IF EXISTS absensi_harian_hitung;
@@ -51,11 +57,11 @@ SELECT
     m.periode,
     COUNT(a.jam_masuk) AS total_masuk,
     GREATEST(0, m.total_hari_kerja - COUNT(a.jam_masuk)) AS alpa,
-    SUM(CASE WHEN a.jam_masuk > '08:10:00' THEN 1 ELSE 0 END) AS telat_kali,
-    COALESCE(SUM(CASE WHEN a.jam_masuk > '08:10:00' THEN FLOOR((TIME_TO_SEC(a.jam_masuk) - TIME_TO_SEC('08:00:00')) / 60) ELSE 0 END), 0) AS telat_menit,
+    SUM(CASE WHEN a.jam_masuk > '08:20:00' THEN 1 ELSE 0 END) AS telat_kali,
+    COALESCE(SUM(CASE WHEN a.jam_masuk > '08:20:00' THEN FLOOR((TIME_TO_SEC(a.jam_masuk) - TIME_TO_SEC('08:00:00')) / 60) ELSE 0 END), 0) AS telat_menit,
     SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN 1 ELSE 0 END) AS tanpa_absen_pulang,
     SUM(CASE WHEN a.jam_keluar IS NOT NULL THEN 1 ELSE 0 END) AS pulang_kali,
-    SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN 2 ELSE 0 END) AS potongan_jam,
+    SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN 2 ELSE 0 END) AS potongan_jam, -- Nilai default 2, akan diupdate otomatis oleh server.js dari .env
     SEC_TO_TIME(SUM(
         CASE 
             WHEN a.jam_keluar IS NOT NULL THEN TIMESTAMPDIFF(SECOND, a.jam_masuk, a.jam_keluar)
@@ -80,6 +86,7 @@ GROUP BY k.id_karyawan, k.nama, k.jabatan, m.periode, m.total_hari_kerja;
 CREATE OR REPLACE VIEW view_absensi_harian AS
 SELECT 
     a.id_absensi,
+    k.id_karyawan,
     k.nama AS nama_karyawan,
     k.jabatan,
     a.tanggal,

@@ -58,3 +58,4 @@ INSERT INTO karyawan (id_karyawan, nama, face_descriptor) VALUES
    * Di bagian `// --- MIDDLEWARES ---`, saya mengubah `app.use(express.static(path.join(__dirname)));` menjadi **`app.use(express.static(path.resolve(__dirname)));`** untuk memastikan tidak ada lagi masalah pemuatan file statis (`scan.js`, folder `models`, dll.).
 
 Dengan perbaikan ini, kode `server.js` Anda sudah lebih kuat dan seharusnya menyelesaikan masalah Eror 500 dan masalah file yang tidak ditemukan.
+c:\Users\hi\unduhan\mysql\data\biometrik_absensi_wajah_db - Salin

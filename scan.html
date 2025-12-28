@@ -931,10 +931,10 @@
                     <h2 class="widget-title">:: DIAGNOSTICS ::</h2>
                     <div class="flex flex-col gap-4">
                         <div>
-                            <div class="flex justify-between text-xs mb-1"><span>CPU LOAD</span><span
-                                    id="cpuLoad">12%</span></div>
+                            <div class="flex justify-between text-xs mb-1"><span>LATEST SCAN</span><span
+                                    id="latestScanInfo">WAITING...</span></div>
                             <div class="loader-bar">
-                                <div id="cpuLoadBar" class="loader-fill"></div>
+                                <div id="latestScanBar" class="loader-fill" style="width: 0%"></div>
                             </div>
                         </div>
                         <div>
@@ -962,9 +962,9 @@
                 </div>
 
                 <div class="widget-panel flex-grow h-40 lg:h-auto">
-                    <h2 class="widget-title">:: DATA STREAM ::</h2>
-                    <div id="dataStream" class="h-full overflow-y-auto font-mono text-xs opacity-75">
-                        <p class="text-cyan-700">Handshaking...</p>
+                    <h2 class="widget-title">:: ATTENDANCE LOG ::</h2>
+                    <div id="attendanceLog" class="h-full overflow-y-auto font-mono text-xs opacity-90 space-y-1">
+                        <p class="text-gray-600 italic">> Waiting for check-in...</p>
                     </div>
                 </div>
             </div>

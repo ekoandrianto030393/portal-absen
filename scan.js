@@ -36,11 +36,13 @@ const stealthIcon = document.getElementById('stealthIcon');
 
 const cpuLoadBar = document.getElementById('cpuLoadBar');
 const cpuLoadText = document.getElementById('cpuLoad');
+const latestScanBar = document.getElementById('latestScanBar');
+const latestScanText = document.getElementById('latestScanInfo');
 const memUsageBar = document.getElementById('memUsageBar');
 const memUsageText = document.getElementById('memUsage');
 const matchThresholdBar = document.getElementById('matchThresholdBar');
 const matchConfidenceText = document.getElementById('matchConfidenceText');
-const dataStream = document.getElementById('dataStream');
+const attendanceLog = document.getElementById('attendanceLog');
 const graphElement = document.getElementById('graph');
 
 let labeledDescriptors = null;
@@ -580,39 +582,28 @@ function updateSystemDiagnostics(confidence) {
     }
 }
 
-function updateDataStream() {
-    if(!dataStream) return;
+function logAttendance(name, time) {
+    if (!attendanceLog) return;
     
-    // Setup style agar memenuhi panel (Matrix style block)
-    if (dataStream.style.flexWrap !== 'wrap') {
-        dataStream.innerHTML = '';
-        dataStream.style.display = 'flex';
-        dataStream.style.flexDirection = 'row'; // Horizontal
-        dataStream.style.flexWrap = 'wrap'; // FILL THE PANEL
-        dataStream.style.overflow = 'hidden';
-        dataStream.style.alignContent = 'flex-start';
-    }
+    // Hapus placeholder jika ada
+    const placeholder = attendanceLog.querySelector('.italic');
+    if (placeholder) placeholder.remove();
 
-    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    const entry = document.createElement('div');
+    entry.className = 'flex justify-between items-center border-b border-cyan-900/30 pb-1 mb-1 animate-[fadeIn_0.5s_ease-out]';
+    entry.innerHTML = `
+        <span class="text-cyan-400 font-bold truncate w-2/3 flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_5px_#00FF00]"></span>
+            ${name}
+        </span>
+        <span class="text-gray-400 text-[10px] font-mono">${time}</span>
+    `;
     
-    // Tambah beberapa karakter sekaligus agar terlihat cepat
-    for (let i = 0; i < 4; i++) {
-        const span = document.createElement('span');
-        span.textContent = chars[Math.floor(Math.random() * chars.length)];
-        
-        // Style Gold & Huruf Kecil
-        span.className = 'text-xs font-mono';
-        span.style.color = '#FFD700'; // GOLD
-        span.style.textShadow = '0 0 4px rgba(255, 215, 0, 0.6)'; // Glow
-        span.style.width = '10px'; // Fixed width
-        span.style.textAlign = 'center';
-        
-        dataStream.appendChild(span);
-    }
-
-    // Jaga agar panel penuh tapi tidak overflow memory (misal 400 karakter)
-    while (dataStream.children.length > 400) {
-        dataStream.removeChild(dataStream.firstChild);
+    attendanceLog.prepend(entry);
+    
+    // Batasi log agar tidak terlalu panjang
+    if (attendanceLog.children.length > 50) {
+        attendanceLog.removeChild(attendanceLog.lastChild);
     }
 }
 
@@ -913,7 +904,6 @@ updateClock(); // Start loop animasi jam (requestAnimationFrame)
 
 // Interval cepat untuk animasi data stream & waveform
 setInterval(() => {
-    updateDataStream();
     updateGraph();
 }, 100);
 
@@ -948,6 +938,18 @@ const api = {
         });
         if (!response.ok) throw new Error(`Server returned an error status (${response.status}).`);
         return await response.json();
+    },
+    getTodayAttendance: async () => {
+        try {
+            // Mengambil data absensi hari ini untuk Kernel Diagnostic
+            const response = await fetch('/api/absensi/today');
+            if (!response.ok) return [];
+            const res = await response.json();
+            return Array.isArray(res) ? res : (res.data || []);
+        } catch (e) {
+            console.warn("Gagal mengambil data absensi hari ini:", e);
+            return [];
+        }
     }
 };
 
@@ -1098,6 +1100,29 @@ async function switchCamera(deviceId) {
     await startCamera(deviceId);
 }
 
+async function loadTodayAttendance() {
+    if (!attendanceLog) return;
+    try {
+        const data = await api.getTodayAttendance();
+        if (data && data.length > 0) {
+            logSystem(`KERNEL DIAGNOSTIC: Loading ${data.length} records...`, 'text-cyan-500');
+            // Loop data (Asumsi urut waktu ASC dari server)
+            // logAttendance melakukan prepend, jadi data terakhir akan muncul paling atas
+            data.forEach(row => {
+                const nama = row.nama || row.name || 'Karyawan';
+                let jam = row.jam || row.waktu || row.created_at || '';
+                // Format jam jika berupa datetime panjang
+                if (jam.length > 8 || jam.includes('T')) {
+                    jam = new Date(jam).toLocaleTimeString('id-ID', { hour12: false });
+                }
+                logAttendance(nama, jam);
+            });
+        }
+    } catch (e) {
+        console.error("Error loading today attendance:", e);
+    }
+}
+
 async function initializeApp() {
     setStatusVisual('BOOT SEQUENCE: Loading Neural Engine...', 'text-cyan-500', true);
     logSystem('Application boot sequence initiated.', 'text-cyan-500');
@@ -1116,6 +1141,9 @@ async function initializeApp() {
         await getCameraDevices(); 
         const initialDeviceId = cameraSelect ? cameraSelect.value : null;
         await startCamera(initialDeviceId); 
+
+        // Load data absensi hari ini ke panel Diagnostic/Log
+        loadTodayAttendance();
 
     } catch (err) {
         setStatusVisual(`❌ FATAL ERROR: Gagal Init Model. Cek folder /models.`, 'text-red-500');
@@ -1406,6 +1434,7 @@ async function processAttendance(karyawanId) {
                     finalMessageHTML = `Absensi MASUK atas nama ${coloredName} (${display_jabatan}) telah berhasil dicatat. Selamat Bekerja.`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR;
+                    logAttendance(display_name, serverTimestamp); // Log ke panel kanan
                     break;
                 case 'CHECK_OUT_SUCCESS':
                     finalStatusText = 'CHECK-OUT BERHASIL';
@@ -1419,6 +1448,13 @@ async function processAttendance(karyawanId) {
                     finalMessageHTML = `Sistem mengkonfirmasi ${coloredName}. Absensi Anda untuk hari ini telah tercatat.`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR; 
+            }
+
+            // UPDATE WIDGET LATEST SCAN (Pengganti CPU Load)
+            if(latestScanText) latestScanText.textContent = `${display_name.substring(0, 12)}.. [${result.result_code.includes('IN') ? 'IN' : 'OUT'}]`;
+            if(latestScanBar) {
+                latestScanBar.style.width = '100%';
+                latestScanBar.style.background = 'linear-gradient(90deg, #00FF7F, #00FFFF)';
             }
 
         } else {
@@ -1452,7 +1488,6 @@ async function processAttendance(karyawanId) {
                 case 'ALREADY_CHECKED_OUT':
                     finalStatusText = 'SUDAH PULANG';
                     finalMessageHTML = `${coloredName}, ${cleanMessage}`;
-                    break;`${coloredName}, ${cleanMessage}`;
                     break;
                 default:
                     finalStatusText = isWarning ? 'PERINGATAN' : 'ACCESS DENIED';
