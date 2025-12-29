@@ -14,7 +14,7 @@ const JAM_MASUK_END        = process.env.JAM_MASUK_END        || '12:00:00';
 const JAM_PULANG_START     = process.env.JAM_PULANG_START     || '16:00:00';
 const JAM_PULANG_JUMAT     = process.env.JAM_PULANG_JUMAT     || '12:00:00'; // Khusus Hari Jumat
 const JAM_KERJA_MULAI      = process.env.JAM_KERJA_MULAI      || '08:00:00'; // Jam resmi masuk
-const BATAS_TELAT          = process.env.BATAS_TELAT          || '08:20:00'; // Toleransi telat
+const BATAS_TELAT          = process.env.BATAS_TELAT          || '08:25:00'; // Toleransi telat
 const POTONGAN_LUPA_PULANG = process.env.POTONGAN_LUPA_PULANG || 2;          // Jam potongan
 const AUTO_PULANG_DEFAULT  = process.env.AUTO_PULANG_DEFAULT  || '14:00:00'; // Jam pulang default
 
@@ -100,9 +100,10 @@ pool.getConnection((err, connection) => {
                 k.jabatan,
                 m.periode,
                 COUNT(a.jam_masuk) AS total_masuk,
+                SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END) AS total_dl,
                 GREATEST(0, m.total_hari_kerja - COUNT(a.jam_masuk)) AS alpa, -- Alpa = Total Hari Kerja Nyata - Total Masuk
-                SUM(CASE WHEN a.jam_masuk > '${BATAS_TELAT}' THEN 1 ELSE 0 END) AS telat_kali,
-                COALESCE(SUM(CASE WHEN a.jam_masuk > '${BATAS_TELAT}' THEN FLOOR((TIME_TO_SEC(a.jam_masuk) - TIME_TO_SEC('${JAM_KERJA_MULAI}')) / 60) ELSE 0 END), 0) AS telat_menit,
+                SUM(CASE WHEN a.jam_masuk > '${BATAS_TELAT}' AND a.status NOT IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END) AS telat_kali,
+                COALESCE(SUM(CASE WHEN a.jam_masuk > '${BATAS_TELAT}' AND a.status NOT IN ('DL', 'DINAS_LUAR') THEN FLOOR((TIME_TO_SEC(a.jam_masuk) - TIME_TO_SEC('${BATAS_TELAT}')) / 60) ELSE 0 END), 0) AS telat_menit,
                 SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN 1 ELSE 0 END) AS tanpa_absen_pulang,
                 SUM(CASE WHEN a.jam_keluar IS NOT NULL THEN 1 ELSE 0 END) AS pulang_kali,
                 SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN ${POTONGAN_LUPA_PULANG} ELSE 0 END) AS potongan_jam,
@@ -443,6 +444,46 @@ app.post('/api/absensi', (req, res) => {
                 }
             }
         });
+    });
+});
+
+// Endpoint: Input Manual Absensi (Dinas Luar / Izin / Sakit)
+app.post('/api/absensi/manual', (req, res) => {
+    const { id_karyawan, status, keterangan, tanggal } = req.body;
+
+    if (!id_karyawan || !status || !tanggal) {
+        return res.status(400).json({ success: false, message: 'Data tidak lengkap (ID, Status, Tanggal wajib diisi)' });
+    }
+
+    // Tentukan jam masuk/keluar otomatis jika DL agar terhitung jam kerja & tidak alpa
+    let jamMasuk = null;
+    let jamKeluar = null;
+
+    if (status === 'DL') {
+        jamMasuk = JAM_KERJA_MULAI;  // Isi jam masuk default (misal 08:00)
+        jamKeluar = JAM_PULANG_START; // Isi jam pulang default (misal 16:00)
+    }
+
+    const sql = `INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, jam_keluar, status) 
+                 VALUES (?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE 
+                 jam_masuk = VALUES(jam_masuk), jam_keluar = VALUES(jam_keluar), status = VALUES(status)`;
+
+    pool.query(sql, [id_karyawan, tanggal, jamMasuk, jamKeluar, status], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, message: 'Data manual berhasil disimpan.' });
+    });
+});
+
+// Endpoint: Get System Config (Agar Dashboard sinkron dengan .env)
+app.get('/api/config', (req, res) => {
+    res.json({
+        success: true,
+        config: {
+            jam_kerja_mulai: JAM_KERJA_MULAI, // Default 08:00:00
+            batas_telat: BATAS_TELAT,         // Default 08:20:00
+            jam_pulang_start: JAM_PULANG_START // Default 16:00:00
+        }
     });
 });
 

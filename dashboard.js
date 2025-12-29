@@ -7,6 +7,7 @@
 const API_BASE = '/api';
 let attendanceChartInstance = null;
 let pieChartInstance = null;
+let systemConfig = null; // Menyimpan konfigurasi dari server (.env)
 let globalPerformanceData = []; // Simpan data untuk modal
 let globalEmployees = []; // Simpan data pegawai untuk edit
 
@@ -24,9 +25,25 @@ document.addEventListener('DOMContentLoaded', () => {
         monthInput.addEventListener('change', loadMonthlyRecap);
     }
 
-    // Load Initial Data
-    loadOverviewData();
+    // Load Config dulu, baru load data
+    loadSystemConfig().then(() => {
+        loadOverviewData();
+    });
 });
+
+// --- LOAD CONFIG DARI SERVER ---
+async function loadSystemConfig() {
+    try {
+        const response = await fetch(`${API_BASE}/config`);
+        const result = await response.json();
+        if (result.success) {
+            systemConfig = result.config;
+            console.log("System Config Loaded:", systemConfig);
+        }
+    } catch (e) {
+        console.error("Gagal memuat config, menggunakan default.", e);
+    }
+}
 
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
@@ -82,9 +99,10 @@ async function loadOverviewData() {
         // 3. Hitung Statistik Hari Ini
         const presentCount = dailyData.length; // Asumsi 1 baris per orang per hari (karena view)
         // Hitung DL secara spesifik
-        const dlCount = dailyData.filter(d => ['DL', 'DINAS_LUAR'].includes(d.status_kehadiran)).length;
+        const dlCount = dailyData.filter(d => ['DL', 'DINAS_LUAR'].includes(d.status)).length;
         // Hitung terlambat (exclude DL)
-        const lateCount = dailyData.filter(d => d.jam_masuk > '08:10:00' && !['DL', 'DINAS_LUAR'].includes(d.status_kehadiran)).length;
+        const limitStr = systemConfig?.batas_telat || '08:25:00';
+        const lateCount = dailyData.filter(d => d.jam_masuk > limitStr && !['DL', 'DINAS_LUAR'].includes(d.status)).length;
         const absentCount = Math.max(0, totalEmployees - presentCount);
 
         // 4. Update Kartu Statistik
@@ -122,7 +140,8 @@ function renderRecentActivity(data) {
     }
 
     recent.forEach(item => {
-        const isLate = item.jam_masuk > '08:10:00';
+        const limitStr = systemConfig?.batas_telat || '08:25:00';
+        const isLate = item.jam_masuk > limitStr;
         const timeClass = isLate 
             ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' 
             : 'bg-emerald-50 text-emerald-600 border-emerald-100';
@@ -166,16 +185,19 @@ async function loadDailyData() {
                 let lateClass = 'text-slate-500';
 
                 // --- LOGIKA STATUS KHUSUS (DL/IZIN/SAKIT) ---
-                // Asumsi API mengembalikan field 'status_kehadiran' atau 'keterangan' yang berisi kode status
-                if (row.status_kehadiran === 'DL' || row.status_kehadiran === 'DINAS_LUAR') {
+                // Gunakan field 'status' dari view_absensi_harian
+                const status = row.status;
+                
+                if (status === 'DL' || status === 'DINAS_LUAR') {
                     statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200 flex items-center w-fit gap-1"><i class="fa-solid fa-briefcase"></i> Dinas Luar</span>`;
-                    row.jam_masuk = 'DL';
-                    row.jam_keluar = 'DL';
-                } else if (row.status_kehadiran === 'SAKIT') {
+                    // Tampilkan indikator DL di kolom jam agar jelas
+                    row.jam_masuk = '<span class="text-blue-600 font-bold tracking-wider">DL</span>';
+                    row.jam_keluar = '<span class="text-blue-600 font-bold tracking-wider">DL</span>';
+                } else if (status === 'SAKIT') {
                     statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200 flex items-center w-fit gap-1"><i class="fa-solid fa-heart-pulse"></i> Sakit</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
-                } else if (row.status_kehadiran === 'IZIN' || row.status_kehadiran === 'CUTI') {
+                } else if (status === 'IZIN' || status === 'CUTI') {
                     statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 flex items-center w-fit gap-1"><i class="fa-solid fa-file-signature"></i> Izin/Cuti</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
@@ -183,13 +205,21 @@ async function loadDailyData() {
                     // --- LOGIKA HADIR NORMAL ---
                     const [h, m, s] = row.jam_masuk.split(':').map(Number);
                     const secondsIn = (h * 3600) + (m * 60) + (s || 0);
-                    const secondsLimit = (8 * 3600) + (10 * 60); // 08:10:00 (Batas Toleransi)
-                    const secondsStart = (8 * 3600);             // 08:00:00 (Jam Masuk)
+                    
+                    // Ambil dari config server atau fallback ke default jika gagal load
+                    const limitStr = systemConfig?.batas_telat || '08:25:00';
+                    const startStr = systemConfig?.jam_kerja_mulai || '08:00:00';
+
+                    const [lh, lm, ls] = limitStr.split(':').map(Number);
+                    const [sh, sm, ss] = startStr.split(':').map(Number);
+
+                    const secondsLimit = (lh * 3600) + (lm * 60) + (ls || 0);
+                    const secondsStart = (sh * 3600) + (sm * 60) + (ss || 0);
 
                     if (secondsIn > secondsLimit) {
                         isLate = true;
                         // Math.floor((selisih detik) / 60) sama persis dengan TIMESTAMPDIFF(MINUTE, ...) di MySQL
-                        lateMinutes = Math.floor((secondsIn - secondsStart) / 60);
+                        lateMinutes = Math.floor((secondsIn - secondsLimit) / 60);
                     }
                     
                     statusBadge = isLate 
@@ -211,6 +241,7 @@ async function loadDailyData() {
                         <td class="p-5">${statusBadge}</td>
                         <td class="px-6 py-4 ${lateClass} font-mono">${lateDisplay}</td>
                         <td class="px-6 py-4 font-mono text-slate-600">${row.jam_keluar || '<span class="text-slate-400">-</span>'}</td>
+                        <td class="px-6 py-4 text-slate-500 text-sm">-</td>
                     </tr>
                 `;
                 tbody.innerHTML += tr;
@@ -239,6 +270,7 @@ async function loadMonthlyRecap() {
                 <th class="px-6 py-4">ID</th>
                 <th class="px-6 py-4">Nama Pegawai</th>
                 <th class="px-6 py-4 text-center">Hadir</th>
+                <th class="px-6 py-4 text-center">DL</th>
                 <th class="px-6 py-4 text-center">Alpa</th>
                 <th class="px-6 py-4 text-center">Telat (x)</th>
                 <th class="px-6 py-4 text-center">Telat (Min)</th>
@@ -248,8 +280,6 @@ async function loadMonthlyRecap() {
             </tr>
         </thead>
         <tbody class="text-slate-700 divide-y divide-slate-100 text-sm bg-white">
-            ${getSkeletonRows(8, 5)} <!-- Skeleton Loading -->
-            ${getSkeletonRows(9, 5)} <!-- Skeleton Loading -->
         </tbody>
     `;
 
@@ -267,7 +297,9 @@ async function loadMonthlyRecap() {
                         <td class="px-6 py-4 font-bold text-slate-800">${row.nama}</td>
                         <td class="px-6 py-4 text-center">
                             <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
-                            ${row.total_dl ? `<div class="text-[10px] text-blue-600 mt-1 font-medium">+${row.total_dl} DL</div>` : ''}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold text-xs border border-blue-200">${row.total_dl || 0}</span>
                         </td>
                         <td class="px-6 py-4 text-center ${row.alpa > 0 ? 'text-red-600 font-bold' : 'text-slate-500'}">${row.alpa}</td>
                         <td class="px-6 py-4 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-bold' : 'text-slate-500'}">${row.telat_kali}</td>
@@ -279,7 +311,7 @@ async function loadMonthlyRecap() {
                 `;
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-slate-500">Tidak ada data untuk periode ini.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="p-4 text-center text-slate-500">Tidak ada data untuk periode ini.</td></tr>';
         }
     } catch (e) {
         console.error(e);
@@ -382,7 +414,7 @@ async function loadPerformanceData() {
                 grid.innerHTML += card;
             });
         }
-    } catch (e) {
+    } catch (e) { 
         console.error(e);
     }
 }
