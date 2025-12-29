@@ -928,30 +928,8 @@
             </div>
 
             <div class="col-span-1 flex flex-col gap-4 order-3">
-                <div class="widget-panel">
-                    <h2 class="widget-title">:: DIAGNOSTICS ::</h2>
-                    <div class="flex flex-col gap-3">
-                        <!-- Confidence Meter (Tetap dipertahankan untuk info akurasi) -->
-                        <div>
-                            <div class="flex justify-between text-xs mb-1"><span>CONFIDENCE</span><span
-                                    id="matchConfidenceText">0%</span></div>
-                            <div class="loader-bar">
-                                <div id="matchThresholdBar" class="loader-fill-red"></div>
-                            </div>
-                        </div>
-
-                        <!-- LIST NAMA FULL (Pengganti Memory & Latest Scan Truncated) -->
-                        <div class="flex flex-col gap-1 mt-2">
-                            <span class="text-[10px] font-bold text-cyan-600 tracking-widest border-b border-cyan-900/30 pb-1">FULL IDENTITY LOG</span>
-                            <div id="diagnosticList" class="flex flex-col gap-2 h-36 overflow-y-auto pr-1">
-                                <div class="text-gray-600 text-[10px] italic text-center py-4">Waiting for scan data...</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- PANEL WAVEFORM DIGANTI DENGAN PERSONNEL ROSTER -->
-                <div class="widget-panel h-40">
+                <div class="widget-panel flex-grow min-h-0">
                     <h2 class="widget-title">:: PERSONNEL ROSTER ::</h2>
                     <!-- Container untuk daftar personel -->
                     <div id="personnelRoster" class="h-full overflow-y-auto pr-1">
@@ -959,7 +937,7 @@
                     </div>
                 </div>
 
-                <div class="widget-panel flex-grow h-40 lg:h-auto">
+                <div class="widget-panel h-64 flex-shrink-0">
                     <h2 class="widget-title">:: ATTENDANCE LOG ::</h2>
                     <div id="attendanceLog" class="h-full overflow-y-auto font-mono text-xs opacity-90 space-y-1">
                         <p class="text-gray-600 italic">> Waiting for check-in...</p>
