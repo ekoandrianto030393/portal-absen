@@ -28,6 +28,9 @@ const clockDate = document.getElementById('clock-date');
 const clockBar = document.getElementById('clock-bar');
 const dbStatus = document.getElementById('dbStatus');
 const personnelRoster = document.getElementById('personnelRoster');
+const matchThresholdBar = document.getElementById('matchThresholdBar');
+const attendanceLog = document.getElementById('attendanceLog');
+const diagnosticList = document.getElementById('diagnosticList');
 
 
 const cameraSelect = document.getElementById('cameraSelect');

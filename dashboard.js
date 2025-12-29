@@ -81,12 +81,16 @@ async function loadOverviewData() {
 
         // 3. Hitung Statistik Hari Ini
         const presentCount = dailyData.length; // Asumsi 1 baris per orang per hari (karena view)
-        const lateCount = dailyData.filter(d => d.jam_masuk > '08:10:00').length;
+        // Hitung DL secara spesifik
+        const dlCount = dailyData.filter(d => ['DL', 'DINAS_LUAR'].includes(d.status_kehadiran)).length;
+        // Hitung terlambat (exclude DL)
+        const lateCount = dailyData.filter(d => d.jam_masuk > '08:10:00' && !['DL', 'DINAS_LUAR'].includes(d.status_kehadiran)).length;
         const absentCount = Math.max(0, totalEmployees - presentCount);
 
         // 4. Update Kartu Statistik
         document.getElementById('stat-total-emp').textContent = totalEmployees;
-        document.getElementById('stat-present').textContent = presentCount;
+        // Tampilkan total hadir + info DL kecil
+        document.getElementById('stat-present').innerHTML = `${presentCount} <span class="text-sm opacity-80 ml-1">(${dlCount} DL)</span>`;
         document.getElementById('stat-late').textContent = lateCount;
         document.getElementById('stat-absent').textContent = absentCount;
 
@@ -121,16 +125,16 @@ function renderRecentActivity(data) {
         const isLate = item.jam_masuk > '08:10:00';
         const timeClass = isLate 
             ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' 
-            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+            : 'bg-emerald-50 text-emerald-600 border-emerald-100';
         
         const html = `
-            <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800/40 transition border border-transparent hover:border-slate-700">
-                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300 border border-slate-600 shadow-sm">
+            <div class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100 group">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 shadow-sm group-hover:from-blue-500 group-hover:to-indigo-600 group-hover:text-white transition-all">
                     ${item.nama_karyawan.substring(0, 1).toUpperCase()}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-xs font-bold text-white truncate">${item.nama_karyawan}</p>
-                    <p class="text-[10px] text-slate-400 truncate">${item.jabatan || 'Staff'}</p>
+                    <p class="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">${item.nama_karyawan}</p>
+                    <p class="text-[10px] text-slate-500 truncate">${item.jabatan || 'Staff'}</p>
                 </div>
                 <div class="text-right">
                     <span class="text-[10px] font-mono font-bold px-2 py-1 rounded border ${timeClass}">${item.jam_masuk}</span>
@@ -157,8 +161,26 @@ async function loadDailyData() {
                 // SQL: TIMESTAMPDIFF(MINUTE, '08:00:00', jam_masuk) jika > 08:10:00
                 let isLate = false;
                 let lateMinutes = 0;
+                let statusBadge = '';
+                let lateDisplay = '-';
+                let lateClass = 'text-slate-500';
 
-                if (row.jam_masuk) {
+                // --- LOGIKA STATUS KHUSUS (DL/IZIN/SAKIT) ---
+                // Asumsi API mengembalikan field 'status_kehadiran' atau 'keterangan' yang berisi kode status
+                if (row.status_kehadiran === 'DL' || row.status_kehadiran === 'DINAS_LUAR') {
+                    statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200 flex items-center w-fit gap-1"><i class="fa-solid fa-briefcase"></i> Dinas Luar</span>`;
+                    row.jam_masuk = 'DL';
+                    row.jam_keluar = 'DL';
+                } else if (row.status_kehadiran === 'SAKIT') {
+                    statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200 flex items-center w-fit gap-1"><i class="fa-solid fa-heart-pulse"></i> Sakit</span>`;
+                    row.jam_masuk = '-';
+                    row.jam_keluar = '-';
+                } else if (row.status_kehadiran === 'IZIN' || row.status_kehadiran === 'CUTI') {
+                    statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 flex items-center w-fit gap-1"><i class="fa-solid fa-file-signature"></i> Izin/Cuti</span>`;
+                    row.jam_masuk = '-';
+                    row.jam_keluar = '-';
+                } else if (row.jam_masuk) {
+                    // --- LOGIKA HADIR NORMAL ---
                     const [h, m, s] = row.jam_masuk.split(':').map(Number);
                     const secondsIn = (h * 3600) + (m * 60) + (s || 0);
                     const secondsLimit = (8 * 3600) + (10 * 60); // 08:10:00 (Batas Toleransi)
@@ -169,29 +191,32 @@ async function loadDailyData() {
                         // Math.floor((selisih detik) / 60) sama persis dengan TIMESTAMPDIFF(MINUTE, ...) di MySQL
                         lateMinutes = Math.floor((secondsIn - secondsStart) / 60);
                     }
+                    
+                    statusBadge = isLate 
+                        ? `<span class="px-2 py-1 rounded text-xs font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center w-fit gap-1"><i class="fa-solid fa-clock"></i> Terlambat</span>`
+                        : `<span class="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm flex items-center w-fit gap-1"><i class="fa-solid fa-check"></i> Tepat Waktu</span>`;
+                    
+                    lateDisplay = lateMinutes > 0 ? `${lateMinutes} Menit` : '-';
+                    lateClass = lateMinutes > 0 ? 'text-red-600 font-bold' : 'text-slate-500';
+                } else {
+                    // Fallback jika data tidak lengkap
+                    statusBadge = `<span class="text-slate-400 text-xs">Tidak Ada Data</span>`;
                 }
 
-                const statusBadge = isLate 
-                    ? `<span class="px-2 py-1 rounded text-xs font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center w-fit gap-1"><i class="fa-solid fa-clock"></i> Terlambat</span>`
-                    : `<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center w-fit gap-1"><i class="fa-solid fa-check"></i> Tepat Waktu</span>`;
-                
-                const lateDisplay = lateMinutes > 0 ? `${lateMinutes} Menit` : '-';
-                const lateClass = lateMinutes > 0 ? 'text-red-400 font-bold' : 'text-slate-600';
-
                 const tr = `
-                    <tr onclick="openModal('${row.id_karyawan}')" class="hover:bg-slate-800/30 transition cursor-pointer group border-b border-slate-800/50 last:border-0">
-                        <td class="p-5 font-mono text-emerald-300 font-medium">${row.jam_masuk}</td>
-                        <td class="p-5 font-bold text-white group-hover:text-emerald-400 transition">${row.nama_karyawan}</td>
-                        <td class="p-5 text-slate-400 text-sm">${row.jabatan || '-'}</td>
+                    <tr onclick="openModal('${row.id_karyawan}')" class="hover:bg-blue-50/50 transition cursor-pointer group border-b border-slate-100 last:border-0">
+                        <td class="px-6 py-4 font-mono text-blue-600 font-medium">${row.jam_masuk}</td>
+                        <td class="px-6 py-4 font-bold text-slate-800 group-hover:text-blue-600 transition">${row.nama_karyawan}</td>
+                        <td class="px-6 py-4 text-slate-500 text-sm">${row.jabatan || '-'}</td>
                         <td class="p-5">${statusBadge}</td>
-                        <td class="p-5 ${lateClass} font-mono">${lateDisplay}</td>
-                        <td class="p-5 font-mono text-slate-300">${row.jam_keluar || '<span class="text-slate-600">--:--:--</span>'}</td>
+                        <td class="px-6 py-4 ${lateClass} font-mono">${lateDisplay}</td>
+                        <td class="px-6 py-4 font-mono text-slate-600">${row.jam_keluar || '<span class="text-slate-400">-</span>'}</td>
                     </tr>
                 `;
                 tbody.innerHTML += tr;
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Belum ada data absensi hari ini.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500 italic">Belum ada data absensi hari ini.</td></tr>';
         }
         
         // Update Notifikasi Otomatis
@@ -209,20 +234,20 @@ async function loadMonthlyRecap() {
     
     // Header Table
     table.innerHTML = `
-        <thead class="bg-slate-800/50 text-slate-400 uppercase text-xs font-bold tracking-wider border-b border-slate-700">
+        <thead class="bg-slate-50 text-slate-600 uppercase text-xs font-bold tracking-wider border-b border-slate-200">
             <tr>
-                <th class="p-4">ID</th>
-                <th class="p-4">Nama Pegawai</th>
-                <th class="p-4 text-center">Hadir</th>
-                <th class="p-4 text-center">Alpa</th>
-                <th class="p-4 text-center">Telat (x)</th>
-                <th class="p-4 text-center">Telat (Min)</th>
-                <th class="p-4 text-center">Tanpa Pulang</th>
-                <th class="p-4 text-center">Potongan</th>
-                <th class="p-4 text-right">Total Jam Kerja</th>
+                <th class="px-6 py-4">ID</th>
+                <th class="px-6 py-4">Nama Pegawai</th>
+                <th class="px-6 py-4 text-center">Hadir</th>
+                <th class="px-6 py-4 text-center">Alpa</th>
+                <th class="px-6 py-4 text-center">Telat (x)</th>
+                <th class="px-6 py-4 text-center">Telat (Min)</th>
+                <th class="px-6 py-4 text-center">Tanpa Pulang</th>
+                <th class="px-6 py-4 text-center">Potongan</th>
+                <th class="px-6 py-4 text-right">Total Jam Kerja</th>
             </tr>
         </thead>
-        <tbody class="text-slate-300 divide-y divide-slate-700 text-sm">
+        <tbody class="text-slate-700 divide-y divide-slate-100 text-sm bg-white">
             ${getSkeletonRows(8, 5)} <!-- Skeleton Loading -->
             ${getSkeletonRows(9, 5)} <!-- Skeleton Loading -->
         </tbody>
@@ -237,16 +262,19 @@ async function loadMonthlyRecap() {
         if (result.data && result.data.length > 0) {
             result.data.forEach(row => {
                 tbody.innerHTML += `
-                    <tr class="hover:bg-slate-800/30 border-b border-slate-800/50 last:border-0">
-                        <td class="p-4 font-mono text-slate-400">${row.id_karyawan}</td>
-                        <td class="p-4 font-bold text-white">${row.nama}</td>
-                        <td class="p-4 text-center"><span class="bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded font-bold text-xs">${row.total_masuk}</span></td>
-                        <td class="p-4 text-center ${row.alpa > 0 ? 'text-red-400 font-bold' : 'text-slate-600'}">${row.alpa}</td>
-                        <td class="p-4 text-center ${row.telat_kali > 0 ? 'text-yellow-500 font-bold' : 'text-slate-600'}">${row.telat_kali}</td>
-                        <td class="p-4 text-center text-slate-400">${row.telat_menit}</td>
-                        <td class="p-4 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-400 font-bold' : 'text-slate-600'}">${row.tanpa_absen_pulang}</td>
-                        <td class="p-4 text-center text-red-400">${row.potongan_jam} Jam</td>
-                        <td class="p-4 text-right font-mono text-emerald-300 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
+                    <tr class="hover:bg-blue-50/50 border-b border-slate-100 last:border-0">
+                        <td class="px-6 py-4 font-mono text-slate-500">${row.id_karyawan}</td>
+                        <td class="px-6 py-4 font-bold text-slate-800">${row.nama}</td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
+                            ${row.total_dl ? `<div class="text-[10px] text-blue-600 mt-1 font-medium">+${row.total_dl} DL</div>` : ''}
+                        </td>
+                        <td class="px-6 py-4 text-center ${row.alpa > 0 ? 'text-red-600 font-bold' : 'text-slate-500'}">${row.alpa}</td>
+                        <td class="px-6 py-4 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-bold' : 'text-slate-500'}">${row.telat_kali}</td>
+                        <td class="px-6 py-4 text-center text-slate-500">${row.telat_menit}</td>
+                        <td class="px-6 py-4 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-bold' : 'text-slate-500'}">${row.tanpa_absen_pulang}</td>
+                        <td class="px-6 py-4 text-center text-red-600">${row.potongan_jam} Jam</td>
+                        <td class="px-6 py-4 text-right font-mono text-emerald-600 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
                     </tr>
                 `;
             });
@@ -261,7 +289,7 @@ async function loadMonthlyRecap() {
 // --- DATA LOADER: PERFORMANCE MONITORING (SCORING SYSTEM) ---
 async function loadPerformanceData() {
     const grid = document.getElementById('performance-grid');
-    grid.innerHTML = '<div class="col-span-full text-center text-slate-500">Menganalisis Kinerja...</div>';
+    grid.innerHTML = '<div class="col-span-full text-center text-slate-500 italic py-8">Menganalisis Kinerja...</div>';
 
     try {
         // Gunakan data rekap bulan ini untuk analisis
@@ -288,63 +316,64 @@ async function loadPerformanceData() {
 
                 // Tentukan Status & Warna
                 let status = 'SANGAT BAIK';
-                let colorClass = 'border-green-500 text-green-400';
-                let bgGradient = 'from-green-500/10 to-transparent';
+                let colorClass = 'border-emerald-500 text-emerald-600 bg-emerald-50/30';
+                let bgGradient = ''; // Removed gradient for clean look
                 let icon = 'fa-medal';
 
                 if (score < 60) {
                     status = 'PERLU PEMBINAAN';
-                    colorClass = 'border-red-600 text-red-500';
-                    bgGradient = 'from-red-600/10 to-transparent';
+                    colorClass = 'border-rose-500 text-rose-700 bg-rose-50/30';
+                    bgGradient = '';
                     icon = 'fa-triangle-exclamation';
                 } else if (score < 80) {
                     status = 'CUKUP';
-                    colorClass = 'border-yellow-500 text-yellow-400';
-                    bgGradient = 'from-yellow-500/10 to-transparent';
+                    colorClass = 'border-amber-500 text-amber-600 bg-amber-50/30';
+                    bgGradient = '';
                     icon = 'fa-circle-exclamation';
                 } else if (score < 90) {
                     status = 'BAIK';
-                    colorClass = 'border-blue-500 text-blue-400';
-                    bgGradient = 'from-blue-500/10 to-transparent';
+                    colorClass = 'border-blue-500 text-blue-600 bg-blue-50/30';
+                    bgGradient = '';
                     icon = 'fa-thumbs-up';
                 }
 
                 // Render Card
                 const card = `
-                    <div onclick="openModal('${emp.id_karyawan}')" class="glass-panel rounded-xl p-5 border-t-2 ${colorClass} bg-gradient-to-b ${bgGradient} relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300 cursor-pointer shadow-lg">
+                    <div onclick="openModal('${emp.id_karyawan}')" class="bg-white rounded-2xl p-6 border-t-4 ${colorClass} relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer shadow-sm border border-slate-100">
                         <div class="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition">
                             <i class="fa-solid ${icon} text-6xl"></i>
                         </div>
                         
                         <div class="relative z-10">
-                            <h3 class="text-lg font-heading font-bold text-white truncate">${emp.nama}</h3>
-                            <p class="text-xs text-slate-400 mb-4">${emp.jabatan || 'Staff'} • ID: ${emp.id_karyawan}</p>
+                            <h3 class="text-lg font-bold text-slate-800 truncate">${emp.nama}</h3>
+                            <p class="text-xs text-slate-500 mb-4 uppercase tracking-wide">${emp.jabatan || 'Staff'} • ID: ${emp.id_karyawan}</p>
                             
                             <div class="flex items-end gap-2 mb-2">
-                                <span class="text-4xl font-bold ${colorClass.split(' ')[1]}">${score}</span>
-                                <span class="text-sm text-slate-500 mb-1">/ 100</span>
+                                <span class="text-4xl font-bold text-slate-800">${score}</span>
+                                <span class="text-sm text-slate-400 mb-1">/ 100</span>
                             </div>
                             
-                            <div class="w-full bg-slate-700 h-2 rounded-full mb-4 overflow-hidden">
+                            <div class="w-full bg-slate-100 h-2 rounded-full mb-4 overflow-hidden">
                                 <div class="h-full ${colorClass.replace('text', 'bg').split(' ')[1]}" style="width: ${score}%"></div>
                             </div>
 
                             <div class="grid grid-cols-3 gap-2 text-center text-xs">
-                                <div class="bg-slate-800/50 p-2 rounded border border-slate-700">
-                                    <div class="text-slate-400">Hadir</div>
-                                    <div class="font-bold text-white">${emp.total_masuk}</div>
+                                <div class="bg-slate-50 p-2 rounded border border-slate-200">
+                                    <div class="text-slate-500">Hadir</div>
+                                    <div class="font-bold text-slate-800">${emp.total_masuk}</div>
+                                    ${emp.total_dl ? `<div class="text-[9px] text-blue-500">(${emp.total_dl} DL)</div>` : ''}
                                 </div>
-                                <div class="bg-slate-800/50 p-2 rounded border border-slate-700">
-                                    <div class="text-slate-400">Telat</div>
-                                    <div class="font-bold text-yellow-400">${emp.telat_kali}</div>
+                                <div class="bg-slate-50 p-2 rounded border border-slate-200">
+                                    <div class="text-slate-500">Telat</div>
+                                    <div class="font-bold text-amber-600">${emp.telat_kali}</div>
                                 </div>
-                                <div class="bg-slate-800/50 p-2 rounded border border-slate-700">
-                                    <div class="text-slate-400">Alpa</div>
-                                    <div class="font-bold text-red-400">${emp.alpa}</div>
+                                <div class="bg-slate-50 p-2 rounded border border-slate-200">
+                                    <div class="text-slate-500">Alpa</div>
+                                    <div class="font-bold text-red-600">${emp.alpa}</div>
                                 </div>
                             </div>
 
-                            <div class="mt-4 text-center font-bold text-sm tracking-wider ${colorClass.split(' ')[1]} border border-dashed border-slate-600 p-1 rounded">
+                            <div class="mt-4 text-center font-bold text-xs tracking-widest ${colorClass.split(' ')[1]} border border-dashed border-slate-300 p-2 rounded uppercase">
                                 ${status}
                             </div>
                         </div>
@@ -362,7 +391,7 @@ async function loadPerformanceData() {
 async function loadEmployees() {
     const grid = document.getElementById('employees-grid');
     const countSpan = document.getElementById('total-emp-count');
-    grid.innerHTML = '<div class="col-span-full text-center text-slate-500">Memuat direktori...</div>';
+    grid.innerHTML = '<div class="col-span-full text-center text-slate-400 italic py-8">Memuat direktori...</div>';
 
     try {
         const response = await fetch(`${API_BASE}/karyawan/descriptors`);
@@ -379,21 +408,21 @@ async function loadEmployees() {
                 const photoSrc = emp.foto ? `data:image/jpeg;base64,${emp.foto}` : `https://ui-avatars.com/api/?name=${emp.nama}&background=10b981&color=fff`;
 
                 const card = `
-                    <div class="glass-panel p-4 rounded-xl flex items-center gap-4 hover:bg-slate-800 transition group border border-transparent hover:border-emerald-500/30 relative pr-24">
+                    <div class="bg-white shadow-sm p-4 rounded-2xl flex items-center gap-4 hover:bg-blue-50/30 transition group border border-slate-100 hover:border-blue-400 relative pr-24">
                         <div onclick="openModal('${emp.id_karyawan}')" class="flex items-center gap-4 flex-1 cursor-pointer">
-                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-600 group-hover:border-emerald-400 transition">
+                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-200 group-hover:border-blue-500 transition shadow-sm">
                                 <img src="${photoSrc}" class="w-full h-full object-cover">
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h4 class="text-white font-bold truncate group-hover:text-emerald-400 transition">${emp.nama}</h4>
-                                <p class="text-xs text-slate-400 truncate">${emp.jabatan || 'Staff'}</p>
-                                <p class="text-[10px] font-mono text-slate-500 mt-1 bg-slate-900 inline-block px-1 rounded">${emp.id_karyawan}</p>
+                                <h4 class="text-slate-800 font-bold truncate group-hover:text-blue-600 transition">${emp.nama}</h4>
+                                <p class="text-xs text-slate-500 truncate">${emp.jabatan || 'Staff'}</p>
+                                <p class="text-[10px] font-mono text-slate-500 mt-1 bg-slate-100 inline-block px-2 py-0.5 rounded">${emp.id_karyawan}</p>
                             </div>
                         </div>
-                        <button onclick="openEditModal('${emp.id_karyawan}')" class="absolute right-12 top-1/2 transform -translate-y-1/2 text-slate-600 hover:text-emerald-400 transition p-2 z-10" title="Edit Pegawai">
+                        <button onclick="openEditModal('${emp.id_karyawan}')" class="absolute right-12 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-blue-600 transition p-2 z-10" title="Edit Pegawai">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
-                        <button onclick="deleteEmployee('${emp.id_karyawan}', '${emp.nama}')" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-600 hover:text-red-500 transition p-2 z-10" title="Hapus Pegawai">
+                        <button onclick="deleteEmployee('${emp.id_karyawan}', '${emp.nama}')" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-red-600 transition p-2 z-10" title="Hapus Pegawai">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
@@ -493,6 +522,90 @@ async function updateEmployee() {
     }
 }
 
+// --- FITUR: INPUT MANUAL (DINAS LUAR / IZIN) ---
+async function openManualModal() {
+    const modal = document.getElementById('modal-manual-status');
+    const content = document.getElementById('modal-manual-content');
+    const select = document.getElementById('manual-emp-select');
+    
+    // Set tanggal hari ini sebagai default
+    document.getElementById('manual-date').valueAsDate = new Date();
+
+    // Populate Select jika belum ada data atau kosong
+    if (select.options.length <= 1) {
+        if (globalEmployees.length === 0) {
+            // Coba load data pegawai jika belum ada
+            try {
+                const res = await fetch(`${API_BASE}/karyawan/descriptors`);
+                const json = await res.json();
+                globalEmployees = json.descriptors || [];
+            } catch (e) {
+                console.error("Gagal load pegawai untuk dropdown", e);
+            }
+        }
+        
+        globalEmployees.forEach(emp => {
+            const opt = document.createElement('option');
+            opt.value = emp.id_karyawan;
+            opt.text = `${emp.nama} (${emp.jabatan || '-'})`;
+            select.appendChild(opt);
+        });
+    }
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    }, 10);
+}
+
+function closeManualModal() {
+    const modal = document.getElementById('modal-manual-status');
+    const content = document.getElementById('modal-manual-content');
+    modal.classList.add('opacity-0');
+    content.classList.remove('scale-100');
+    content.classList.add('scale-95');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+}
+
+async function submitManualStatus() {
+    const id_karyawan = document.getElementById('manual-emp-select').value;
+    const status = document.getElementById('manual-type').value;
+    const keterangan = document.getElementById('manual-desc').value;
+    const tanggal = document.getElementById('manual-date').value;
+
+    if (!id_karyawan || !tanggal) {
+        alert("Mohon pilih pegawai dan tanggal.");
+        return;
+    }
+
+    // Simulasi Kirim ke API (Anda perlu membuat endpoint ini di backend)
+    // POST /api/absensi/manual { id_karyawan, status, keterangan, tanggal }
+    try {
+        const response = await fetch(`${API_BASE}/absensi/manual`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_karyawan, status, keterangan, tanggal })
+        });
+        
+        // Handle response (Mocking success for UI demo)
+        // Jika backend belum ada, ini akan error 404, tapi UI sudah siap.
+        if (response.ok) {
+            alert("Status berhasil disimpan!");
+            closeManualModal();
+            loadDailyData(); // Refresh tabel
+        } else {
+            // Fallback untuk demo jika API belum ready
+            console.warn("API endpoint /absensi/manual belum tersedia.");
+            alert("Data terkirim (Simulasi). Pastikan backend memiliki endpoint '/api/absensi/manual'.");
+            closeManualModal();
+        }
+    } catch (e) {
+        alert("Error koneksi ke server: " + e.message);
+    }
+}
+
 // --- CHART RENDERER ---
 function renderCharts(present, late, absent) {
     const ctxPie = document.getElementById('pieChart').getContext('2d');
@@ -509,14 +622,14 @@ function renderCharts(present, late, absent) {
             labels: ['Tepat Waktu', 'Terlambat', 'Alpa/Belum'],
             datasets: [{
                 data: [present - late, late, absent],
-                backgroundColor: ['#22c55e', '#eab308', '#ef4444'],
+                backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
                 borderWidth: 0
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } }
+            plugins: { legend: { position: 'bottom', labels: { color: '#64748b', font: {family: 'Inter'} } } }
         }
     });
 
@@ -529,17 +642,17 @@ function renderCharts(present, late, absent) {
             datasets: [{
                 label: 'Tingkat Kehadiran (%)',
                 data: [85, 90, 88, 92, 80, 75, ((present / (present + absent)) * 100) || 0],
-                borderColor: '#10b981', // Emerald 500
+                borderColor: '#3b82f6', // Blue 500
                 backgroundColor: (context) => {
                     const ctx = context.chart.ctx;
                     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-                    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.5)');
-                    gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+                    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
+                    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
                     return gradient;
                 },
                 borderWidth: 2,
-                pointBackgroundColor: '#0f172a',
-                pointBorderColor: '#10b981',
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#3b82f6',
                 pointBorderWidth: 2,
                 pointRadius: 4,
                 pointHoverRadius: 6,
@@ -551,8 +664,8 @@ function renderCharts(present, late, absent) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: {family: 'Inter'} } },
-                x: { grid: { display: false }, ticks: { color: '#94a3b8', font: {family: 'Inter'} } }
+                y: { beginAtZero: true, max: 100, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b', font: {family: 'Inter'} } },
+                x: { grid: { display: false }, ticks: { color: '#64748b', font: {family: 'Inter'} } }
             },
             plugins: { legend: { display: false } }
         }
@@ -597,6 +710,20 @@ function exportExcel() {
     document.body.removeChild(downloadLink);
 }
 
+// --- FITUR: PRINT REPORT ---
+function printReport() {
+    // Update teks periode di header cetak
+    const monthInput = document.getElementById('filter-month');
+    if (monthInput && monthInput.value) {
+        const date = new Date(monthInput.value);
+        const options = { year: 'numeric', month: 'long' };
+        const periodText = date.toLocaleDateString('id-ID', options);
+        document.getElementById('print-period').textContent = `Periode: ${periodText}`;
+    }
+    
+    window.print();
+}
+
 // --- FITUR: MODAL DETAIL PEGAWAI ---
 async function openModal(idKaryawan) {
     const emp = globalPerformanceData.find(e => e.id_karyawan === idKaryawan);
@@ -628,10 +755,10 @@ async function openModal(idKaryawan) {
 
     // Grid Statistik
     const statsHTML = `
-        <div class="p-2"><div class="text-2xl font-bold text-white">${emp.total_masuk}</div><div class="text-[10px] text-slate-400 uppercase">Hadir</div></div>
-        <div class="p-2"><div class="text-2xl font-bold text-yellow-400">${emp.telat_kali}</div><div class="text-[10px] text-slate-400 uppercase">Telat</div></div>
-        <div class="p-2"><div class="text-2xl font-bold text-red-400">${emp.alpa}</div><div class="text-[10px] text-slate-400 uppercase">Alpa</div></div>
-        <div class="p-2"><div class="text-2xl font-bold text-blue-400">${emp.total_jam_kerja || '0'}</div><div class="text-[10px] text-slate-400 uppercase">Jam Kerja</div></div>
+        <div class="p-2"><div class="text-2xl font-bold text-slate-800">${emp.total_masuk}</div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Hadir</div></div>
+        <div class="p-2"><div class="text-2xl font-bold text-amber-600">${emp.telat_kali}</div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Telat</div></div>
+        <div class="p-2"><div class="text-2xl font-bold text-red-600">${emp.alpa}</div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Alpa</div></div>
+        <div class="p-2"><div class="text-2xl font-bold text-blue-600">${emp.total_jam_kerja || '0'}</div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Jam Kerja</div></div>
     `;
     document.getElementById('modal-stats-grid').innerHTML = statsHTML;
 
@@ -661,7 +788,7 @@ function getSkeletonRows(cols, rows = 5) {
     for(let i=0; i<rows; i++) {
         html += `<tr class="animate-pulse">`;
         for(let j=0; j<cols; j++) {
-            html += `<td class="p-4"><div class="h-3 bg-slate-700/50 rounded skeleton w-full"></div></td>`;
+            html += `<td class="p-4"><div class="h-3 bg-slate-200 rounded skeleton w-full"></div></td>`;
         }
         html += `</tr>`;
     }
@@ -711,11 +838,11 @@ function updateNotifications(dailyData) {
     } else {
         notifs.forEach(n => {
             list.innerHTML += `
-                <div class="p-3 hover:bg-slate-800/50 transition flex gap-3 items-start cursor-pointer">
+                <div class="p-3 hover:bg-slate-50 transition flex gap-3 items-start cursor-pointer">
                     <div class="mt-1"><i class="fa-solid ${n.icon} ${n.color}"></i></div>
                     <div>
-                        <p class="text-xs font-bold text-white">${n.title}</p>
-                        <p class="text-[10px] text-slate-400">${n.desc}</p>
+                        <p class="text-xs font-bold text-slate-800">${n.title}</p>
+                        <p class="text-[10px] text-slate-500">${n.desc}</p>
                     </div>
                 </div>
             `;
