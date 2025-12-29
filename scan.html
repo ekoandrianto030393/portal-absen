@@ -22,6 +22,12 @@
 
     <style>
         /* --- 1. GLOBAL STYLES & FONTS --- */
+        :root {
+            --hud-primary: #00FFFF;
+            --hud-secondary: #0088FF;
+            --hud-glow: rgba(0, 255, 255, 0.6);
+        }
+
         body {
             margin: 0;
             overflow: hidden;
@@ -29,9 +35,9 @@
             font-family: 'Rajdhani', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
             background-color: #05050A;
             /* Dark Abyss */
-            color: #00FFFF;
-            /* Default Neon Cyan */
+            color: var(--hud-primary);
             cursor: crosshair;
+            transition: color 0.5s ease;
         }
 
         /* EFEK CRT SCANLINE (Garis TV Tabung) */
@@ -80,7 +86,7 @@
         .widget-panel {
             /* Tech Corners: Aksen siku di setiap sudut menggunakan Gradient */
             background: rgba(6, 15, 20, 0.75);
-            border: 1px solid rgba(0, 255, 255, 0.2);
+            border: 1px solid var(--hud-primary);
             padding: 1rem;
             border-radius: 2px;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
@@ -89,6 +95,7 @@
             gap: 0.75rem;
             position: relative;
             overflow: hidden;
+            transition: border-color 0.5s ease, box-shadow 0.5s ease;
             backdrop-filter: blur(12px);
         }
 
@@ -102,10 +109,10 @@
             bottom: 0;
             pointer-events: none;
             background:
-                linear-gradient(to right, #00FFFF 2px, transparent 2px) 0 0,
-                linear-gradient(to bottom, #00FFFF 2px, transparent 2px) 0 0,
-                linear-gradient(to left, #00FFFF 2px, transparent 2px) 100% 100%,
-                linear-gradient(to top, #00FFFF 2px, transparent 2px) 100% 100%;
+                linear-gradient(to right, var(--hud-primary) 2px, transparent 2px) 0 0,
+                linear-gradient(to bottom, var(--hud-primary) 2px, transparent 2px) 0 0,
+                linear-gradient(to left, var(--hud-primary) 2px, transparent 2px) 100% 100%,
+                linear-gradient(to top, var(--hud-primary) 2px, transparent 2px) 100% 100%;
             background-size: 10px 10px;
             background-repeat: no-repeat;
             opacity: 0.6;
@@ -145,9 +152,9 @@
         .widget-title {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #00FFFF;
-            background: linear-gradient(90deg, rgba(0, 255, 255, 0.15), transparent);
-            border-left: 4px solid #00FFFF;
+            color: var(--hud-primary);
+            background: linear-gradient(90deg, var(--hud-glow), transparent);
+            border-left: 4px solid var(--hud-primary);
             padding: 0.4rem 0.8rem;
             margin-bottom: 0.8rem;
             text-shadow: none;
@@ -238,12 +245,12 @@
             max-width: 900px;
             padding-top: 56.25%;
             /* Rasio Aspek 16:9 */
-            box-shadow: 0 0 60px rgba(0, 255, 255, 0.6), inset 0 0 20px rgba(0, 255, 255, 0.2);
-            border: 3px solid #00FFFF;
+            box-shadow: 0 0 60px var(--hud-glow), inset 0 0 20px rgba(0, 255, 255, 0.2);
+            border: 3px solid var(--hud-primary);
             background: #000;
             overflow: hidden;
             border-radius: 10px;
-            transition: all 0.3s ease-in-out;
+            transition: all 0.5s ease-in-out;
             filter: contrast(1.1) saturate(1.1);
             /* Sedikit boost warna agar lebih pop */
         }
@@ -393,10 +400,10 @@
             position: absolute;
             width: 30px;
             height: 30px;
-            border: 3px solid #00FFFF;
+            border: 3px solid var(--hud-primary);
             z-index: 30;
             transition: all 0.3s ease;
-            box-shadow: 0 0 10px #00FFFF;
+            box-shadow: 0 0 10px var(--hud-primary);
             opacity: 0.8;
         }
 
@@ -432,12 +439,6 @@
             border-radius: 0 0 8px 0;
         }
 
-        .video-container:hover .cyber-corner {
-            width: 50px;
-            height: 50px;
-            box-shadow: 0 0 20px #00FF7F;
-            border-color: #00FF7F;
-        }
 
         /* Efek Sukses (Hijau Neon) */
         .video-container.scan-success {
@@ -929,23 +930,8 @@
             <div class="col-span-1 flex flex-col gap-4 order-3">
                 <div class="widget-panel">
                     <h2 class="widget-title">:: DIAGNOSTICS ::</h2>
-                    <div class="flex flex-col gap-4">
-                        <div>
-                            <div class="flex justify-between text-xs mb-1"><span>LATEST SCAN</span><span
-                                    id="latestScanInfo">WAITING...</span></div>
-                            <div class="loader-bar">
-                                <div id="latestScanBar" class="loader-fill" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs mb-1"><span>MEMORY</span><span
-                                    id="memUsage">30%</span></div>
-                            <div class="loader-bar">
-                                <div id="memUsageBar" class="loader-fill"
-                                    style="background: linear-gradient(90deg, #FF00FF, #8A2BE2);">
-                                </div>
-                            </div>
-                        </div>
+                    <div class="flex flex-col gap-3">
+                        <!-- Confidence Meter (Tetap dipertahankan untuk info akurasi) -->
                         <div>
                             <div class="flex justify-between text-xs mb-1"><span>CONFIDENCE</span><span
                                     id="matchConfidenceText">0%</span></div>
@@ -953,12 +939,24 @@
                                 <div id="matchThresholdBar" class="loader-fill-red"></div>
                             </div>
                         </div>
+
+                        <!-- LIST NAMA FULL (Pengganti Memory & Latest Scan Truncated) -->
+                        <div class="flex flex-col gap-1 mt-2">
+                            <span class="text-[10px] font-bold text-cyan-600 tracking-widest border-b border-cyan-900/30 pb-1">FULL IDENTITY LOG</span>
+                            <div id="diagnosticList" class="flex flex-col gap-2 h-36 overflow-y-auto pr-1">
+                                <div class="text-gray-600 text-[10px] italic text-center py-4">Waiting for scan data...</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+                <!-- PANEL WAVEFORM DIGANTI DENGAN PERSONNEL ROSTER -->
                 <div class="widget-panel h-40">
-                    <h2 class="widget-title">:: WAVEFORM ::</h2>
-                    <div id="graph" class="h-full flex items-end justify-between gap-px overflow-hidden"></div>
+                    <h2 class="widget-title">:: PERSONNEL ROSTER ::</h2>
+                    <!-- Container untuk daftar personel -->
+                    <div id="personnelRoster" class="h-full overflow-y-auto pr-1">
+                        <div class="text-gray-500 text-xs italic text-center py-4">Loading personnel data...</div>
+                    </div>
                 </div>
 
                 <div class="widget-panel flex-grow h-40 lg:h-auto">

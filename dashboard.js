@@ -211,6 +211,7 @@ async function loadMonthlyRecap() {
     table.innerHTML = `
         <thead class="bg-slate-800/50 text-slate-400 uppercase text-xs font-bold tracking-wider border-b border-slate-700">
             <tr>
+                <th class="p-4">ID</th>
                 <th class="p-4">Nama Pegawai</th>
                 <th class="p-4 text-center">Hadir</th>
                 <th class="p-4 text-center">Alpa</th>
@@ -218,11 +219,12 @@ async function loadMonthlyRecap() {
                 <th class="p-4 text-center">Telat (Min)</th>
                 <th class="p-4 text-center">Tanpa Pulang</th>
                 <th class="p-4 text-center">Potongan</th>
-                <th class="p-4 text-right">Total Jam</th>
+                <th class="p-4 text-right">Total Jam Kerja</th>
             </tr>
         </thead>
         <tbody class="text-slate-300 divide-y divide-slate-700 text-sm">
             ${getSkeletonRows(8, 5)} <!-- Skeleton Loading -->
+            ${getSkeletonRows(9, 5)} <!-- Skeleton Loading -->
         </tbody>
     `;
 
@@ -236,6 +238,7 @@ async function loadMonthlyRecap() {
             result.data.forEach(row => {
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-800/30 border-b border-slate-800/50 last:border-0">
+                        <td class="p-4 font-mono text-slate-400">${row.id_karyawan}</td>
                         <td class="p-4 font-bold text-white">${row.nama}</td>
                         <td class="p-4 text-center"><span class="bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded font-bold text-xs">${row.total_masuk}</span></td>
                         <td class="p-4 text-center ${row.alpa > 0 ? 'text-red-400 font-bold' : 'text-slate-600'}">${row.alpa}</td>
@@ -243,12 +246,12 @@ async function loadMonthlyRecap() {
                         <td class="p-4 text-center text-slate-400">${row.telat_menit}</td>
                         <td class="p-4 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-400 font-bold' : 'text-slate-600'}">${row.tanpa_absen_pulang}</td>
                         <td class="p-4 text-center text-red-400">${row.potongan_jam} Jam</td>
-                        <td class="p-4 text-right font-mono text-emerald-300">${row.total_jam_kerja || '00:00:00'}</td>
+                        <td class="p-4 text-right font-mono text-emerald-300 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
                     </tr>
                 `;
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-slate-500">Tidak ada data untuk periode ini.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-slate-500">Tidak ada data untuk periode ini.</td></tr>';
         }
     } catch (e) {
         console.error(e);

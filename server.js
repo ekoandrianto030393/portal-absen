@@ -108,8 +108,9 @@ pool.getConnection((err, connection) => {
                 SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN ${POTONGAN_LUPA_PULANG} ELSE 0 END) AS potongan_jam,
                 SEC_TO_TIME(SUM(
                     CASE 
-                        WHEN a.jam_keluar IS NOT NULL THEN TIMESTAMPDIFF(SECOND, a.jam_masuk, a.jam_keluar)
-                        WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN GREATEST(0, TIMESTAMPDIFF(SECOND, a.jam_masuk, '${AUTO_PULANG_DEFAULT}'))
+                        WHEN a.jam_keluar IS NOT NULL THEN (TIME_TO_SEC(a.jam_keluar) - TIME_TO_SEC(a.jam_masuk))
+                        WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN GREATEST(0, (TIME_TO_SEC('${AUTO_PULANG_DEFAULT}') - TIME_TO_SEC(a.jam_masuk)))
+                        WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal = CURDATE() THEN GREATEST(0, (TIME_TO_SEC(CURTIME()) - TIME_TO_SEC(a.jam_masuk)))
                         ELSE 0 
                     END
                 )) AS total_jam_kerja
@@ -225,12 +226,40 @@ app.get('/api/rekap', (req, res) => {
     });
 });
 
+// Endpoint: API Rekap Bulanan (Khusus Dashboard Baru)
+app.get('/api/rekap/bulanan', (req, res) => {
+    let periode = req.query.periode;
+    
+    if (!periode) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        periode = `${year}-${month}`;
+    }
+
+    const sql = `SELECT * FROM view_rekap_bulanan WHERE periode = ?`;
+
+    pool.query(sql, [periode], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, data: results });
+    });
+});
+
 // Endpoint: Data Absensi Harian (Sesuai View Baru di skema_final.sql)
 app.get('/api/absensi/harian', (req, res) => {
     const sql = "SELECT * FROM view_absensi_harian LIMIT 100";
     pool.query(sql, (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, data: results });
+    });
+});
+
+// Endpoint: Data Absensi Hari Ini (Khusus Scan Page Diagnostic)
+app.get('/api/absensi/today', (req, res) => {
+    const sql = "SELECT nama_karyawan AS nama, jam_masuk AS jam FROM view_absensi_harian WHERE tanggal = CURDATE() ORDER BY jam_masuk ASC";
+    pool.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json(results);
     });
 });
 

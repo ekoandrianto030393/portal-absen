@@ -27,23 +27,13 @@ const clockMs = document.getElementById('clock-ms');
 const clockDate = document.getElementById('clock-date');
 const clockBar = document.getElementById('clock-bar');
 const dbStatus = document.getElementById('dbStatus');
+const personnelRoster = document.getElementById('personnelRoster');
 
 
 const cameraSelect = document.getElementById('cameraSelect');
 
 const stealthToggle = document.getElementById('stealthToggle');
 const stealthIcon = document.getElementById('stealthIcon');
-
-const cpuLoadBar = document.getElementById('cpuLoadBar');
-const cpuLoadText = document.getElementById('cpuLoad');
-const latestScanBar = document.getElementById('latestScanBar');
-const latestScanText = document.getElementById('latestScanInfo');
-const memUsageBar = document.getElementById('memUsageBar');
-const memUsageText = document.getElementById('memUsage');
-const matchThresholdBar = document.getElementById('matchThresholdBar');
-const matchConfidenceText = document.getElementById('matchConfidenceText');
-const attendanceLog = document.getElementById('attendanceLog');
-const graphElement = document.getElementById('graph');
 
 let labeledDescriptors = null;
 let isDetectionActive = false; // Ganti interval ID dengan flag boolean
@@ -161,6 +151,29 @@ const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(204
 const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(0,255,127,0.8) 0%, rgba(0,100,0,0.95) 100%)';
 const AGENCY_NAME = 'PUSKESMASWANA'; // Nama Instansi Global
 
+// --- NEW FEATURE: DYNAMIC SYSTEM THEME ---
+function setSystemTheme(status) {
+    const root = document.documentElement;
+    let primary, secondary, glow;
+    
+    switch(status) {
+        case 'SUCCESS': 
+            primary = '#00FF7F'; secondary = '#008800'; glow = 'rgba(0, 255, 127, 0.6)'; 
+            break;
+        case 'ERROR': 
+            primary = '#FF0055'; secondary = '#880000'; glow = 'rgba(255, 0, 85, 0.6)'; 
+            break;
+        case 'SCANNING': 
+            primary = '#00FFFF'; secondary = '#0088FF'; glow = 'rgba(0, 255, 255, 0.6)'; 
+            break;
+        default: // IDLE
+            primary = '#00FFFF'; secondary = '#0088FF'; glow = 'rgba(0, 255, 255, 0.3)';
+    }
+    root.style.setProperty('--hud-primary', primary);
+    root.style.setProperty('--hud-secondary', secondary);
+    root.style.setProperty('--hud-glow', glow);
+}
+
 // =============================================================================
 // 1. MESIN RENDERING VISUAL CANVAS (DRAWING Face-API)
 // =============================================================================
@@ -221,37 +234,6 @@ function drawHolographicMesh(ctx, landmarks) {
     ctx.fill();
 }
 
-// --- FITUR BARU: SCANNING BEAM ---
-function drawScanningBeam(ctx, box) {
-    const time = Date.now() / 1000;
-    const scanHeight = box.height;
-    // Gerakan naik turun menggunakan Sinus
-    const yPos = box.y + (scanHeight * ((Math.sin(time * 4) + 1) / 2));
-
-    // 1. Electric Trail (Reflection Behind)
-    const gradient = ctx.createLinearGradient(box.x, yPos, box.x, yPos - 50);
-    gradient.addColorStop(0, 'rgba(0, 255, 255, 0.6)');
-    gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
-    
-    ctx.fillStyle = gradient;
-    ctx.fillRect(box.x, yPos - 50, box.width, 50);
-
-    // 2. Electric Core Line
-    ctx.beginPath();
-    ctx.moveTo(box.x, yPos);
-    ctx.lineTo(box.x + box.width, yPos);
-    ctx.strokeStyle = 'rgba(0, 255, 127, 0.8)';
-    ctx.lineWidth = 2;
-    ctx.shadowColor = '#00FF7F';
-    ctx.shadowBlur = 15;
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 3;
-    ctx.shadowColor = '#00FFFF';
-    ctx.shadowBlur = 20;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-}
-
 // --- FITUR BARU: COMPLEX SCI-FI HUD ---
 function drawSciFiHUD(ctx, x, y, w, h, color) {
     const cx = x + w / 2;
@@ -262,44 +244,57 @@ function drawSciFiHUD(ctx, x, y, w, h, color) {
     ctx.save();
     ctx.translate(cx, cy);
 
-    // Ring 1: Putus-putus, Rotasi CW (Cepat)
-    ctx.rotate(time * 0.8);
+    // Ring 1: Outer Dashed (Rotating CW)
+    ctx.save();
+    ctx.rotate(time * 0.5);
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
-    ctx.setLineDash([15, 25]); // Garis putus-putus panjang
+    ctx.setLineDash([20, 40]); 
     ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.restore();
 
-    // Ring 2: Solid Tipis, Rotasi CCW (Lambat)
-    ctx.rotate(-time * 1.2); // Rotasi relatif terbalik
+    // Ring 2: Inner Tech Ring (Rotating CCW)
+    ctx.save();
+    ctx.rotate(-time * 0.8);
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.85, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Ring 3: Tech Ticks (Gerigi)
-    ctx.rotate(time * 0.2);
+    ctx.arc(0, 0, radius * 0.8, 0, Math.PI * 2);
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 4; i++) {
-        ctx.rotate(Math.PI / 2);
-        ctx.beginPath();
-        ctx.arc(0, 0, radius * 1.1, -0.2, 0.2); // Busur di 4 sisi
-        ctx.stroke();
-    }
+    ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.stroke();
+    ctx.restore();
+
+    // Ring 3: Scanning Segments (Fast)
+    ctx.save();
+    ctx.rotate(time * 2);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.9, 0, Math.PI / 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.9, Math.PI, Math.PI * 1.5);
+    ctx.stroke();
+    ctx.restore();
 
     ctx.restore();
 
-    // Crosshair Tengah
-    ctx.beginPath();
-    ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
-    ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
+    // Bracket Corners (Static relative to face)
+    const cornerSize = 20;
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.lineWidth = 3;
+    
+    // Top Left
+    ctx.beginPath(); ctx.moveTo(x, y + cornerSize); ctx.lineTo(x, y); ctx.lineTo(x + cornerSize, y); ctx.stroke();
+    // Top Right
+    ctx.beginPath(); ctx.moveTo(x + w - cornerSize, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + cornerSize); ctx.stroke();
+    // Bottom Right
+    ctx.beginPath(); ctx.moveTo(x + w, y + h - cornerSize); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - cornerSize, y + h); ctx.stroke();
+    // Bottom Left
+    ctx.beginPath(); ctx.moveTo(x + cornerSize, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - cornerSize); ctx.stroke();
 }
 
 // --- FITUR BARU: TARGET LOCK HUD ---
@@ -551,34 +546,12 @@ window.addEventListener('resize', resizeCanvas);
 
 
 function updateSystemDiagnostics(confidence) {
-    // 1. CPU/Memory (Simulasi)
-    const newCpu = Math.floor(Math.random() * 5) + 10; // 10% - 14%
-    const newMem = Math.floor(Math.random() * 8) + 28; // 28% - 35% 
-    if(cpuLoadBar) {
-        cpuLoadBar.style.width = `${newCpu}%`;
-        cpuLoadText.textContent = `${newCpu}%`;
-    }
-    if(memUsageBar) { 
-        memUsageBar.style.width = `${newMem}%`;
-        memUsageText.textContent = `${newMem}%`;
-    }
-
-    // 2. Confidence Bar
+    // Confidence Bar Only
     if(matchThresholdBar) {
         const confPercent = Math.min(100, confidence);
         matchThresholdBar.style.width = `${confPercent}%`;
         
-        if (confPercent >= 70) {
-            matchThresholdBar.className = 'loader-fill'; // Hijau
-            matchThresholdBar.style.background = 'linear-gradient(90deg, #00FF7F, #00FFFF)';
-        } else if (confPercent >= 40) {
-            matchThresholdBar.className = 'loader-fill'; // Kuning
-            matchThresholdBar.style.background = 'linear-gradient(90deg, #FFD700, #FF00FF)';
-        } else {
-            matchThresholdBar.className = 'loader-fill-red'; // Merah
-            matchThresholdBar.style.background = 'linear-gradient(90deg, #FF0055, #FF5500)';
-        }
-        matchConfidenceText.textContent = `${confPercent.toFixed(0)}%`;
+        if (confPercent >= 70) {}
     }
 }
 
@@ -604,44 +577,6 @@ function logAttendance(name, time) {
     // Batasi log agar tidak terlalu panjang
     if (attendanceLog.children.length > 50) {
         attendanceLog.removeChild(attendanceLog.lastChild);
-    }
-}
-
-function updateGraph() {
-    if(!graphElement) return;
-    
-    // UBAH KE VISUALIZER BAR (Gaya Spektrum Audio)
-    if (!graphElement.classList.contains('visualizer-mode')) {
-        graphElement.innerHTML = '';
-        graphElement.classList.add('visualizer-mode');
-        graphElement.style.display = 'flex';
-        graphElement.style.alignItems = 'flex-end';
-        graphElement.style.gap = '2px';
-        graphElement.style.height = '100%';
-        
-        // Buat 30 bar
-        for(let i=0; i<30; i++) {
-            const bar = document.createElement('div');
-            bar.style.flex = '1';
-            bar.style.backgroundColor = '#00FFFF';
-            bar.style.opacity = '0.7';
-            bar.style.transition = 'height 0.1s ease, background-color 0.1s';
-            graphElement.appendChild(bar);
-        }
-    }
-
-    const bars = graphElement.children;
-    const time = Date.now() / 200;
-    
-    for (let i = 0; i < bars.length; i++) {
-        // Simulasikan gelombang sinus bergerak
-        const height = Math.max(5, Math.abs(Math.sin(time + i * 0.3)) * 100);
-        bars[i].style.height = `${height}%`;
-        
-        // Warna berdasarkan ketinggian (Heatmap)
-        if (height > 80) bars[i].style.backgroundColor = '#FF0055'; // Merah Puncak
-        else if (height > 50) bars[i].style.backgroundColor = '#FFD700'; // Kuning Tengah
-        else bars[i].style.backgroundColor = '#00FFFF'; // Cyan Dasar
     }
 }
 
@@ -902,10 +837,35 @@ function animateTitle() {
 
 updateClock(); // Start loop animasi jam (requestAnimationFrame)
 
-// Interval cepat untuk animasi data stream & waveform
-setInterval(() => {
-    updateGraph();
-}, 100);
+// --- NEW: PERSONNEL ROSTER ---
+function populatePersonnelRoster() {
+    if (!personnelRoster || Object.keys(employeeMap).length === 0) {
+        if(personnelRoster) personnelRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">No personnel data found in database.</div>';
+        return;
+    }
+
+    personnelRoster.innerHTML = ''; // Kosongkan daftar
+
+    // Ambil data dari employeeMap, urutkan berdasarkan nama
+    const sortedEmployees = Object.values(employeeMap).sort((a, b) => a.nama.localeCompare(b.nama));
+
+    sortedEmployees.forEach(emp => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center gap-3 p-1.5 border-b border-cyan-900/20 hover:bg-cyan-500/10 transition-colors duration-200 cursor-pointer';
+        item.dataset.name = emp.nama.toLowerCase(); // Simpan nama untuk search
+
+        item.innerHTML = `
+            <img src="data:image/jpeg;base64,${emp.foto}" class="w-9 h-9 rounded-full object-cover border border-cyan-800/50 flex-shrink-0">
+            <div class="flex-grow overflow-hidden">
+                <p class="font-bold text-xs text-cyan-300 truncate" title="${emp.nama}">${emp.nama}</p>
+                <p class="text-[10px] text-gray-400 truncate" title="${emp.jabatan}">${emp.jabatan}</p>
+            </div>
+            <div class="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_4px_#00FF00] flex-shrink-0" title="Registered & Online"></div>
+        `;
+        personnelRoster.appendChild(item);
+    });
+}
+
 
 const api = {
     getDescriptors: async () => {
@@ -989,6 +949,9 @@ async function loadLabeledImages() {
         });
 
         
+        // --- PANGGIL FUNGSI BARU SETELAH employeeMap SIAP ---
+        populatePersonnelRoster();
+
         setStatusVisual(`${descriptors.length} ID Karyawan dimuat. SYSTEM READY.`, 'text-green-500');
         if(dbStatus) {
             dbStatus.textContent = 'ONLINE';
@@ -1221,6 +1184,7 @@ async function detectFace() {
         if (Math.random() > 0.85) SoundFX.play('scan'); 
 
         setStatusVisual('SUBJECT DETECTED. PROCESSING BIOMETRICS...', 'text-amber-500', true);
+        setSystemTheme('SCANNING'); // Update Theme to Scanning (Blue/Cyan)
 
         let faceLabel = 'UNKNOWN';
         let faceColor = '#FF0055'; 
@@ -1334,6 +1298,7 @@ async function detectFace() {
         updateSystemDiagnostics(0);
         setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
         targetLabel = '';
+        setSystemTheme('IDLE'); // Reset Theme
         lastKnownMatch = null; 
     }
 }
@@ -1416,6 +1381,9 @@ async function processAttendance(karyawanId) {
             SoundFX.speak(`Welcome, ${display_name}`);
             triggerScreenFlash('#00FF7F');
             
+            setSystemTheme('SUCCESS'); // Theme Green
+            if(window.setWarpMode) window.setWarpMode(true); // Trigger 3D Warp
+
             // Update panel "TARGET DATA" di sisi kiri
             if (userIdDisplay) userIdDisplay.textContent = display_name;
             if (userJabatanDisplay) userJabatanDisplay.textContent = display_jabatan;
@@ -1450,21 +1418,37 @@ async function processAttendance(karyawanId) {
                     finalStatusColor = NAME_HIGHLIGHT_COLOR; 
             }
 
-            // UPDATE WIDGET LATEST SCAN (Pengganti CPU Load)
-            if(latestScanText) latestScanText.textContent = `${display_name.substring(0, 12)}.. [${result.result_code.includes('IN') ? 'IN' : 'OUT'}]`;
-            if(latestScanBar) {
-                latestScanBar.style.width = '100%';
-                latestScanBar.style.background = 'linear-gradient(90deg, #00FF7F, #00FFFF)';
+            // UPDATE DIAGNOSTIC PANEL (Full Name List)
+            if (diagnosticList) {
+                // Hapus placeholder jika ada
+                if (diagnosticList.querySelector('.italic')) diagnosticList.innerHTML = '';
+
+                const diagItem = document.createElement('div');
+                diagItem.className = 'flex justify-between items-center bg-gray-800/50 p-2 rounded border-l-2 border-green-500 animate-[fadeIn_0.5s_ease-out]';
+                diagItem.innerHTML = `
+                    <div class="flex flex-col overflow-hidden">
+                        <span class="text-cyan-300 font-bold text-xs break-words leading-tight" title="${display_name}">${display_name}</span>
+                        <span class="text-[9px] text-gray-400 mt-0.5">${display_jabatan}</span>
+                    </div>
+                    <span class="text-[10px] font-mono text-green-400 ml-2 whitespace-nowrap font-bold bg-green-900/20 px-1 rounded">${result.result_code.includes('IN') ? 'IN' : 'OUT'}</span>
+                `;
+                diagnosticList.prepend(diagItem);
+
+                // Batasi jumlah item di list diagnostic agar tidak terlalu panjang
+                if (diagnosticList.children.length > 50) {
+                    diagnosticList.removeChild(diagnosticList.lastChild);
+                }
             }
 
         } else {
-            // --- GAGAL (MERAH atau KUNING) ---
-            const isWarning = statusColor === 'yellow'; // Cek apakah ini peringatan atau error fatal
+            // Gagal atau Peringatan
+            const isWarning = statusColor === 'yellow';
 
             SoundFX.play('error');
             // Panggil nama dalam notifikasi suara
             SoundFX.speak(isWarning ? `Notice, ${display_name}` : `Access Denied, ${display_name}`);
             triggerScreenFlash(isWarning ? '#FFD700' : '#FF0055');
+            setSystemTheme('ERROR'); // Theme Red
 
             setStatusVisual(cleanMessage, isWarning ? 'text-amber-500' : 'text-red-500');
             userStatusDisplay.textContent = isWarning ? 'NOTICE' : 'DENIED';
@@ -1501,7 +1485,7 @@ async function processAttendance(karyawanId) {
             
             finalStatusColor = isWarning ? '#FFD700' : '#FF0055';
         }
-        
+
         // FINAL OVERLAY RENDER (Profesional & Pesan Sambutan)
         if (successOverlay) {
              successOverlay.style.background = finalBackground;
@@ -1647,6 +1631,8 @@ async function processAttendance(karyawanId) {
         }
         logSystem('System ready for next scan.', 'text-gray-300');
         videoContainer.classList.remove('scan-success');
+        setSystemTheme('IDLE'); // Reset Theme
+        if(window.setWarpMode) window.setWarpMode(false); // Stop Warp
     }
 }
 
@@ -1892,6 +1878,10 @@ function initBackground3D() {
         particleSystem.emitRate = 500;
         particleSystem.start();
 
+        // --- WARP DRIVE CONTROL ---
+        let warpActive = false;
+        window.setWarpMode = (active) => { warpActive = active; };
+
         // --- E. INDONESIAN FLAG ORBITER ---
         const flagPivot = new BABYLON.TransformNode("flagPivot", scene);
         flagPivot.position = globe.position;
@@ -2016,6 +2006,17 @@ function initBackground3D() {
             gridMat.setVector3("cameraPosition", camera.position);
             sunMesh.position.x = Math.sin(time * 0.2) * 20; sunMesh.position.y = 5 + Math.cos(time * 0.3) * 5;
             globe.rotation.y += 0.002; globe.rotation.x += 0.001;
+
+            // WARP EFFECT LOGIC
+            if (warpActive) {
+                particleSystem.emitRate = 2000;
+                particleSystem.minSize = 0.5;
+                particleSystem.speed = 5;
+            } else {
+                particleSystem.emitRate = 500;
+                particleSystem.minSize = 0.1;
+                particleSystem.speed = 1;
+            }
 
             // Flag Animation
             flagPivot.rotation.y -= 0.015; 
