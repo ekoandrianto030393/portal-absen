@@ -11,6 +11,17 @@ let systemConfig = null; // Menyimpan konfigurasi dari server (.env)
 let globalPerformanceData = []; // Simpan data untuk modal
 let globalEmployees = []; // Simpan data pegawai untuk edit
 
+// --- HELPER: SECURITY (XSS PREVENTION) ---
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // --- INISIALISASI ---
 document.addEventListener('DOMContentLoaded', () => {
     updateClock();
@@ -88,6 +99,12 @@ async function loadOverviewData() {
     try {
         // 1. Ambil Data Harian
         const resDaily = await fetch(`${API_BASE}/absensi/harian`);
+        // OPTIMISASI: Gunakan Promise.all untuk request paralel
+        const [resDaily, resEmp] = await Promise.all([
+            fetch(`${API_BASE}/absensi/harian`),
+            fetch(`${API_BASE}/karyawan/descriptors`)
+        ]);
+
         const jsonDaily = await resDaily.json();
         const dailyData = jsonDaily.data || [];
 
@@ -150,10 +167,13 @@ function renderRecentActivity(data) {
             <div class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100 group">
                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 shadow-sm group-hover:from-blue-500 group-hover:to-indigo-600 group-hover:text-white transition-all">
                     ${item.nama_karyawan.substring(0, 1).toUpperCase()}
+                    ${escapeHtml(item.nama_karyawan).substring(0, 1).toUpperCase()}
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">${item.nama_karyawan}</p>
                     <p class="text-[10px] text-slate-500 truncate">${item.jabatan || 'Staff'}</p>
+                    <p class="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">${escapeHtml(item.nama_karyawan)}</p>
+                    <p class="text-[10px] text-slate-500 truncate">${escapeHtml(item.jabatan || 'Staff')}</p>
                 </div>
                 <div class="text-right">
                     <span class="text-[10px] font-mono font-bold px-2 py-1 rounded border ${timeClass}">${item.jam_masuk}</span>
@@ -238,6 +258,8 @@ async function loadDailyData() {
                         <td class="px-6 py-4 font-mono text-blue-600 font-medium">${row.jam_masuk}</td>
                         <td class="px-6 py-4 font-bold text-slate-800 group-hover:text-blue-600 transition">${row.nama_karyawan}</td>
                         <td class="px-6 py-4 text-slate-500 text-sm">${row.jabatan || '-'}</td>
+                        <td class="px-6 py-4 font-bold text-slate-800 group-hover:text-blue-600 transition">${escapeHtml(row.nama_karyawan)}</td>
+                        <td class="px-6 py-4 text-slate-500 text-sm">${escapeHtml(row.jabatan || '-')}</td>
                         <td class="p-5">${statusBadge}</td>
                         <td class="px-6 py-4 ${lateClass} font-mono">${lateDisplay}</td>
                         <td class="px-6 py-4 font-mono text-slate-600">${row.jam_keluar || '<span class="text-slate-400">-</span>'}</td>
@@ -295,6 +317,7 @@ async function loadMonthlyRecap() {
                     <tr class="hover:bg-blue-50/50 border-b border-slate-100 last:border-0">
                         <td class="px-6 py-4 font-mono text-slate-500">${row.id_karyawan}</td>
                         <td class="px-6 py-4 font-bold text-slate-800">${row.nama}</td>
+                        <td class="px-6 py-4 font-bold text-slate-800">${escapeHtml(row.nama)}</td>
                         <td class="px-6 py-4 text-center">
                             <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
                         </td>
@@ -383,6 +406,8 @@ async function loadPerformanceData() {
                         <div class="relative z-10">
                             <h3 class="text-lg font-bold text-slate-800 truncate">${emp.nama}</h3>
                             <p class="text-xs text-slate-500 mb-4 uppercase tracking-wide">${emp.jabatan || 'Staff'} • ID: ${emp.id_karyawan}</p>
+                            <h3 class="text-lg font-bold text-slate-800 truncate">${escapeHtml(emp.nama)}</h3>
+                            <p class="text-xs text-slate-500 mb-4 uppercase tracking-wide">${escapeHtml(emp.jabatan || 'Staff')} • ID: ${emp.id_karyawan}</p>
                             
                             <div class="flex items-end gap-2 mb-2">
                                 <span class="text-4xl font-bold text-slate-800">${score}</span>
@@ -452,6 +477,8 @@ async function loadEmployees() {
                             <div class="flex-1 min-w-0">
                                 <h4 class="text-slate-800 font-bold truncate group-hover:text-blue-600 transition">${emp.nama}</h4>
                                 <p class="text-xs text-slate-500 truncate">${emp.jabatan || 'Staff'}</p>
+                                <h4 class="text-slate-800 font-bold truncate group-hover:text-blue-600 transition">${escapeHtml(emp.nama)}</h4>
+                                <p class="text-xs text-slate-500 truncate">${escapeHtml(emp.jabatan || 'Staff')}</p>
                                 <p class="text-[10px] font-mono text-slate-500 mt-1 bg-slate-100 inline-block px-2 py-0.5 rounded">${emp.id_karyawan}</p>
                             </div>
                         </div>
@@ -733,6 +760,11 @@ function exportExcel() {
         let row = [], cols = rows[i].querySelectorAll("td, th");
         for (let j = 0; j < cols.length; j++) 
             row.push('"' + cols[j].innerText + '"'); // Quote text
+        for (let j = 0; j < cols.length; j++) {
+            // FIX: Escape double quotes dengan benar untuk CSV (replace " dengan "")
+            let cleanText = cols[j].innerText.replace(/"/g, '""');
+            row.push('"' + cleanText + '"'); 
+        }
         csv.push(row.join(","));
     }
 
@@ -925,6 +957,8 @@ function changeTheme(colorName) {
     document.addEventListener('DOMContentLoaded', () => {}); // Dummy
     // Perlu reload chart dan event listener manual atau refresh halaman
     // Untuk kestabilan demo ini, kita simpan ke localStorage dan reload
+    // FIX: Jangan gunakan innerHTML replace pada body karena akan menghancurkan Event Listeners.
+    // Cukup simpan ke localStorage dan reload halaman agar logika "Apply theme on load" bekerja.
     localStorage.setItem('theme', colorName);
     location.reload(); 
 }

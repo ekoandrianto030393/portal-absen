@@ -27,9 +27,8 @@ async function loadRekap() {
             
             // Data sudah dihitung oleh Database (View), tinggal tampilkan
             result.data.forEach(row => {
-                // Hitung Lupa Pulang berdasarkan potongan jam (Potongan / 2)
-                // Karena di database: Potongan = 2 jam * jumlah lupa pulang
-                const lupaPulangCount = Math.floor(row.potongan_jam / 2);
+                // FIX: Gunakan langsung kolom 'tanpa_absen_pulang' dari View Database
+                const lupaPulangCount = row.tanpa_absen_pulang;
                 
                 const tr = `
                     <tr>

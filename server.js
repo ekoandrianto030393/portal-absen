@@ -497,6 +497,7 @@ app.get('/api/config', (req, res) => {
 // --- SCHEDULER: AUTO FIX LUPA PULANG (Setiap 1 Jam) ---
 // Menutup absensi kemarin yang masih open (Lupa Pulang) secara otomatis & aman dari duplikasi
 setInterval(() => {
+    // Query ini memperbaiki SEMUA data masa lalu sekaligus (Tanpa LIMIT) karena Unique Key menjamin 1 ID per hari
     const sql = `UPDATE absensi SET jam_keluar = ?, keterangan = 'Otomatis: Lupa Absen Pulang' WHERE jam_keluar IS NULL AND tanggal < CURDATE()`;
     pool.query(sql, [AUTO_PULANG_DEFAULT], (err, result) => {
         if (err) console.error('⚠️ Auto-Fix Error:', err.message);
