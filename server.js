@@ -86,6 +86,7 @@ pool.getConnection((err, connection) => {
                 jam_masuk TIME NULL,
                 jam_keluar TIME NULL,
                 status VARCHAR(50),
+                keterangan VARCHAR(255),
                 UNIQUE KEY unique_absensi_harian (id_karyawan, tanggal),
                 FOREIGN KEY (id_karyawan) REFERENCES karyawan(id_karyawan) ON DELETE CASCADE
             ) ENGINE=InnoDB;
@@ -104,14 +105,13 @@ pool.getConnection((err, connection) => {
                 GREATEST(0, m.total_hari_kerja - COUNT(a.jam_masuk)) AS alpa, -- Alpa = Total Hari Kerja Nyata - Total Masuk
                 SUM(CASE WHEN a.jam_masuk > '${BATAS_TELAT}' AND a.status NOT IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END) AS telat_kali,
                 COALESCE(SUM(CASE WHEN a.jam_masuk > '${BATAS_TELAT}' AND a.status NOT IN ('DL', 'DINAS_LUAR') THEN FLOOR((TIME_TO_SEC(a.jam_masuk) - TIME_TO_SEC('${BATAS_TELAT}')) / 60) ELSE 0 END), 0) AS telat_menit,
-                SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN 1 ELSE 0 END) AS tanpa_absen_pulang,
-                SUM(CASE WHEN a.jam_keluar IS NOT NULL THEN 1 ELSE 0 END) AS pulang_kali,
-                SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN ${POTONGAN_LUPA_PULANG} ELSE 0 END) AS potongan_jam,
+                SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan = 'Otomatis: Lupa Absen Pulang') THEN 1 ELSE 0 END) AS tanpa_absen_pulang,
+                SUM(CASE WHEN a.jam_keluar IS NOT NULL AND (a.keterangan IS NULL OR a.keterangan != 'Otomatis: Lupa Absen Pulang') THEN 1 ELSE 0 END) AS pulang_kali,
+                SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan = 'Otomatis: Lupa Absen Pulang') THEN ${POTONGAN_LUPA_PULANG} ELSE 0 END) AS potongan_jam,
                 SEC_TO_TIME(SUM(
                     CASE 
                         WHEN a.jam_keluar IS NOT NULL THEN (TIME_TO_SEC(a.jam_keluar) - TIME_TO_SEC(a.jam_masuk))
                         WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN GREATEST(0, (TIME_TO_SEC('${AUTO_PULANG_DEFAULT}') - TIME_TO_SEC(a.jam_masuk)))
-                        WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal = CURDATE() THEN GREATEST(0, (TIME_TO_SEC(CURTIME()) - TIME_TO_SEC(a.jam_masuk)))
                         ELSE 0 
                     END
                 )) AS total_jam_kerja
@@ -152,14 +152,21 @@ pool.getConnection((err, connection) => {
                         connection.query(createAbsensiSql, (err) => {
                             if (err) console.error('⚠️ Init Tabel Absensi:', err.message);
                             else {
-                                connection.query(createViewRekapSql, (err) => {
-                                    if (err) console.error('⚠️ Init View Rekap:', err.message);
-                                    else {
-                                        connection.query(createViewHarianSql, (err) => {
-                                            if (err) console.error('⚠️ Init View Harian:', err.message);
-                                            else console.log('✅ Database Sinkron dengan Skema Final (Tabel & View Siap).');
-                                        });
-                                    }
+                                // FIX: Pastikan kolom 'keterangan' ada sebelum membuat View (untuk database lama)
+                                const addColumnSql = "ALTER TABLE absensi ADD COLUMN keterangan VARCHAR(255)";
+                                connection.query(addColumnSql, (err) => {
+                                    // Error 1060 = Duplicate column name (artinya kolom sudah ada, abaikan)
+                                    if (err && err.errno !== 1060) console.error('⚠️ Update Schema Absensi:', err.message);
+
+                                    connection.query(createViewRekapSql, (err) => {
+                                        if (err) console.error('⚠️ Init View Rekap:', err.message);
+                                        else {
+                                            connection.query(createViewHarianSql, (err) => {
+                                                if (err) console.error('⚠️ Init View Harian:', err.message);
+                                                else console.log('✅ Database Sinkron dengan Skema Final (Tabel & View Siap).');
+                                            });
+                                        }
+                                    });
                                 });
                             }
                         });
@@ -486,6 +493,18 @@ app.get('/api/config', (req, res) => {
         }
     });
 });
+
+// --- SCHEDULER: AUTO FIX LUPA PULANG (Setiap 1 Jam) ---
+// Menutup absensi kemarin yang masih open (Lupa Pulang) secara otomatis & aman dari duplikasi
+setInterval(() => {
+    const sql = `UPDATE absensi SET jam_keluar = ?, keterangan = 'Otomatis: Lupa Absen Pulang' WHERE jam_keluar IS NULL AND tanggal < CURDATE()`;
+    pool.query(sql, [AUTO_PULANG_DEFAULT], (err, result) => {
+        if (err) console.error('⚠️ Auto-Fix Error:', err.message);
+        else if (result.affectedRows > 0) {
+            console.log(`🤖 Auto-Fix: ${result.affectedRows} data absensi diperbarui (Lupa Pulang).`);
+        }
+    });
+}, 3600000); // Cek setiap 1 jam (3600000 ms)
 
 // Jalankan Server
 app.listen(port, () => {

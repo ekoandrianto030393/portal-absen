@@ -83,6 +83,19 @@ const SoundFX = {
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
             osc.start(now);
             osc.stop(now + 0.05);
+        } else if (type === 'comms_open') {
+            // Suara "bip" sebelum AI bicara
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(1500, now);
+            gain.gain.setValueAtTime(0.02, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            osc.start(now);
+            osc.stop(now + 0.08);
         } else if (type === 'success') {
             // Ascending Chime
             osc.type = 'triangle';
@@ -107,18 +120,22 @@ const SoundFX = {
     speak: (text) => {
         if (isStealthMode) return; // Mute jika Stealth Mode aktif
         if ('speechSynthesis' in window) {
+            SoundFX.play('comms_open'); // EFEK BARU: Suara "bip" sebelum bicara
             // Cancel previous speech
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.1; // Sedikit lebih cepat
-            utterance.pitch = 0.9; // Sedikit lebih rendah (wibawa)
-            utterance.volume = 1.0;
+            utterance.rate = 1.0; // Sedikit lebih lambat untuk kejelasan
+            utterance.pitch = 0.6; // Jauh lebih rendah untuk suara robotik/AI
+            utterance.volume = 0.9;
             
             // Coba cari suara bahasa Inggris yang bagus (Google US English biasanya ada)
             const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices[0];
+            const preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices.find(v => v.lang === 'en-US');
             if (preferredVoice) utterance.voice = preferredVoice;
-            window.speechSynthesis.speak(utterance);
+            // Beri jeda sedikit agar suara "bip" selesai
+            setTimeout(() => {
+                window.speechSynthesis.speak(utterance);
+            }, 50);
         }
     }
 };
@@ -175,6 +192,9 @@ function setSystemTheme(status) {
     root.style.setProperty('--hud-primary', primary);
     root.style.setProperty('--hud-secondary', secondary);
     root.style.setProperty('--hud-glow', glow);
+    
+    // TRIGGER PERUBAHAN WARNA DUNIA 3D (BABYLON.JS)
+    if (window.update3DTheme) window.update3DTheme(status);
 }
 
 // =============================================================================
@@ -340,6 +360,72 @@ function drawDataWaterfall(ctx, x, y, height, color) {
         const yPos = y + (Date.now() / (20 + c*5) % height); // Gerakan turun
         ctx.fillText(char, x + (c * 12), yPos);
     }
+}
+
+// --- FITUR BARU: BIOMETRIC CONNECTORS (Visualisasi Analisis Wajah) ---
+function drawBiometricConnectors(ctx, box, landmarks, color) {
+    const points = [
+        landmarks.getLeftEye()[0],
+        landmarks.getRightEye()[3],
+        landmarks.getNose()[3],
+        landmarks.getMouth()[0],
+        landmarks.getMouth()[6]
+    ];
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.6;
+    
+    points.forEach((pt, i) => {
+        // Gambar Titik Data
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Gambar Garis Sirkuit ke Tepi Box
+        ctx.beginPath();
+        ctx.moveTo(pt.x, pt.y);
+        
+        // Buat jalur siku-siku (Circuit Style)
+        const direction = i % 2 === 0 ? 1 : -1;
+        const elbowX = pt.x + (direction * (15 + Math.random() * 10));
+        
+        ctx.lineTo(elbowX, pt.y);
+        ctx.lineTo(elbowX, box.y - 10); // Tarik ke atas box
+        ctx.stroke();
+    });
+    ctx.restore();
+}
+
+// --- FITUR BARU: AUGMENTED REALITY DATA POINTS ---
+function drawARDataPoints(ctx, box, color) {
+    const x = box.x;
+    const y = box.y;
+    const w = box.width;
+    const h = box.height;
+    const time = Date.now();
+
+    ctx.save();
+    ctx.font = '10px "Courier New", monospace';
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.7 + 0.2 * Math.sin(time / 200); // Efek alpha berdenyut
+
+    // Data points dengan nilai acak untuk efek visual
+    const data = [
+        { label: 'TEMP', value: (36.5 + Math.random() * 0.5).toFixed(1) + '°C', pos: [x + w + 5, y + 10] },
+        { label: 'PULSE', value: (70 + Math.floor(Math.random() * 5)) + ' BPM', pos: [x + w + 5, y + h - 5] },
+        { label: 'RESP', value: (16 + Math.floor(Math.random() * 3)) + ' RPM', pos: [x - 5, y + 10], align: 'right' },
+        { label: 'SIG', value: 'STABLE', pos: [x - 5, y + h - 5], align: 'right' }
+    ];
+
+    data.forEach(d => {
+        ctx.textAlign = d.align || 'left';
+        ctx.fillText(`[${d.label}: ${d.value}]`, d.pos[0], d.pos[1]);
+    });
+
+    ctx.restore();
 }
 
 // --- VISUAL FX: SCREEN FLASH ---
@@ -1174,7 +1260,24 @@ async function detectFace() {
         const { box } = resizedDetections.detection;
         const { landmarks } = resizedDetections;
 
+        // --- FITUR BARU: DIGITAL AUTO-ZOOM ---
+        const scale = 1.8; // Faktor zoom, bisa disesuaikan
+        const centerX = box.x + box.width / 2;
+        const centerY = box.y + box.height / 2;
+        
+        // Hitung translasi agar wajah tetap di tengah
+        const translateX = (displaySize.width / 2) - centerX;
+        const translateY = (displaySize.height / 2) - centerY;
+
+        // Terapkan transformasi ke elemen video. Transisi dihandle oleh CSS.
+        // Penting: scaleX(-1) harus tetap ada untuk efek cermin.
+        video.style.transform = `scaleX(-1) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+
+
         drawHolographicMesh(context, landmarks);
+        
+        // GAMBAR KONEKTOR BIOMETRIK (NEW)
+        drawBiometricConnectors(context, box, landmarks, '#00FFFF');
 
         // --- GAMBAR EFEK BARU ---
         // drawScanningBeam(context, box); // Diganti dengan HUD Sci-Fi
@@ -1293,12 +1396,15 @@ async function detectFace() {
         
         // Gunakan Smart HUD baru
         drawSmartHUD(context, box, faceLabel, faceColor, confidence);
+        drawARDataPoints(context, box, faceColor); // Panggil fungsi AR Data Points
         drawDataWaterfall(context, box.x - 40, box.y, box.height, faceColor); // Matrix rain di kiri wajah
 
     } else {
         // Tidak ada deteksi wajah
         resetTargetData();
         updateSystemDiagnostics(0);
+        // Reset zoom saat tidak ada wajah
+        video.style.transform = 'scaleX(-1) scale(1) translate(0, 0)';
         setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
         targetLabel = '';
         setSystemTheme('IDLE'); // Reset Theme
@@ -2045,6 +2151,22 @@ function initBackground3D() {
                 d.mesh.lookAt(new BABYLON.Vector3(0, 0, 0)); // Selalu menghadap pusat (Globe)
             });
         });
+        
+        // --- H. DYNAMIC THEME CONTROLLER (NEW) ---
+        // Fungsi ini dipanggil oleh setSystemTheme() untuk mengubah warna dunia 3D
+        window.update3DTheme = (status) => {
+            let targetColor = new BABYLON.Color3(0, 1, 1); // Default Cyan
+            if (status === 'SUCCESS') targetColor = new BABYLON.Color3(0, 1, 0.3); // Green
+            if (status === 'ERROR') targetColor = new BABYLON.Color3(1, 0, 0.2); // Red
+            
+            // Animate Globe Color
+            BABYLON.Animation.CreateAndStartAnimation("globeColor", globeMat, "emissiveColor", 30, 30, globeMat.emissiveColor, targetColor, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+            
+            // Update Particles Immediate
+            particleSystem.color1 = new BABYLON.Color4(targetColor.r, targetColor.g, targetColor.b, 1.0);
+            particleSystem.color2 = new BABYLON.Color4(targetColor.r * 0.5, targetColor.g * 0.5, targetColor.b * 0.5, 1.0);
+        };
+        
         return scene;
     };
 

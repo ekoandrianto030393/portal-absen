@@ -319,6 +319,15 @@ async function loadMonthlyRecap() {
 }
 
 // --- DATA LOADER: PERFORMANCE MONITORING (SCORING SYSTEM) ---
+function calculatePerformanceScore(emp) {
+    // Skor Awal: 100
+    // -5 poin per kali telat
+    // -10 poin per hari alpa
+    // -2 poin per jam potongan (lupa pulang)
+    let score = 100 - (emp.telat_kali * 5) - (emp.alpa * 10) - (emp.potongan_jam * 2);
+    return Math.max(0, score);
+}
+
 async function loadPerformanceData() {
     const grid = document.getElementById('performance-grid');
     grid.innerHTML = '<div class="col-span-full text-center text-slate-500 italic py-8">Menganalisis Kinerja...</div>';
@@ -339,12 +348,7 @@ async function loadPerformanceData() {
                 // -5 poin per kali telat
                 // -10 poin per hari alpa
                 // -2 poin per jam potongan (lupa pulang)
-                
-                let score = 100;
-                score -= (emp.telat_kali * 5);
-                score -= (emp.alpa * 10);
-                score -= (emp.potongan_jam * 2);
-                if (score < 0) score = 0;
+                const score = calculatePerformanceScore(emp);
 
                 // Tentukan Status & Warna
                 let status = 'SANGAT BAIK';
@@ -775,8 +779,7 @@ async function openModal(idKaryawan) {
     document.getElementById('modal-jabatan').textContent = emp.jabatan || "PEGAWAI TETAP";
     
     // Hitung Score Ulang untuk Badge
-    let score = 100 - (emp.telat_kali * 5) - (emp.alpa * 10) - (emp.potongan_jam * 2);
-    if(score < 0) score = 0;
+    const score = calculatePerformanceScore(emp);
     
     const badge = document.getElementById('modal-score-badge');
     badge.textContent = score;
