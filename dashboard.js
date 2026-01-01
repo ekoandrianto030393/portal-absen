@@ -26,6 +26,19 @@ function escapeHtml(text) {
 document.addEventListener('DOMContentLoaded', () => {
     updateClock();
     setInterval(updateClock, 1000);
+
+    // Init Date Inputs for Chart (Last 7 Days)
+    const today = new Date();
+    const lastWeek = new Date();
+    lastWeek.setDate(today.getDate() - 6);
+    const formatDate = (d) => d.toISOString().split('T')[0];
+    
+    const startInput = document.getElementById('chart-start');
+    const endInput = document.getElementById('chart-end');
+    if (startInput && endInput) {
+        startInput.value = formatDate(lastWeek);
+        endInput.value = formatDate(today);
+    }
     
     // Set default month filter to current month
     const now = new Date();
@@ -39,7 +52,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load Config dulu, baru load data
     loadSystemConfig().then(() => {
         loadOverviewData();
+        // Init & Load Chart
+        initLineChart();
+        updateChartFilter();
     });
+
+    // AUTO REFRESH (Setiap 60 Detik) - Fitur Canggih
+    setInterval(() => {
+        // Hanya refresh jika tab aktif adalah overview atau daily
+        const activeTab = document.querySelector('.nav-item.active').id;
+        if (activeTab === 'nav-overview') loadOverviewData();
+        if (activeTab === 'nav-daily') loadDailyData(true); // true = silent refresh
+    }, 60000);
 });
 
 // --- LOAD CONFIG DARI SERVER ---
@@ -98,19 +122,17 @@ function updateClock() {
 async function loadOverviewData() {
     try {
         // 1. Ambil Data Harian
-        const resDaily = await fetch(`${API_BASE}/absensi/harian`);
         // OPTIMISASI: Gunakan Promise.all untuk request paralel
-        const [resDaily, resEmp] = await Promise.all([
+        const [resDailyRaw, resEmpRaw] = await Promise.all([
             fetch(`${API_BASE}/absensi/harian`),
             fetch(`${API_BASE}/karyawan/descriptors`)
         ]);
 
-        const jsonDaily = await resDaily.json();
+        const jsonDaily = await resDailyRaw.json();
         const dailyData = jsonDaily.data || [];
 
         // 2. Ambil Data Karyawan (untuk total)
-        const resEmp = await fetch(`${API_BASE}/karyawan/descriptors`);
-        const jsonEmp = await resEmp.json();
+        const jsonEmp = await resEmpRaw.json();
         const totalEmployees = jsonEmp.descriptors ? jsonEmp.descriptors.length : 0;
 
         // 3. Hitung Statistik Hari Ini
@@ -130,7 +152,7 @@ async function loadOverviewData() {
         document.getElementById('stat-absent').textContent = absentCount;
 
         // 5. Render Grafik
-        renderCharts(presentCount, lateCount, absentCount);
+        renderPieChart(presentCount, lateCount, absentCount);
 
         // 6. Render Recent Activity (New Feature)
         renderRecentActivity(dailyData);
@@ -160,23 +182,20 @@ function renderRecentActivity(data) {
         const limitStr = systemConfig?.batas_telat || '08:25:00';
         const isLate = item.jam_masuk > limitStr;
         const timeClass = isLate 
-            ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' 
-            : 'bg-emerald-50 text-emerald-600 border-emerald-100';
+            ? 'bg-red-100 text-red-700 border-red-200' 
+            : 'bg-emerald-100 text-emerald-700 border-emerald-200';
         
         const html = `
-            <div class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100 group">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 shadow-sm group-hover:from-blue-500 group-hover:to-indigo-600 group-hover:text-white transition-all">
-                    ${item.nama_karyawan.substring(0, 1).toUpperCase()}
+            <div class="flex items-center gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200 hover:bg-white hover:shadow-md hover:border-blue-200 transition-all duration-200 group">
+                <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-sm font-bold text-slate-700 shadow-sm border border-slate-200 group-hover:border-blue-500 group-hover:text-blue-600 transition-colors">
                     ${escapeHtml(item.nama_karyawan).substring(0, 1).toUpperCase()}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">${item.nama_karyawan}</p>
-                    <p class="text-[10px] text-slate-500 truncate">${item.jabatan || 'Staff'}</p>
-                    <p class="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">${escapeHtml(item.nama_karyawan)}</p>
-                    <p class="text-[10px] text-slate-500 truncate">${escapeHtml(item.jabatan || 'Staff')}</p>
+                    <p class="text-sm font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">${escapeHtml(item.nama_karyawan)}</p>
+                    <p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(item.jabatan || 'Staff')}</p>
                 </div>
                 <div class="text-right">
-                    <span class="text-[10px] font-mono font-bold px-2 py-1 rounded border ${timeClass}">${item.jam_masuk}</span>
+                    <span class="text-xs font-mono font-bold px-3 py-1.5 rounded-lg border ${timeClass} shadow-sm block text-center min-w-[80px]">${item.jam_masuk}</span>
                 </div>
             </div>
         `;
@@ -185,9 +204,11 @@ function renderRecentActivity(data) {
 }
 
 // --- DATA LOADER: DAILY ---
-async function loadDailyData() {
+async function loadDailyData(silent = false) {
     const tbody = document.getElementById('table-daily-body');
-    tbody.innerHTML = getSkeletonRows(6, 5); // Tampilkan Skeleton Loading (6 kolom, 5 baris)
+    if (!silent) {
+        tbody.innerHTML = getSkeletonRows(6, 5);
+    }
 
     try {
         const response = await fetch(`${API_BASE}/absensi/harian`);
@@ -242,12 +263,16 @@ async function loadDailyData() {
                         lateMinutes = Math.floor((secondsIn - secondsLimit) / 60);
                     }
                     
-                    statusBadge = isLate 
-                        ? `<span class="px-2 py-1 rounded text-xs font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center w-fit gap-1"><i class="fa-solid fa-clock"></i> Terlambat</span>`
-                        : `<span class="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm flex items-center w-fit gap-1"><i class="fa-solid fa-check"></i> Tepat Waktu</span>`;
+                    // UPDATE: Status "Hadir", Keterlambatan "Terlambat/Tepat Waktu"
+                    statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center w-fit gap-1"><i class="fa-solid fa-check"></i> Hadir</span>`;
                     
-                    lateDisplay = lateMinutes > 0 ? `${lateMinutes} Menit` : '-';
-                    lateClass = lateMinutes > 0 ? 'text-red-600 font-bold' : 'text-slate-500';
+                    if (isLate) {
+                        lateDisplay = `Terlambat (${lateMinutes} Menit)`;
+                        lateClass = 'text-red-600 font-bold';
+                    } else {
+                        lateDisplay = 'Tepat Waktu';
+                        lateClass = 'text-emerald-600 font-bold';
+                    }
                 } else {
                     // Fallback jika data tidak lengkap
                     statusBadge = `<span class="text-slate-400 text-xs">Tidak Ada Data</span>`;
@@ -258,12 +283,9 @@ async function loadDailyData() {
                         <td class="px-6 py-4 font-mono text-blue-600 font-medium">${row.jam_masuk}</td>
                         <td class="px-6 py-4 font-bold text-slate-800 group-hover:text-blue-600 transition">${row.nama_karyawan}</td>
                         <td class="px-6 py-4 text-slate-500 text-sm">${row.jabatan || '-'}</td>
-                        <td class="px-6 py-4 font-bold text-slate-800 group-hover:text-blue-600 transition">${escapeHtml(row.nama_karyawan)}</td>
-                        <td class="px-6 py-4 text-slate-500 text-sm">${escapeHtml(row.jabatan || '-')}</td>
                         <td class="p-5">${statusBadge}</td>
                         <td class="px-6 py-4 ${lateClass} font-mono">${lateDisplay}</td>
                         <td class="px-6 py-4 font-mono text-slate-600">${row.jam_keluar || '<span class="text-slate-400">-</span>'}</td>
-                        <td class="px-6 py-4 text-slate-500 text-sm">-</td>
                     </tr>
                 `;
                 tbody.innerHTML += tr;
@@ -287,10 +309,11 @@ async function loadMonthlyRecap() {
     
     // Header Table
     table.innerHTML = `
-        <thead class="bg-slate-50 text-slate-600 uppercase text-xs font-bold tracking-wider border-b border-slate-200">
+        <thead class="uppercase text-xs font-bold tracking-wider border-b border-slate-200">
             <tr>
                 <th class="px-6 py-4">ID</th>
                 <th class="px-6 py-4">Nama Pegawai</th>
+                <th class="px-6 py-4">Jabatan</th>
                 <th class="px-6 py-4 text-center">Hadir</th>
                 <th class="px-6 py-4 text-center">DL</th>
                 <th class="px-6 py-4 text-center">Alpa</th>
@@ -317,7 +340,7 @@ async function loadMonthlyRecap() {
                     <tr class="hover:bg-blue-50/50 border-b border-slate-100 last:border-0">
                         <td class="px-6 py-4 font-mono text-slate-500">${row.id_karyawan}</td>
                         <td class="px-6 py-4 font-bold text-slate-800">${row.nama}</td>
-                        <td class="px-6 py-4 font-bold text-slate-800">${escapeHtml(row.nama)}</td>
+                        <td class="px-6 py-4 text-sm text-slate-600">${row.jabatan || '-'}</td>
                         <td class="px-6 py-4 text-center">
                             <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
                         </td>
@@ -404,8 +427,6 @@ async function loadPerformanceData() {
                         </div>
                         
                         <div class="relative z-10">
-                            <h3 class="text-lg font-bold text-slate-800 truncate">${emp.nama}</h3>
-                            <p class="text-xs text-slate-500 mb-4 uppercase tracking-wide">${emp.jabatan || 'Staff'} • ID: ${emp.id_karyawan}</p>
                             <h3 class="text-lg font-bold text-slate-800 truncate">${escapeHtml(emp.nama)}</h3>
                             <p class="text-xs text-slate-500 mb-4 uppercase tracking-wide">${escapeHtml(emp.jabatan || 'Staff')} • ID: ${emp.id_karyawan}</p>
                             
@@ -469,25 +490,47 @@ async function loadEmployees() {
                 const photoSrc = emp.foto ? `data:image/jpeg;base64,${emp.foto}` : `https://ui-avatars.com/api/?name=${emp.nama}&background=10b981&color=fff`;
 
                 const card = `
-                    <div class="bg-white shadow-sm p-4 rounded-2xl flex items-center gap-4 hover:bg-blue-50/30 transition group border border-slate-100 hover:border-blue-400 relative pr-24">
-                        <div onclick="openModal('${emp.id_karyawan}')" class="flex items-center gap-4 flex-1 cursor-pointer">
-                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-200 group-hover:border-blue-500 transition shadow-sm">
-                                <img src="${photoSrc}" class="w-full h-full object-cover">
+                    <div class="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 group border border-slate-200 overflow-hidden relative flex flex-col">
+                        <!-- Decorative Top Bar -->
+                        <div class="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+                        
+                        <div class="p-5 flex items-start gap-4">
+                            <!-- Avatar -->
+                            <div onclick="openModal('${emp.id_karyawan}')" class="cursor-pointer relative flex-shrink-0">
+                                <div class="w-16 h-16 rounded-full p-0.5 bg-gradient-to-br from-blue-400 to-purple-500 shadow-md group-hover:scale-105 transition-transform duration-300">
+                                    <img src="${photoSrc}" class="w-full h-full object-cover rounded-full border-2 border-white bg-slate-100">
+                                </div>
                             </div>
+
+                            <!-- Info -->
                             <div class="flex-1 min-w-0">
-                                <h4 class="text-slate-800 font-bold truncate group-hover:text-blue-600 transition">${emp.nama}</h4>
-                                <p class="text-xs text-slate-500 truncate">${emp.jabatan || 'Staff'}</p>
-                                <h4 class="text-slate-800 font-bold truncate group-hover:text-blue-600 transition">${escapeHtml(emp.nama)}</h4>
-                                <p class="text-xs text-slate-500 truncate">${escapeHtml(emp.jabatan || 'Staff')}</p>
-                                <p class="text-[10px] font-mono text-slate-500 mt-1 bg-slate-100 inline-block px-2 py-0.5 rounded">${emp.id_karyawan}</p>
+                                <div class="flex justify-between items-start">
+                                    <div onclick="openModal('${emp.id_karyawan}')" class="cursor-pointer flex-1 min-w-0 mr-2">
+                                        <h4 class="text-slate-800 font-bold truncate text-base group-hover:text-indigo-600 transition-colors" title="${escapeHtml(emp.nama)}">${escapeHtml(emp.nama)}</h4>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wide truncate max-w-full">${escapeHtml(emp.jabatan || 'Staff')}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3 flex items-center justify-between">
+                                    <div class="flex items-center gap-2 text-xs text-slate-500 font-mono bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                                        <i class="fa-solid fa-id-badge text-slate-400"></i>
+                                        <span class="font-bold text-slate-700">${emp.id_karyawan}</span>
+                                    </div>
+                                    
+                                    <!-- Actions -->
+                                    <div class="flex gap-1">
+                                        <button onclick="openEditModal('${emp.id_karyawan}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100" title="Edit">
+                                            <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                        </button>
+                                        <button onclick="deleteEmployee('${emp.id_karyawan}', this.dataset.name)" data-name="${escapeHtml(emp.nama)}" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100" title="Hapus">
+                                            <i class="fa-solid fa-trash text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <button onclick="openEditModal('${emp.id_karyawan}')" class="absolute right-12 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-blue-600 transition p-2 z-10" title="Edit Pegawai">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </button>
-                        <button onclick="deleteEmployee('${emp.id_karyawan}', '${emp.nama}')" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-red-600 transition p-2 z-10" title="Hapus Pegawai">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
                     </div>
                 `;
                 grid.innerHTML += card;
@@ -520,11 +563,12 @@ async function deleteEmployee(id, nama) {
             // Refresh data
             loadEmployees();
             loadOverviewData(); // Update statistik total pegawai
+            showToast('Pegawai berhasil dihapus', 'success');
         } else {
-            alert(`Gagal menghapus: ${result.message}`);
+            showToast(`Gagal menghapus: ${result.message}`, 'error');
         }
     } catch(e) {
-        alert(`Error: ${e.message}`);
+        showToast(`Error: ${e.message}`, 'error');
     }
 }
 
@@ -573,15 +617,15 @@ async function updateEmployee() {
         const result = await response.json();
 
         if (result.success) {
-            alert('Data berhasil diperbarui!');
+            showToast('Data berhasil diperbarui!', 'success');
             closeEditModal();
             loadEmployees(); // Refresh list
             loadOverviewData(); // Refresh stats if needed
         } else {
-            alert(`Gagal memperbarui: ${result.message}`);
+            showToast(`Gagal memperbarui: ${result.message}`, 'error');
         }
     } catch (e) {
-        alert(`Error: ${e.message}`);
+        showToast(`Error: ${e.message}`, 'error');
     }
 }
 
@@ -591,6 +635,22 @@ async function openManualModal() {
     const content = document.getElementById('modal-manual-content');
     const select = document.getElementById('manual-emp-select');
     
+    // --- LOGIKA UI: Show/Hide Input Waktu Manual ---
+    const typeSelect = document.getElementById('manual-type');
+    const timeContainer = document.getElementById('manual-time-container');
+    
+    if (typeSelect && timeContainer) {
+        typeSelect.onchange = function() {
+            if (this.value === 'HADIR_MANUAL') {
+                timeContainer.classList.remove('hidden');
+            } else {
+                timeContainer.classList.add('hidden');
+            }
+        };
+        // Trigger saat modal dibuka untuk reset state
+        typeSelect.onchange();
+    }
+
     // Set tanggal hari ini sebagai default
     document.getElementById('manual-date').valueAsDate = new Date();
 
@@ -637,46 +697,52 @@ async function submitManualStatus() {
     const status = document.getElementById('manual-type').value;
     const keterangan = document.getElementById('manual-desc').value;
     const tanggal = document.getElementById('manual-date').value;
+    
+    // Ambil data waktu manual (jika ada)
+    const jam_masuk = document.getElementById('manual-jam-masuk')?.value;
+    const jam_keluar = document.getElementById('manual-jam-keluar')?.value;
 
     if (!id_karyawan || !tanggal) {
-        alert("Mohon pilih pegawai dan tanggal.");
+        showToast("Mohon pilih pegawai dan tanggal.", 'warning');
+        return;
+    }
+
+    if (status === 'HADIR_MANUAL' && !jam_masuk) {
+        showToast("Untuk Masuk Normal, Jam Masuk wajib diisi.", 'warning');
         return;
     }
 
     // Simulasi Kirim ke API (Anda perlu membuat endpoint ini di backend)
-    // POST /api/absensi/manual { id_karyawan, status, keterangan, tanggal }
+    // POST /api/absensi/manual { id_karyawan, status, keterangan, tanggal, jam_masuk, jam_keluar }
     try {
         const response = await fetch(`${API_BASE}/absensi/manual`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_karyawan, status, keterangan, tanggal })
+            body: JSON.stringify({ id_karyawan, status, keterangan, tanggal, jam_masuk, jam_keluar })
         });
         
-        // Handle response (Mocking success for UI demo)
-        // Jika backend belum ada, ini akan error 404, tapi UI sudah siap.
-        if (response.ok) {
-            alert("Status berhasil disimpan!");
+        // Parse JSON response untuk melihat status sukses/gagal dari server
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            showToast("Status berhasil disimpan!", 'success');
             closeManualModal();
             loadDailyData(); // Refresh tabel
         } else {
-            // Fallback untuk demo jika API belum ready
-            console.warn("API endpoint /absensi/manual belum tersedia.");
-            alert("Data terkirim (Simulasi). Pastikan backend memiliki endpoint '/api/absensi/manual'.");
-            closeManualModal();
+            // Tampilkan pesan error asli dari server
+            showToast(`Gagal menyimpan: ${result.message}`, 'error');
         }
     } catch (e) {
-        alert("Error koneksi ke server: " + e.message);
+        showToast("Error koneksi: " + e.message, 'error');
     }
 }
 
-// --- CHART RENDERER ---
-function renderCharts(present, late, absent) {
+// --- CHART RENDERER: PIE CHART ---
+function renderPieChart(present, late, absent) {
     const ctxPie = document.getElementById('pieChart').getContext('2d');
-    const ctxLine = document.getElementById('attendanceChart').getContext('2d');
 
     // Destroy old instances if exist
     if (pieChartInstance) pieChartInstance.destroy();
-    if (attendanceChartInstance) attendanceChartInstance.destroy();
 
     // 1. Pie Chart (Komposisi Hari Ini)
     pieChartInstance = new Chart(ctxPie, {
@@ -692,19 +758,64 @@ function renderCharts(present, late, absent) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { color: '#64748b', font: {family: 'Inter'} } } }
+            plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, color: '#64748b', font: {family: 'Inter', size: 11} } } }
         }
     });
+}
 
-    // 2. Line Chart (Dummy Trend - Idealnya ambil data 7 hari ke belakang dari DB)
-    // Karena API history 7 hari belum ada, kita buat simulasi statis agar UI tidak kosong
+// --- CHART RENDERER: LINE CHART (DYNAMIC) ---
+async function updateChartFilter() {
+    const start = document.getElementById('chart-start').value;
+    const end = document.getElementById('chart-end').value;
+    
+    if(!start || !end) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/stats/daily-range?start=${start}&end=${end}`);
+        
+        // Handle jika endpoint belum ada (404) atau error server (500)
+        if (!response.ok) {
+            console.warn(`⚠️ Gagal mengambil data grafik (${response.status}). Pastikan server.js sudah direstart.`);
+            showToast('Gagal memuat grafik. Mohon restart server.js', 'warning');
+            return;
+        }
+
+        const result = await response.json();
+        
+        if(result.success) {
+            updateLineChartData(result.data);
+        }
+    } catch(e) {
+        console.error("Error fetching chart data:", e);
+    }
+}
+
+function updateLineChartData(data) {
+    if (!attendanceChartInstance) return;
+
+    const labels = data.map(d => {
+        const date = new Date(d.tanggal);
+        return date.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+    });
+    const presenceData = data.map(d => d.total_hadir);
+
+    attendanceChartInstance.data.labels = labels;
+    attendanceChartInstance.data.datasets[0].data = presenceData;
+    attendanceChartInstance.update();
+}
+
+function initLineChart() {
+    const ctxLine = document.getElementById('attendanceChart').getContext('2d');
+    
+    if (attendanceChartInstance) attendanceChartInstance.destroy();
+
     attendanceChartInstance = new Chart(ctxLine, {
         type: 'line',
         data: {
-            labels: ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Hari Ini'],
+            labels: [], // Init kosong
             datasets: [{
-                label: 'Tingkat Kehadiran (%)',
-                data: [85, 90, 88, 92, 80, 75, ((present / (present + absent)) * 100) || 0],
+                label: 'Total Hadir',
+                data: [],
                 borderColor: '#3b82f6', // Blue 500
                 backgroundColor: (context) => {
                     const ctx = context.chart.ctx;
@@ -727,10 +838,16 @@ function renderCharts(present, late, absent) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true, max: 100, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b', font: {family: 'Inter'} } },
-                x: { grid: { display: false }, ticks: { color: '#64748b', font: {family: 'Inter'} } }
+                y: { beginAtZero: true, grid: { borderDash: [4, 4], color: '#f1f5f9' }, ticks: { color: '#94a3b8', font: {family: 'Inter', size: 10}, stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8', font: {family: 'Inter', size: 10} } }
             },
-            plugins: { legend: { display: false } }
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                }
+            }
         }
     });
 }
@@ -945,20 +1062,6 @@ function changeTheme(colorName) {
     const selected = colors[colorName];
     if (!selected) return;
 
-    // Ganti semua class warna di body
-    const bodyHtml = document.body.innerHTML;
-    // Regex sederhana untuk mengganti emerald/green dengan warna baru
-    // Catatan: Ini metode brute-force untuk demo tanpa build tools.
-    // Di production sebaiknya gunakan CSS Variables.
-    let newHtml = bodyHtml.replace(/emerald/g, selected.main).replace(/green/g, selected.sec);
-    document.body.innerHTML = newHtml;
-    
-    // Re-attach listeners karena innerHTML mereset DOM
-    document.addEventListener('DOMContentLoaded', () => {}); // Dummy
-    // Perlu reload chart dan event listener manual atau refresh halaman
-    // Untuk kestabilan demo ini, kita simpan ke localStorage dan reload
-    // FIX: Jangan gunakan innerHTML replace pada body karena akan menghancurkan Event Listeners.
-    // Cukup simpan ke localStorage dan reload halaman agar logika "Apply theme on load" bekerja.
     localStorage.setItem('theme', colorName);
     location.reload(); 
 }
@@ -968,4 +1071,77 @@ const savedTheme = localStorage.getItem('theme');
 if (savedTheme && savedTheme !== 'emerald') {
     // Logic replace sederhana saat load agar tidak flash
     // (Implementasi ideal butuh CSS variables, tapi untuk sekarang kita biarkan default emerald dulu)
+}
+
+// --- HELPER: TOAST NOTIFICATION (PROFESSIONAL) ---
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    
+    // Warna berdasarkan tipe
+    let bgClass = 'bg-white';
+    let borderClass = 'border-l-4 border-blue-500';
+    let icon = '<i class="fa-solid fa-circle-info text-blue-500"></i>';
+
+    if (type === 'success') {
+        borderClass = 'border-l-4 border-emerald-500';
+        icon = '<i class="fa-solid fa-circle-check text-emerald-500"></i>';
+    } else if (type === 'error') {
+        borderClass = 'border-l-4 border-rose-500';
+        icon = '<i class="fa-solid fa-circle-xmark text-rose-500"></i>';
+    } else if (type === 'warning') {
+        borderClass = 'border-l-4 border-amber-500';
+        icon = '<i class="fa-solid fa-triangle-exclamation text-amber-500"></i>';
+    }
+
+    toast.className = `flex items-center gap-3 p-4 rounded shadow-lg border border-slate-100 ${bgClass} ${borderClass} transform transition-all duration-300 translate-x-full opacity-0 min-w-[300px]`;
+    toast.innerHTML = `
+        <div class="text-lg">${icon}</div>
+        <div class="text-sm font-medium text-slate-700">${message}</div>
+    `;
+
+    container.appendChild(toast);
+
+    // Animate In
+    requestAnimationFrame(() => {
+        toast.classList.remove('translate-x-full', 'opacity-0');
+    });
+
+    // Remove after 3s
+    setTimeout(() => {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// --- HELPER: TABLE SORTING ---
+function sortTable(tableBodyId, colIndex) {
+    const tbody = document.getElementById(tableBodyId);
+    const rows = Array.from(tbody.rows);
+    const isAsc = tbody.getAttribute('data-order') === 'asc';
+    
+    rows.sort((a, b) => {
+        const aText = a.cells[colIndex].innerText.toLowerCase();
+        const bText = b.cells[colIndex].innerText.toLowerCase();
+        return isAsc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+    });
+
+    tbody.setAttribute('data-order', isAsc ? 'desc' : 'asc');
+    tbody.innerHTML = '';
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+// --- HELPER: TABLE FILTERING ---
+function filterTable(tableBodyId, inputId) {
+    const input = document.getElementById(inputId);
+    const filter = input.value.toLowerCase();
+    const tbody = document.getElementById(tableBodyId);
+    const rows = tbody.getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        const text = rows[i].textContent.toLowerCase();
+        rows[i].style.display = text.indexOf(filter) > -1 ? "" : "none";
+    }
 }

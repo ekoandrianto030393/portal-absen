@@ -38,10 +38,10 @@ app.use((req, res, next) => {
 // Konfigurasi Database menggunakan POOL (Lebih stabil daripada createConnection)
 // Pool akan otomatis menyambung ulang jika koneksi putus (wait_timeout)
 const pool = mysql.createPool({
-    host: '127.0.0.1', // Gunakan IP 127.0.0.1 agar lebih stabil di Windows
-    user: 'root',
-    password: '',      // Default XAMPP kosong
-    database: 'biometrik_absensi_wajah_db',
+    host: process.env.DB_HOST || '127.0.0.1',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'biometrik_absensi_wajah_db',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -59,6 +59,7 @@ pool.getConnection((err, connection) => {
         console.log(`   - Potongan Lupa Pulang: ${POTONGAN_LUPA_PULANG} Jam`);
         console.log(`   - Auto Pulang Default: ${AUTO_PULANG_DEFAULT}`);
         console.log(`   - Jam Pulang Jumat: ${JAM_PULANG_JUMAT}`);
+        console.log(`   - Fitur Grafik: /api/stats/daily-range (Aktif)`);
         
         // --- SINKRONISASI SKEMA DATABASE (Berdasarkan skema_final.sql) ---
         
@@ -456,29 +457,129 @@ app.post('/api/absensi', (req, res) => {
 
 // Endpoint: Input Manual Absensi (Dinas Luar / Izin / Sakit)
 app.post('/api/absensi/manual', (req, res) => {
-    const { id_karyawan, status, keterangan, tanggal } = req.body;
+    const { id_karyawan, status, keterangan, tanggal, jam_masuk, jam_keluar } = req.body;
 
     if (!id_karyawan || !status || !tanggal) {
         return res.status(400).json({ success: false, message: 'Data tidak lengkap (ID, Status, Tanggal wajib diisi)' });
     }
 
     // Tentukan jam masuk/keluar otomatis jika DL agar terhitung jam kerja & tidak alpa
-    let jamMasuk = null;
-    let jamKeluar = null;
+    let finalJamMasuk = null;
+    let finalJamKeluar = null;
+    let finalStatus = status;
 
     if (status === 'DL') {
-        jamMasuk = JAM_KERJA_MULAI;  // Isi jam masuk default (misal 08:00)
-        jamKeluar = JAM_PULANG_START; // Isi jam pulang default (misal 16:00)
+        finalJamMasuk = JAM_KERJA_MULAI;  // Isi jam masuk default (misal 08:00)
+        finalJamKeluar = JAM_PULANG_START; // Isi jam pulang default (misal 16:00)
+    } else if (status === 'HADIR_MANUAL') {
+        finalJamMasuk = jam_masuk || null;
+        finalJamKeluar = jam_keluar || null;
+        finalStatus = 'HADIR'; // Simpan sebagai HADIR agar dihitung normal di rekap
     }
 
-    const sql = `INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, jam_keluar, status) 
-                 VALUES (?, ?, ?, ?, ?)
+    // UPDATE: Tambahkan kolom keterangan ke query INSERT
+    const sql = `INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan) 
+                 VALUES (?, ?, ?, ?, ?, ?)
                  ON DUPLICATE KEY UPDATE 
-                 jam_masuk = VALUES(jam_masuk), jam_keluar = VALUES(jam_keluar), status = VALUES(status)`;
+                 jam_masuk = VALUES(jam_masuk), jam_keluar = VALUES(jam_keluar), status = VALUES(status), keterangan = VALUES(keterangan)`;
 
-    pool.query(sql, [id_karyawan, tanggal, jamMasuk, jamKeluar, status], (err, result) => {
+    pool.query(sql, [id_karyawan, tanggal, finalJamMasuk, finalJamKeluar, finalStatus, keterangan], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, message: 'Data manual berhasil disimpan.' });
+    });
+});
+
+// --- API ENDPOINTS KHUSUS MONITORING (monitor.html) ---
+
+// 1. Get All Periodes (Untuk Filter Dropdown)
+app.get('/api/rekap_all_periodes', (req, res) => {
+    const sql = "SELECT DISTINCT DATE_FORMAT(tanggal, '%Y-%m') as periode_bulan FROM absensi ORDER BY periode_bulan DESC";
+    pool.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, data: results });
+    });
+});
+
+// 2. Monitoring: Lupa Pulang
+app.get('/api/monitoring/lupa_pulang', (req, res) => {
+    const { tanggal, periode } = req.query;
+    // Query dasar
+    let sql = `SELECT k.id_karyawan, k.nama, 1 as total_kasus 
+               FROM absensi a JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
+               WHERE ((a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR a.keterangan LIKE '%Lupa Absen Pulang%')`;
+    
+    const params = [];
+    if (tanggal) {
+        sql += " AND a.tanggal = ?";
+        params.push(tanggal);
+    } else if (periode) {
+        // Jika bulanan, hitung total kasus per orang
+        sql = `SELECT k.id_karyawan, k.nama, COUNT(*) as total_kasus 
+               FROM absensi a JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
+               WHERE ((a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR a.keterangan LIKE '%Lupa Absen Pulang%')
+               AND DATE_FORMAT(a.tanggal, '%Y-%m') = ?
+               GROUP BY k.id_karyawan, k.nama HAVING total_kasus > 0 ORDER BY total_kasus DESC`;
+        params.push(periode);
+    }
+    
+    pool.query(sql, params, (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, data: results });
+    });
+});
+
+// 3. Monitoring: Terlambat Lengkap (Masuk Telat tapi Pulang)
+app.get('/api/monitoring/terlambat_lengkap', (req, res) => {
+    const { tanggal, periode } = req.query;
+    let whereClause = `WHERE a.jam_masuk > '${BATAS_TELAT}' AND a.jam_keluar IS NOT NULL`;
+    let params = [];
+
+    if (tanggal) { whereClause += " AND a.tanggal = ?"; params.push(tanggal); }
+    if (periode) { whereClause += " AND DATE_FORMAT(a.tanggal, '%Y-%m') = ?"; params.push(periode); }
+
+    let sql = `SELECT k.id_karyawan, k.nama, ${periode ? 'COUNT(*) as total_kasus' : '1 as total_kasus'}
+               FROM absensi a JOIN karyawan k ON a.id_karyawan = k.id_karyawan ${whereClause}
+               ${periode ? 'GROUP BY k.id_karyawan, k.nama HAVING total_kasus > 0 ORDER BY total_kasus DESC' : ''}`;
+
+    pool.query(sql, params, (err, results) => res.json({ success: true, data: results }));
+});
+
+// 4. Monitoring: Terlambat & Lupa Pulang (Kasus Berat)
+app.get('/api/monitoring/terlambat_lupa', (req, res) => {
+    const { tanggal, periode } = req.query;
+    let whereClause = `WHERE a.jam_masuk > '${BATAS_TELAT}' AND ((a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR a.keterangan LIKE '%Lupa Absen Pulang%')`;
+    let params = [];
+
+    if (tanggal) { whereClause += " AND a.tanggal = ?"; params.push(tanggal); }
+    if (periode) { whereClause += " AND DATE_FORMAT(a.tanggal, '%Y-%m') = ?"; params.push(periode); }
+
+    let sql = `SELECT k.id_karyawan, k.nama, ${periode ? 'COUNT(*) as total_kasus' : '1 as total_kasus'}
+               FROM absensi a JOIN karyawan k ON a.id_karyawan = k.id_karyawan ${whereClause}
+               ${periode ? 'GROUP BY k.id_karyawan, k.nama HAVING total_kasus > 0 ORDER BY total_kasus DESC' : ''}`;
+
+    pool.query(sql, params, (err, results) => res.json({ success: true, data: results }));
+});
+
+// [NEW] Endpoint: Statistik Harian per Rentang Tanggal (Untuk Grafik)
+app.get('/api/stats/daily-range', (req, res) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ success: false, message: 'Start and End date required' });
+
+    // Query untuk menghitung hadir dan telat per tanggal
+    const sql = `
+        SELECT 
+            tanggal, 
+            COUNT(*) as total_hadir,
+            SUM(CASE WHEN jam_masuk > ? AND status NOT IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END) as total_telat
+        FROM absensi 
+        WHERE tanggal BETWEEN ? AND ?
+        GROUP BY tanggal
+        ORDER BY tanggal ASC
+    `;
+    
+    pool.query(sql, [BATAS_TELAT, start, end], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, data: results });
     });
 });
 

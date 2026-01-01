@@ -36,6 +36,40 @@ module.exports = (pool) => {
 
                 if (!dataAbsen.jam_keluar) {
                     // --- LOGIKA CHECK-OUT ---
+                    
+                    // [NEW] Cek Jam Pulang dari .env
+                    const jamPulangStart = process.env.JAM_PULANG_START;
+                    if (jamPulangStart) {
+                        // Logika shift malam (Start 19:30, Pulang 00:20)
+                        // Jika jamPulangStart kecil (misal < 08:00), anggap shift lintas hari
+                        const isNightShift = jamPulangStart < '08:00:00';
+                        
+                        let isTooEarly = false;
+                        if (isNightShift) {
+                            // Terlalu awal jika:
+                            // 1. Masih hari sebelumnya (jam besar, misal 23:50)
+                            // 2. Sudah hari berikutnya tapi belum jam pulang (misal 00:10)
+                            // Asumsi batas hari sebelumnya adalah > 12:00 siang
+                            if (now > '12:00:00' || now < jamPulangStart) {
+                                isTooEarly = true;
+                            }
+                        } else {
+                            // Shift normal (pagi-sore), jam pulang > jam masuk
+                            if (now < jamPulangStart) {
+                                isTooEarly = true;
+                            }
+                        }
+
+                        if (isTooEarly) {
+                             return res.json({ 
+                                success: false, 
+                                result_code: 'TOO_EARLY_OUT',
+                                message: `Belum waktunya pulang. Jam pulang mulai: ${jamPulangStart}`,
+                                nama, jabatan, statusColor: 'yellow' 
+                            });
+                        }
+                    }
+
                     await pool.query('UPDATE absensi SET jam_keluar = ? WHERE id_absensi = ?', [now, dataAbsen.id_absensi]);
                     
                     return res.json({ 

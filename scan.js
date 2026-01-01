@@ -169,7 +169,7 @@ const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
 const HEADER_COLOR = '#00FFFF'; 
 const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(204,133,0,0.95) 100%)'; 
 const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(0,255,127,0.8) 0%, rgba(0,100,0,0.95) 100%)';
-const AGENCY_NAME = 'PUSKESMASWANA'; // Nama Instansi Global
+const AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
 
 // --- NEW FEATURE: DYNAMIC SYSTEM THEME ---
 function setSystemTheme(status) {
@@ -927,32 +927,72 @@ function animateTitle() {
 updateClock(); // Start loop animasi jam (requestAnimationFrame)
 
 // --- NEW: PERSONNEL ROSTER ---
+let rosterScrollInterval = null; // Variabel kontrol animasi scroll
+
 function populatePersonnelRoster() {
     if (!personnelRoster || Object.keys(employeeMap).length === 0) {
         if(personnelRoster) personnelRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">No personnel data found in database.</div>';
         return;
     }
 
-    personnelRoster.innerHTML = ''; // Kosongkan daftar
+    // Reset & Stop animasi lama
+    if (rosterScrollInterval) cancelAnimationFrame(rosterScrollInterval);
+    personnelRoster.innerHTML = ''; 
+    personnelRoster.style.overflow = 'hidden'; // Sembunyikan scrollbar native
+    personnelRoster.style.position = 'relative';
+
+    // Wrapper untuk konten
+    const contentWrapper = document.createElement('div');
+    contentWrapper.style.width = '100%';
 
     // Ambil data dari employeeMap, urutkan berdasarkan nama
     const sortedEmployees = Object.values(employeeMap).sort((a, b) => a.nama.localeCompare(b.nama));
 
-    sortedEmployees.forEach(emp => {
+    // Helper buat baris
+    const createRow = (emp) => {
         const item = document.createElement('div');
-        item.className = 'flex items-center gap-3 p-1.5 border-b border-cyan-900/20 hover:bg-cyan-500/10 transition-colors duration-200 cursor-pointer';
+        item.className = 'flex items-center gap-4 p-2.5 border-b border-cyan-500/30 hover:bg-cyan-500/20 transition-colors duration-200 cursor-pointer';
         item.dataset.name = emp.nama.toLowerCase(); // Simpan nama untuk search
 
         item.innerHTML = `
-            <img src="data:image/jpeg;base64,${emp.foto}" class="w-9 h-9 rounded-full object-cover border border-cyan-800/50 flex-shrink-0">
+            <img src="data:image/jpeg;base64,${emp.foto}" class="w-10 h-10 rounded-full object-cover border border-cyan-400/60 shadow-[0_0_5px_rgba(0,255,255,0.4)] flex-shrink-0 bg-gray-900">
             <div class="flex-grow overflow-hidden">
-                <p class="font-bold text-xs text-cyan-300 truncate" title="${emp.nama}">${emp.nama}</p>
-                <p class="text-[10px] text-gray-400 truncate" title="${emp.jabatan}">${emp.jabatan}</p>
+                <p class="font-bold text-sm text-white tracking-wide truncate drop-shadow-md leading-tight" title="${emp.nama}">${emp.nama}</p>
+                <p class="text-[11px] text-cyan-200/80 truncate font-mono mt-0.5" title="${emp.jabatan}">${emp.jabatan}</p>
             </div>
-            <div class="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_4px_#00FF00] flex-shrink-0" title="Registered & Online"></div>
+            <div class="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_5px_#00FF00] flex-shrink-0 animate-pulse" title="Registered & Online"></div>
         `;
-        personnelRoster.appendChild(item);
-    });
+        return item;
+    };
+
+    // 1. Masukkan data asli
+    sortedEmployees.forEach(emp => contentWrapper.appendChild(createRow(emp)));
+    personnelRoster.appendChild(contentWrapper);
+
+    // 2. Cek apakah perlu scroll (Konten lebih tinggi dari container)
+    if (contentWrapper.offsetHeight > personnelRoster.clientHeight) {
+        // Duplikasi konten untuk efek looping seamless
+        sortedEmployees.forEach(emp => contentWrapper.appendChild(createRow(emp)));
+        
+        let scrollPos = 0;
+        const speed = 0.5; // Kecepatan scroll (pixel per frame)
+
+        const animateScroll = () => {
+            scrollPos += speed;
+            // Reset jika sudah mencapai setengah (akhir data asli)
+            if (scrollPos >= contentWrapper.scrollHeight / 2) {
+                scrollPos = 0;
+            }
+            personnelRoster.scrollTop = scrollPos;
+            rosterScrollInterval = requestAnimationFrame(animateScroll);
+        };
+
+        animateScroll();
+
+        // Pause saat mouse hover agar user bisa klik/baca
+        personnelRoster.addEventListener('mouseenter', () => cancelAnimationFrame(rosterScrollInterval));
+        personnelRoster.addEventListener('mouseleave', () => animateScroll());
+    }
 }
 
 
@@ -1249,7 +1289,7 @@ async function detectFace() {
     
     const displaySize = { width: canvas.width, height: canvas.height };
 
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.5 }))
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.85 }))
 	.withFaceLandmarks()
         .withFaceDescriptor();
 
@@ -1551,41 +1591,48 @@ async function processAttendance(karyawanId) {
 
         } else {
             // Gagal atau Peringatan
-            const isWarning = statusColor === 'yellow';
-
-            SoundFX.play('error');
-            // Panggil nama dalam notifikasi suara
-            SoundFX.speak(isWarning ? `Notice, ${display_name}` : `Access Denied, ${display_name}`);
-            triggerScreenFlash(isWarning ? '#FFD700' : '#FF0055');
-            setSystemTheme('ERROR'); // Theme Red
-
-            setStatusVisual(cleanMessage, isWarning ? 'text-amber-500' : 'text-red-500');
-            userStatusDisplay.textContent = isWarning ? 'NOTICE' : 'DENIED';
-            userStatusDisplay.className = 'text-lg font-bold ' + (isWarning ? 'text-amber-500' : 'text-red-500');
+            let isWarning = statusColor === 'yellow';
 
             // --- UPDATE: Penanganan Overlay Spesifik Berdasarkan Kode Server ---
             switch (result.result_code) {
                 case 'OUT_OF_TIME_IN':
                     finalStatusText = 'DILUAR JAM MASUK';
                     // Pesan dari server sudah mengandung jam dari .env (misal: "Waktu diizinkan: 07:00 s/d 11:00")
-                    finalMessageHTML = `<span style="color:#FF0055;">${cleanMessage}</span>`; 
+                    finalMessageHTML = `${coloredName}, <span style="color:#FF0055;">${cleanMessage}</span>`; 
                     break;
                 case 'TOO_EARLY_OUT':
-                    finalStatusText = 'PULANG TERLALU AWAL';
-                    finalMessageHTML = `<span style="color:#FFD700;">${cleanMessage}</span>`;
+                    isWarning = false; // FORCE ERROR (RED) agar terlihat benar-benar ditolak
+                    finalStatusText = 'ACCESS DENIED (TOO EARLY)';
+                    finalMessageHTML = `
+                        <div style="border: 1px solid #FF0055; background: rgba(255, 0, 85, 0.1); padding: 10px; border-radius: 8px;">
+                            <div style="margin-bottom:5px; font-size:1.2em;">${coloredName}</div>
+                            <div style="color:#FF0055; font-weight:bold; font-size:1.1em; margin-bottom:5px;">${cleanMessage}</div>
+                            <div style="color:#AAA; font-size:0.8em;">Absensi Pulang DITOLAK. Harap tunggu hingga jam pulang.</div>
+                        </div>
+                    `;
                     break;
                 case 'ALREADY_CHECKED_IN':
                     finalStatusText = 'MOHON TUNGGU'; // Cooldown
-                    finalMessageHTML = cleanMessage;
+                    finalMessageHTML = `${coloredName}, ${cleanMessage}`;
                     break;
                 case 'ALREADY_CHECKED_OUT':
-                    finalStatusText = 'SUDAH PULANG';
+                    finalStatusText = 'ANDA SUDAH ABSEN PULANG HARI INI';
                     finalMessageHTML = `${coloredName}, ${cleanMessage}`;
                     break;
                 default:
                     finalStatusText = isWarning ? 'PERINGATAN' : 'ACCESS DENIED';
                     finalMessageHTML = `${coloredName} | ${cleanMessage}`;
             }
+
+            // VISUAL UPDATES (Dipindahkan ke sini agar override isWarning di switch berlaku)
+            SoundFX.play('error');
+            SoundFX.speak(isWarning ? `Notice, ${display_name}` : `Access Denied, ${display_name}`);
+            triggerScreenFlash(isWarning ? '#FFD700' : '#FF0055');
+            setSystemTheme('ERROR'); 
+
+            setStatusVisual(`${display_name}: ${cleanMessage}`, isWarning ? 'text-amber-500' : 'text-red-500');
+            userStatusDisplay.textContent = isWarning ? 'NOTICE' : 'DENIED';
+            userStatusDisplay.className = 'text-lg font-bold ' + (isWarning ? 'text-amber-500' : 'text-red-500');
 
             // Background: Kuning untuk Warning (Waktu), Merah untuk Error (Wajah Tidak Dikenal)
             finalBackground = isWarning 
