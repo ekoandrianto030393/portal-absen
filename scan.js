@@ -13,6 +13,7 @@ const successOverlay = document.getElementById('successOverlay');
 const userIdDisplay = document.getElementById('userIdDisplay');
 const userStatusDisplay = document.getElementById('userStatusDisplay');
 const lastActionDisplay = document.getElementById('lastActionDisplay');
+const userEmotionDisplay = document.getElementById('userEmotionDisplay'); // NEW: Emotion Display
 const userPhotoDisplay = document.getElementById('userPhotoDisplay'); 
 const photoContainer = document.getElementById('photoContainer'); // Container foto untuk efek scan
 const userJabatanDisplay = document.getElementById('userJabatanDisplay');
@@ -55,6 +56,9 @@ let targetLabel = '';
 let currentDisplayLabel = '';
 let decryptionFrame = 0;
 let isStealthMode = false; // Default: Suara Aktif
+let confidenceHistory = []; // Untuk grafik live
+let recognition; // Variabel untuk Voice Recognition
+let faceParticles = []; // NEW: Global particle array
 
 // --- AUDIO & VOICE ENGINE (WEB AUDIO API) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -115,6 +119,19 @@ const SoundFX = {
             gain.gain.linearRampToValueAtTime(0, now + 0.3);
             osc.start(now);
             osc.stop(now + 0.3);
+        } else if (type === 'type') {
+            // NEW: Mechanical Key Click / Data Tick
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800 + Math.random() * 200, now);
+            gain.gain.setValueAtTime(0.03, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+            osc.start(now);
+            osc.stop(now + 0.03);
         }
     },
     speak: (text) => {
@@ -197,6 +214,60 @@ function setSystemTheme(status) {
     if (window.update3DTheme) window.update3DTheme(status);
 }
 
+// --- NEW FEATURE: SENSOR VISION MODES ---
+window.setVisionMode = (mode) => {
+    const v = document.getElementById('videoElement');
+    if(!v) return;
+    
+    // Reset filters
+    v.style.filter = 'none';
+    
+    if(mode === 'thermal') {
+        v.style.filter = 'url(#thermal-filter) contrast(1.2) saturate(1.5)';
+        logSystem('SENSOR: THERMAL OPTICS ENGAGED', 'text-red-500');
+    } else if (mode === 'night') {
+        v.style.filter = 'url(#night-vision) brightness(1.2) contrast(1.1)';
+        logSystem('SENSOR: NIGHT VISION ENGAGED', 'text-green-500');
+    } else {
+        logSystem('SENSOR: STANDARD OPTICS RESTORED', 'text-cyan-500');
+    }
+    SoundFX.play('comms_open');
+};
+
+// --- FITUR BARU: VOICE COMMAND SYSTEM (JARVIS STYLE) ---
+function initVoiceCommands() {
+    if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
+        logSystem("Voice Module: Not Supported by Browser", "text-gray-500");
+        return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.lang = 'en-US'; // Deteksi Bahasa Inggris (Lebih akurat untuk command teknis)
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+        const last = event.results.length - 1;
+        const command = event.results[last][0].transcript.trim().toLowerCase();
+        logSystem(`VOICE CMD: "${command}"`, "text-purple-400");
+        
+        // Logika Perintah
+        if (command.includes('thermal')) setVisionMode('thermal');
+        else if (command.includes('night') || command.includes('vision')) setVisionMode('night');
+        else if (command.includes('optical') || command.includes('normal') || command.includes('reset')) setVisionMode('normal');
+        else if (command.includes('status') || command.includes('report')) SoundFX.speak('System Nominal. Database Online.');
+        else if (command.includes('admin') || command.includes('override')) toggleAdminPanel();
+        else if (command.includes('stealth') || command.includes('silent')) document.getElementById('stealthToggle').click();
+    };
+
+    recognition.onend = () => { if(isDetectionActive) recognition.start(); }; // Auto restart
+    
+    try { recognition.start(); logSystem("Voice Command: LISTENING...", "text-purple-400"); } 
+    catch(e) { console.warn("Voice start error", e); }
+}
+
 // =============================================================================
 // 1. MESIN RENDERING VISUAL CANVAS (DRAWING Face-API)
 // =============================================================================
@@ -230,20 +301,44 @@ function drawTechBracket(ctx, x, y, w, h, color) {
 
 function drawHolographicMesh(ctx, landmarks) {
     const points = landmarks.positions;
+    const time = Date.now() / 1000;
     
-    // Efek Denyut (Pulse) pada Mesh
-    const time = Date.now() / 500;
-    const alpha = 0.1 + 0.15 * Math.abs(Math.sin(time)); // Lebih transparan agar tidak menghalangi wajah
+    ctx.save();
+    
+    // 1. TRIANGULATION MESH (Low Poly Cyber Look)
+    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.05)';
+    
+    // Helper: Draw Triangle
+    const tri = (i, j, k) => {
+        ctx.beginPath();
+        ctx.moveTo(points[i].x, points[i].y);
+        ctx.lineTo(points[j].x, points[j].y);
+        ctx.lineTo(points[k].x, points[k].y);
+        ctx.closePath();
+        ctx.stroke();
+        // Occasional Glitch Fill
+        if (Math.random() > 0.98) {
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
+            ctx.fill();
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.05)'; // Reset
+        }
+    };
 
+    // Manual Triangulation for key areas (Nose, Eyes, Cheeks, Chin)
+    tri(27, 31, 28); tri(28, 31, 35); tri(28, 35, 29); tri(29, 35, 30); // Nose
+    tri(21, 22, 27); tri(17, 36, 21); tri(22, 42, 26); // Forehead/Eyes
+    tri(31, 2, 48); tri(35, 14, 54); // Cheeks
+    tri(48, 57, 54); tri(57, 8, 54); tri(57, 48, 8); // Chin
+
+    // 2. REGION LINES (Original Logic kept for outline)
     ctx.lineWidth = 1;
-    ctx.strokeStyle = `rgba(0, 255, 255, ${alpha + 0.1})`; // Cyan Pulse
-    ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.1})`;
-
+    ctx.strokeStyle = `rgba(0, 255, 255, 0.4)`;
     const regions = [
         [0, 16, false], [17, 21, false], [22, 26, false], [27, 30, false],
         [31, 35, false], [36, 41, true], [42, 47, true], [48, 59, true], [60, 67, true]
     ];
-
     ctx.beginPath();
     regions.forEach(region => {
         const start = region[0];
@@ -254,7 +349,72 @@ function drawHolographicMesh(ctx, landmarks) {
         if (isLoop) ctx.lineTo(points[start].x, points[start].y);
     });
     ctx.stroke();
-    ctx.fill();
+
+    // 3. GLOWING NODES
+    ctx.fillStyle = '#00FFFF';
+    for (let i = 0; i < points.length; i++) {
+        if (i % 2 !== 0) continue; 
+        const pt = points[i];
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 1.2, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(time * 10 + i);
+        ctx.fill();
+    }
+    
+    // 4. LASER SCAN LINE (Vertical Sweep)
+    const minY = points[19].y - 30;
+    const maxY = points[8].y + 30;
+    const range = maxY - minY;
+    const scanY = minY + (range * ((Math.sin(time * 3) + 1) / 2));
+    
+    // Calculate width at scanY roughly
+    const minX = points[0].x - 20;
+    const maxX = points[16].x + 20;
+
+    ctx.beginPath();
+    ctx.moveTo(minX, scanY);
+    ctx.lineTo(maxX, scanY);
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#00FFFF';
+    ctx.shadowBlur = 15;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
+}
+
+// --- FITUR BARU: RETINAL SCAN ANIMATION ---
+function drawRetinalScan(ctx, landmarks, color) {
+    const leftEye = landmarks.getLeftEye();
+    const rightEye = landmarks.getRightEye();
+    
+    const drawEye = (points) => {
+        // Hitung titik tengah mata
+        let x = 0, y = 0;
+        points.forEach(p => { x += p.x; y += p.y; });
+        x /= points.length;
+        y /= points.length;
+        
+        const time = Date.now() / 200;
+        const radius = 6; // Ukuran pupil scan
+        
+        ctx.save();
+        ctx.translate(x, y);
+        
+        // Scanning Circle (Berputar)
+        ctx.rotate(time);
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([2, 5]); // Garis putus-putus
+        ctx.stroke();
+        ctx.restore();
+    };
+    
+    drawEye(leftEye);
+    drawEye(rightEye);
 }
 
 // --- FITUR BARU: COMPLEX SCI-FI HUD ---
@@ -267,57 +427,69 @@ function drawSciFiHUD(ctx, x, y, w, h, color) {
     ctx.save();
     ctx.translate(cx, cy);
 
-    // Ring 1: Outer Dashed (Rotating CW)
+    // 1. Outer Rotating Ring (Dashed)
     ctx.save();
-    ctx.rotate(time * 0.5);
+    ctx.rotate(time * 0.4);
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([20, 40]); 
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([10, 20, 5, 20]); 
     ctx.stroke();
     ctx.restore();
 
-    // Ring 2: Inner Tech Ring (Rotating CCW)
+    // 2. Inner Counter-Rotating Ring (Tech)
     ctx.save();
-    ctx.rotate(-time * 0.8);
+    ctx.rotate(-time * 0.6);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.85, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.7;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 5]);
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Radar Sweep Effect (NEW)
+    ctx.save();
+    ctx.rotate(time * 3); // Fast rotation
+    const gradient = ctx.createConicGradient(0, 0, 0);
+    gradient.addColorStop(0, 'rgba(0, 255, 255, 0)');
+    gradient.addColorStop(0.8, 'rgba(0, 255, 255, 0)');
+    gradient.addColorStop(1, 'rgba(0, 255, 255, 0.2)');
+    ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.8, 0, Math.PI * 2);
-    ctx.strokeStyle = color;
-    ctx.globalAlpha = 0.6;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 5]);
-    ctx.stroke();
-    ctx.restore();
-
-    // Ring 3: Scanning Segments (Fast)
-    ctx.save();
-    ctx.rotate(time * 2);
+    ctx.fill();
+    // Leading edge line
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.9, 0, Math.PI / 2);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.9, Math.PI, Math.PI * 1.5);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(radius * 0.8, 0);
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+    ctx.lineWidth = 2;
     ctx.stroke();
     ctx.restore();
 
     ctx.restore();
 
-    // Bracket Corners (Static relative to face)
-    const cornerSize = 20;
+    // 4. Tactical Corners (Animated Expansion)
+    const expansion = Math.sin(time * 5) * 3;
+    const cornerSize = 25;
     ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 5;
     
     // Top Left
-    ctx.beginPath(); ctx.moveTo(x, y + cornerSize); ctx.lineTo(x, y); ctx.lineTo(x + cornerSize, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - expansion, y + cornerSize - expansion); ctx.lineTo(x - expansion, y - expansion); ctx.lineTo(x + cornerSize - expansion, y - expansion); ctx.stroke();
     // Top Right
-    ctx.beginPath(); ctx.moveTo(x + w - cornerSize, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + cornerSize); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + w + expansion - cornerSize, y - expansion); ctx.lineTo(x + w + expansion, y - expansion); ctx.lineTo(x + w + expansion, y + cornerSize - expansion); ctx.stroke();
     // Bottom Right
-    ctx.beginPath(); ctx.moveTo(x + w, y + h - cornerSize); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - cornerSize, y + h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + w + expansion, y + h + expansion - cornerSize); ctx.lineTo(x + w + expansion, y + h + expansion); ctx.lineTo(x + w + expansion - cornerSize, y + h + expansion); ctx.stroke();
     // Bottom Left
-    ctx.beginPath(); ctx.moveTo(x + cornerSize, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - cornerSize); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - expansion + cornerSize, y + h + expansion); ctx.lineTo(x - expansion, y + h + expansion); ctx.lineTo(x - expansion, y + h + expansion - cornerSize); ctx.stroke();
+    
+    ctx.shadowBlur = 0;
 }
 
 // --- FITUR BARU: TARGET LOCK HUD ---
@@ -428,6 +600,108 @@ function drawARDataPoints(ctx, box, color) {
     ctx.restore();
 }
 
+// --- FITUR BARU: LIVE CONFIDENCE GRAPH ---
+function drawLiveGraph(ctx, x, y, width, height, data, color) {
+    if (data.length < 2) return;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.beginPath();
+    ctx.moveTo(x, y + height/2); ctx.lineTo(x + width, y + height/2);
+    ctx.stroke();
+
+    // Data Line
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    
+    const step = width / (data.length - 1);
+    data.forEach((val, i) => {
+        const px = x + (i * step);
+        const py = y + height - ((val / 100) * height);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    ctx.restore();
+}
+
+// --- FITUR BARU: HOLOGRAPHIC DATA STREAM (Koneksi Wajah ke Panel Kiri) ---
+function drawDataStream(ctx, box, color) {
+    const startX = box.x;
+    const startY = box.y + (box.height / 2);
+    const endX = 0; // Ujung kiri canvas (menuju panel data)
+    const endY = startY + 100; // Sedikit melengkung ke bawah
+
+    const time = Date.now() / 1000;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    // Kurva Bezier untuk efek kabel data organik
+    ctx.bezierCurveTo(startX - 100, startY, 100, endY, endX, endY);
+    
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 15]); // Garis putus-putus
+    ctx.lineDashOffset = -time * 150; // Animasi mengalir cepat ke kiri
+    ctx.stroke();
+    
+    // Efek Kilatan Data (Packet)
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = color;
+    ctx.restore();
+}
+
+// --- FITUR BARU: DIGITAL FACE PARTICLES ---
+function drawDigitalParticles(ctx, box, color) {
+    // 1. Emitter: Tambah partikel baru di sekitar wajah
+    // Emit lebih banyak jika box besar
+    const emitCount = 3; 
+    for(let i=0; i<emitCount; i++) {
+        faceParticles.push({
+            x: box.x + Math.random() * box.width,
+            y: box.y + Math.random() * box.height,
+            vx: (Math.random() - 0.5) * 4, // Kecepatan X acak
+            vy: (Math.random() - 1) * 4 - 2, // Cenderung ke atas (menguap)
+            life: 1.0,
+            size: Math.random() * 8 + 8,
+            text: Math.random() > 0.5 ? '1' : '0' // Binary Digits
+        });
+    }
+
+    // 2. Update & Render
+    ctx.save();
+    ctx.font = '10px "Courier New", monospace';
+    ctx.fillStyle = color;
+    
+    for (let i = faceParticles.length - 1; i >= 0; i--) {
+        let p = faceParticles[i];
+        
+        // Physics
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.05; // Kecepatan pudar
+        
+        // Render
+        if (p.life <= 0) {
+            faceParticles.splice(i, 1);
+        } else {
+            ctx.globalAlpha = p.life;
+            ctx.fillText(p.text, p.x, p.y);
+        }
+    }
+    ctx.restore();
+}
+
 // --- VISUAL FX: SCREEN FLASH ---
 function triggerScreenFlash(color) {
     const flash = document.getElementById('screenFlash');
@@ -482,8 +756,8 @@ function animateText(element, text, speed = 30) {
         if (i < text.length) {
             element.textContent += text.charAt(i);
             i++;
-            // Efek suara tik sangat halus (opsional)
-            // if (i % 2 === 0) SoundFX.play('tick'); 
+            // Efek suara tik data (NEW)
+            if (i % 2 === 0) SoundFX.play('type'); 
         } else {
             clearInterval(interval);
             element.dataset.typingInterval = null;
@@ -528,7 +802,7 @@ async function runBootSequence() {
 }
 
 // --- NEW FEATURE: SMART HUD LABEL ---
-function drawSmartHUD(ctx, box, label, color, confidence) {
+function drawSmartHUD(ctx, box, label, color, confidence, emotion = 'ANALYZING') {
     const padding = 10;
     const tagX = box.x + box.width + 30; // Posisi di kanan wajah
     const tagY = box.y;
@@ -573,6 +847,11 @@ function drawSmartHUD(ctx, box, label, color, confidence) {
     
     ctx.fillStyle = '#AAAAAA';
     ctx.fillText(`${confVal.toFixed(0)}%`, tagX + 125, tagY + 60);
+
+    // 7. Emotion Readout (NEW)
+    ctx.fillStyle = '#00FFFF';
+    ctx.font = '10px "Courier New", monospace';
+    ctx.fillText(`PSYCHE: ${emotion.toUpperCase()}`, tagX + 15, tagY + 75);
 }
 
 // =============================================================================
@@ -1224,7 +1503,8 @@ async function initializeApp() {
         await Promise.all([
             faceapi.nets.tinyFaceDetector.loadFromUri('./models'),
             faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
-            faceapi.nets.faceRecognitionNet.loadFromUri('./models')
+            faceapi.nets.faceRecognitionNet.loadFromUri('./models'),
+            faceapi.nets.faceExpressionNet.loadFromUri('./models') // NEW: Load Emotion Model
         ]);
         
         logSystem('Neural Network Models Loaded.', 'text-green-500');
@@ -1291,6 +1571,7 @@ async function detectFace() {
 
     const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.85 }))
 	.withFaceLandmarks()
+    .withFaceExpressions() // NEW: Detect Expressions
         .withFaceDescriptor();
 
     if(!isProcessing) videoContainer.classList.remove('scan-success');
@@ -1299,6 +1580,11 @@ async function detectFace() {
         const resizedDetections = faceapi.resizeResults(detections, displaySize);
         const { box } = resizedDetections.detection;
         const { landmarks } = resizedDetections;
+
+        // --- ANALISIS EMOSI (NEW) ---
+        const expressions = resizedDetections.expressions;
+        const sortedEmotions = Object.keys(expressions).sort((a, b) => expressions[b] - expressions[a]);
+        const dominantEmotion = sortedEmotions[0] || 'NEUTRAL';
 
         // --- FITUR BARU: DIGITAL AUTO-ZOOM ---
         const scale = 1.8; // Faktor zoom, bisa disesuaikan
@@ -1318,6 +1604,9 @@ async function detectFace() {
         
         // GAMBAR KONEKTOR BIOMETRIK (NEW)
         drawBiometricConnectors(context, box, landmarks, '#00FFFF');
+
+        // GAMBAR RETINAL SCAN (NEW)
+        drawRetinalScan(context, landmarks, '#00FFFF');
 
         // --- GAMBAR EFEK BARU ---
         // drawScanningBeam(context, box); // Diganti dengan HUD Sci-Fi
@@ -1343,6 +1632,11 @@ async function detectFace() {
             const matchDistance = bestMatch.distance;
             const confidenceRaw = Math.max(0, FACE_MATCHING_THRESHOLD - matchDistance); 
             confidence = (confidenceRaw / FACE_MATCHING_THRESHOLD) * 100;
+            
+            // Update History Grafik
+            confidenceHistory.push(confidence);
+            if (confidenceHistory.length > 50) confidenceHistory.shift();
+            
             updateSystemDiagnostics(confidence);
 
             if (bestMatch.label !== 'unknown' && matchDistance <= FACE_MATCHING_THRESHOLD) {
@@ -1384,6 +1678,9 @@ async function detectFace() {
                 
                 userStatusDisplay.textContent = 'VERIFYING...';
                 userStatusDisplay.className = 'text-lg font-bold text-amber-500';
+
+                // Update Panel Kiri dengan Emosi
+                if(userEmotionDisplay) userEmotionDisplay.textContent = dominantEmotion.toUpperCase();
                 
                 if (!isProcessing) { 
                     setStatusVisual(`ID MATCH: ${employee.nama}. AUTHORIZING...`, 'text-cyan-400', true);
@@ -1409,6 +1706,7 @@ async function detectFace() {
                 
  		        userStatusDisplay.textContent = 'ACCESS DENIED';
                 faceLabel = 'DENIED ACCESS';
+                if(userEmotionDisplay) userEmotionDisplay.textContent = 'UNKNOWN';
                 targetLabel = ''; // Reset decrypt target
                 
                 // Efek Berkedip Merah (Blinking Red)
@@ -1425,6 +1723,7 @@ async function detectFace() {
             updateSystemDiagnostics(0);
             userStatusDisplay.textContent = 'DB OFFLINE';
             faceLabel = 'DB OFFLINE';
+            if(userEmotionDisplay) userEmotionDisplay.textContent = 'OFFLINE';
             targetLabel = '';
             faceColor = '#FF00FF'; 
             setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-red-500');
@@ -1435,9 +1734,19 @@ async function detectFace() {
         drawSciFiHUD(context, box.x, box.y, box.width, box.height, faceColor);
         
         // Gunakan Smart HUD baru
-        drawSmartHUD(context, box, faceLabel, faceColor, confidence);
+        drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion);
         drawARDataPoints(context, box, faceColor); // Panggil fungsi AR Data Points
+        
+        // Gambar Grafik Live di bawah HUD
+        drawLiveGraph(context, box.x + box.width + 30, box.y + 80, 180, 40, confidenceHistory, faceColor);
+
+        // Gambar Aliran Data ke Panel Kiri (NEW)
+        drawDataStream(context, box, faceColor);
+        
         drawDataWaterfall(context, box.x - 40, box.y, box.height, faceColor); // Matrix rain di kiri wajah
+
+        // NEW: Digital Particles (Efek Menguap)
+        drawDigitalParticles(context, box, faceColor);
 
     } else {
         // Tidak ada deteksi wajah
@@ -1446,6 +1755,9 @@ async function detectFace() {
         // Reset zoom saat tidak ada wajah
         video.style.transform = 'scaleX(-1) scale(1) translate(0, 0)';
         setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
+        confidenceHistory = []; // Reset grafik
+        faceParticles = []; // Reset partikel saat wajah hilang
+        if(userEmotionDisplay) userEmotionDisplay.textContent = 'SCANNING...';
         targetLabel = '';
         setSystemTheme('IDLE'); // Reset Theme
         lastKnownMatch = null; 
@@ -2227,6 +2539,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initBackground3D(); // Inisialisasi Background 3D
     runBootSequence(); // Jalankan Intro Booting
     initializeApp();
+    initVoiceCommands(); // Jalankan Voice Command Listener
     animateTitle();
     updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih
 

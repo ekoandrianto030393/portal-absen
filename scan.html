@@ -713,6 +713,29 @@
 
 <body>
 
+    <!-- SVG FILTERS FOR SENSOR MODES -->
+    <svg style="display: none;">
+        <defs>
+            <!-- Thermal Vision: Mapping luminance to Heatmap colors (Blue-Green-Red) -->
+            <filter id="thermal-filter">
+                <feColorMatrix type="matrix" values="
+                            0.33 0.33 0.33 0 0
+                            0.33 0.33 0.33 0 0
+                            0.33 0.33 0.33 0 0
+                            0 0 0 1 0" result="grayscale" />
+                <feComponentTransfer>
+                    <feFuncR type="table" tableValues="0 0 1 1" />
+                    <feFuncG type="table" tableValues="0 0.5 1 0" />
+                    <feFuncB type="table" tableValues="1 0 0 0" />
+                </feComponentTransfer>
+            </filter>
+            <!-- Night Vision: Green Monochrome + High Gain -->
+            <filter id="night-vision">
+                <feColorMatrix type="matrix" values="0 0 0 0 0  0 1.2 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+            </filter>
+        </defs>
+    </svg>
+
     <canvas id="renderCanvas"></canvas>
     <div class="scanlines"></div> <!-- Overlay CRT -->
     <div class="noise-overlay"></div> <!-- Overlay Noise (NEW) -->
@@ -863,6 +886,19 @@
                             class="bg-transparent border border-cyan-500/50 text-cyan-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all duration-300">
                             [ OFF ]
                         </button>
+                </div>
+                
+                <!-- SENSOR MODE SELECTOR -->
+                <div class="mt-3 pt-2 border-t border-cyan-500/30">
+                    <h3 class="text-[10px] font-mono text-cyan-600 mb-1 tracking-widest">:: SENSOR OPTICS ::</h3>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button onclick="setVisionMode('normal')"
+                            class="bg-cyan-900/30 border border-cyan-500/50 text-[9px] py-1 text-cyan-300 hover:bg-cyan-500/20 transition-all">OPTICAL</button>
+                        <button onclick="setVisionMode('thermal')"
+                            class="bg-red-900/30 border border-red-500/50 text-[9px] py-1 text-red-300 hover:bg-red-500/20 transition-all">THERMAL</button>
+                        <button onclick="setVisionMode('night')"
+                            class="bg-green-900/30 border border-green-500/50 text-[9px] py-1 text-green-300 hover:bg-green-500/20 transition-all">NIGHT</button>
+                    </div>
                     </div>
 
                     <!-- ADMIN SETTINGS BUTTON (VISIBLE) -->
@@ -899,6 +935,10 @@
                             <p id="userStatusDisplay" class="text-lg font-bold text-red-500">LOCKED</p>
                         </div>
                         <div>
+                            <p class="text-xs text-gray-400">PSYCHE STATE</p>
+                            <p id="userEmotionDisplay" class="text-md font-mono text-cyan-300 animate-pulse">CALIBRATING...</p>
+                            </div>
+                            <div>
                             <p class="text-xs text-gray-400">LAST LOG</p>
                             <p id="lastActionDisplay" class="text-md font-mono text-amber-400">--:--:--</p>
                         </div>
