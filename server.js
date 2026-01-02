@@ -411,11 +411,11 @@ app.post('/api/absensi', (req, res) => {
                     if (currentTime < jamPulangEfektif) {
                         return res.json({
                             success: false,
-                            message: `Anda sudah Absen Masuk. Absen Pulang baru dibuka jam ${jamPulangEfektif}.`,
+                            message: `Absen Pulang ditolak. Waktu diizinkan mulai: ${jamPulangEfektif}.`,
                             nama: k.nama,
                             jabatan: k.jabatan,
                             result_code: 'TOO_EARLY_OUT',
-                            statusColor: 'yellow'
+                            statusColor: 'red'
                         });
                     }
 

@@ -6,6 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Puskesmas Wana</title>
     <link rel="icon" href="data:,">
+    <script>
+        // Menyembunyikan peringatan "production" dari Tailwind CDN agar console bersih
+        const originalWarn = console.warn;
+        console.warn = (...args) => {
+            if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+            originalWarn.apply(console, args);
+        };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -59,6 +67,83 @@
 
         .card-accent-top {
             border-top-width: 4px;
+        }
+
+        /* --- CSS KHUSUS CETAK (PRINT FIX) --- */
+        @media print {
+            @page {
+                size: landscape; /* Paksa Landscape agar tabel lebar muat */
+                margin: 5mm;     /* Margin tipis untuk memaksimalkan ruang */
+            }
+            
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                background: white !important;
+            }
+
+            /* Perkecil padding dan font tabel secara drastis saat print */
+            #table-rekap th, 
+            #table-rekap td {
+                padding: 4px 2px !important; /* Override padding besar (px-6) */
+                font-size: 9pt !important;   /* Font lebih kecil agar muat */
+                border: 1px solid #000 !important; /* Border hitam tegas */
+                white-space: nowrap; /* Usahakan teks satu baris */
+            }
+
+            /* Izinkan wrap (turun baris) khusus untuk Nama & Jabatan jika kepanjangan */
+            #table-rekap td:nth-child(2), 
+            #table-rekap td:nth-child(3) {
+                white-space: normal !important;
+            }
+
+            #table-rekap thead {
+                background-color: #d1d5db !important; /* Header abu-abu agar jelas */
+                color: #000 !important;
+                display: table-header-group; /* Header tabel muncul ulang di tiap halaman baru */
+            }
+
+            /* Mencegah baris tabel terpotong di tengah (setengah di hal 1, setengah di hal 2) */
+            #table-rekap tr {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            /* Pastikan container tidak scroll (overflow) saat dicetak */
+            .overflow-x-auto {
+                overflow: visible !important;
+                display: block !important;
+                width: 100% !important;
+            }
+
+            /* FIX: Reset Layout agar konten panjang tidak terpotong (Masalah Utama) */
+            html, body, .h-screen, .overflow-hidden, .overflow-y-auto {
+                height: auto !important;
+                overflow: visible !important;
+                position: static !important;
+            }
+
+            /* Sembunyikan Sidebar, Header & Tombol saat Print */
+            aside, header, .no-print {
+                display: none !important;
+            }
+
+            /* Paksa Footer Tanda Tangan Muncul & Tidak Terpotong */
+            #print-footer {
+                display: flex !important;
+                page-break-inside: avoid;
+                break-inside: avoid; /* KUNCI: Mencegah TTD terbelah. Jika tidak muat, pindah semua ke hal baru */
+                margin-top: 50px;    /* Jarak aman. Membantu browser memutuskan untuk pindah halaman jika sempit */
+            }
+
+            /* Footer Tetap di Setiap Halaman (Pojok Kanan Bawah) */
+            #print-fixed-footer {
+                position: fixed !important;
+                bottom: 0;
+                right: 0;
+                width: 100%;
+                z-index: 9999;
+            }
         }
     </style>
 </head>
@@ -303,15 +388,27 @@
                 <!-- VIEW: MONTHLY -->
                 <div id="view-monthly" class="hidden space-y-6">
                     <!-- Header Khusus Print (Hidden di layar biasa) -->
-                    <div id="print-header" class="hidden border-b-2 border-gray-800 pb-4 mb-6 relative">
-                        <!-- Logo Instansi (Absolute Position) -->
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/Logo_Bakti_Husada.png" onerror="this.style.display='none'"
-                            class="absolute top-0 left-0 h-24 w-auto object-contain" alt="Logo Instansi">
-                        <div class="text-center px-20">
-                            <h1 class="text-2xl font-bold text-gray-900 uppercase tracking-wider">Laporan Absensi
-                                Pegawai</h1>
-                            <h2 class="text-lg text-gray-600">Puskesmas Wana</h2>
-                            <p class="text-sm text-gray-500 mt-1" id="print-period">Periode: -</p>
+                    <div id="print-header"
+                        class="hidden print:block border-b-4 border-double border-slate-900 pb-4 mb-6 relative text-slate-900">
+                        <div class="flex items-center gap-6 justify-center text-center relative">
+                            <!-- Logo (Absolute Left) -->
+                            <img src="Lambang_Kabupaten_Lampung_Timur.png" onerror="this.style.display='none'"
+                                class="absolute left-4 top-1/2 transform -translate-y-1/2 h-24 w-auto object-contain"
+                                alt="Logo Lampung Timur">
+                    
+                            <div class="flex-1 px-32">
+                                <h3 class="text-xl font-bold uppercase leading-tight tracking-wide">PEMERINTAH KABUPATEN LAMPUNG TIMUR</h3>
+                                <h3 class="text-xl font-bold uppercase leading-tight tracking-wide">DINAS KESEHATAN LAMPUNG TIMUR</h3>
+                                <h1 class="text-3xl font-extrabold uppercase leading-tight mt-2 tracking-wider">UPTD PUSKESMAS WANA</h1>
+                                <p class="text-base italic mt-1">Jl. Pengiran Iro Kusumo Wana Kecamatan Melinting</p>
+                            </div>
+                            <!-- Logo Kanan (Absolute Right) -->
+                            <img src="logo.jpg" onerror="this.style.display='none'"
+                                class="absolute right-4 top-1/2 transform -translate-y-1/2 h-24 w-auto object-contain" alt="Logo Kanan">
+                        </div>
+                        <div class="mt-4 pt-2 text-center">
+                            <h2 class="text-xl font-bold uppercase underline decoration-2 underline-offset-4">LAPORAN ABSENSI PEGAWAI</h2>
+                            <p class="text-sm font-medium mt-2" id="print-period">Periode: -</p>
                         </div>
                     </div>
 
@@ -334,13 +431,36 @@
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl border border-slate-200 shadow-lg shadow-slate-200/50 overflow-hidden">
-                        <div class="overflow-x-auto">
+                    <div
+                        class="bg-white rounded-xl border border-slate-200 shadow-lg shadow-slate-200/50 overflow-hidden print:shadow-none print:border-0">
+                        <div class="overflow-x-auto print:overflow-visible">
                             <table id="table-rekap" class="w-full text-left text-sm">
                                 <!-- Populated by JS -->
                             </table>
                         </div>
                     </div>
+<!-- Footer Khusus Print (Tanda Tangan) -->
+<div id="print-footer" class="hidden print:flex justify-between mt-12 px-8 text-slate-900 break-inside-avoid">
+    <div class="text-center">
+        <p class="font-medium">Mengetahui,</p>
+        <p class="font-bold mb-24">Kepala UPTD Puskesmas Wana</p>
+        <p class="font-bold underline decoration-1 underline-offset-4 mb-1" id="print-kepala-nama">(
+            ....................................................... )</p>
+        <p class="font-medium" id="print-kepala-nip">NIP. ...........................................</p>
+    </div>
+    <div class="text-center">
+        <p class="font-medium">Wana, <span id="print-date-now"></span></p>
+        <p class="font-bold mb-24">Petugas Absensi</p>
+        <p class="font-bold underline decoration-1 underline-offset-4 mb-1" id="print-petugas-nama">(
+            ....................................................... )</p>
+        <p class="font-medium" id="print-petugas-nip">NIP. ...........................................</p>
+    </div>
+</div>
+
+<!-- Fixed Footer per Halaman (Tanggal Cetak) -->
+<div id="print-fixed-footer" class="hidden print:block text-right text-[10px] text-slate-400 italic pr-8 bg-white">
+    Dicetak pada: <span id="print-timestamp"></span>
+</div>
                 </div>
 
                 <!-- VIEW: PERFORMANCE -->
@@ -388,6 +508,36 @@
                                         class="w-8 h-8 rounded-full bg-amber-500 hover:ring-2 hover:ring-offset-2 hover:ring-amber-500"></button>
                                 </div>
                                 <p class="text-xs text-slate-500 mt-2">Klik untuk mengubah aksen warna dashboard.</p>
+                            </div>
+                            <hr class="border-slate-100">
+                            <!-- Konfigurasi Tanda Tangan -->
+                            <div>
+                                <h4 class="font-medium text-slate-700 mb-2">Konfigurasi Tanda Tangan Laporan</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Nama Kepala Puskesmas</label>
+                                        <input type="text" id="conf-kepala-nama" placeholder="Nama Kepala"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">NIP Kepala Puskesmas</label>
+                                        <input type="text" id="conf-kepala-nip" placeholder="NIP Kepala"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Nama Petugas Absensi</label>
+                                        <input type="text" id="conf-petugas-nama" placeholder="Nama Petugas"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">NIP Petugas Absensi</label>
+                                        <input type="text" id="conf-petugas-nip" placeholder="NIP Petugas"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                </div>
+                                <button onclick="saveSignatureConfig()"
+                                    class="bg-slate-800 text-white px-4 py-2 rounded text-sm hover:bg-slate-700 transition">Simpan
+                                    Konfigurasi</button>
                             </div>
                             <hr class="border-slate-100">
                             <div>

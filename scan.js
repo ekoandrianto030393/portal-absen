@@ -33,6 +33,14 @@ const matchThresholdBar = document.getElementById('matchThresholdBar');
 const attendanceLog = document.getElementById('attendanceLog');
 const diagnosticList = document.getElementById('diagnosticList');
 
+// CORNER CARD ELEMENTS
+const cornerProfileCard = document.getElementById('corner-profile-card');
+const cornerPhoto = document.getElementById('corner-photo');
+const cornerName = document.getElementById('corner-name');
+const cornerJabatan = document.getElementById('corner-jabatan');
+const cornerId = document.getElementById('corner-id');
+const cornerStatus = document.getElementById('corner-status');
+
 
 const cameraSelect = document.getElementById('cameraSelect');
 
@@ -1731,7 +1739,7 @@ async function detectFace() {
     
     const displaySize = { width: canvas.width, height: canvas.height };
 
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.85 }))
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.80 }))
 	.withFaceLandmarks()
     .withFaceExpressions() // NEW: Detect Expressions
         .withFaceDescriptor();
@@ -1999,6 +2007,25 @@ async function processAttendance(karyawanId) {
         const display_name = result.nama || employeeData.nama || karyawanId;
         const display_jabatan = result.jabatan || employeeData.jabatan || 'N/A';
         
+        // --- UPDATE CORNER CARD (POJOK) ---
+        if (cornerProfileCard) {
+            cornerProfileCard.classList.remove('hidden');
+            // Force reflow
+            void cornerProfileCard.offsetWidth;
+            cornerProfileCard.classList.remove('translate-x-full', 'opacity-0');
+            
+            if (cornerPhoto) {
+                cornerPhoto.src = employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : '';
+                cornerPhoto.style.display = employeeData.foto ? 'block' : 'none';
+            }
+            if (cornerName) cornerName.textContent = display_name;
+            if (cornerJabatan) cornerJabatan.textContent = display_jabatan;
+            if (cornerId) cornerId.textContent = karyawanId;
+            if (cornerStatus) cornerStatus.textContent = result.success ? 'AUTHORIZED' : 'DENIED';
+            if (cornerStatus) cornerStatus.className = `text-[10px] font-bold text-black px-2 py-0.5 rounded ${result.success ? 'bg-green-500' : 'bg-red-500'}`;
+            cornerProfileCard.style.borderColor = result.success ? '#00FF7F' : '#FF0055';
+        }
+
         const coloredName = `<span class="font-bold text-shadow-lg" style="color: ${NAME_HIGHLIGHT_COLOR}; text-shadow: 0 0 10px ${NAME_HIGHLIGHT_COLOR}, 0 0 5px #000;">${display_name}</span>`;
 
         let finalStatusText = 'ACCESS GRANTED';
@@ -2084,15 +2111,8 @@ async function processAttendance(karyawanId) {
                     finalMessageHTML = `${coloredName}, <span style="color:#FF0055;">${cleanMessage}</span>`; 
                     break;
                 case 'TOO_EARLY_OUT':
-                    isWarning = false; // FORCE ERROR (RED) agar terlihat benar-benar ditolak
-                    finalStatusText = 'ACCESS DENIED (TOO EARLY)';
-                    finalMessageHTML = `
-                        <div style="border: 1px solid #FF0055; background: rgba(255, 0, 85, 0.1); padding: 10px; border-radius: 8px;">
-                            <div style="margin-bottom:5px; font-size:1.2em;">${coloredName}</div>
-                            <div style="color:#FF0055; font-weight:bold; font-size:1.1em; margin-bottom:5px;">${cleanMessage}</div>
-                            <div style="color:#AAA; font-size:0.8em;">Absensi Pulang DITOLAK. Harap tunggu hingga jam pulang.</div>
-                        </div>
-                    `;
+                    finalStatusText = 'DILUAR JAM PULANG';
+                    finalMessageHTML = `${coloredName}, <span style="color:#FF0055;">${cleanMessage}</span>`;
                     break;
                 case 'ALREADY_CHECKED_IN':
                     finalStatusText = 'MOHON TUNGGU'; // Cooldown
@@ -2267,6 +2287,11 @@ async function processAttendance(karyawanId) {
         if(successOverlay) {
             successOverlay.style.opacity = 0;
             successOverlay.style.pointerEvents = 'none';
+        }
+        // Hide Corner Card
+        if (cornerProfileCard) {
+            cornerProfileCard.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => cornerProfileCard.classList.add('hidden'), 500);
         }
         logSystem('System ready for next scan.', 'text-gray-300');
         videoContainer.classList.remove('scan-success');

@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Init & Load Chart
         initLineChart();
         updateChartFilter();
+        loadSignatureConfig(); // Load setting tanda tangan saat start
     });
 
     // AUTO REFRESH (Setiap 60 Detik) - Fitur Canggih
@@ -906,6 +907,24 @@ function printReport() {
         document.getElementById('print-period').textContent = `Periode: ${periodText}`;
     }
     
+    // Update Tanggal Cetak (Tgl Th Otomatis) untuk Tanda Tangan
+    const now = new Date();
+    const dateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+    const dateText = now.toLocaleDateString('id-ID', dateOptions);
+    const dateEl = document.getElementById('print-date-now');
+    if (dateEl) dateEl.textContent = dateText;
+
+    // Update Timestamp Lengkap untuk Footer per Halaman
+    const fullTime = now.toLocaleDateString('id-ID', { 
+        day: 'numeric', month: 'long', year: 'numeric', 
+        hour: '2-digit', minute: '2-digit' 
+    });
+    const tsEl = document.getElementById('print-timestamp');
+    if (tsEl) tsEl.textContent = fullTime;
+
+    // Pastikan data tanda tangan terbaru diterapkan sebelum print
+    applySignatureToPrint();
+
     window.print();
 }
 
@@ -1064,6 +1083,46 @@ function changeTheme(colorName) {
 
     localStorage.setItem('theme', colorName);
     location.reload(); 
+}
+
+// --- FITUR: KONFIGURASI TANDA TANGAN (LOCAL STORAGE) ---
+function saveSignatureConfig() {
+    const config = {
+        kepalaNama: document.getElementById('conf-kepala-nama').value,
+        kepalaNip: document.getElementById('conf-kepala-nip').value,
+        petugasNama: document.getElementById('conf-petugas-nama').value,
+        petugasNip: document.getElementById('conf-petugas-nip').value
+    };
+    
+    localStorage.setItem('signatureConfig', JSON.stringify(config));
+    showToast('Konfigurasi tanda tangan disimpan!', 'success');
+    applySignatureToPrint(); // Update tampilan langsung
+}
+
+function loadSignatureConfig() {
+    const saved = localStorage.getItem('signatureConfig');
+    if (saved) {
+        const config = JSON.parse(saved);
+        // Isi Form Settings
+        if(document.getElementById('conf-kepala-nama')) document.getElementById('conf-kepala-nama').value = config.kepalaNama || '';
+        if(document.getElementById('conf-kepala-nip')) document.getElementById('conf-kepala-nip').value = config.kepalaNip || '';
+        if(document.getElementById('conf-petugas-nama')) document.getElementById('conf-petugas-nama').value = config.petugasNama || '';
+        if(document.getElementById('conf-petugas-nip')) document.getElementById('conf-petugas-nip').value = config.petugasNip || '';
+        
+        // Terapkan ke View Print
+        applySignatureToPrint();
+    }
+}
+
+function applySignatureToPrint() {
+    const saved = localStorage.getItem('signatureConfig');
+    if (saved) {
+        const config = JSON.parse(saved);
+        if(config.kepalaNama) document.getElementById('print-kepala-nama').textContent = `( ${config.kepalaNama} )`;
+        if(config.kepalaNip) document.getElementById('print-kepala-nip').textContent = `NIP. ${config.kepalaNip}`;
+        if(config.petugasNama) document.getElementById('print-petugas-nama').textContent = `( ${config.petugasNama} )`;
+        if(config.petugasNip) document.getElementById('print-petugas-nip').textContent = `NIP. ${config.petugasNip}`;
+    }
 }
 
 // Apply theme on load

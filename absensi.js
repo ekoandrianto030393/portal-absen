@@ -63,9 +63,9 @@ module.exports = (pool) => {
                         if (isTooEarly) {
                              return res.json({ 
                                 success: false, 
-                                result_code: 'TOO_EARLY_OUT',
-                                message: `Belum waktunya pulang. Jam pulang mulai: ${jamPulangStart}`,
-                                nama, jabatan, statusColor: 'yellow' 
+                                result_code: 'HARD_REJECT_OUT', //Kode baru untuk penolakan keras
+                                message: `PENOLAKAN: Belum waktunya pulang. Jam pulang mulai: ${jamPulangStart}`,
+                                nama, jabatan, statusColor: 'red' 
                             });
                         }
                     }
