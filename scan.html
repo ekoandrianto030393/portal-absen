@@ -257,7 +257,7 @@
             padding-top: 56.25%;
             /* Rasio Aspek 16:9 */
             box-shadow: 0 0 60px var(--hud-glow), inset 0 0 20px rgba(0, 255, 255, 0.2);
-            border: 3px solid var(--hud-primary);
+            border: 1px solid rgba(0, 255, 255, 0.3);
             background: #000;
             overflow: hidden;
             border-radius: 10px;
@@ -274,8 +274,10 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(rgba(0, 255, 255, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.15) 1px, transparent 1px);
-            background-size: 50px 50px;
+            background: 
+                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px), 
+                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
             /* Penting: pointer-events harus non-aktif agar bisa klik di bawahnya */
             pointer-events: none;
             z-index: 5;
@@ -412,7 +414,7 @@
             position: absolute;
             width: 30px;
             height: 30px;
-            border: 3px solid var(--hud-primary);
+            border: 2px solid var(--hud-primary);
             z-index: 30;
             transition: all 0.3s ease;
             box-shadow: 0 0 10px var(--hud-primary);
@@ -424,7 +426,8 @@
             left: -2px;
             border-right: none;
             border-bottom: none;
-            border-radius: 8px 0 0 0;
+            /* border-radius: 8px 0 0 0; */
+            clip-path: polygon(0 0, 100% 0, 100% 20%, 20% 20%, 20% 100%, 0 100%);
         }
 
         .cc-tr {
@@ -432,7 +435,8 @@
             right: -2px;
             border-left: none;
             border-bottom: none;
-            border-radius: 0 8px 0 0;
+            /* border-radius: 0 8px 0 0; */
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 80% 100%, 80% 20%, 0 20%);
         }
 
         .cc-bl {
@@ -440,7 +444,8 @@
             left: -2px;
             border-right: none;
             border-top: none;
-            border-radius: 0 0 0 8px;
+            /* border-radius: 0 0 0 8px; */
+            clip-path: polygon(0 0, 20% 0, 20% 80%, 100% 80%, 100% 100%, 0 100%);
         }
 
         .cc-br {
@@ -448,7 +453,8 @@
             right: -2px;
             border-left: none;
             border-top: none;
-            border-radius: 0 0 8px 0;
+            /* border-radius: 0 0 8px 0; */
+            clip-path: polygon(80% 0, 100% 0, 100% 100%, 0 100%, 0 80%, 80% 80%);
         }
 
 
@@ -707,6 +713,25 @@
             background: #00FFFF;
             border-radius: 10px;
         }
+
+        /* SATELLITE SCAN EFFECT */
+        .satellite-scan {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 20%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+            z-index: 5;
+            animation: satellitePass 8s infinite cubic-bezier(0.4, 0.0, 0.2, 1);
+            pointer-events: none;
+        }
+        @keyframes satellitePass {
+            0% { left: -50%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: 150%; opacity: 0; }
+        }
     </style>
 
 </head>
@@ -737,9 +762,12 @@
     </svg>
 
     <canvas id="renderCanvas"></canvas>
+    <canvas id="matrixCanvas"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; opacity: 0.1; pointer-events: none; mix-blend-mode: screen;"></canvas>
     <div class="scanlines"></div> <!-- Overlay CRT -->
     <div class="noise-overlay"></div> <!-- Overlay Noise (NEW) -->
     <div id="screenFlash"></div> <!-- Efek Kilatan -->
+    <div class="satellite-scan"></div> <!-- Global Scan Effect -->
 
     <!-- BOOT SCREEN -->
     <div id="boot-screen">

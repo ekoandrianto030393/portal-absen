@@ -157,6 +157,26 @@ const SoundFX = {
     }
 };
 
+// --- NEW: IDLE RADAR EFFECT ---
+function drawIdleRadar(ctx, x, y, radius) {
+    const time = Date.now() / 1000;
+    ctx.save();
+    ctx.translate(x, y);
+    
+    // Rotating Radar Sweep
+    ctx.rotate(time);
+    const gradient = ctx.createConicGradient(0, 0, 0);
+    gradient.addColorStop(0, 'rgba(0, 255, 255, 0)');
+    gradient.addColorStop(0.8, 'rgba(0, 255, 255, 0)');
+    gradient.addColorStop(1, 'rgba(0, 255, 255, 0.1)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+}
+
 // --- STEALTH MODE LISTENER ---
 if (stealthToggle) {
     stealthToggle.addEventListener('click', () => {
@@ -299,31 +319,131 @@ function drawTechBracket(ctx, x, y, w, h, color) {
     ctx.shadowBlur = 0;
 }
 
+// --- FITUR BARU: HEXAGONAL FORCE FIELD OVERLAY ---
+function drawHexGridOverlay(ctx, box, color) {
+    const r = 12; // Radius hexagon
+    const w = r * 2 * 0.866;
+    const h = r * 1.5;
+    const time = Date.now() / 500;
+    
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.5;
+    
+    // Clip area ke dalam kotak wajah
+    ctx.beginPath();
+    ctx.rect(box.x, box.y, box.width, box.height);
+    ctx.clip();
+
+    // Gambar pola honeycomb
+    for (let y = box.y - h; y < box.y + box.height + h; y += h) {
+        for (let x = box.x - w; x < box.x + box.width + w; x += w) {
+            const xOffset = (Math.floor((y - box.y) / h) % 2) * (w / 2);
+            const hx = x + xOffset;
+            const hy = y;
+            
+            // Efek gelombang scan
+            const dist = Math.abs((hy - box.y) - (time * 100 % box.height));
+            const isActive = dist < 30;
+
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                ctx.lineTo(hx + r * Math.cos(i * Math.PI / 3), hy + r * Math.sin(i * Math.PI / 3));
+            }
+            ctx.closePath();
+
+            if (isActive) {
+                ctx.fillStyle = color;
+                ctx.globalAlpha = 0.15;
+                ctx.fill();
+                ctx.globalAlpha = 0.6;
+                ctx.stroke();
+            } else {
+                ctx.globalAlpha = 0.05;
+                ctx.stroke();
+            }
+        }
+    }
+    ctx.restore();
+}
+
+// --- FITUR BARU: TOPOGRAPHIC FACE MAPPING ---
+function drawTopographicFeatures(ctx, landmarks, color) {
+    const jaw = landmarks.getJawOutline();
+    const nose = landmarks.getNose();
+    const time = Date.now() / 1000;
+    
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.5;
+    
+    // EFEK BARU: Garis putus-putus yang mengalir (seperti data dikirim)
+    ctx.setLineDash([4, 4]);
+    ctx.lineDashOffset = -time * 20; 
+
+    // Hubungkan rahang ke hidung (Kontur Pipi)
+    ctx.beginPath();
+    for(let i=0; i<jaw.length; i+=2) {
+        ctx.moveTo(jaw[i].x, jaw[i].y);
+        // Tarik garis ke tengah hidung
+        ctx.bezierCurveTo(
+            jaw[i].x, jaw[i].y, 
+            (jaw[i].x + nose[3].x)/2, (jaw[i].y + nose[3].y)/2 + 20, 
+            nose[3].x, nose[3].y
+        );
+    }
+    ctx.stroke();
+    ctx.restore();
+}
+
 function drawHolographicMesh(ctx, landmarks) {
     const points = landmarks.positions;
     const time = Date.now() / 1000;
     
+    // --- EFEK BARU: PROGRESSIVE SCANNING (WAJAH DIGAMBAR) ---
+    // Hitung batas atas dan bawah wajah
+    const ys = points.map(p => p.y);
+    const minY = Math.min(...ys) - 10;
+    const maxY = Math.max(...ys) + 10;
+    const height = maxY - minY;
+    
+    // Garis scan bergerak dari atas ke bawah setiap 1.5 detik
+    const scanPhase = (time % 1.5) / 1.5; 
+    const scanY = minY + (scanPhase * height);
+    
     ctx.save();
     
     // 1. TRIANGULATION MESH (Low Poly Cyber Look)
-    ctx.lineWidth = 0.5;
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
-    ctx.fillStyle = 'rgba(0, 255, 255, 0.05)';
-    
-    // Helper: Draw Triangle
+    // Logic: Hanya gambar jika titik berada di atas garis scan
     const tri = (i, j, k) => {
+        const py = (points[i].y + points[j].y + points[k].y) / 3;
+        
+        // Jika di bawah garis scan, jangan gambar (belum ter-scan)
+        if (py > scanY) return;
+
         ctx.beginPath();
         ctx.moveTo(points[i].x, points[i].y);
         ctx.lineTo(points[j].x, points[j].y);
         ctx.lineTo(points[k].x, points[k].y);
         ctx.closePath();
-        ctx.stroke();
-        // Occasional Glitch Fill
-        if (Math.random() > 0.98) {
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
+        
+        // EFEK "HOT EDGE": Segitiga yang baru saja di-scan menyala putih terang
+        const dist = Math.abs(py - scanY);
+        if (dist < 25) {
+            // Putih terang memudar ke Cyan
+            const intensity = 1 - (dist / 25);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${intensity})`; 
+            ctx.fillStyle = `rgba(0, 255, 255, ${intensity * 0.6})`;
             ctx.fill();
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.05)'; // Reset
+            ctx.lineWidth = 1.5;
+        } else {
+            // Sudah stabil (Cyan redup)
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.02)'; 
+            ctx.lineWidth = 0.5;
         }
+        ctx.stroke();
     };
 
     // Manual Triangulation for key areas (Nose, Eyes, Cheeks, Chin)
@@ -332,53 +452,76 @@ function drawHolographicMesh(ctx, landmarks) {
     tri(31, 2, 48); tri(35, 14, 54); // Cheeks
     tri(48, 57, 54); tri(57, 8, 54); tri(57, 48, 8); // Chin
 
-    // 2. REGION LINES (Original Logic kept for outline)
+    // 2. REGION LINES (Outline) - Digambar progresif
     ctx.lineWidth = 1;
-    ctx.strokeStyle = `rgba(0, 255, 255, 0.4)`;
     const regions = [
         [0, 16, false], [17, 21, false], [22, 26, false], [27, 30, false],
         [31, 35, false], [36, 41, true], [42, 47, true], [48, 59, true], [60, 67, true]
     ];
-    ctx.beginPath();
+    
     regions.forEach(region => {
         const start = region[0];
         const end = region[1];
         const isLoop = region[2];
-        ctx.moveTo(points[start].x, points[start].y);
-        for (let i = start + 1; i <= end; i++) ctx.lineTo(points[i].x, points[i].y);
-        if (isLoop) ctx.lineTo(points[start].x, points[start].y);
-    });
-    ctx.stroke();
+        
+        ctx.beginPath();
+        // Loop manual untuk cek setiap segmen garis
+        const indices = [];
+        for (let i = start; i <= end; i++) indices.push(i);
+        if (isLoop) indices.push(start);
 
-    // 3. GLOWING NODES
-    ctx.fillStyle = '#00FFFF';
+        for (let i = 0; i < indices.length - 1; i++) {
+            const p1 = points[indices[i]];
+            const p2 = points[indices[i+1]];
+            
+            // Hanya gambar jika titik berada di atas garis scan
+            if (p1.y <= scanY && p2.y <= scanY) {
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+            }
+        }
+        ctx.strokeStyle = `rgba(0, 255, 255, 0.5)`;
+        ctx.stroke();
+    });
+
+    // 3. GLOWING NODES (Hanya yang sudah di-scan)
     for (let i = 0; i < points.length; i++) {
         if (i % 2 !== 0) continue; 
         const pt = points[i];
+        if (pt.y > scanY) continue; // Skip jika belum di-scan
+
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 1.2, 0, Math.PI * 2);
-        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(time * 10 + i);
+        
+        // Efek sparkle saat baru muncul
+        if (scanY - pt.y < 15) {
+             ctx.fillStyle = '#FFFFFF';
+             ctx.shadowBlur = 8;
+             ctx.shadowColor = '#FFFFFF';
+        } else {
+             ctx.fillStyle = '#00FFFF';
+             ctx.shadowBlur = 0;
+        }
         ctx.fill();
     }
     
-    // 4. LASER SCAN LINE (Vertical Sweep)
-    const minY = points[19].y - 30;
-    const maxY = points[8].y + 30;
-    const range = maxY - minY;
-    const scanY = minY + (range * ((Math.sin(time * 3) + 1) / 2));
-    
-    // Calculate width at scanY roughly
-    const minX = points[0].x - 20;
-    const maxX = points[16].x + 20;
-
+    // 4. LASER SCAN LINE (Garis Horizontal Pemicu)
     ctx.beginPath();
-    ctx.moveTo(minX, scanY);
-    ctx.lineTo(maxX, scanY);
+    ctx.moveTo(points[0].x - 25, scanY);
+    ctx.lineTo(points[16].x + 25, scanY);
     ctx.strokeStyle = 'rgba(0, 255, 255, 0.9)';
     ctx.lineWidth = 2;
     ctx.shadowColor = '#00FFFF';
     ctx.shadowBlur = 15;
     ctx.stroke();
+    
+    // Efek partikel jatuh dari garis scan
+    if (Math.random() > 0.7) {
+        ctx.fillStyle = '#FFFFFF';
+        const rx = points[0].x + Math.random() * (points[16].x - points[0].x);
+        ctx.fillRect(rx, scanY, 2, 2);
+    }
+
     ctx.shadowBlur = 0;
 
     ctx.restore();
@@ -398,6 +541,7 @@ function drawRetinalScan(ctx, landmarks, color) {
         
         const time = Date.now() / 200;
         const radius = 6; // Ukuran pupil scan
+        const arcLen = Math.PI * 2 * ((Math.sin(time * 0.5) + 1) / 2 * 0.8 + 0.2); // Arc tumbuh/menyusut
         
         ctx.save();
         ctx.translate(x, y);
@@ -405,7 +549,7 @@ function drawRetinalScan(ctx, landmarks, color) {
         // Scanning Circle (Berputar)
         ctx.rotate(time);
         ctx.beginPath();
-        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.arc(0, 0, radius, 0, arcLen); // Lingkaran tidak penuh (loading effect)
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([2, 5]); // Garis putus-putus
@@ -544,6 +688,7 @@ function drawBiometricConnectors(ctx, box, landmarks, color) {
         landmarks.getMouth()[6]
     ];
 
+    const time = Date.now() / 1000;
     ctx.save();
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
@@ -566,6 +711,11 @@ function drawBiometricConnectors(ctx, box, landmarks, color) {
         
         ctx.lineTo(elbowX, pt.y);
         ctx.lineTo(elbowX, box.y - 10); // Tarik ke atas box
+        
+        // EFEK BARU: Animasi aliran data (Dash Offset)
+        ctx.setLineDash([5, 5]);
+        ctx.lineDashOffset = -time * 50;
+        
         ctx.stroke();
     });
     ctx.restore();
@@ -1034,7 +1184,7 @@ function animateTitle() {
     const targetText = AGENCY_NAME;
     
     // --- TAMBAHAN: SIGER LAMPUNG GOLD (Inject Otomatis) ---
-    if (!document.getElementById('siger-header-icon')) {
+    if (!document.getElementById('siger-header-icon') && mainTitle && mainTitle.parentNode) {
         const sigerContainer = document.createElement('div');
         sigerContainer.id = 'siger-header-icon';
         sigerContainer.style.display = 'flex';
@@ -1071,7 +1221,7 @@ function animateTitle() {
             }
         </style>`;
         
-        if(mainTitle.parentNode) mainTitle.parentNode.insertBefore(sigerContainer, mainTitle);
+        mainTitle.parentNode.insertBefore(sigerContainer, mainTitle);
     }
     
     // Setup awal: Buat span jika belum sesuai (Hanya sekali)
@@ -1277,9 +1427,15 @@ function populatePersonnelRoster() {
 
 const api = {
     getDescriptors: async () => {
+        // Safety check: Jangan fetch jika dibuka via file:// (Local)
+        if (window.location.protocol === 'file:') {
+            throw new Error("Local File Mode (No Backend)");
+        }
+
         try {
             const response = await fetch('/api/karyawan/descriptors');
             if (!response.ok) {
+                if (response.status === 404) throw new Error("API Not Found (404). Backend missing?");
                 throw new Error(`Server Error: ${response.status} ${response.statusText}`);
             }
             
@@ -1291,10 +1447,12 @@ const api = {
                 return data.descriptors;
             } catch (e) {
                 console.error("RAW SERVER RESPONSE (Bukan JSON):", text);
+                // console.error("RAW SERVER RESPONSE (Bukan JSON):", text); // Suppress noise
                 throw new Error(`Invalid JSON received. Cek Console (F12) untuk melihat respons server.`);
             }
         } catch (error) {
             console.error('Error loading descriptors:', error);
+            // console.error('Error loading descriptors:', error); // Suppress duplicate logging
             throw error; // Lemparkan error agar bisa ditangkap oleh pemanggil
         }
     },
@@ -1308,6 +1466,7 @@ const api = {
         return await response.json();
     },
     getTodayAttendance: async () => {
+        if (window.location.protocol === 'file:') return [];
         try {
             // Mengambil data absensi hari ini untuk Kernel Diagnostic
             const response = await fetch('/api/absensi/today');
@@ -1316,6 +1475,7 @@ const api = {
             return Array.isArray(res) ? res : (res.data || []);
         } catch (e) {
             console.warn("Gagal mengambil data absensi hari ini:", e);
+            // console.warn("Gagal mengambil data absensi hari ini:", e); // Silent fail
             return [];
         }
     }
@@ -1370,6 +1530,8 @@ async function loadLabeledImages() {
 
     } catch (error) {
         console.error('Error loading descriptors:', error);
+        // console.error('Error loading descriptors:', error); // Suppress stack trace
+        console.warn(`[DB SYNC] Connection failed: ${error.message}`);
         logSystem(`DIAGNOSTIK ERROR: ${error.message}`, 'text-red-500');
         
         // FIX: Jika server merespon error "Database is empty", anggap sebagai KOSONG (Amber), bukan OFFLINE (Merah)
@@ -1599,6 +1761,12 @@ async function detectFace() {
         // Penting: scaleX(-1) harus tetap ada untuk efek cermin.
         video.style.transform = `scaleX(-1) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
 
+        // --- GAMBAR EFEK CANGGIH BARU ---
+        // 1. Hexagonal Force Field di latar belakang wajah
+        drawHexGridOverlay(context, box, '#00FFFF');
+        
+        // 2. Topographic Map (Garis Kontur)
+        drawTopographicFeatures(context, landmarks, '#00FFFF');
 
         drawHolographicMesh(context, landmarks);
         
@@ -1700,8 +1868,8 @@ async function detectFace() {
                     setStatusVisual(`IDENTITY MISMATCH: ${potentialName}. ACCESS DENIED.`, 'text-red-500');
                     SoundFX.speak(`Access Denied, ${potentialName}`);
                 } else {
-                    setStatusVisual('SUBJECT NOT AUTHORIZED. IDENTITY DENIED.', 'text-red-500');
-                    SoundFX.speak('Access Denied');
+                    setStatusVisual('WAJAH TIDAK DIKENAL...', 'text-red-500');
+                    SoundFX.speak('ACCES DENIED');
                 }
                 
  		        userStatusDisplay.textContent = 'ACCESS DENIED';
@@ -1761,6 +1929,9 @@ async function detectFace() {
         targetLabel = '';
         setSystemTheme('IDLE'); // Reset Theme
         lastKnownMatch = null; 
+        
+        // Draw Idle Radar when no face detected
+        drawIdleRadar(context, canvas.width / 2, canvas.height / 2, canvas.height / 3);
     }
 }
 
@@ -2216,6 +2387,48 @@ function isAutofixEnabled() {
     return isAutoFixActive;
 }
 
+// --- FITUR BARU: GLOBAL MATRIX RAIN ---
+function initMatrixRain() {
+    const canvas = document.getElementById('matrixCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const chars = '01XYZ789アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+    const fontSize = 14;
+    const columns = canvas.width / fontSize;
+    const drops = Array(Math.floor(columns)).fill(1);
+
+    function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; // Trail effect
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#0F0'; // Base Green
+        ctx.font = fontSize + 'px monospace';
+
+        for (let i = 0; i < drops.length; i++) {
+            const text = chars[Math.floor(Math.random() * chars.length)];
+            // Randomly brighter characters (White hot)
+            ctx.fillStyle = Math.random() > 0.95 ? '#FFF' : '#00FF7F';
+            
+            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+    }
+    setInterval(draw, 50);
+    
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+}
+
 // --- BABYLON.JS BACKGROUND LOGIC (Dipindahkan dari scan.html) ---
 function initBackground3D() {
     // Safety check: Pastikan BABYLON sudah terload sebelum inisialisasi
@@ -2239,6 +2452,13 @@ function initBackground3D() {
         // 1. CAMERA
         const camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, Math.PI / 2.5, 20, BABYLON.Vector3.Zero(), scene);
         camera.wheelPrecision = 50;
+
+        // --- FITUR BARU: MOUSE PARALLAX INTERACTION ---
+        let mouseX = 0, mouseY = 0;
+        window.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth) - 0.5;
+            mouseY = (e.clientY / window.innerHeight) - 0.5;
+        });
 
         // --- A. BACKGROUND: PROCEDURAL SKYBOX (CUSTOM SHADER) ---
         BABYLON.Effect.ShadersStore["customSkyVertexShader"] = `
@@ -2475,6 +2695,10 @@ function initBackground3D() {
             sunMesh.position.x = Math.sin(time * 0.2) * 20; sunMesh.position.y = 5 + Math.cos(time * 0.3) * 5;
             globe.rotation.y += 0.002; globe.rotation.x += 0.001;
 
+            // PARALLAX CAMERA UPDATE (Smooth Follow)
+            camera.alpha += ((-Math.PI / 2 + (mouseX * 1.0)) - camera.alpha) * 0.05;
+            camera.beta += ((Math.PI / 2.5 + (mouseY * 0.5)) - camera.beta) * 0.05;
+
             // WARP EFFECT LOGIC
             if (warpActive) {
                 particleSystem.emitRate = 2000;
@@ -2537,6 +2761,7 @@ function initBackground3D() {
 // --- START APP (setelah semua HTML siap) ---
 document.addEventListener('DOMContentLoaded', () => {
     initBackground3D(); // Inisialisasi Background 3D
+    initMatrixRain(); // Inisialisasi Matrix Rain (NEW)
     runBootSequence(); // Jalankan Intro Booting
     initializeApp();
     initVoiceCommands(); // Jalankan Voice Command Listener
