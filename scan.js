@@ -2200,6 +2200,12 @@ async function processAttendance(karyawanId) {
              successOverlay.style.background = finalBackground;
              successOverlay.innerHTML = `
                 <div class="holo-card" style="border-color: ${finalStatusColor}; box-shadow: 0 0 100px ${finalStatusColor}40;">
+                    <!-- Circuit Background -->
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.05; background-image: linear-gradient(${finalStatusColor} 1px, transparent 1px), linear-gradient(90deg, ${finalStatusColor} 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0;"></div>
+                    
+                    <!-- Digital Stamp -->
+                    <div class="digital-stamp" style="color: ${finalStatusColor}; border-color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor};">${result.success ? 'AUTHORIZED' : 'DENIED'}</div>
+
                     <!-- Cooldown Bar -->
                     <div class="cooldown-track"><div id="cooldownBar" class="cooldown-progress" style="background: ${finalStatusColor}; box-shadow: 0 0 20px ${finalStatusColor};"></div></div>
                     
@@ -2234,6 +2240,34 @@ async function processAttendance(karyawanId) {
 
                             <div class="holo-message">
                                 ${finalMessageHTML}
+                            </div>
+                        </div>
+
+                        <!-- Right: Biometrics (NEW) -->
+                        <div class="holo-biometrics">
+                            <!-- Fingerprint Row -->
+                            <div class="bio-row">
+                                <div class="fingerprint-box" style="color: ${finalStatusColor}">
+                                    <div class="fingerprint-pattern"></div>
+                                    <div class="fingerprint-scan"></div>
+                                </div>
+                                <div>
+                                    <div class="bio-label">BIOMETRIC ID</div>
+                                    <div class="bio-value" style="font-size: 1rem;">MATCHED</div>
+                                </div>
+                            </div>
+                            
+                            <!-- DNA Row -->
+                            <div class="bio-row">
+                                <div class="bio-icon-box" style="border-color: ${finalStatusColor}">
+                                    <span style="font-size:20px">🧬</span>
+                                </div>
+                                <div>
+                                    <div class="bio-label">GENETIC SEQ</div>
+                                    <div class="dna-wrapper">
+                                        ${Array(6).fill(0).map((_,i) => `<div class="dna-bar" style="background:${finalStatusColor}; animation-delay:${i*0.1}s"></div>`).join('')}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
