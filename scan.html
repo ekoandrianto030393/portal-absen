@@ -732,6 +732,167 @@
             90% { opacity: 1; }
             100% { left: 150%; opacity: 0; }
         }
+
+        /* --- 13. NEW HOLOGRAPHIC CARD OVERLAY --- */
+        .holo-card {
+            position: relative;
+            width: 95vw; /* Lebar 95% dari layar */
+            max-width: 1600px; /* Batas maksimal lebar */
+            height: 85vh; /* Tinggi 85% dari layar */
+            background: rgba(5, 8, 12, 0.96); /* Lebih gelap dan solid */
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 0;
+            overflow: hidden;
+            box-shadow: 0 0 150px rgba(0, 0, 0, 0.95), 0 0 50px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(30px);
+            transform-style: preserve-3d;
+            animation: holoCardEntry 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            display: flex;
+            flex-direction: column;
+            /* Potongan sudut tech yang lebih agresif */
+            clip-path: polygon(30px 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%, 0 30px);
+        }
+        
+        .holo-header {
+            background: linear-gradient(90deg, rgba(0, 255, 255, 0.1) 0%, transparent 50%, rgba(0, 255, 255, 0.1) 100%);
+            padding: 20px 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.2rem;
+        }
+
+        .holo-content {
+            flex: 1; /* Isi sisa ruang vertikal */
+            padding: 40px 60px;
+            display: grid;
+            grid-template-columns: 400px 1fr; /* Kolom Kiri (Foto) fix 400px, Kanan (Info) sisa ruang */
+            gap: 60px;
+            align-items: center;
+            position: relative;
+        }
+
+        .holo-avatar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .holo-avatar-frame {
+            width: 100%;
+            aspect-ratio: 1/1; /* Kotak sempurna */
+            border: 4px solid var(--hud-primary);
+            padding: 10px;
+            position: relative;
+            background: rgba(0,0,0,0.6);
+            box-shadow: 0 0 40px var(--hud-primary);
+        }
+        
+        .holo-avatar-frame img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            filter: contrast(1.1) saturate(1.1);
+        }
+
+        .holo-info { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            height: 100%;
+            text-align: left; 
+            z-index: 2; 
+        }
+
+        /* Typography Besar */
+        .holo-name {
+            font-size: 4.5rem; /* Sangat Besar */
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .holo-role {
+            font-size: 2.5rem;
+            color: #00FFFF;
+            margin-bottom: 40px;
+            font-family: 'Rajdhani', sans-serif;
+            letter-spacing: 5px;
+            font-weight: 600;
+        }
+
+        .holo-status-box {
+            display: inline-block;
+            padding: 20px 40px;
+            border-radius: 6px;
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+            width: fit-content;
+        }
+
+        .holo-message {
+            font-size: 1.8rem;
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.5;
+            border-left: 6px solid rgba(255,255,255,0.2);
+            padding-left: 30px;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .holo-footer {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .cooldown-track {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 6px; /* Lebih tebal */
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+        
+        .cooldown-progress {
+            height: 100%;
+            background: var(--hud-primary);
+            width: 100%;
+            transform-origin: left;
+            box-shadow: 0 0 10px var(--hud-primary);
+        }
+
+        @keyframes holoCardEntry {
+            0% { opacity: 0; transform: scale(0.9) translateY(30px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* --- 14. AVATAR SCANNING LASER --- */
+        .holo-avatar-scan-line {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            z-index: 10;
+            animation: avatarScan 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes avatarScan {
+            0% { top: 0%; opacity: 0.5; box-shadow: 0 0 5px currentColor; }
+            100% { top: 100%; opacity: 1; box-shadow: 0 0 15px currentColor; }
+        }
     </style>
 
 </head>

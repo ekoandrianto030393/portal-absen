@@ -622,6 +622,30 @@ function drawSciFiHUD(ctx, x, y, w, h, color) {
     ctx.stroke();
     ctx.restore();
 
+    // 5. Rotating Triangle (New Sophistication)
+    ctx.save();
+    ctx.rotate(time * 0.5);
+    ctx.beginPath();
+    ctx.moveTo(0, -radius * 0.9);
+    ctx.lineTo(radius * 0.1, -radius * 0.8);
+    ctx.lineTo(-radius * 0.1, -radius * 0.8);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+
+    // 5. Rotating Triangle (New Sophistication)
+    ctx.save();
+    ctx.rotate(time * 0.5);
+    ctx.beginPath();
+    ctx.moveTo(0, -radius * 0.9);
+    ctx.lineTo(radius * 0.1, -radius * 0.8);
+    ctx.lineTo(-radius * 0.1, -radius * 0.8);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+
     ctx.restore();
 
     // 4. Tactical Corners (Animated Expansion)
@@ -870,20 +894,65 @@ function triggerScreenFlash(color) {
     }
 }
 
-// --- VISUAL FX: PARTICLE BURST ---
+// --- VISUAL FX: PARTICLE BURST (3D EXPLOSION) ---
 function createParticleBurst(x, y, color) {
-    for (let i = 0; i < 20; i++) {
+    // 1. Container untuk perspektif 3D
+    const container = document.createElement('div');
+    container.style.cssText = `position:fixed; left:${x}px; top:${y}px; width:0; height:0; pointer-events:none; z-index:9999; perspective: 800px;`;
+    document.body.appendChild(container);
+
+    // 2. Shockwave Ring
+    const ring = document.createElement('div');
+    ring.style.cssText = `
+        position: absolute; left: -50px; top: -50px; width: 100px; height: 100px;
+        border: 4px solid ${color}; border-radius: 50%; opacity: 1;
+        transform: translateZ(0) scale(0);
+    `;
+    container.appendChild(ring);
+    const ringAnim = ring.animate([
+        { transform: 'translateZ(0) scale(0)', opacity: 1, borderWidth: '10px' },
+        { transform: 'translateZ(50px) scale(5)', opacity: 0, borderWidth: '0px' }
+    ], { duration: 800, easing: 'ease-out' });
+    ringAnim.onfinish = () => ring.remove();
+
+    // 3. 3D Particles
+    const particleCount = 40;
+    for (let i = 0; i < particleCount; i++) {
         const p = document.createElement('div');
-        p.style.cssText = `position:fixed; left:${x}px; top:${y}px; width:4px; height:4px; background:${color}; pointer-events:none; z-index:9999; border-radius:50%; box-shadow:0 0 5px ${color};`;
-        document.body.appendChild(p);
-        const angle = Math.random() * Math.PI * 2;
-        const velocity = Math.random() * 100 + 50;
+        const size = Math.random() * 8 + 4;
+        const isSquare = Math.random() > 0.5;
+        
+        p.style.cssText = `
+            position: absolute; left: 0; top: 0;
+            width: ${size}px; height: ${size}px;
+            background: ${color};
+            box-shadow: 0 0 ${size}px ${color};
+            border-radius: ${isSquare ? '0%' : '50%'};
+            transform-style: preserve-3d;
+        `;
+        container.appendChild(p);
+
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        const velocity = Math.random() * 300 + 100;
+        
+        const tx = velocity * Math.sin(phi) * Math.cos(theta);
+        const ty = velocity * Math.sin(phi) * Math.sin(theta);
+        const tz = velocity * Math.cos(phi);
+        const rotX = Math.random() * 720;
+        const rotY = Math.random() * 720;
+
         const anim = p.animate([
-            { transform: 'translate(0,0) scale(1)', opacity: 1 },
-            { transform: `translate(${Math.cos(angle)*velocity}px, ${Math.sin(angle)*velocity}px) scale(0)`, opacity: 0 }
-        ], { duration: 600, easing: 'cubic-bezier(0, .9, .57, 1)' });
+            { transform: 'translate3d(0,0,0) rotateX(0deg) rotateY(0deg) scale(1)', opacity: 1 },
+            { transform: `translate3d(${tx}px, ${ty}px, ${tz}px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale(0)`, opacity: 0 }
+        ], { 
+            duration: 1000 + Math.random() * 500, 
+            easing: 'cubic-bezier(0.1, 0.9, 0.2, 1)' 
+        });
         anim.onfinish = () => p.remove();
     }
+    
+    setTimeout(() => container.remove(), 2000);
 }
 
 // --- HELPER: TEXT DECRYPTION EFFECT ---
@@ -1955,38 +2024,18 @@ async function processAttendance(karyawanId) {
         successOverlay.style.pointerEvents = 'none';
         
         // INIT OVERLAY BARU
+        // Menggunakan style holo-card sederhana untuk loading
         successOverlay.innerHTML = `
-            <div style="
-                position: relative;
-                text-align: center;
-                padding: 60px;
-                color: #fff;
-                background: rgba(5, 10, 15, 0.95);
-                border: 2px solid ${HEADER_COLOR};
-                box-shadow: 0 0 50px rgba(0, 255, 255, 0.2);
-                border-radius: 15px;
-                max-width: 90%;
-                backdrop-filter: blur(10px); /* Kaca Buram */
-            ">
-                <h1 class="text-5xl font-extrabold mb-8 glitch-text" style="
-                    font-family: 'Courier New', monospace;
-                    color: ${NAME_HIGHLIGHT_COLOR}; 
-                    text-shadow: 0 0 20px ${NAME_HIGHLIGHT_COLOR};
-                    letter-spacing: 8px;
-                    text-transform: uppercase;
-                    border-bottom: 1px solid ${NAME_HIGHLIGHT_COLOR};
-                    padding-bottom: 20px;
-                    display: inline-block;
-                ">
-                    SELAMAT DATANG DI ${AGENCY_NAME}
-                </h1>
-                <h2 class="text-4xl font-bold mb-6 animate-pulse" id="overlayStatus" style="
-                    font-family: 'Courier New', monospace;
-                    color: ${HEADER_COLOR};
-                    letter-spacing: 3px;
-                    text-transform: uppercase;
-                ">>> TRANSMITTING DATA <<</h2>
-                <p id="overlayMessage" class="text-xl text-cyan-200 font-mono tracking-wider">Processing request on secure server...</p>
+            <div class="holo-card" style="border-color: ${HEADER_COLOR}; text-align: center; justify-content: center;">
+                <div class="holo-header" style="justify-content: center;">
+                    <span class="text-cyan-400 font-mono tracking-[0.5em] text-2xl animate-pulse">ESTABLISHING UPLINK...</span>
+                </div>
+                <div class="p-20 flex flex-col items-center justify-center h-full">
+                    <h1 class="text-6xl font-black text-white mb-8 tracking-widest glitch-text">PROCESSING BIOMETRICS</h1>
+                    <div class="w-full bg-gray-800 h-1 mt-4 rounded overflow-hidden">
+                        <div class="h-full bg-cyan-400 animate-[loading_1s_infinite]"></div>
+                    </div>
+                </div>
             </div>
         `;
         successOverlay.style.background = `rgba(0, 0, 0, 0.95)`;
@@ -2026,8 +2075,8 @@ async function processAttendance(karyawanId) {
             cornerProfileCard.style.borderColor = result.success ? '#00FF7F' : '#FF0055';
         }
 
-        const coloredName = `<div class="text-4xl lg:text-6xl font-extrabold my-2 animate-pulse" style="color: ${NAME_HIGHLIGHT_COLOR}; text-shadow: 0 0 30px ${NAME_HIGHLIGHT_COLOR}, 0 0 10px #000; letter-spacing: 4px; text-transform: uppercase; line-height: 1.2;">${display_name}</div>`;
-        const styledJabatan = `<div class="text-2xl lg:text-3xl font-bold text-cyan-300 mb-6" style="text-shadow: 0 0 15px rgba(0,255,255,0.6); letter-spacing: 2px; font-family: 'Rajdhani', sans-serif;">${display_jabatan}</div>`;
+        // const coloredName = ... (Tidak dipakai lagi di layout baru)
+        // const styledJabatan = ... (Tidak dipakai lagi di layout baru)
 
         let finalStatusText = 'ACCESS GRANTED';
         let finalMessageHTML = '';
@@ -2059,21 +2108,21 @@ async function processAttendance(karyawanId) {
             switch (result.result_code) {
                 case 'CHECK_IN_SUCCESS':
                     finalStatusText = 'CHECK-IN BERHASIL';
-                    finalMessageHTML = `Absensi MASUK Terkonfirmasi<br>${coloredName}${styledJabatan}<span class="text-white text-xl">Selamat Bekerja.</span>`;
+                    finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br>Selamat Bekerja.`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR;
                     logAttendance(display_name, serverTimestamp); // Log ke panel kanan
                     break;
                 case 'CHECK_OUT_SUCCESS':
                     finalStatusText = 'CHECK-OUT BERHASIL';
-                    finalMessageHTML = `Absensi PULANG Terkonfirmasi<br>${coloredName}${styledJabatan}<span class="text-white text-xl">Terima kasih, Hati-hati di jalan.</span>`;
+                    finalMessageHTML = `Absensi PULANG Terkonfirmasi.<br>Terima kasih, Hati-hati di jalan.`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR;
                     break;
                 case 'STATUS_CONFIRMED':
                 default: // Fallback untuk kasus sukses lainnya
                     finalStatusText = 'STATUS CONFIRMED';
-                    finalMessageHTML = `Identitas Terkonfirmasi<br>${coloredName}${styledJabatan}<span class="text-white text-xl">Data telah disimpan.</span>`;
+                    finalMessageHTML = `Identitas Terkonfirmasi.<br>Data telah disimpan.`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR; 
             }
@@ -2109,23 +2158,23 @@ async function processAttendance(karyawanId) {
                 case 'OUT_OF_TIME_IN':
                     finalStatusText = 'DILUAR JAM MASUK';
                     // Pesan dari server sudah mengandung jam dari .env (misal: "Waktu diizinkan: 07:00 s/d 11:00")
-                    finalMessageHTML = `${coloredName}${styledJabatan}<div style="color:#FF0055; margin-top:10px; font-size: 1.2em;">${cleanMessage}</div>`; 
+                    finalMessageHTML = `<span style="color:#FF0055;">${cleanMessage}</span>`; 
                     break;
                 case 'TOO_EARLY_OUT':
                     finalStatusText = 'DILUAR JAM PULANG';
-                    finalMessageHTML = `${coloredName}${styledJabatan}<div style="color:#FF0055; margin-top:10px; font-size: 1.2em;">${cleanMessage}</div>`;
+                    finalMessageHTML = `<span style="color:#FF0055;">${cleanMessage}</span>`;
                     break;
                 case 'ALREADY_CHECKED_IN':
                     finalStatusText = 'MOHON TUNGGU'; // Cooldown
-                    finalMessageHTML = `${coloredName}${styledJabatan}<div style="color:#FFD700; margin-top:10px; font-size: 1.2em;">${cleanMessage}</div>`;
+                    finalMessageHTML = `<span style="color:#FFD700;">${cleanMessage}</span>`;
                     break;
                 case 'ALREADY_CHECKED_OUT':
                     finalStatusText = 'SUDAH PULANG';
-                    finalMessageHTML = `${coloredName}${styledJabatan}<div style="color:#FFD700; margin-top:10px; font-size: 1.2em;">${cleanMessage}</div>`;
+                    finalMessageHTML = `<span style="color:#FFD700;">${cleanMessage}</span>`;
                     break;
                 default:
                     finalStatusText = isWarning ? 'PERINGATAN' : 'ACCESS DENIED';
-                    finalMessageHTML = `${coloredName}${styledJabatan}<div style="color:${isWarning ? '#FFD700' : '#FF0055'}; margin-top:10px; font-size: 1.2em;">${cleanMessage}</div>`;
+                    finalMessageHTML = `<span style="color:${isWarning ? '#FFD700' : '#FF0055'};">${cleanMessage}</span>`;
             }
 
             // VISUAL UPDATES (Dipindahkan ke sini agar override isWarning di switch berlaku)
@@ -2150,64 +2199,48 @@ async function processAttendance(karyawanId) {
         if (successOverlay) {
              successOverlay.style.background = finalBackground;
              successOverlay.innerHTML = `
-                <div style="
-                    display: flex; 
-                    flex-direction: column; 
-                    align-items: center; 
-                    justify-content: center; 
-                    text-align: center;
-                    padding: 50px;
-                    background: rgba(0, 0, 0, 0.8); /* Latar belakang gelap transparan */
-                    border: 3px solid ${finalStatusColor};
-                    box-shadow: 0 0 60px ${finalStatusColor}40, inset 0 0 30px ${finalStatusColor}20;
-                    border-radius: 20px;
-                    position: relative;
-                    max-width: 90%;
-                    backdrop-filter: blur(5px);
-                    /* EFEK 3D HOLOGRAM */
-                    transform-style: preserve-3d;
-                    animation: holoPopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-                ">
-                    <!-- Decorative Corners -->
-                    <div style="position: absolute; top: 20px; left: 20px; width: 40px; height: 40px; border-top: 4px solid ${finalStatusColor}; border-left: 4px solid ${finalStatusColor};"></div>
-                    <div style="position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-top: 4px solid ${finalStatusColor}; border-right: 4px solid ${finalStatusColor};"></div>
-                    <div style="position: absolute; bottom: 20px; left: 20px; width: 40px; height: 40px; border-bottom: 4px solid ${finalStatusColor}; border-left: 4px solid ${finalStatusColor};"></div>
-                    <div style="position: absolute; bottom: 20px; right: 20px; width: 40px; height: 40px; border-bottom: 4px solid ${finalStatusColor}; border-right: 4px solid ${finalStatusColor};"></div>
-
-                    <!-- Holo Scan Line -->
-                    <div class="holo-scan-line"></div>
-
-                    <h1 class="text-5xl lg:text-7xl font-extrabold mb-8 tracking-widest" style="
-                        font-family: 'Courier New', monospace;
-                        color: #00FFFF;
-                        text-shadow: 0 0 15px #00FFFF;
-                        text-transform: uppercase;
-                        letter-spacing: 5px;
-                        border-bottom: 2px solid #00FFFF;
-                        padding-bottom: 10px;
-                        display: inline-block;
-                    ">
-                        SELAMAT DATANG DI ${AGENCY_NAME}
-                    </h1>
+                <div class="holo-card" style="border-color: ${finalStatusColor}; box-shadow: 0 0 100px ${finalStatusColor}40;">
+                    <!-- Cooldown Bar -->
+                    <div class="cooldown-track"><div id="cooldownBar" class="cooldown-progress" style="background: ${finalStatusColor}; box-shadow: 0 0 20px ${finalStatusColor};"></div></div>
                     
-                    <h2 class="text-4xl lg:text-6xl font-extrabold mt-2 mb-8" id="overlayStatus" style="
-                        font-family: 'Courier New', monospace;
-                        color: ${finalStatusColor}; 
-                        text-shadow: 0 0 20px ${finalStatusColor};
-                        text-transform: uppercase;
-                        letter-spacing: 2px;
-                    ">
-                        [ ${finalStatusText} ]
-                    </h2>
-                    
-                    <div class="text-xl lg:text-3xl mt-4 text-white font-medium font-mono" id="overlayMessage" style="max-width: 900px; line-height: 1.6;">
-                        ${finalMessageHTML}
+                    <div class="holo-header">
+                        <div class="flex items-center gap-4">
+                            <div class="w-4 h-4 rounded-full animate-pulse" style="background: ${finalStatusColor}"></div>
+                            <span class="font-bold tracking-[0.3em] text-xl" style="color: ${finalStatusColor}">SECURE GATEWAY // TERMINAL A-9</span>
+                        </div>
+                        <div class="text-lg font-mono opacity-80">${serverTimestamp}</div>
                     </div>
 
-                    <div class="mt-12 pt-6 border-t border-gray-600 w-full">
-                        <p class="text-lg text-cyan-200 font-mono tracking-widest">
-                            Transaction Time: ${serverTimestamp} <span class="mx-3 text-gray-500">|</span> ID Terminal: A-9
-                        </p>
+                    <div class="holo-content">
+                        <!-- Left: Huge Avatar -->
+                        <div class="holo-avatar-container">
+                            <div class="holo-avatar-frame" style="border-color: ${finalStatusColor}">
+                                <img src="${employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : ''}" onerror="this.style.display='none'">
+                                <div class="holo-avatar-scan-line" style="background: ${finalStatusColor}; color: ${finalStatusColor};"></div>
+                            </div>
+                            <div class="mt-6 text-center">
+                                <span class="text-2xl font-mono text-gray-400 tracking-widest">ID: ${karyawanId}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Right: Info & Status -->
+                        <div class="holo-info">
+                            <h2 class="holo-name" style="color: ${NAME_HIGHLIGHT_COLOR}; text-shadow: 0 0 40px ${NAME_HIGHLIGHT_COLOR}60;">${display_name}</h2>
+                            <p class="holo-role text-cyan-300">${display_jabatan}</p>
+                            
+                            <div class="holo-status-box" style="background: ${finalStatusColor}20; border: 2px solid ${finalStatusColor}; color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor};">
+                                ${finalStatusText}
+                            </div>
+
+                            <div class="holo-message">
+                                ${finalMessageHTML}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="holo-footer">
+                        <span class="text-xl">SYSTEM: BIOMETRIC_MATCH_v4.5 [STABLE]</span>
+                        <span id="cooldownTimer" class="font-bold text-xl" style="color: ${finalStatusColor}">NEXT SCAN: 15.0s</span>
                     </div>
                 </div>
             `;
@@ -2229,7 +2262,22 @@ async function processAttendance(karyawanId) {
 
         logSystem(`${currentAction} Success for ${display_name}. Cooldown active.`, 'text-green-500');
         lastActionDisplay.textContent = `${currentAction}: ${display_name.substring(0, 15)}... @ ${serverTimestamp}`;
-        await new Promise(resolve => setTimeout(resolve, SUCCESS_COOLDOWN_MS)); 
+        
+        // --- COOLDOWN VISUALIZATION LOOP ---
+        const startTime = Date.now();
+        const cooldownBar = document.getElementById('cooldownBar');
+        const cooldownTimer = document.getElementById('cooldownTimer');
+        
+        while (Date.now() - startTime < SUCCESS_COOLDOWN_MS) {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, SUCCESS_COOLDOWN_MS - elapsed);
+            const progress = 100 - ((elapsed / SUCCESS_COOLDOWN_MS) * 100);
+            
+            if(cooldownBar) cooldownBar.style.width = `${progress}%`;
+            if(cooldownTimer) cooldownTimer.textContent = `COOLDOWN: ${(remaining/1000).toFixed(1)}s`;
+            
+            await new Promise(r => requestAnimationFrame(r));
+        }
 
     } catch (error) {
         SoundFX.play('error');
@@ -2243,41 +2291,16 @@ async function processAttendance(karyawanId) {
         if(successOverlay) {
              successOverlay.style.background = `radial-gradient(circle, rgba(255,0,0,0.8) 0%, rgba(100,0,0,0.95) 100%)`;
              successOverlay.innerHTML = `
-                <div style="
-                    text-align: center; 
-                    padding: 60px;
-                    color: white;
-                    background: rgba(20, 0, 0, 0.8);
-                    border: 4px solid #FF0055;
-                    box-shadow: 0 0 80px #FF0055, inset 0 0 30px #FF0055;
-                    border-radius: 20px;
-                    max-width: 900px;
-                    backdrop-filter: blur(10px);
-                    /* EFEK 3D HOLOGRAM */
-                    transform-style: preserve-3d;
-                    animation: holoPopIn 0.5s ease-out forwards;
-                ">
-                     <h1 class="text-5xl lg:text-7xl font-extrabold mb-8 tracking-widest" style="
-                        font-family: 'Courier New', monospace;
-                        color: #00FFFF;
-                        text-shadow: 0 0 10px #00FFFF;
-                        text-transform: uppercase;
-                        letter-spacing: 5px;
-                    ">
-                        SELAMAT DATANG DI ${AGENCY_NAME}
-                    </h1>
-                    <h2 class="text-5xl font-extrabold mb-6 glitch-text" style="
-                        font-family: 'Courier New', monospace;
-                        color: #FF0055; 
-                        text-shadow: 0 0 25px #FF0055;
-                        text-transform: uppercase;
-                        letter-spacing: 3px;
-                    ">
-                        ⚠ TRANSMISSION FAILED ⚠
-                    </h2>
-                    <p class="text-2xl text-white font-mono mb-6 tracking-wide">Gagal terhubung ke server. Cek koneksi jaringan.</p>
-                    <div style="background: rgba(255, 0, 0, 0.1); padding: 20px; border: 1px dashed #FF0055; border-radius: 5px;">
-                        <p class="text-xl text-amber-300 font-mono">ERROR: ${error.message}</p>
+                <div class="holo-card" style="border-color: #FF0055; box-shadow: 0 0 100px #FF0055;">
+                    <div class="holo-header">
+                        <span class="text-red-500 font-bold tracking-[0.3em] text-2xl">SYSTEM ALERT</span>
+                    </div>
+                    <div class="p-20 text-center flex flex-col items-center justify-center h-full">
+                        <h1 class="text-6xl font-black text-red-500 mb-8 glitch-text">TRANSMISSION FAILED</h1>
+                        <p class="text-white text-2xl mb-8">Gagal terhubung ke server database.</p>
+                        <div class="bg-red-900/30 p-8 border border-red-500/50 rounded text-red-300 font-mono text-xl">
+                            ERROR: ${error.message}
+                        </div>
                     </div>
                 </div>
              `;
