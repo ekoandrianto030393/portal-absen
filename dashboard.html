@@ -109,6 +109,11 @@
                 page-break-inside: avoid;
             }
 
+            /* Zebra Striping (Belang-belang) agar mudah dibaca */
+            #table-rekap tbody tr:nth-child(even) {
+                background-color: #f1f5f9 !important; /* Abu-abu muda */
+            }
+
             /* Pastikan container tidak scroll (overflow) saat dicetak */
             .overflow-x-auto {
                 overflow: visible !important;

@@ -2026,7 +2026,8 @@ async function processAttendance(karyawanId) {
             cornerProfileCard.style.borderColor = result.success ? '#00FF7F' : '#FF0055';
         }
 
-        const coloredName = `<span class="font-bold text-shadow-lg" style="color: ${NAME_HIGHLIGHT_COLOR}; text-shadow: 0 0 10px ${NAME_HIGHLIGHT_COLOR}, 0 0 5px #000;">${display_name}</span>`;
+        const coloredName = `<div class="text-4xl lg:text-6xl font-extrabold my-2 animate-pulse" style="color: ${NAME_HIGHLIGHT_COLOR}; text-shadow: 0 0 30px ${NAME_HIGHLIGHT_COLOR}, 0 0 10px #000; letter-spacing: 4px; text-transform: uppercase; line-height: 1.2;">${display_name}</div>`;
+        const styledJabatan = `<div class="text-2xl lg:text-3xl font-bold text-cyan-300 mb-6" style="text-shadow: 0 0 15px rgba(0,255,255,0.6); letter-spacing: 2px; font-family: 'Rajdhani', sans-serif;">${display_jabatan}</div>`;
 
         let finalStatusText = 'ACCESS GRANTED';
         let finalMessageHTML = '';
@@ -2058,21 +2059,21 @@ async function processAttendance(karyawanId) {
             switch (result.result_code) {
                 case 'CHECK_IN_SUCCESS':
                     finalStatusText = 'CHECK-IN BERHASIL';
-                    finalMessageHTML = `Absensi MASUK atas nama ${coloredName} (${display_jabatan}) telah berhasil dicatat. Selamat Bekerja.`;
+                    finalMessageHTML = `Absensi MASUK Terkonfirmasi<br>${coloredName}${styledJabatan}<span class="text-white text-xl">Selamat Bekerja.</span>`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR;
                     logAttendance(display_name, serverTimestamp); // Log ke panel kanan
                     break;
                 case 'CHECK_OUT_SUCCESS':
                     finalStatusText = 'CHECK-OUT BERHASIL';
-                    finalMessageHTML = `Absensi PULANG atas nama ${coloredName} (${display_jabatan}) telah berhasil tercatat pada ${serverTimestamp}. Terima kasih.`;
+                    finalMessageHTML = `Absensi PULANG Terkonfirmasi<br>${coloredName}${styledJabatan}<span class="text-white text-xl">Terima kasih, Hati-hati di jalan.</span>`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR;
                     break;
                 case 'STATUS_CONFIRMED':
                 default: // Fallback untuk kasus sukses lainnya
                     finalStatusText = 'STATUS CONFIRMED';
-                    finalMessageHTML = `Sistem mengkonfirmasi ${coloredName}. Absensi Anda untuk hari ini telah tercatat.`;
+                    finalMessageHTML = `Identitas Terkonfirmasi<br>${coloredName}${styledJabatan}<span class="text-white text-xl">Data telah disimpan.</span>`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR; 
             }
@@ -2108,23 +2109,23 @@ async function processAttendance(karyawanId) {
                 case 'OUT_OF_TIME_IN':
                     finalStatusText = 'DILUAR JAM MASUK';
                     // Pesan dari server sudah mengandung jam dari .env (misal: "Waktu diizinkan: 07:00 s/d 11:00")
-                    finalMessageHTML = `${coloredName}, <span style="color:#FF0055;">${cleanMessage}</span>`; 
+                    finalMessageHTML = `${coloredName}${styledJabatan}<div style="color:#FF0055; margin-top:10px; font-size: 1.2em;">${cleanMessage}</div>`; 
                     break;
                 case 'TOO_EARLY_OUT':
                     finalStatusText = 'DILUAR JAM PULANG';
-                    finalMessageHTML = `${coloredName}, <span style="color:#FF0055;">${cleanMessage}</span>`;
+                    finalMessageHTML = `${coloredName}${styledJabatan}<div style="color:#FF0055; margin-top:10px; font-size: 1.2em;">${cleanMessage}</div>`;
                     break;
                 case 'ALREADY_CHECKED_IN':
                     finalStatusText = 'MOHON TUNGGU'; // Cooldown
-                    finalMessageHTML = `${coloredName}, ${cleanMessage}`;
+                    finalMessageHTML = `${coloredName}${styledJabatan}<div style="color:#FFD700; margin-top:10px; font-size: 1.2em;">${cleanMessage}</div>`;
                     break;
                 case 'ALREADY_CHECKED_OUT':
-                    finalStatusText = 'ANDA SUDAH ABSEN PULANG HARI INI';
-                    finalMessageHTML = `${coloredName}, ${cleanMessage}`;
+                    finalStatusText = 'SUDAH PULANG';
+                    finalMessageHTML = `${coloredName}${styledJabatan}<div style="color:#FFD700; margin-top:10px; font-size: 1.2em;">${cleanMessage}</div>`;
                     break;
                 default:
                     finalStatusText = isWarning ? 'PERINGATAN' : 'ACCESS DENIED';
-                    finalMessageHTML = `${coloredName} | ${cleanMessage}`;
+                    finalMessageHTML = `${coloredName}${styledJabatan}<div style="color:${isWarning ? '#FFD700' : '#FF0055'}; margin-top:10px; font-size: 1.2em;">${cleanMessage}</div>`;
             }
 
             // VISUAL UPDATES (Dipindahkan ke sini agar override isWarning di switch berlaku)

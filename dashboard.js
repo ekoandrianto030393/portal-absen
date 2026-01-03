@@ -312,6 +312,7 @@ async function loadMonthlyRecap() {
     table.innerHTML = `
         <thead class="uppercase text-xs font-bold tracking-wider border-b border-slate-200">
             <tr>
+                <th class="px-6 py-4 text-center w-12">No.</th>
                 <th class="px-6 py-4">ID</th>
                 <th class="px-6 py-4">Nama Pegawai</th>
                 <th class="px-6 py-4">Jabatan</th>
@@ -336,9 +337,22 @@ async function loadMonthlyRecap() {
         tbody.innerHTML = '';
 
         if (result.data && result.data.length > 0) {
-            result.data.forEach(row => {
+            // Inisialisasi variabel total
+            let tHadir = 0, tDL = 0, tAlpa = 0, tTelat = 0, tTelatMin = 0, tNoOut = 0, tPot = 0;
+
+            result.data.forEach((row, index) => {
+                // Hitung total saat looping
+                tHadir += parseInt(row.total_masuk) || 0;
+                tDL += parseInt(row.total_dl) || 0;
+                tAlpa += parseInt(row.alpa) || 0;
+                tTelat += parseInt(row.telat_kali) || 0;
+                tTelatMin += parseInt(row.telat_menit) || 0;
+                tNoOut += parseInt(row.tanpa_absen_pulang) || 0;
+                tPot += parseFloat(row.potongan_jam) || 0;
+
                 tbody.innerHTML += `
                     <tr class="hover:bg-blue-50/50 border-b border-slate-100 last:border-0">
+                        <td class="px-6 py-4 text-center font-mono text-slate-500">${index + 1}</td>
                         <td class="px-6 py-4 font-mono text-slate-500">${row.id_karyawan}</td>
                         <td class="px-6 py-4 font-bold text-slate-800">${row.nama}</td>
                         <td class="px-6 py-4 text-sm text-slate-600">${row.jabatan || '-'}</td>
@@ -357,8 +371,23 @@ async function loadMonthlyRecap() {
                     </tr>
                 `;
             });
+
+            // Tambahkan Baris Total Ringkasan di Paling Bawah
+            tbody.innerHTML += `
+                <tr class="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-900 print:bg-gray-200 print:border-black break-inside-avoid">
+                    <td colspan="4" class="px-6 py-3 text-right uppercase text-xs tracking-wider">Total Ringkasan:</td>
+                    <td class="px-6 py-3 text-center">${tHadir}</td>
+                    <td class="px-6 py-3 text-center">${tDL}</td>
+                    <td class="px-6 py-3 text-center">${tAlpa}</td>
+                    <td class="px-6 py-3 text-center">${tTelat}</td>
+                    <td class="px-6 py-3 text-center text-slate-500 text-xs">${tTelatMin}</td>
+                    <td class="px-6 py-3 text-center">${tNoOut}</td>
+                    <td class="px-6 py-3 text-center">${tPot}</td>
+                    <td class="px-6 py-3"></td>
+                </tr>
+            `;
         } else {
-            tbody.innerHTML = '<tr><td colspan="10" class="p-4 text-center text-slate-500">Tidak ada data untuk periode ini.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" class="p-4 text-center text-slate-500">Tidak ada data untuk periode ini.</td></tr>';
         }
     } catch (e) {
         console.error(e);
