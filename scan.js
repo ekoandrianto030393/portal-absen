@@ -2078,7 +2078,7 @@ async function processAttendance(karyawanId) {
         // const coloredName = ... (Tidak dipakai lagi di layout baru)
         // const styledJabatan = ... (Tidak dipakai lagi di layout baru)
 
-        let finalStatusText = 'ACCESS GRANTED';
+        let finalStatusText = 'AKSES DITERIMA';
         let finalMessageHTML = '';
         let finalBackground = ABSEN_NORMAL_BG;
         let finalStatusColor = PROFESSIONAL_STATUS_COLOR;
@@ -2107,7 +2107,7 @@ async function processAttendance(karyawanId) {
             // Gunakan result_code untuk logika lebih bersih (jika ada dari server)
             switch (result.result_code) {
                 case 'CHECK_IN_SUCCESS':
-                    finalStatusText = 'CHECK-IN BERHASIL';
+                    finalStatusText = 'ABSEN MASUK BERHASIL';
                     finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br>Selamat Bekerja.`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR;
@@ -2121,7 +2121,7 @@ async function processAttendance(karyawanId) {
                     break;
                 case 'STATUS_CONFIRMED':
                 default: // Fallback untuk kasus sukses lainnya
-                    finalStatusText = 'STATUS CONFIRMED';
+                    finalStatusText = 'STATUS TERKONFIRMASI';
                     finalMessageHTML = `Identitas Terkonfirmasi.<br>Data telah disimpan.`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR; 
@@ -2173,7 +2173,7 @@ async function processAttendance(karyawanId) {
                     finalMessageHTML = `<span style="color:#FFD700;">${cleanMessage}</span>`;
                     break;
                 default:
-                    finalStatusText = isWarning ? 'PERINGATAN' : 'ACCESS DENIED';
+                    finalStatusText = isWarning ? 'PERINGATAN' : 'AKSES DITOLAK';
                     finalMessageHTML = `<span style="color:${isWarning ? '#FFD700' : '#FF0055'};">${cleanMessage}</span>`;
             }
 
@@ -2204,7 +2204,7 @@ async function processAttendance(karyawanId) {
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.05; background-image: linear-gradient(${finalStatusColor} 1px, transparent 1px), linear-gradient(90deg, ${finalStatusColor} 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0;"></div>
                     
                     <!-- Digital Stamp -->
-                    <div class="digital-stamp" style="color: ${finalStatusColor}; border-color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor};">${result.success ? 'AUTHORIZED' : 'DENIED'}</div>
+                    <div class="digital-stamp" style="color: ${finalStatusColor}; border-color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor};">${result.success ? 'DITERIMA' : 'DITOLAK'}</div>
 
                     <!-- Cooldown Bar -->
                     <div class="cooldown-track"><div id="cooldownBar" class="cooldown-progress" style="background: ${finalStatusColor}; box-shadow: 0 0 20px ${finalStatusColor};"></div></div>
