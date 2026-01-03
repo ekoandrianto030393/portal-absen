@@ -2199,17 +2199,26 @@ async function processAttendance(karyawanId) {
         if (successOverlay) {
              successOverlay.style.background = finalBackground;
              successOverlay.innerHTML = `
-                <div class="holo-card" style="border-color: ${finalStatusColor}; box-shadow: 0 0 100px ${finalStatusColor}40;">
-                    <!-- Circuit Background -->
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.05; background-image: linear-gradient(${finalStatusColor} 1px, transparent 1px), linear-gradient(90deg, ${finalStatusColor} 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0;"></div>
+                <div class="holo-card" style="border-color: ${finalStatusColor}; box-shadow: 0 0 100px ${finalStatusColor}40; position: relative;">
+                    <!-- 1. HUD Corners (NEW) -->
+                    <div class="holo-card-corner hc-tl" style="color: ${finalStatusColor}; z-index: 20;"></div>
+                    <div class="holo-card-corner hc-tr" style="color: ${finalStatusColor}; z-index: 20;"></div>
+                    <div class="holo-card-corner hc-bl" style="color: ${finalStatusColor}; z-index: 20;"></div>
+                    <div class="holo-card-corner hc-br" style="color: ${finalStatusColor}; z-index: 20;"></div>
+
+                    <!-- 2. Scanning Beam (NEW) -->
+                    <div class="holo-overlay-beam" style="color: ${finalStatusColor}; z-index: 5;"></div>
+
+                    <!-- 3. Animated Circuit Background (UPDATED) -->
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.08; background-image: linear-gradient(${finalStatusColor} 1px, transparent 1px), linear-gradient(90deg, ${finalStatusColor} 1px, transparent 1px); background-size: 40px 40px; animation: gridMove 4s linear infinite; pointer-events: none; z-index: 1;"></div>
                     
                     <!-- Digital Stamp -->
-                    <div class="digital-stamp" style="color: ${finalStatusColor}; border-color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor};">${result.success ? 'DITERIMA' : 'DITOLAK'}</div>
+                    <div class="digital-stamp" style="color: ${finalStatusColor}; border-color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor}; z-index: 15;">${result.success ? 'DITERIMA' : 'DITOLAK'}</div>
 
                     <!-- Cooldown Bar -->
-                    <div class="cooldown-track"><div id="cooldownBar" class="cooldown-progress" style="background: ${finalStatusColor}; box-shadow: 0 0 20px ${finalStatusColor};"></div></div>
+                    <div class="cooldown-track" style="z-index: 20;"><div id="cooldownBar" class="cooldown-progress" style="background: ${finalStatusColor}; box-shadow: 0 0 20px ${finalStatusColor};"></div></div>
                     
-                    <div class="holo-header">
+                    <div class="holo-header" style="position: relative; z-index: 10;">
                         <div class="flex items-center gap-4">
                             <div class="w-4 h-4 rounded-full animate-pulse" style="background: ${finalStatusColor}"></div>
                             <span class="font-bold tracking-[0.3em] text-xl" style="color: ${finalStatusColor}">SECURE GATEWAY // TERMINAL A-9</span>
@@ -2217,7 +2226,7 @@ async function processAttendance(karyawanId) {
                         <div class="text-lg font-mono opacity-80">${serverTimestamp}</div>
                     </div>
 
-                    <div class="holo-content">
+                    <div class="holo-content" style="position: relative; z-index: 10;">
                         <!-- Left: Huge Avatar -->
                         <div class="holo-avatar-container">
                             <div class="holo-avatar-frame" style="border-color: ${finalStatusColor}">
@@ -2230,15 +2239,15 @@ async function processAttendance(karyawanId) {
                         </div>
                         
                         <!-- Right: Info & Status -->
-                        <div class="holo-info">
-                            <h2 class="holo-name" style="color: ${NAME_HIGHLIGHT_COLOR}; text-shadow: 0 0 40px ${NAME_HIGHLIGHT_COLOR}60;">${display_name}</h2>
-                            <p class="holo-role text-cyan-300">${display_jabatan}</p>
-                            
-                            <div class="holo-status-box" style="background: ${finalStatusColor}20; border: 2px solid ${finalStatusColor}; color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor};">
+                        <div class="holo-info" style="background: rgba(0, 0, 0, 0.3); padding: 20px; border-radius: 12px; border: 1px solid ${finalStatusColor}20; backdrop-filter: blur(4px);">
+                            <div class="holo-status-box" style="background: ${finalStatusColor}20; border: 2px solid ${finalStatusColor}; color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor}; margin-bottom: 20px;">
                                 ${finalStatusText}
                             </div>
 
-                            <div class="holo-message">
+                            <h2 class="holo-name" style="color: ${NAME_HIGHLIGHT_COLOR}; text-shadow: 0 0 40px ${NAME_HIGHLIGHT_COLOR}60;">${display_name}</h2>
+                            <p class="holo-role text-cyan-300">${display_jabatan}</p>
+
+                            <div class="holo-message" style="font-size: 1.1em; line-height: 1.5; margin-top: 20px;">
                                 ${finalMessageHTML}
                             </div>
                         </div>
@@ -2253,14 +2262,19 @@ async function processAttendance(karyawanId) {
                                 </div>
                                 <div>
                                     <div class="bio-label">BIOMETRIC ID</div>
-                                    <div class="bio-value" style="font-size: 1rem;">MATCHED</div>
+                                    <div class="bio-value" id="bioIdValue" style="font-size: 1rem;">000000</div>
                                 </div>
                             </div>
                             
                             <!-- DNA Row -->
                             <div class="bio-row">
-                                <div class="bio-icon-box" style="border-color: ${finalStatusColor}">
-                                    <span style="font-size:20px">🧬</span>
+                                <!-- 4. 3D Rotating Cube (NEW) -->
+                                <div class="bio-cube-container" style="color: ${finalStatusColor}">
+                                    <div class="bio-cube">
+                                        <div class="front"></div><div class="back"></div>
+                                        <div class="right"></div><div class="left"></div>
+                                        <div class="top"></div><div class="bottom"></div>
+                                    </div>
                                 </div>
                                 <div>
                                     <div class="bio-label">GENETIC SEQ</div>
@@ -2272,7 +2286,7 @@ async function processAttendance(karyawanId) {
                         </div>
                     </div>
 
-                    <div class="holo-footer">
+                    <div class="holo-footer" style="position: relative; z-index: 10;">
                         <span class="text-xl">SYSTEM: BIOMETRIC_MATCH_v4.5 [STABLE]</span>
                         <span id="cooldownTimer" class="font-bold text-xl" style="color: ${finalStatusColor}">NEXT SCAN: 15.0s</span>
                     </div>
@@ -2282,6 +2296,23 @@ async function processAttendance(karyawanId) {
             // Trigger Particle Burst di tengah layar
             const rect = successOverlay.getBoundingClientRect();
             createParticleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, finalStatusColor);
+
+            // --- ANIMASI DECRYPT BIOMETRIC ID (NEW) ---
+            const bioIdEl = document.getElementById('bioIdValue');
+            if (bioIdEl) {
+                let dFrame = 0;
+                const dTotal = 30; // Durasi animasi
+                const dText = "MATCHED";
+                const dInt = setInterval(() => {
+                    dFrame++;
+                    bioIdEl.textContent = resolveText(dText, dFrame, dTotal); // Menggunakan helper resolveText
+                    
+                    if (dFrame >= dTotal) {
+                        clearInterval(dInt);
+                        bioIdEl.textContent = dText;
+                    }
+                }, 40);
+            }
         }
         
         let currentAction = 'Status';
