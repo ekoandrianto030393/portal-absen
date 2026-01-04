@@ -385,6 +385,37 @@
             }
         }
 
+        /* SCANNER BEAM TRACKING STATE (LOCKED) */
+        .scanner-beam.tracking {
+            animation: none; /* Hentikan animasi idle */
+            transition: top 0.1s ease-out, box-shadow 0.2s; /* Gerakan halus mengikuti wajah */
+            height: 4px; /* Lebih tebal saat terkunci */
+            background: rgba(0, 255, 255, 0.9);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 1), 0 0 10px rgba(255, 255, 255, 0.8);
+        }
+        .scanner-beam.tracking.error {
+            background: rgba(255, 0, 85, 0.9);
+            box-shadow: 0 0 20px rgba(255, 0, 85, 1);
+        }
+        .scanner-beam.tracking.success {
+            background: rgba(0, 255, 127, 0.9);
+            box-shadow: 0 0 20px rgba(0, 255, 127, 1);
+        }
+
+        /* GLOBAL ALERT STATE (ACCESS DENIED) */
+        body.global-alert {
+            box-shadow: inset 0 0 100px rgba(255, 0, 0, 0.3);
+        }
+        body.global-alert .widget-panel {
+            border-color: rgba(255, 0, 85, 0.6);
+            box-shadow: 0 0 30px rgba(255, 0, 85, 0.2);
+        }
+        body.global-alert .widget-title {
+            color: #FF0055;
+            border-left-color: #FF0055;
+            background: linear-gradient(90deg, rgba(255, 0, 85, 0.4), transparent);
+        }
+
         .video-container video,
         .video-container canvas {
             position: absolute;
@@ -976,7 +1007,7 @@
             text-transform: uppercase;
             border: 8px solid currentColor;
             padding: 10px 40px;
-            transform: rotate(-15deg) scale(3);
+            transform: translateY(-600px) rotate(-45deg) scale(3);
             opacity: 0;
             animation: stampSlam 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards 0.8s;
             z-index: 50;
@@ -1010,6 +1041,38 @@
             background: #fff; box-shadow: 0 0 8px #fff; animation: scanFP 1.5s ease-in-out infinite;
         }
         @keyframes scanFP { 0% {top:0; opacity:0;} 20% {opacity:1;} 80% {opacity:1;} 100% {top:100%; opacity:0;} }
+
+        /* SCREEN SHAKE FX */
+        .screen-shake {
+            animation: screenShake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes screenShake {
+            0%, 100% { transform: translate(0, 0); }
+            10%, 90% { transform: translate(-1px, 1px); }
+            20%, 80% { transform: translate(1px, -1px); }
+            30%, 50%, 70% { transform: translate(-3px, 3px); }
+            40%, 60% { transform: translate(3px, -3px); }
+        }
+
+        /* DIGITAL CRACK FX */
+        #digitalCrack {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transform: scale(1.05);
+            transition: opacity 0.05s ease-out, transform 0.05s cubic-bezier(0.1, 0.9, 0.2, 1);
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 500 500' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter id='glow'%3E%3CfeGaussianBlur stdDeviation='2' result='coloredBlur'/%3E%3CfeMerge%3E%3CfeMergeNode in='coloredBlur'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Cg stroke='%2300FFFF' stroke-width='2' fill='none' filter='url(%23glow)'%3E%3Cpath d='M250 250 L150 80 M250 250 L350 80 M250 250 L450 250 M250 250 L350 420 M250 250 L150 420 M250 250 L50 250' stroke-linecap='round'/%3E%3Cpath d='M250 250 L200 180 L220 160 M250 250 L300 180 L280 160' stroke-width='1' opacity='0.7'/%3E%3Ccircle cx='250' cy='250' r='150' stroke-dasharray='10,30' opacity='0.3'/%3E%3C/g%3E%3C/svg%3E");
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: 120%;
+            mix-blend-mode: screen;
+        }
+        #digitalCrack.active { opacity: 1; transform: scale(1); }
+        #digitalCrack.crack-error {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 500 500' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter id='glow'%3E%3CfeGaussianBlur stdDeviation='2' result='coloredBlur'/%3E%3CfeMerge%3E%3CfeMergeNode in='coloredBlur'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Cg stroke='%23FF0055' stroke-width='2' fill='none' filter='url(%23glow)'%3E%3Cpath d='M250 250 L150 80 M250 250 L350 80 M250 250 L450 250 M250 250 L350 420 M250 250 L150 420 M250 250 L50 250' stroke-linecap='round'/%3E%3Cpath d='M250 250 L200 180 L220 160 M250 250 L300 180 L280 160' stroke-width='1' opacity='0.7'/%3E%3Ccircle cx='250' cy='250' r='150' stroke-dasharray='10,30' opacity='0.3'/%3E%3C/g%3E%3C/svg%3E");
+        }
     </style>
 
 </head>
@@ -1045,6 +1108,7 @@
     <div class="scanlines"></div> <!-- Overlay CRT -->
     <div class="noise-overlay"></div> <!-- Overlay Noise (NEW) -->
     <div id="screenFlash"></div> <!-- Efek Kilatan -->
+    <div id="digitalCrack"></div> <!-- Efek Retakan Digital (NEW) -->
     <div class="satellite-scan"></div> <!-- Global Scan Effect -->
 
     <!-- BOOT SCREEN -->
@@ -1284,6 +1348,9 @@
                         INITIALIZING SENSORS...
                     </p>
                 </div>
+<!-- NEW: A.I. VOICE VISUALIZER -->
+<canvas id="aiVoiceVisualizer" class="w-full h-6 opacity-80 rounded border border-cyan-500/20 bg-black/40" width="600"
+    height="40"></canvas>
             </div>
 
             <div class="col-span-1 flex flex-col gap-4 order-3">
@@ -1359,22 +1426,23 @@
 
         <!-- CORNER PROFILE CARD (NEW) -->
         <div id="corner-profile-card"
-            class="fixed bottom-6 right-6 z-[100] hidden flex items-center gap-4 bg-black/90 border-r-4 border-cyan-500 p-4 rounded-l-lg shadow-[0_0_30px_rgba(0,255,255,0.4)] backdrop-blur-md transition-all duration-500 transform translate-x-full max-w-sm">
+            class="fixed bottom-6 right-6 z-[100] hidden flex items-center gap-4 bg-slate-900/95 border-l-4 border-emerald-500 p-4 rounded-r-none rounded-l-xl shadow-[0_0_30px_rgba(0,0,0,0.8)] backdrop-blur-md transition-all duration-500 transform translate-x-full max-w-sm border border-white/10">
             <div class="relative w-20 h-20 flex-shrink-0">
                 <img id="corner-photo" src=""
-                    class="w-full h-full object-cover rounded-md border-2 border-cyan-500 shadow-[0_0_10px_rgba(0,255,255,0.5)]"
+                    class="w-full h-full object-cover rounded-md border border-white/30 shadow-lg"
                     onerror="this.style.display='none'">
                 <div
-                    class="absolute -bottom-2 -right-2 bg-black border border-cyan-500 text-cyan-500 text-[10px] px-1 font-mono">
+                    class="absolute -bottom-2 -right-2 bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider shadow-sm">
                     ID</div>
             </div>
             <div class="flex flex-col min-w-0">
-                <h3 id="corner-name" class="text-xl font-bold text-white font-mono leading-none truncate tracking-wider">NAMA
+                <div class="text-[9px] text-emerald-400 font-bold tracking-widest uppercase mb-0.5">PUSKESMAS WANA</div>
+                <h3 id="corner-name" class="text-lg font-bold text-white font-sans leading-tight truncate">NAMA
                 </h3>
-                <p id="corner-jabatan" class="text-sm text-cyan-400 font-mono truncate mt-1 tracking-wide">JABATAN</p>
+                <p id="corner-jabatan" class="text-xs text-slate-300 font-sans truncate mt-0.5">JABATAN</p>
                 <div class="flex items-center gap-2 mt-2">
                     <span id="corner-id"
-                        class="text-xs text-gray-400 font-mono bg-gray-800 px-2 py-0.5 rounded border border-gray-700">0000</span>
+                        class="text-[10px] text-slate-400 font-mono bg-black/30 px-1.5 py-0.5 rounded border border-white/10">0000</span>
                     <span id="corner-status"
                         class="text-[10px] font-bold text-black bg-green-500 px-2 py-0.5 rounded">ACTIVE</span>
                 </div>

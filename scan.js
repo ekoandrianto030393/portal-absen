@@ -71,6 +71,11 @@ let faceParticles = []; // NEW: Global particle array
 // --- AUDIO & VOICE ENGINE (WEB AUDIO API) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
+// --- NEW: AUDIO ANALYSER FOR VISUALIZER ---
+const audioAnalyser = audioCtx.createAnalyser();
+audioAnalyser.fftSize = 128; // Resolusi visualizer
+audioAnalyser.connect(audioCtx.destination); // Sambungkan ke output speaker
+
 // Resume audio context saat user berinteraksi pertama kali (Browser Policy)
 document.addEventListener('click', () => {
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -83,7 +88,7 @@ const SoundFX = {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        gain.connect(audioAnalyser); // Sambungkan ke Analyser, bukan langsung destination
         const now = audioCtx.currentTime;
 
         if (type === 'scan') {
@@ -100,7 +105,7 @@ const SoundFX = {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            gain.connect(audioAnalyser);
             const now = audioCtx.currentTime;
             osc.type = 'square';
             osc.frequency.setValueAtTime(1500, now);
@@ -132,7 +137,7 @@ const SoundFX = {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            gain.connect(audioAnalyser);
             const now = audioCtx.currentTime;
             osc.type = 'square';
             osc.frequency.setValueAtTime(800 + Math.random() * 200, now);
@@ -164,6 +169,37 @@ const SoundFX = {
         }
     }
 };
+
+// --- NEW: DRAW AUDIO VISUALIZER LOOP ---
+function initAudioVisualizer() {
+    const canvas = document.getElementById('aiVoiceVisualizer');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const bufferLength = audioAnalyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    function renderFrame() {
+        requestAnimationFrame(renderFrame);
+        audioAnalyser.getByteFrequencyData(dataArray);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Style Visualizer
+        const barWidth = (canvas.width / bufferLength) * 2.5;
+        let barHeight;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+            barHeight = dataArray[i] / 2; // Scale height
+            
+            // Warna Gradient Cyan ke Ungu
+            ctx.fillStyle = `rgba(0, 255, 255, ${barHeight / 100})`;
+            ctx.fillRect(x, (canvas.height - barHeight) / 2, barWidth, barHeight); // Center vertical
+            x += barWidth + 1;
+        }
+    }
+    renderFrame();
+}
 
 // --- NEW: IDLE RADAR EFFECT ---
 function drawIdleRadar(ctx, x, y, radius) {
@@ -2012,6 +2048,19 @@ async function detectFace() {
     }
 }
 
+// --- NEW: HOLOGRAPHIC PARALLAX TILT EFFECT ---
+document.addEventListener('mousemove', (e) => {
+    // Hanya aktif jika overlay sukses sedang tampil
+    if (successOverlay && successOverlay.style.opacity === '1') {
+        const card = successOverlay.querySelector('.holo-card');
+        if (card) {
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 30; // Sensitivitas X
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 30; // Sensitivitas Y
+            card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg) scale(1.02)`;
+        }
+    }
+});
+
 // =============================================================================
 // 4. PROSES ABSENSI (Koneksi ke /absensi) - PERBAIKAN OVERLAY
 // =============================================================================
@@ -2195,21 +2244,38 @@ async function processAttendance(karyawanId) {
             finalStatusColor = isWarning ? '#FFD700' : '#FF0055';
         }
 
+        // --- GENERATE VISUAL EFFECTS (From Admin ID Card) ---
+        // Generate random QR blocks
+        const qrBlocks = Array(25).fill(0).map(() => 
+            `<div class="w-full h-full bg-cyan-900 ${Math.random() > 0.5 ? 'bg-cyan-400' : 'opacity-20'}"></div>`
+        ).join('');
+
+        // Generate floating digital particles
+        const particles = Array(20).fill(0).map(() => {
+            const left = Math.random() * 100;
+            const top = Math.random() * 100;
+            const delay = Math.random() * 5;
+            const duration = Math.random() * 3 + 2;
+            const size = Math.random() * 3 + 1;
+            return `<div class="absolute bg-cyan-400 rounded-sm opacity-0" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation: float-particle ${duration}s linear infinite; animation-delay: -${delay}s; box-shadow: 0 0 4px cyan;"></div>`;
+        }).join('');
+
         // FINAL OVERLAY RENDER (Profesional & Pesan Sambutan)
         if (successOverlay) {
-             successOverlay.style.background = finalBackground;
+             // Gunakan background gelap transparan agar ID Card menonjol
+             successOverlay.style.background = 'rgba(0, 0, 0, 0.85)';
              successOverlay.innerHTML = `
                 <div class="holo-card" style="border-color: ${finalStatusColor}; box-shadow: 0 0 100px ${finalStatusColor}40; position: relative;">
-                    <!-- 1. HUD Corners (NEW) -->
+                    <!-- 1. HUD Corners -->
                     <div class="holo-card-corner hc-tl" style="color: ${finalStatusColor}; z-index: 20;"></div>
                     <div class="holo-card-corner hc-tr" style="color: ${finalStatusColor}; z-index: 20;"></div>
                     <div class="holo-card-corner hc-bl" style="color: ${finalStatusColor}; z-index: 20;"></div>
                     <div class="holo-card-corner hc-br" style="color: ${finalStatusColor}; z-index: 20;"></div>
 
-                    <!-- 2. Scanning Beam (NEW) -->
+                    <!-- 2. Scanning Beam -->
                     <div class="holo-overlay-beam" style="color: ${finalStatusColor}; z-index: 5;"></div>
 
-                    <!-- 3. Animated Circuit Background (UPDATED) -->
+                    <!-- 3. Animated Circuit Background -->
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.08; background-image: linear-gradient(${finalStatusColor} 1px, transparent 1px), linear-gradient(90deg, ${finalStatusColor} 1px, transparent 1px); background-size: 40px 40px; animation: gridMove 4s linear infinite; pointer-events: none; z-index: 1;"></div>
                     
                     <!-- Digital Stamp -->
@@ -2221,21 +2287,80 @@ async function processAttendance(karyawanId) {
                     <div class="holo-header" style="position: relative; z-index: 10;">
                         <div class="flex items-center gap-4">
                             <div class="w-4 h-4 rounded-full animate-pulse" style="background: ${finalStatusColor}"></div>
-                            <span class="font-bold tracking-[0.3em] text-xl" style="color: ${finalStatusColor}">SECURE GATEWAY // TERMINAL A-9</span>
+                            <span class="font-bold tracking-[0.3em] text-xl" style="color: ${finalStatusColor}">PUSKESMAS WANA // GATEWAY</span>
                         </div>
                         <div class="text-lg font-mono opacity-80">${serverTimestamp}</div>
                     </div>
 
                     <div class="holo-content" style="position: relative; z-index: 10;">
-                        <!-- Left: Huge Avatar -->
-                        <div class="holo-avatar-container">
-                            <div class="holo-avatar-frame" style="border-color: ${finalStatusColor}">
-                                <img src="${employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : ''}" onerror="this.style.display='none'">
-                                <div class="holo-avatar-scan-line" style="background: ${finalStatusColor}; color: ${finalStatusColor};"></div>
+                        <!-- Left: ID CARD REPLACEMENT -->
+                        <div class="holo-avatar-container" style="justify-content: center; display: flex; transform: translateY(-50px);">
+                            <!-- ID CARD HTML START -->
+                            <div class="relative group perspective-[1000px] w-full max-w-[420px]">
+                                 <!-- ID Card Content -->
+                                 <div class="bg-gradient-to-br from-slate-900 to-black text-white p-0 rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.8)] w-full border border-white/20 relative overflow-hidden font-sans transform transition-all duration-500 hover:scale-[1.02] hover:rotate-y-6 z-10">
+                                    
+                                    <!-- Header ID Card -->
+                                    <div class="relative h-24 bg-gradient-to-r from-emerald-800 to-teal-900 flex items-center px-6 overflow-hidden">
+                                        <div class="absolute inset-0 opacity-20" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjIiIGZpbGw9IiNmZmZmZmYiLz48L3N2Zz4=');"></div>
+                                        <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/30 mr-4 shadow-lg backdrop-blur-sm">
+                                            <!-- Icon Medical / Siger Simple -->
+                                            <svg class="w-7 h-7 text-yellow-400 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5z"/></svg>
+                                        </div>
+                                        <div class="z-10">
+                                            <h2 class="text-xl font-black text-white tracking-widest uppercase leading-none drop-shadow-md">PUSKESMAS WANA</h2>
+                                            <p class="text-[10px] text-emerald-100 tracking-[0.3em] mt-1 uppercase font-semibold">Kartu Identitas Pegawai</p>
+                                        </div>
+                                        <!-- Decorative Line -->
+                                        <div class="absolute bottom-0 left-0 w-full h-1 bg-yellow-500"></div>
+                                    </div>
+
+                                    <!-- Body -->
+                                    <div class="p-6 flex gap-5 items-start bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48ZyBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0wIDQwaDQwVjBIMHY0MHptMjAgMjBoMjBWMjBIMHYyMHpNNDAgNDBWMjBIMHYyMGg0MHoiIGZpbGw9IiMzMzMiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvZz48L3N2Zz4=')]">
+                                        <!-- Photo -->
+                                        <div class="relative w-28 h-36 flex-shrink-0">
+                                            <div class="w-full h-full rounded-lg overflow-hidden border-2 border-white/20 shadow-xl bg-slate-800">
+                                                <img src="${employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : ''}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+                                            </div>
+                                            <!-- Hologram Sticker Effect -->
+                                            <div class="absolute -bottom-3 -right-3 w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-200 border-2 border-white shadow-lg flex items-center justify-center opacity-90">
+                                                <span class="text-[6px] font-bold text-yellow-900 text-center leading-tight">RESMI<br>VALID</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Info -->
+                                        <div class="flex-1 flex flex-col justify-between h-36 py-1">
+                                            <div>
+                                                <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">Nama Lengkap</p>
+                                                <h1 class="text-xl font-bold text-white leading-tight mb-3 drop-shadow-sm">${display_name}</h1>
+                                                
+                                                <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">Jabatan</p>
+                                                <p class="text-sm font-semibold text-emerald-400 mb-3">${display_jabatan}</p>
+                                            </div>
+                                            
+                                            <div class="flex justify-between items-end border-t border-white/10 pt-2">
+                                                <div>
+                                                    <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">ID Pegawai</p>
+                                                    <p class="text-sm font-mono text-slate-200 tracking-wide">${karyawanId}</p>
+                                                </div>
+                                                <!-- Barcode Dummy -->
+                                                <div class="flex flex-col items-end gap-1 opacity-80">
+                                                    <div class="h-6 w-16 bg-white p-0.5">
+                                                        <div class="h-full w-full bg-[repeating-linear-gradient(90deg,black,black_1px,transparent_1px,transparent_3px)]"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Footer Strip -->
+                                    <div class="h-3 bg-slate-900 border-t border-white/10 flex items-center justify-between px-4">
+                                        <span class="text-[6px] text-slate-500 tracking-widest">GOVERNMENT HEALTH SERVICE // OFFICIAL ID</span>
+                                        <span class="text-[6px] text-slate-500 tracking-widest">SECURE DOC</span>
+                                    </div>
+                                 </div>
                             </div>
-                            <div class="mt-6 text-center">
-                                <span class="text-2xl font-mono text-gray-400 tracking-widest">ID: ${karyawanId}</span>
-                            </div>
+                            <!-- ID CARD HTML END -->
                         </div>
                         
                         <!-- Right: Info & Status -->
@@ -2252,7 +2377,7 @@ async function processAttendance(karyawanId) {
                             </div>
                         </div>
 
-                        <!-- Right: Biometrics (NEW) -->
+                        <!-- Right: Biometrics -->
                         <div class="holo-biometrics">
                             <!-- Fingerprint Row -->
                             <div class="bio-row">
@@ -2266,9 +2391,22 @@ async function processAttendance(karyawanId) {
                                 </div>
                             </div>
                             
+                            <!-- Vitals Row -->
+                            <div class="bio-row">
+                                <div class="bio-icon-box" style="padding: 5px;">
+                                    <svg viewBox="0 0 100 40" class="w-full h-full">
+                                        <path id="ecgPath" d="M 0 20 L 10 20 L 15 10 L 25 30 L 35 15 L 40 20 L 50 20 L 55 25 L 60 20 L 100 20" stroke="${finalStatusColor}" stroke-width="2" fill="none"
+                                            stroke-dasharray="280" stroke-dashoffset="280" style="animation: ecgPulse 1.5s linear infinite;"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="bio-label">VITALS</div>
+                                    <div class="bio-value" style="color: ${finalStatusColor};">STABLE</div>
+                                </div>
+                            </div>
+
                             <!-- DNA Row -->
                             <div class="bio-row">
-                                <!-- 4. 3D Rotating Cube (NEW) -->
                                 <div class="bio-cube-container" style="color: ${finalStatusColor}">
                                     <div class="bio-cube">
                                         <div class="front"></div><div class="back"></div>
@@ -2881,6 +3019,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initVoiceCommands(); // Jalankan Voice Command Listener
     animateTitle();
     updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih
+    initAudioVisualizer(); // Start Visualizer Loop
 
     // CSS ADJUSTMENT: Geser area scan (Video Container) sedikit ke atas
     if (videoContainer) {
