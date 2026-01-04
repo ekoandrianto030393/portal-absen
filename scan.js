@@ -2260,6 +2260,26 @@ async function processAttendance(karyawanId) {
             return `<div class="absolute bg-cyan-400 rounded-sm opacity-0" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation: float-particle ${duration}s linear infinite; animation-delay: -${delay}s; box-shadow: 0 0 4px cyan;"></div>`;
         }).join('');
 
+        // --- NEW: LOGIKA WARNA & ICON STATUS (CUSTOMIZATION) ---
+        // Membedakan warna Nama & Box berdasarkan hasil
+        let finalNameColor = result.success ? '#00FF7F' : (statusColor === 'yellow' ? '#FFD700' : '#FF0055');
+        
+        let statusIconSVG = '';
+        let statusBoxStyle = '';
+
+        if (result.success) {
+            // SUKSES: Icon Ceklis & Gradient Halus
+            statusIconSVG = `<svg class="w-10 h-10 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="filter: drop-shadow(0 0 5px ${finalStatusColor});"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>`;
+            statusBoxStyle = `background: linear-gradient(90deg, ${finalStatusColor}33, transparent); border-left: 6px solid ${finalStatusColor};`;
+        } else {
+            // GAGAL/WARNING: Icon Silang/Seru & Striped Background
+            const iconPath = statusColor === 'yellow' 
+                ? 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' // Segitiga Warning
+                : 'M6 18L18 6M6 6l12 12'; // Silang Error
+            statusIconSVG = `<svg class="w-10 h-10 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="filter: drop-shadow(0 0 5px ${finalStatusColor});"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="${iconPath}"></path></svg>`;
+            statusBoxStyle = `background: repeating-linear-gradient(45deg, ${finalStatusColor}20, ${finalStatusColor}20 10px, transparent 10px, transparent 20px); border: 2px solid ${finalStatusColor};`;
+        }
+
         // FINAL OVERLAY RENDER (Profesional & Pesan Sambutan)
         if (successOverlay) {
              // Gunakan background gelap transparan agar ID Card menonjol
@@ -2279,7 +2299,13 @@ async function processAttendance(karyawanId) {
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.08; background-image: linear-gradient(${finalStatusColor} 1px, transparent 1px), linear-gradient(90deg, ${finalStatusColor} 1px, transparent 1px); background-size: 40px 40px; animation: gridMove 4s linear infinite; pointer-events: none; z-index: 1;"></div>
                     
                     <!-- Digital Stamp -->
-                    <div class="digital-stamp" style="color: ${finalStatusColor}; border-color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor}; z-index: 15;">${result.success ? 'DITERIMA' : 'DITOLAK'}</div>
+                    <div class="digital-stamp" style="color: ${finalStatusColor}; border-color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor}; z-index: 15;">
+                        <div class="stamp-inner">
+                            <span class="stamp-label">PUSKESMAS WANA</span>
+                            <span>${result.success ? 'DITERIMA' : 'DITOLAK'}</span>
+                        </div>
+                    </div>
+                    <div class="impact-dust" style="background: radial-gradient(ellipse at center, ${finalStatusColor} 0%, transparent 70%);"></div>
 
                     <!-- Cooldown Bar -->
                     <div class="cooldown-track" style="z-index: 20;"><div id="cooldownBar" class="cooldown-progress" style="background: ${finalStatusColor}; box-shadow: 0 0 20px ${finalStatusColor};"></div></div>
@@ -2303,9 +2329,8 @@ async function processAttendance(karyawanId) {
                                     <!-- Header ID Card -->
                                     <div class="relative h-24 bg-gradient-to-r from-emerald-800 to-teal-900 flex items-center px-6 overflow-hidden">
                                         <div class="absolute inset-0 opacity-20" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjIiIGZpbGw9IiNmZmZmZmYiLz48L3N2Zz4=');"></div>
-                                        <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/30 mr-4 shadow-lg backdrop-blur-sm">
-                                            <!-- Icon Medical / Siger Simple -->
-                                            <svg class="w-7 h-7 text-yellow-400 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5z"/></svg>
+                                        <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/30 mr-4 shadow-lg backdrop-blur-sm overflow-hidden">
+                                            <img src="logo.jpg" class="w-full h-full object-cover">
                                         </div>
                                         <div class="z-10">
                                             <h2 class="text-xl font-black text-white tracking-widest uppercase leading-none drop-shadow-md">PUSKESMAS WANA</h2>
@@ -2365,11 +2390,12 @@ async function processAttendance(karyawanId) {
                         
                         <!-- Right: Info & Status -->
                         <div class="holo-info" style="background: rgba(0, 0, 0, 0.3); padding: 20px; border-radius: 12px; border: 1px solid ${finalStatusColor}20; backdrop-filter: blur(4px);">
-                            <div class="holo-status-box" style="background: ${finalStatusColor}20; border: 2px solid ${finalStatusColor}; color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor}; margin-bottom: 20px;">
-                                ${finalStatusText}
+                            <div class="holo-status-box status-box-animated flex items-center justify-start" style="display: flex; ${statusBoxStyle} padding: 15px 25px; border-radius: 6px; margin-bottom: 25px; width: 100%;">
+                                ${statusIconSVG}
+                                <span style="font-size: 2.2rem; font-weight: 900; letter-spacing: 3px; color: ${finalStatusColor}; text-shadow: 0 0 15px ${finalStatusColor}; text-transform: uppercase; line-height: 1;">${finalStatusText}</span>
                             </div>
 
-                            <h2 class="holo-name" style="color: ${NAME_HIGHLIGHT_COLOR}; text-shadow: 0 0 40px ${NAME_HIGHLIGHT_COLOR}60;">${display_name}</h2>
+                            <h2 class="holo-name" style="color: ${finalNameColor}; text-shadow: 0 0 30px ${finalNameColor}; font-size: 3.5rem; margin-bottom: 5px;">${display_name}</h2>
                             <p class="holo-role text-cyan-300">${display_jabatan}</p>
 
                             <div class="holo-message" style="font-size: 1.1em; line-height: 1.5; margin-top: 20px;">
@@ -2434,6 +2460,12 @@ async function processAttendance(karyawanId) {
             // Trigger Particle Burst di tengah layar
             const rect = successOverlay.getBoundingClientRect();
             createParticleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, finalStatusColor);
+
+            // Trigger Screen Shake on Stamp Impact (Sync with CSS animation delay 1.2s + duration 0.4s)
+            setTimeout(() => {
+                document.body.classList.add('screen-shake');
+                setTimeout(() => document.body.classList.remove('screen-shake'), 500);
+            }, 1600);
 
             // --- ANIMASI DECRYPT BIOMETRIC ID (NEW) ---
             const bioIdEl = document.getElementById('bioIdValue');
