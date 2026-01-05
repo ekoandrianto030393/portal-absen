@@ -2368,10 +2368,11 @@ async function processAttendance(karyawanId) {
                                                     <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">ID Pegawai</p>
                                                     <p class="text-sm font-mono text-slate-200 tracking-wide">${karyawanId}</p>
                                                 </div>
-                                                <!-- Barcode Dummy -->
-                                                <div class="flex flex-col items-end gap-1 opacity-80">
-                                                    <div class="h-6 w-16 bg-white p-0.5">
-                                                        <div class="h-full w-full bg-[repeating-linear-gradient(90deg,black,black_1px,transparent_1px,transparent_3px)]"></div>
+                                                <!-- Barcode Real-time -->
+                                                <div class="flex flex-col items-end gap-1 opacity-90">
+                                                    <div class="bg-white px-2 py-1 rounded-sm relative overflow-hidden">
+                                                        <p class="text-black leading-none select-none" style="font-family: 'Libre Barcode 128', cursive; font-size: 34px; transform: scaleY(1.2);">${karyawanId}</p>
+                                                        <div class="absolute top-0 left-0 w-[1px] h-full bg-red-500/80 shadow-[0_0_4px_rgba(255,0,0,0.8)]" style="animation: barcodeScan 2s linear infinite;"></div>
                                                     </div>
                                                 </div>
                                             </div>
