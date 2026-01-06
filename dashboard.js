@@ -74,7 +74,7 @@ async function loadSystemConfig() {
         const result = await response.json();
         if (result.success) {
             systemConfig = result.config;
-            console.log("System Config Loaded:", systemConfig);
+            // console.log("System Config Loaded:", JSON.stringify(systemConfig, null, 2));
         }
     } catch (e) {
         console.error("Gagal memuat config, menggunakan default.", e);
@@ -245,23 +245,13 @@ async function loadDailyData(silent = false) {
                     row.jam_keluar = '-';
                 } else if (row.jam_masuk) {
                     // --- LOGIKA HADIR NORMAL ---
-                    const [h, m, s] = row.jam_masuk.split(':').map(Number);
-                    const secondsIn = (h * 3600) + (m * 60) + (s || 0);
                     
-                    // Ambil dari config server atau fallback ke default jika gagal load
-                    const limitStr = systemConfig?.batas_telat || '08:25:00';
-                    const startStr = systemConfig?.jam_kerja_mulai || '08:00:00';
-
-                    const [lh, lm, ls] = limitStr.split(':').map(Number);
-                    const [sh, sm, ss] = startStr.split(':').map(Number);
-
-                    const secondsLimit = (lh * 3600) + (lm * 60) + (ls || 0);
-                    const secondsStart = (sh * 3600) + (sm * 60) + (ss || 0);
-
-                    if (secondsIn > secondsLimit) {
+                    // [FIX] Gunakan data matang dari database (telat_menit)
+                    // [FIX] Gunakan data matang dari database, jangan hitung manual di JS
+                    // Agar sinkron dengan Rekap Bulanan
+                    if (row.telat_menit > 0) {
                         isLate = true;
-                        // Math.floor((selisih detik) / 60) sama persis dengan TIMESTAMPDIFF(MINUTE, ...) di MySQL
-                        lateMinutes = Math.floor((secondsIn - secondsLimit) / 60);
+                        lateMinutes = row.telat_menit;
                     }
                     
                     // UPDATE: Status "Hadir", Keterlambatan "Terlambat/Tepat Waktu"
@@ -273,6 +263,18 @@ async function loadDailyData(silent = false) {
                     } else {
                         lateDisplay = 'Tepat Waktu';
                         lateClass = 'text-emerald-600 font-bold';
+                    }
+
+                    // --- LOGIKA VISUAL PSW (PULANG SEBELUM WAKTUNYA) ---
+                    // Menambahkan indikator visual di kolom Jam Keluar jika pulang cepat
+                    // [FIX] Gunakan data psw_menit dari database
+                    if (row.jam_keluar && row.jam_keluar !== '-' && row.psw_menit > 0) {
+                        row.jam_keluar = `
+                            <div class="flex flex-col">
+                                <span class="font-mono text-slate-700">${row.jam_keluar}</span>
+                                <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-1 rounded border border-amber-100 w-fit mt-0.5">PSW: ${row.psw_menit}m</span>
+                            </div>
+                        `;
                     }
                 } else {
                     // Fallback jika data tidak lengkap
@@ -310,17 +312,20 @@ async function loadMonthlyRecap() {
     
     // Header Table
     table.innerHTML = `
-        <thead class="uppercase text-xs font-bold tracking-wider border-b border-slate-200">
+        <thead class="uppercase text-xs font-bold tracking-wider border-b border-indigo-500 bg-indigo-600 text-white print:bg-gray-200 print:text-black">
             <tr>
-                <th class="px-6 py-4 text-center w-12">No.</th>
-                <th class="px-6 py-4">ID</th>
-                <th class="px-6 py-4">Nama Pegawai</th>
-                <th class="px-6 py-4">Jabatan</th>
+                <th class="md:sticky md:left-0 md:z-20 bg-indigo-600 text-white print:bg-gray-200 print:text-black px-6 py-4 text-center w-16 md:border-r border-indigo-500 print:border-black">No.</th>
+                <th class="md:sticky md:left-16 md:z-20 bg-indigo-600 text-white print:bg-gray-200 print:text-black px-6 py-4 w-24 md:border-r border-indigo-500 print:border-black">ID</th>
+                <th class="md:sticky md:left-40 md:z-20 bg-indigo-600 text-white print:bg-gray-200 print:text-black px-6 py-4 w-64 md:border-r border-indigo-500 print:border-black md:shadow-sm text-left">Nama Pegawai</th>
+                <th class="pl-16 pr-6 py-4 text-left">Jabatan</th>
                 <th class="px-6 py-4 text-center">Hadir</th>
                 <th class="px-6 py-4 text-center">DL</th>
                 <th class="px-6 py-4 text-center">Alpa</th>
                 <th class="px-6 py-4 text-center">Telat (x)</th>
                 <th class="px-6 py-4 text-center">Telat (Min)</th>
+                <th class="px-6 py-4 text-center">PSW (x)</th>
+                <th class="px-6 py-4 text-center">PSW (Min)</th>
+                <th class="px-6 py-4 text-center font-bold text-yellow-300 border-l border-indigo-500">Total Pelanggaran (Min)</th>
                 <th class="px-6 py-4 text-center">Tanpa Pulang</th>
                 <th class="px-6 py-4 text-center">Potongan</th>
                 <th class="px-6 py-4 text-right">Total Jam Kerja</th>
@@ -333,12 +338,16 @@ async function loadMonthlyRecap() {
     try {
         const response = await fetch(`${API_BASE}/rekap?periode=${month}`);
         const result = await response.json();
+        
+        // Update global data agar modal detail bisa dibuka saat baris diklik
+        globalPerformanceData = result.data || [];
+
         const tbody = table.querySelector('tbody');
         tbody.innerHTML = '';
 
         if (result.data && result.data.length > 0) {
             // Inisialisasi variabel total
-            let tHadir = 0, tDL = 0, tAlpa = 0, tTelat = 0, tTelatMin = 0, tNoOut = 0, tPot = 0;
+            let tHadir = 0, tDL = 0, tAlpa = 0, tTelat = 0, tTelatMin = 0, tPsw = 0, tPswMin = 0, tPelanggaranMin = 0, tNoOut = 0, tPot = 0;
 
             result.data.forEach((row, index) => {
                 // Hitung total saat looping
@@ -347,15 +356,18 @@ async function loadMonthlyRecap() {
                 tAlpa += parseInt(row.alpa) || 0;
                 tTelat += parseInt(row.telat_kali) || 0;
                 tTelatMin += parseInt(row.telat_menit) || 0;
+                tPsw += parseInt(row.psw_kali) || 0;
+                tPswMin += parseInt(row.psw_menit) || 0;
+                tPelanggaranMin += parseInt(row.total_pelanggaran_menit) || 0;
                 tNoOut += parseInt(row.tanpa_absen_pulang) || 0;
                 tPot += parseFloat(row.potongan_jam) || 0;
 
                 tbody.innerHTML += `
-                    <tr class="hover:bg-blue-50/50 border-b border-slate-100 last:border-0">
-                        <td class="px-6 py-4 text-center font-mono text-slate-500">${index + 1}</td>
-                        <td class="px-6 py-4 font-mono text-slate-500">${row.id_karyawan}</td>
-                        <td class="px-6 py-4 font-bold text-slate-800">${row.nama}</td>
-                        <td class="px-6 py-4 text-sm text-slate-600">${row.jabatan || '-'}</td>
+                    <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-blue-50/50 border-b border-slate-100 last:border-0 group">
+                        <td class="md:sticky md:left-0 md:z-10 bg-white group-hover:bg-blue-50/50 px-6 py-4 text-center font-mono text-slate-700 md:border-r border-slate-100">${index + 1}</td>
+                        <td class="md:sticky md:left-16 md:z-10 bg-white group-hover:bg-blue-50/50 px-6 py-4 font-mono text-slate-700 md:border-r border-slate-100">${row.id_karyawan}</td>
+                        <td class="md:sticky md:left-40 md:z-10 bg-white group-hover:bg-blue-50/50 px-6 py-4 font-bold text-slate-700 md:border-r border-slate-100 md:shadow-sm">${row.nama}</td>
+                        <td class="pl-16 pr-6 py-4 text-sm text-slate-700">${row.jabatan || '-'}</td>
                         <td class="px-6 py-4 text-center">
                             <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
                         </td>
@@ -365,6 +377,9 @@ async function loadMonthlyRecap() {
                         <td class="px-6 py-4 text-center ${row.alpa > 0 ? 'text-red-600 font-bold' : 'text-slate-500'}">${row.alpa}</td>
                         <td class="px-6 py-4 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-bold' : 'text-slate-500'}">${row.telat_kali}</td>
                         <td class="px-6 py-4 text-center text-slate-500">${row.telat_menit}</td>
+                        <td class="px-6 py-4 text-center ${row.psw_kali > 0 ? 'text-amber-600 font-bold' : 'text-slate-500'}">${row.psw_kali || 0}</td>
+                        <td class="px-6 py-4 text-center ${row.psw_menit > 0 ? 'text-amber-600' : 'text-slate-500'}">${row.psw_menit || 0}</td>
+                        <td class="px-6 py-4 text-center font-bold text-red-600 bg-red-50 border-l border-slate-200">${row.total_pelanggaran_menit || 0}</td>
                         <td class="px-6 py-4 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-bold' : 'text-slate-500'}">${row.tanpa_absen_pulang}</td>
                         <td class="px-6 py-4 text-center text-red-600">${row.potongan_jam} Jam</td>
                         <td class="px-6 py-4 text-right font-mono text-emerald-600 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
@@ -372,22 +387,24 @@ async function loadMonthlyRecap() {
                 `;
             });
 
-            // Tambahkan Baris Total Ringkasan di Paling Bawah
             tbody.innerHTML += `
-                <tr class="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-900 print:bg-gray-200 print:border-black break-inside-avoid">
+                <tr class="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-900 print:bg-gray-200 print:border-black break-inside-avoid group">
                     <td colspan="4" class="px-6 py-3 text-right uppercase text-xs tracking-wider">Total Ringkasan:</td>
                     <td class="px-6 py-3 text-center">${tHadir}</td>
                     <td class="px-6 py-3 text-center">${tDL}</td>
                     <td class="px-6 py-3 text-center">${tAlpa}</td>
                     <td class="px-6 py-3 text-center">${tTelat}</td>
                     <td class="px-6 py-3 text-center text-slate-500 text-xs">${tTelatMin}</td>
+                    <td class="px-6 py-3 text-center">${tPsw}</td>
+                    <td class="px-6 py-3 text-center text-slate-500 text-xs">${tPswMin}</td>
+                    <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-100 border-l border-slate-300">${tPelanggaranMin}</td>
                     <td class="px-6 py-3 text-center">${tNoOut}</td>
                     <td class="px-6 py-3 text-center">${tPot}</td>
                     <td class="px-6 py-3"></td>
                 </tr>
             `;
         } else {
-            tbody.innerHTML = '<tr><td colspan="12" class="p-4 text-center text-slate-500">Tidak ada data untuk periode ini.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="15" class="p-4 text-center text-slate-500">Tidak ada data untuk periode ini.</td></tr>';
         }
     } catch (e) {
         console.error(e);
@@ -400,7 +417,8 @@ function calculatePerformanceScore(emp) {
     // -5 poin per kali telat
     // -10 poin per hari alpa
     // -2 poin per jam potongan (lupa pulang)
-    let score = 100 - (emp.telat_kali * 5) - (emp.alpa * 10) - (emp.potongan_jam * 2);
+    // -3 poin per kali PSW (Pulang Sebelum Waktunya) -> PENALTI BARU
+    let score = 100 - (emp.telat_kali * 5) - (emp.alpa * 10) - (emp.potongan_jam * 2) - ((emp.psw_kali || 0) * 3);
     return Math.max(0, score);
 }
 
@@ -420,32 +438,24 @@ async function loadPerformanceData() {
         if (result.data && result.data.length > 0) {
             result.data.forEach(emp => {
                 // --- LOGIKA SCORING KINERJA ---
-                // Skor Awal: 100
-                // -5 poin per kali telat
-                // -10 poin per hari alpa
-                // -2 poin per jam potongan (lupa pulang)
                 const score = calculatePerformanceScore(emp);
 
                 // Tentukan Status & Warna
                 let status = 'SANGAT BAIK';
                 let colorClass = 'border-emerald-500 text-emerald-600 bg-emerald-50/30';
-                let bgGradient = ''; // Removed gradient for clean look
                 let icon = 'fa-medal';
 
                 if (score < 60) {
                     status = 'PERLU PEMBINAAN';
                     colorClass = 'border-rose-500 text-rose-700 bg-rose-50/30';
-                    bgGradient = '';
                     icon = 'fa-triangle-exclamation';
                 } else if (score < 80) {
                     status = 'CUKUP';
                     colorClass = 'border-amber-500 text-amber-600 bg-amber-50/30';
-                    bgGradient = '';
                     icon = 'fa-circle-exclamation';
                 } else if (score < 90) {
                     status = 'BAIK';
                     colorClass = 'border-blue-500 text-blue-600 bg-blue-50/30';
-                    bgGradient = '';
                     icon = 'fa-thumbs-up';
                 }
 
@@ -959,8 +969,48 @@ function printReport() {
 
 // --- FITUR: MODAL DETAIL PEGAWAI ---
 async function openModal(idKaryawan) {
-    const emp = globalPerformanceData.find(e => e.id_karyawan === idKaryawan);
-    if (!emp) return;
+    let emp = globalPerformanceData.find(e => e.id_karyawan === idKaryawan);
+    
+    // [FIX] Jika data tidak ditemukan (misal dibuka dari tab Harian sebelum Rekap dimuat)
+    if (!emp) {
+        try {
+            // Fetch data rekap bulan ini (default)
+            const now = new Date();
+            const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const response = await fetch(`${API_BASE}/rekap?periode=${monthStr}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                globalPerformanceData = result.data || [];
+                emp = globalPerformanceData.find(e => e.id_karyawan === idKaryawan);
+            }
+        } catch (e) {
+            console.error("Gagal memuat data rekap untuk modal:", e);
+        }
+    }
+
+    // [FIX] Fallback jika pegawai baru/tidak ada di rekap
+    if (!emp) {
+        try {
+            const res = await fetch(`${API_BASE}/karyawan/${idKaryawan}`);
+            const json = await res.json();
+            if (json.success && json.data) {
+                // Mock object rekap dengan nilai 0 agar modal tetap bisa render
+                emp = {
+                    ...json.data,
+                    total_masuk: 0, telat_kali: 0, alpa: 0,
+                    total_jam_kerja: '0', potongan_jam: 0, psw_kali: 0
+                };
+            }
+        } catch (e) {
+            console.error("Gagal memuat data karyawan fallback:", e);
+        }
+    }
+
+    if (!emp) {
+        showToast("Data pegawai tidak ditemukan.", "error");
+        return;
+    }
 
     const modal = document.getElementById('modal-employee');
     const content = document.getElementById('modal-content');

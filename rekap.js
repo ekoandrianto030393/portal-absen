@@ -10,7 +10,7 @@ async function loadRekap() {
         url += `?periode=${periodeInput.value}`;
     }
 
-    tbody.innerHTML = '<tr><td colspan="9" class="muted">Memuat data...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="muted">Memuat data...</td></tr>';
 
     try {
         const response = await fetch(url);
@@ -38,6 +38,9 @@ async function loadRekap() {
                         <td style="text-align:center; color:#ff4444; font-weight:bold;">${row.alpa}</td>
                         <td style="${row.telat_kali > 0 ? 'color:orange;' : ''}">${row.telat_kali}</td>
                         <td>${row.telat_menit}</td>
+                        <td style="${(row.psw_kali || 0) > 0 ? 'color:orange;' : ''}">${row.psw_kali || 0}</td>
+                        <td style="${(row.psw_menit || 0) > 0 ? 'color:orange;' : ''}">${row.psw_menit || 0}</td>
+                        <td style="font-weight:bold; color:#ff4444;">${row.total_pelanggaran_menit || 0}</td>
                         <td>${row.pulang_kali}</td>
                         <td style="${lupaPulangCount > 0 ? 'color:red;font-weight:bold;' : ''}">${lupaPulangCount}</td>
                         <td style="color:#ef4444;">${row.potongan_jam} Jam</td>
@@ -47,12 +50,12 @@ async function loadRekap() {
                 tbody.innerHTML += tr;
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="9" class="muted">Tidak ada data absensi untuk periode ini.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="13" class="muted">Tidak ada data absensi untuk periode ini.</td></tr>';
         }
 
     } catch (error) {
         console.error('Failed to load rekap:', error);
-        tbody.innerHTML = `<tr><td colspan="9" class="muted" style="color:red;">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="muted" style="color:red;">Error: ${error.message}</td></tr>`;
     }
 }
 // Load otomatis saat halaman dibuka

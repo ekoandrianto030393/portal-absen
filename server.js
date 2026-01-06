@@ -12,7 +12,7 @@ const port = 3000;
 const JAM_MASUK_START      = process.env.JAM_MASUK_START      || '06:00:00';
 const JAM_MASUK_END        = process.env.JAM_MASUK_END        || '12:00:00';
 const JAM_PULANG_START     = process.env.JAM_PULANG_START     || '16:00:00';
-const JAM_PULANG_JUMAT     = process.env.JAM_PULANG_JUMAT     || '12:00:00'; // Khusus Hari Jumat
+const BATAS_MIN_PULANG     = process.env.BATAS_MIN_PULANG     || '10:00:00'; // Jam paling awal boleh pulang (PSW)
 const JAM_KERJA_MULAI      = process.env.JAM_KERJA_MULAI      || '08:00:00'; // Jam resmi masuk
 const BATAS_TELAT          = process.env.BATAS_TELAT          || '08:25:00'; // Toleransi telat
 const POTONGAN_LUPA_PULANG = process.env.POTONGAN_LUPA_PULANG || 2;          // Jam potongan
@@ -40,7 +40,7 @@ app.use((req, res, next) => {
 const pool = mysql.createPool({
     host: process.env.DB_HOST || '127.0.0.1',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
+    password: process.env.DB_PASS || '',
     database: process.env.DB_NAME || 'biometrik_absensi_wajah_db',
     waitForConnections: true,
     connectionLimit: 10,
@@ -58,7 +58,6 @@ pool.getConnection((err, connection) => {
         console.log(`   - Batas Telat: ${BATAS_TELAT}`);
         console.log(`   - Potongan Lupa Pulang: ${POTONGAN_LUPA_PULANG} Jam`);
         console.log(`   - Auto Pulang Default: ${AUTO_PULANG_DEFAULT}`);
-        console.log(`   - Jam Pulang Jumat: ${JAM_PULANG_JUMAT}`);
         console.log(`   - Fitur Grafik: /api/stats/daily-range (Aktif)`);
         
         // --- SINKRONISASI SKEMA DATABASE (Berdasarkan skema_final.sql) ---
@@ -88,6 +87,8 @@ pool.getConnection((err, connection) => {
                 jam_keluar TIME NULL,
                 status VARCHAR(50),
                 keterangan VARCHAR(255),
+                telat_menit INT DEFAULT 0,
+                psw_menit INT DEFAULT 0,
                 UNIQUE KEY unique_absensi_harian (id_karyawan, tanggal),
                 FOREIGN KEY (id_karyawan) REFERENCES karyawan(id_karyawan) ON DELETE CASCADE
             ) ENGINE=InnoDB;
@@ -104,8 +105,15 @@ pool.getConnection((err, connection) => {
                 COUNT(a.jam_masuk) AS total_masuk,
                 SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END) AS total_dl,
                 GREATEST(0, m.total_hari_kerja - COUNT(a.jam_masuk)) AS alpa, -- Alpa = Total Hari Kerja Nyata - Total Masuk
-                SUM(CASE WHEN a.jam_masuk > '${BATAS_TELAT}' AND a.status NOT IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END) AS telat_kali,
-                COALESCE(SUM(CASE WHEN a.jam_masuk > '${BATAS_TELAT}' AND a.status NOT IN ('DL', 'DINAS_LUAR') THEN FLOOR((TIME_TO_SEC(a.jam_masuk) - TIME_TO_SEC('${BATAS_TELAT}')) / 60) ELSE 0 END), 0) AS telat_menit,
+                SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END) AS telat_kali,
+                
+                COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
+                
+                SUM(CASE WHEN a.psw_menit > 0 THEN 1 ELSE 0 END) AS psw_kali, -- Hitung berapa kali PSW
+                COALESCE(SUM(a.psw_menit), 0) AS psw_menit,
+                
+                (COALESCE(SUM(a.telat_menit), 0) + COALESCE(SUM(a.psw_menit), 0)) AS total_pelanggaran_menit, -- Total Menit Pelanggaran (Telat + PSW)
+                
                 SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan = 'Otomatis: Lupa Absen Pulang') THEN 1 ELSE 0 END) AS tanpa_absen_pulang,
                 SUM(CASE WHEN a.jam_keluar IS NOT NULL AND (a.keterangan IS NULL OR a.keterangan != 'Otomatis: Lupa Absen Pulang') THEN 1 ELSE 0 END) AS pulang_kali,
                 SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan = 'Otomatis: Lupa Absen Pulang') THEN ${POTONGAN_LUPA_PULANG} ELSE 0 END) AS potongan_jam,
@@ -137,7 +145,10 @@ pool.getConnection((err, connection) => {
                 a.tanggal,
                 a.jam_masuk,
                 a.jam_keluar,
-                a.status
+                a.status,
+                a.keterangan,
+                a.telat_menit,
+                a.psw_menit
             FROM absensi a
             JOIN karyawan k ON a.id_karyawan = k.id_karyawan
             ORDER BY a.tanggal DESC, a.jam_masuk DESC;
@@ -153,20 +164,31 @@ pool.getConnection((err, connection) => {
                         connection.query(createAbsensiSql, (err) => {
                             if (err) console.error('⚠️ Init Tabel Absensi:', err.message);
                             else {
-                                // FIX: Pastikan kolom 'keterangan' ada sebelum membuat View (untuk database lama)
+                                // FIX: Pastikan kolom baru ada sebelum membuat View (untuk database lama)
                                 const addColumnSql = "ALTER TABLE absensi ADD COLUMN keterangan VARCHAR(255)";
+                                const addTelatSql = "ALTER TABLE absensi ADD COLUMN telat_menit INT DEFAULT 0";
+                                const addPswSql = "ALTER TABLE absensi ADD COLUMN psw_menit INT DEFAULT 0";
+
                                 connection.query(addColumnSql, (err) => {
                                     // Error 1060 = Duplicate column name (artinya kolom sudah ada, abaikan)
                                     if (err && err.errno !== 1060) console.error('⚠️ Update Schema Absensi:', err.message);
 
-                                    connection.query(createViewRekapSql, (err) => {
-                                        if (err) console.error('⚠️ Init View Rekap:', err.message);
-                                        else {
-                                            connection.query(createViewHarianSql, (err) => {
-                                                if (err) console.error('⚠️ Init View Harian:', err.message);
-                                                else console.log('✅ Database Sinkron dengan Skema Final (Tabel & View Siap).');
+                                    connection.query(addTelatSql, (err) => {
+                                        if (err && err.errno !== 1060) console.error('⚠️ Info Kolom Telat:', err.message);
+                                        
+                                        connection.query(addPswSql, (err) => {
+                                            if (err && err.errno !== 1060) console.error('⚠️ Info Kolom PSW:', err.message);
+
+                                            connection.query(createViewRekapSql, (err) => {
+                                                if (err) console.error('⚠️ Init View Rekap:', err.message);
+                                                else {
+                                                    connection.query(createViewHarianSql, (err) => {
+                                                        if (err) console.error('⚠️ Init View Harian:', err.message);
+                                                        else console.log('✅ Database Sinkron: Kolom PSW & Telat Siap.');
+                                                    });
+                                                }
                                             });
-                                        }
+                                        });
                                     });
                                 });
                             }
@@ -372,8 +394,18 @@ app.post('/api/absensi', (req, res) => {
                     });
                 }
 
-                const insertSql = 'INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, status) VALUES (?, ?, ?, ?)';
-                pool.query(insertSql, [id_karyawan, today, currentTime, 'HADIR'], (err) => {
+                // HITUNG TELAT (Menit) SAAT MASUK
+                let telatMenit = 0;
+                if (currentTime > BATAS_TELAT) {
+                    const [hC, mC, sC] = currentTime.split(':').map(Number);
+                    const [hS, mS, sS] = JAM_KERJA_MULAI.split(':').map(Number);
+                    const curSec = hC * 3600 + mC * 60 + sC;
+                    const startSec = hS * 3600 + mS * 60 + sS;
+                    telatMenit = Math.floor((curSec - startSec) / 60);
+                }
+
+                const insertSql = 'INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, status, telat_menit) VALUES (?, ?, ?, ?, ?)';
+                pool.query(insertSql, [id_karyawan, today, currentTime, 'HADIR', telatMenit], (err) => {
                     if (err) return res.status(500).json({ success: false, message: err.message });
                     
                     res.json({
@@ -401,22 +433,31 @@ app.post('/api/absensi', (req, res) => {
                 } else {
                     // --- KASUS 3: SUDAH MASUK, BELUM PULANG -> CHECK OUT (AUTO FIX) ---
                     
-                    // LOGIKA KHUSUS HARI JUMAT (Pulang lebih awal)
-                    let jamPulangEfektif = JAM_PULANG_START;
-                    if (now.getDay() === 5) { // 0=Minggu, 5=Jumat, 6=Sabtu
-                        jamPulangEfektif = JAM_PULANG_JUMAT;
-                    }
+                    // Gunakan jam pulang standar untuk semua hari kerja
+                    const jamPulangEfektif = JAM_PULANG_START;
 
-                    // VALIDASI WAKTU PULANG: Cegah pulang sebelum waktunya
+                    // --- LOGIKA BARU: Cek Pulang Sebelum Waktunya (PSW) ---
+                    let keteranganPulang = null;
+                    let pswMenit = 0;
+                    let pesanRespon = 'Hati-hati di jalan, Absensi Pulang Berhasil.';
+                    
                     if (currentTime < jamPulangEfektif) {
-                        return res.json({
-                            success: false,
-                            message: `Absen Pulang ditolak. Waktu diizinkan mulai: ${jamPulangEfektif}.`,
-                            nama: k.nama,
-                            jabatan: k.jabatan,
-                            result_code: 'TOO_EARLY_OUT',
-                            statusColor: 'red'
-                        });
+                        // Fungsi untuk konversi HH:MM:SS ke total detik
+                        const timeToSeconds = (timeStr) => {
+                            const [h, m, s] = timeStr.split(':').map(Number);
+                            return h * 3600 + m * 60 + s;
+                        };
+
+                        const detikPulangStandar = timeToSeconds(jamPulangEfektif);
+                        const detikPulangAktual = timeToSeconds(currentTime);
+                        const selisihMenitPsw = Math.floor((detikPulangStandar - detikPulangAktual) / 60);
+
+                        // Hanya catat jika selisihnya positif (benar-benar pulang lebih awal)
+                        if (selisihMenitPsw > 0) {
+                            pswMenit = selisihMenitPsw;
+                            keteranganPulang = `PSW: ${selisihMenitPsw} menit`;
+                            pesanRespon = `Pulang Sebelum Waktunya (${selisihMenitPsw} menit). Hati-hati di jalan.`;
+                        }
                     }
 
                     // VALIDASI TAMBAHAN: Cegah Check-Out instan (misal < 60 detik setelah masuk)
@@ -431,22 +472,37 @@ app.post('/api/absensi', (req, res) => {
                             message: `Anda baru saja Check-In. Tunggu 1 menit untuk Check-Out.`,
                             nama: k.nama,
                             jabatan: k.jabatan,
-                            result_code: 'ALREADY_CHECKED_IN',
+                        result_code: 'ALREADY_CHECKED_IN',
                             statusColor: 'yellow'
                         });
                     }
 
-                    // UPDATE: Gunakan 'id_absensi' sesuai skema_final.sql
-                    pool.query('UPDATE absensi SET jam_keluar = ? WHERE id_absensi = ?', [currentTime, dataAbsen.id_absensi], (err) => {
+                    // [BARU] Validasi Batas Minimum Pulang (Cegah PSW terlalu dini/Scan Ganda)
+                    if (currentTime < BATAS_MIN_PULANG) {
+                        return res.json({
+                            success: false,
+                            message: `Absen Pulang/PSW belum dibuka. Minimal jam ${BATAS_MIN_PULANG}.`,
+                            nama: k.nama,
+                            jabatan: k.jabatan,
+                            result_code: 'TOO_EARLY_OUT',
+                            statusColor: 'red'
+                        });
+                    }
+
+                    // Tentukan warna status: Hijau (Normal) atau Kuning (PSW)
+                    const finalStatusColor = pswMenit > 0 ? 'yellow' : 'green';
+
+                    // UPDATE: Gunakan 'id_absensi' dan tambahkan 'keterangan' untuk PSW
+                    pool.query('UPDATE absensi SET jam_keluar = ?, keterangan = ?, psw_menit = ? WHERE id_absensi = ?', [currentTime, keteranganPulang, pswMenit, dataAbsen.id_absensi], (err) => {
                         if (err) return res.status(500).json({ success: false, message: err.message });
 
                         res.json({
                             success: true,
-                            message: `Hati-hati di jalan, Absensi Pulang Berhasil.`,
+                            message: pesanRespon,
                             nama: k.nama,
                             jabatan: k.jabatan,
                             result_code: 'CHECK_OUT_SUCCESS',
-                            statusColor: 'green'
+                            statusColor: finalStatusColor
                         });
                     });
                 }
@@ -588,9 +644,14 @@ app.get('/api/config', (req, res) => {
     res.json({
         success: true,
         config: {
-            jam_kerja_mulai: JAM_KERJA_MULAI, // Default 08:00:00
-            batas_telat: BATAS_TELAT,         // Default 08:20:00
-            jam_pulang_start: JAM_PULANG_START // Default 16:00:00
+            jam_masuk_start: JAM_MASUK_START,
+            jam_masuk_end: JAM_MASUK_END,
+            jam_kerja_mulai: JAM_KERJA_MULAI,
+            batas_telat: BATAS_TELAT,
+            jam_pulang_start: JAM_PULANG_START,
+            batas_min_pulang: BATAS_MIN_PULANG,
+            auto_pulang_default: AUTO_PULANG_DEFAULT,
+            potongan_lupa_pulang: POTONGAN_LUPA_PULANG
         }
     });
 });

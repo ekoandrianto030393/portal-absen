@@ -51,6 +51,7 @@ let labeledDescriptors = null;
 let isDetectionActive = false; // Ganti interval ID dengan flag boolean
 let isProcessing = false; // Kunci: true saat sedang kirim data/cooldown
 let lastKnownMatch = null; 
+let isTargetLocked = false; // Status penguncian target untuk efek suara
 let employeeMap = {}; 
 let currentStream = null; // Variabel untuk stream kamera aktif
 let videoDevices = []; 
@@ -178,6 +179,7 @@ function initAudioVisualizer() {
     const bufferLength = audioAnalyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
+    window.audioLevel = 0; // Init global var
     function renderFrame() {
         requestAnimationFrame(renderFrame);
         audioAnalyser.getByteFrequencyData(dataArray);
@@ -188,15 +190,18 @@ function initAudioVisualizer() {
         const barWidth = (canvas.width / bufferLength) * 2.5;
         let barHeight;
         let x = 0;
+        let total = 0;
 
         for (let i = 0; i < bufferLength; i++) {
             barHeight = dataArray[i] / 2; // Scale height
+            total += dataArray[i];
             
             // Warna Gradient Cyan ke Ungu
             ctx.fillStyle = `rgba(0, 255, 255, ${barHeight / 100})`;
             ctx.fillRect(x, (canvas.height - barHeight) / 2, barWidth, barHeight); // Center vertical
             x += barWidth + 1;
         }
+        window.audioLevel = total / bufferLength; // Rata-rata level suara (0-255)
     }
     renderFrame();
 }
@@ -605,103 +610,80 @@ function drawRetinalScan(ctx, landmarks, color) {
     drawEye(rightEye);
 }
 
-// --- FITUR BARU: COMPLEX SCI-FI HUD ---
-function drawSciFiHUD(ctx, x, y, w, h, color) {
+// --- FITUR BARU: TACTICAL HUD (Pengganti Sci-Fi HUD) ---
+function drawTacticalHUD(ctx, box, color) {
+    const { x, y, width: w, height: h } = box;
+    const time = Date.now() / 1000;
     const cx = x + w / 2;
     const cy = y + h / 2;
-    const radius = Math.max(w, h) * 0.65;
-    const time = Date.now() / 1000;
-
+    
     ctx.save();
-    ctx.translate(cx, cy);
-
-    // 1. Outer Rotating Ring (Dashed)
-    ctx.save();
-    ctx.rotate(time * 0.4);
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([10, 20, 5, 20]); 
-    ctx.stroke();
-    ctx.restore();
-
-    // 2. Inner Counter-Rotating Ring (Tech)
-    ctx.save();
-    ctx.rotate(-time * 0.6);
-    ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.85, 0, Math.PI * 2);
-    ctx.strokeStyle = color;
-    ctx.globalAlpha = 0.7;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([2, 5]);
-    ctx.stroke();
-    ctx.restore();
-
-    // 3. Radar Sweep Effect (NEW)
-    ctx.save();
-    ctx.rotate(time * 3); // Fast rotation
-    const gradient = ctx.createConicGradient(0, 0, 0);
-    gradient.addColorStop(0, 'rgba(0, 255, 255, 0)');
-    gradient.addColorStop(0.8, 'rgba(0, 255, 255, 0)');
-    gradient.addColorStop(1, 'rgba(0, 255, 255, 0.2)');
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.8, 0, Math.PI * 2);
-    ctx.fill();
-    // Leading edge line
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(radius * 0.8, 0);
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+    ctx.fillStyle = color;
     ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
-
-    // 5. Rotating Triangle (New Sophistication)
-    ctx.save();
-    ctx.rotate(time * 0.5);
-    ctx.beginPath();
-    ctx.moveTo(0, -radius * 0.9);
-    ctx.lineTo(radius * 0.1, -radius * 0.8);
-    ctx.lineTo(-radius * 0.1, -radius * 0.8);
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.restore();
-
-    // 5. Rotating Triangle (New Sophistication)
-    ctx.save();
-    ctx.rotate(time * 0.5);
-    ctx.beginPath();
-    ctx.moveTo(0, -radius * 0.9);
-    ctx.lineTo(radius * 0.1, -radius * 0.8);
-    ctx.lineTo(-radius * 0.1, -radius * 0.8);
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.restore();
-
-    ctx.restore();
-
-    // 4. Tactical Corners (Animated Expansion)
-    const expansion = Math.sin(time * 5) * 3;
-    const cornerSize = 25;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2.5;
     ctx.shadowColor = color;
-    ctx.shadowBlur = 5;
+    ctx.shadowBlur = 8;
+
+    // 1. CORNER BRACKETS (Dynamic Expansion)
+    const padding = 20;
+    const len = 40;
+    const breathe = Math.sin(time * 3) * 5;
     
     // Top Left
-    ctx.beginPath(); ctx.moveTo(x - expansion, y + cornerSize - expansion); ctx.lineTo(x - expansion, y - expansion); ctx.lineTo(x + cornerSize - expansion, y - expansion); ctx.stroke();
-    // Top Right
-    ctx.beginPath(); ctx.moveTo(x + w + expansion - cornerSize, y - expansion); ctx.lineTo(x + w + expansion, y - expansion); ctx.lineTo(x + w + expansion, y + cornerSize - expansion); ctx.stroke();
-    // Bottom Right
-    ctx.beginPath(); ctx.moveTo(x + w + expansion, y + h + expansion - cornerSize); ctx.lineTo(x + w + expansion, y + h + expansion); ctx.lineTo(x + w + expansion - cornerSize, y + h + expansion); ctx.stroke();
-    // Bottom Left
-    ctx.beginPath(); ctx.moveTo(x - expansion + cornerSize, y + h + expansion); ctx.lineTo(x - expansion, y + h + expansion); ctx.lineTo(x - expansion, y + h + expansion - cornerSize); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - padding - breathe, y - padding - breathe + len);
+    ctx.lineTo(x - padding - breathe, y - padding - breathe);
+    ctx.lineTo(x - padding - breathe + len, y - padding - breathe);
+    ctx.stroke();
     
-    ctx.shadowBlur = 0;
+    // Top Right
+    ctx.beginPath();
+    ctx.moveTo(x + w + padding + breathe - len, y - padding - breathe);
+    ctx.lineTo(x + w + padding + breathe, y - padding - breathe);
+    ctx.lineTo(x + w + padding + breathe, y - padding - breathe + len);
+    ctx.stroke();
+    
+    // Bottom Right
+    ctx.beginPath();
+    ctx.moveTo(x + w + padding + breathe, y + h + padding + breathe - len);
+    ctx.lineTo(x + w + padding + breathe, y + h + padding + breathe);
+    ctx.lineTo(x + w + padding + breathe - len, y + h + padding + breathe);
+    ctx.stroke();
+    
+    // Bottom Left
+    ctx.beginPath();
+    ctx.moveTo(x - padding - breathe + len, y + h + padding + breathe);
+    ctx.lineTo(x - padding - breathe, y + h + padding + breathe);
+    ctx.lineTo(x - padding - breathe, y + h + padding + breathe - len);
+    ctx.stroke();
+
+    // 2. ROTATING TARGET CIRCLE
+    ctx.beginPath();
+    ctx.arc(cx, cy, w * 0.4, time, time + Math.PI * 1.5);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.arc(cx, cy, w * 0.35, -time * 2, -time * 2 + Math.PI);
+    ctx.setLineDash([5, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 3. CROSSHAIR
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
+    ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
+    ctx.stroke();
+
+    // 4. DATA BLOCKS (Decorations)
+    // Top Bar
+    ctx.fillRect(cx - 30, y - padding - breathe - 15, 60, 4);
+    // Bottom Bar
+    ctx.fillRect(cx - 30, y + h + padding + breathe + 11, 60, 4);
+
+    ctx.restore();
 }
 
 // --- FITUR BARU: TARGET LOCK HUD ---
@@ -1861,18 +1843,9 @@ async function detectFace() {
         const sortedEmotions = Object.keys(expressions).sort((a, b) => expressions[b] - expressions[a]);
         const dominantEmotion = sortedEmotions[0] || 'NEUTRAL';
 
-        // --- FITUR BARU: DIGITAL AUTO-ZOOM ---
-        const scale = 1.8; // Faktor zoom, bisa disesuaikan
-        const centerX = box.x + box.width / 2;
-        const centerY = box.y + box.height / 2;
-        
-        // Hitung translasi agar wajah tetap di tengah
-        const translateX = (displaySize.width / 2) - centerX;
-        const translateY = (displaySize.height / 2) - centerY;
-
-        // Terapkan transformasi ke elemen video. Transisi dihandle oleh CSS.
-        // Penting: scaleX(-1) harus tetap ada untuk efek cermin.
-        video.style.transform = `scaleX(-1) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+        // --- FITUR: STABILISASI KAMERA (NO ZOOM) ---
+        // Zoom dihapus agar resolusi tajam & orientasi stabil seperti HUD Taktis.
+        video.style.transform = 'scaleX(-1)'; 
 
         // --- GAMBAR EFEK CANGGIH BARU ---
         // 1. Hexagonal Force Field di latar belakang wajah
@@ -1891,13 +1864,16 @@ async function detectFace() {
 
         // --- GAMBAR EFEK BARU ---
         // drawScanningBeam(context, box); // Diganti dengan HUD Sci-Fi
-        drawSciFiHUD(context, box.x, box.y, box.width, box.height, '#00FFFF');
+        drawTacticalHUD(context, box, '#00FFFF');
         
         const nose = landmarks.getNose()[3]; // Titik tengah hidung
         // drawTargetLock(context, nose.x, nose.y, box.width * 0.3); // Diganti Sci-Fi HUD
         
- 	    // Efek suara scanning ringan (opsional, bisa dimatikan jika terlalu berisik)
-        if (Math.random() > 0.85) SoundFX.play('scan'); 
+        // --- EFEK SUARA: TARGET ACQUIRED ---
+        if (!isTargetLocked) {
+            SoundFX.play('scan'); // Bunyi "Chirp" saat pertama kali wajah terkunci
+            isTargetLocked = true;
+        }
 
         setStatusVisual('SUBJECT DETECTED. PROCESSING BIOMETRICS...', 'text-amber-500', true);
         setSystemTheme('SCANNING'); // Update Theme to Scanning (Blue/Cyan)
@@ -2012,7 +1988,7 @@ async function detectFace() {
         }
         
         // drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor); // Diganti Sci-Fi HUD
-        drawSciFiHUD(context, box.x, box.y, box.width, box.height, faceColor);
+        drawTacticalHUD(context, box, faceColor);
         
         // Gunakan Smart HUD baru
         drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion);
@@ -2032,9 +2008,10 @@ async function detectFace() {
     } else {
         // Tidak ada deteksi wajah
         resetTargetData();
+        isTargetLocked = false; // Reset status lock
         updateSystemDiagnostics(0);
-        // Reset zoom saat tidak ada wajah
-        video.style.transform = 'scaleX(-1) scale(1) translate(0, 0)';
+        // Reset transform (tetap mirror)
+        video.style.transform = 'scaleX(-1)';
         setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
         confidenceHistory = []; // Reset grafik
         faceParticles = []; // Reset partikel saat wajah hilang
@@ -2163,10 +2140,19 @@ async function processAttendance(karyawanId) {
                     logAttendance(display_name, serverTimestamp); // Log ke panel kanan
                     break;
                 case 'CHECK_OUT_SUCCESS':
-                    finalStatusText = 'CHECK-OUT BERHASIL';
-                    finalMessageHTML = `Absensi PULANG Terkonfirmasi.<br>Terima kasih, Hati-hati di jalan.`;
-                    finalBackground = ABSEN_NORMAL_BG;
-                    finalStatusColor = NAME_HIGHLIGHT_COLOR;
+                    // LOGIKA BARU: Cek apakah PSW (Status Yellow)
+                    if (statusColor === 'yellow') {
+                        finalStatusText = 'PULANG CEPAT (PSW)';
+                        // Gunakan pesan dari server yang berisi detail menit PSW
+                        finalMessageHTML = `<span style="color:#FFD700; font-weight:bold;">${cleanMessage}</span>`;
+                        finalStatusColor = '#FFD700'; // Kuning Emas
+                        finalBackground = `radial-gradient(circle, rgba(200, 150, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
+                    } else {
+                        finalStatusText = 'CHECK-OUT BERHASIL';
+                        finalMessageHTML = `Absensi PULANG Terkonfirmasi.<br>Terima kasih, Hati-hati di jalan.`;
+                        finalStatusColor = '#00FF7F'; // Hijau Normal
+                        finalBackground = ABSEN_NORMAL_BG;
+                    }
                     break;
                 case 'STATUS_CONFIRMED':
                 default: // Fallback untuk kasus sukses lainnya
@@ -2262,7 +2248,8 @@ async function processAttendance(karyawanId) {
 
         // --- NEW: LOGIKA WARNA & ICON STATUS (CUSTOMIZATION) ---
         // Membedakan warna Nama & Box berdasarkan hasil
-        let finalNameColor = result.success ? '#00FF7F' : (statusColor === 'yellow' ? '#FFD700' : '#FF0055');
+        // FIX: Jika statusColor kuning (PSW), nama juga ikut kuning meskipun success=true
+        let finalNameColor = statusColor === 'green' ? '#00FF7F' : (statusColor === 'yellow' ? '#FFD700' : '#FF0055');
         
         let statusIconSVG = '';
         let statusBoxStyle = '';
@@ -2734,6 +2721,12 @@ function initBackground3D() {
         const scene = new BABYLON.Scene(engine);
         scene.clearColor = new BABYLON.Color4(0.0, 0.0, 0.0, 0.0); // Transparan
 
+        // --- NEW: GLOW LAYER (EFEK NEON) ---
+        const gl = new BABYLON.GlowLayer("glow", scene, {
+            blurKernelSize: 64 // Blur lebih halus
+        });
+        gl.intensity = 1.5; // Default intensity
+
         // 1. CAMERA
         const camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, Math.PI / 2.5, 20, BABYLON.Vector3.Zero(), scene);
         camera.wheelPrecision = 50;
@@ -2787,8 +2780,15 @@ function initBackground3D() {
             precision highp float;
             attribute vec3 position; attribute vec2 uv;
             uniform mat4 world; uniform mat4 view; uniform mat4 projection;
+            uniform float time;
             varying vec3 vPosition; varying vec2 vUV;
-            void main() { vPosition = position; vUV = uv; gl_Position = projection * view * world * vec4(position, 1.0); }
+            void main() { 
+                vec3 p = position;
+                // EFEK DIGITAL TERRAIN (Gelombang Data)
+                p.y += sin(p.x * 0.1 + time) * cos(p.z * 0.1 + time) * 1.5;
+                vPosition = p; vUV = uv; 
+                gl_Position = projection * view * world * vec4(p, 1.0); 
+            }
         `;
 
         BABYLON.Effect.ShadersStore["holoGridFragmentShader"] = `
@@ -2796,15 +2796,21 @@ function initBackground3D() {
             varying vec3 vPosition; varying vec2 vUV;
             uniform float time; uniform vec3 cameraPosition;
             void main() {
-                float thickness = 0.05;
-                float gridX = step(1.0 - thickness, fract(vPosition.x * 0.2));
-                float gridZ = step(1.0 - thickness, fract(vPosition.z * 0.2));
+                // Grid Pattern yang lebih tajam
+                float gridX = step(0.95, fract(vPosition.x * 0.2));
+                float gridZ = step(0.95, fract(vPosition.z * 0.2));
                 float grid = max(gridX, gridZ);
                 float dist = distance(vPosition, cameraPosition);
-                float alpha = max(0.0, 1.0 - dist / 60.0);
+                float alpha = max(0.0, 1.0 - dist / 80.0);
+                
+                // Warna Dasar Cyan
                 vec3 color = vec3(0.0, 1.0, 1.0) * grid * 2.0;
-                float pulse = sin(vPosition.z * 0.5 - time * 2.0);
-                color += vec3(0.0, 0.5, 1.0) * max(0.0, pulse) * 0.5 * alpha;
+                
+                // Pulse Gelombang Scan
+                float pulse = fract((vPosition.z - time * 5.0) * 0.05);
+                float pulseLine = smoothstep(0.9, 0.95, pulse);
+                color += vec3(0.5, 0.8, 1.0) * pulseLine * 3.0; // Garis scan terang
+
                 if (alpha <= 0.01) discard;
                 gl_FragColor = vec4(color, alpha * 0.8);
             }
@@ -2979,6 +2985,11 @@ function initBackground3D() {
             gridMat.setVector3("cameraPosition", camera.position);
             sunMesh.position.x = Math.sin(time * 0.2) * 20; sunMesh.position.y = 5 + Math.cos(time * 0.3) * 5;
             globe.rotation.y += 0.002; globe.rotation.x += 0.001;
+
+            // AUDIO REACTIVE GLOW (Background berdenyut sesuai suara)
+            if (window.audioLevel) {
+                gl.intensity = 1.2 + (window.audioLevel / 150.0); 
+            }
 
             // PARALLAX CAMERA UPDATE (Smooth Follow)
             camera.alpha += ((-Math.PI / 2 + (mouseX * 1.0)) - camera.alpha) * 0.05;

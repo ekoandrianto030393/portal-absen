@@ -53,6 +53,7 @@
             pointer-events: none;
             z-index: 9999;
             opacity: 0.7;
+            animation: scanlineMove 10s linear infinite;
         }
 
         /* EFEK NOISE / FILM GRAIN (NEW) */
@@ -64,6 +65,11 @@
             opacity: 0.04;
             /* SVG Noise Pattern */
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        @keyframes scanlineMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 100%; }
         }
 
         /* --- 2. LAYOUT LAYERS --- */
@@ -1399,6 +1405,22 @@
 
                 <div id="videoContainer" class="video-container max-w-full">
                     <video id="videoElement" autoplay muted playsinline></video>
+                    <!-- NEW: TACTICAL GRID OVERLAY (Pengganti Zoom) -->
+                    <div class="absolute inset-0 pointer-events-none z-0 opacity-30">
+                        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#00FFFF" stroke-width="0.5" />
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill="url(#smallGrid)" />
+                            <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#00FFFF" stroke-width="1" stroke-dasharray="5,5"
+                                opacity="0.5" />
+                            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#00FFFF" stroke-width="1" stroke-dasharray="5,5"
+                                opacity="0.5" />
+                        </svg>
+                    </div>
+
                     <canvas id="overlay"></canvas>
                     <div class="scanner-beam"></div>
                     <!-- Cyber Corners -->
