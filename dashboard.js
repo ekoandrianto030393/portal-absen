@@ -75,6 +75,12 @@ async function loadSystemConfig() {
         if (result.success) {
             systemConfig = result.config;
             // console.log("System Config Loaded:", JSON.stringify(systemConfig, null, 2));
+            
+            // [NEW] Populate Jam Pulang Khusus dari Server Config (jika input kosong)
+            const jumatInput = document.getElementById('conf-jam-pulang-jumat');
+            const sabtuInput = document.getElementById('conf-jam-pulang-sabtu');
+            if (jumatInput && !jumatInput.value) jumatInput.value = systemConfig.jam_pulang_jumat;
+            if (sabtuInput && !sabtuInput.value) sabtuInput.value = systemConfig.jam_pulang_sabtu;
         }
     } catch (e) {
         console.error("Gagal memuat config, menggunakan default.", e);
@@ -130,7 +136,7 @@ async function loadOverviewData() {
         ]);
 
         const jsonDaily = await resDailyRaw.json();
-        const dailyData = jsonDaily.data || [];
+        const dailyData = Array.isArray(jsonDaily.data) ? jsonDaily.data : [];
 
         // 2. Ambil Data Karyawan (untuk total)
         const jsonEmp = await resEmpRaw.json();
@@ -141,8 +147,8 @@ async function loadOverviewData() {
         // Hitung DL secara spesifik
         const dlCount = dailyData.filter(d => ['DL', 'DINAS_LUAR'].includes(d.status)).length;
         // Hitung terlambat (exclude DL)
-        const limitStr = systemConfig?.batas_telat || '08:25:00';
-        const lateCount = dailyData.filter(d => d.jam_masuk > limitStr && !['DL', 'DINAS_LUAR'].includes(d.status)).length;
+        // [FIX] Gunakan data 'telat_menit' dari DB agar 100% sinkron dengan aturan .env di server
+        const lateCount = dailyData.filter(d => d.telat_menit > 0).length;
         const absentCount = Math.max(0, totalEmployees - presentCount);
 
         // 4. Update Kartu Statistik
@@ -180,8 +186,8 @@ function renderRecentActivity(data) {
     }
 
     recent.forEach(item => {
-        const limitStr = systemConfig?.batas_telat || '08:25:00';
-        const isLate = item.jam_masuk > limitStr;
+        // [FIX] Gunakan data 'telat_menit' dari DB
+        const isLate = item.telat_menit > 0;
         const timeClass = isLate 
             ? 'bg-red-100 text-red-700 border-red-200' 
             : 'bg-emerald-100 text-emerald-700 border-emerald-200';
@@ -243,6 +249,9 @@ async function loadDailyData(silent = false) {
                     statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 flex items-center w-fit gap-1"><i class="fa-solid fa-file-signature"></i> Izin/Cuti</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
+                } else if (status === 'HADIR_MANUAL') {
+                    // [SYNC] Tampilkan badge khusus untuk input manual, jam tetap tampil sesuai input
+                    statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center w-fit gap-1"><i class="fa-solid fa-keyboard"></i> Hadir (Manual)</span>`;
                 } else if (row.jam_masuk) {
                     // --- LOGIKA HADIR NORMAL ---
                     
@@ -281,12 +290,22 @@ async function loadDailyData(silent = false) {
                     statusBadge = `<span class="text-slate-400 text-xs">Tidak Ada Data</span>`;
                 }
 
+                // [NEW] Tampilkan Keterangan dari Database (Sesuai Request)
+                // Ini akan memunculkan teks seperti "PSW: 15 menit" atau "Otomatis: Lupa Absen Pulang"
+                let keteranganHtml = '';
+                if (row.keterangan) {
+                    keteranganHtml = `<div class="text-[10px] text-slate-500 italic mt-1.5 border-t border-slate-100 pt-1 leading-tight"><i class="fa-solid fa-circle-info text-[9px] mr-1"></i>${escapeHtml(row.keterangan)}</div>`;
+                }
+
                 const tr = `
                     <tr onclick="openModal('${row.id_karyawan}')" class="hover:bg-blue-50/50 transition cursor-pointer group border-b border-slate-100 last:border-0">
                         <td class="px-6 py-4 font-mono text-blue-600 font-medium">${row.jam_masuk}</td>
                         <td class="px-6 py-4 font-bold text-slate-800 group-hover:text-blue-600 transition">${row.nama_karyawan}</td>
                         <td class="px-6 py-4 text-slate-500 text-sm">${row.jabatan || '-'}</td>
-                        <td class="p-5">${statusBadge}</td>
+                        <td class="p-5">
+                            ${statusBadge}
+                            ${keteranganHtml}
+                        </td>
                         <td class="px-6 py-4 ${lateClass} font-mono">${lateDisplay}</td>
                         <td class="px-6 py-4 font-mono text-slate-600">${row.jam_keluar || '<span class="text-slate-400">-</span>'}</td>
                     </tr>
@@ -348,6 +367,21 @@ async function loadMonthlyRecap() {
         if (result.data && result.data.length > 0) {
             // Inisialisasi variabel total
             let tHadir = 0, tDL = 0, tAlpa = 0, tTelat = 0, tTelatMin = 0, tPsw = 0, tPswMin = 0, tPelanggaranMin = 0, tNoOut = 0, tPot = 0;
+            
+            // [NEW] Variabel Total Gaji & Load Config
+            let totalGaji = 0;
+            const savedConfig = localStorage.getItem('signatureConfig');
+            const config = savedConfig ? JSON.parse(savedConfig) : {};
+            const defGaji = parseInt(config.gajiPokok) || 0;
+            const tunjanganJabatan = parseInt(config.tunjanganJabatan) || 0;
+            const uangMakan = parseInt(config.uangMakan) || 0;
+            const uangTransport = parseInt(config.uangTransport) || 0;
+            const bpjs = parseInt(config.bpjs) || 0;
+            const pajak = parseInt(config.pajak) || 0;
+            const dTelat = parseInt(config.dendaTelat) || 0;
+            const dAlpa = parseInt(config.dendaAlpa) || 0;
+            const dPsw = parseInt(config.dendaPsw) || 0;
+            const dLupa = parseInt(config.dendaLupa) || 0;
 
             result.data.forEach((row, index) => {
                 // Hitung total saat looping
@@ -362,11 +396,38 @@ async function loadMonthlyRecap() {
                 tNoOut += parseInt(row.tanpa_absen_pulang) || 0;
                 tPot += parseFloat(row.potongan_jam) || 0;
 
+                // [NEW] Hitung Estimasi Gaji per Pegawai
+                let gajiPokok = defGaji;
+                // Cek override gaji per jabatan
+                if (config.gajiJabatanStr && row.jabatan) {
+                    const lines = config.gajiJabatanStr.split('\n');
+                    for (const line of lines) {
+                        const parts = line.split('=');
+                        if (parts.length === 2) {
+                            const jobTitle = parts[0].trim().toLowerCase();
+                            const salary = parseInt(parts[1].trim());
+                            if (row.jabatan.toLowerCase() === jobTitle && !isNaN(salary)) {
+                                gajiPokok = salary;
+                                break; 
+                            }
+                        }
+                    }
+                }
+                const h = (parseInt(row.total_masuk) || 0) + (parseInt(row.total_dl) || 0);
+                const totalHarian = h * (uangMakan + uangTransport);
+                const totalPendapatan = gajiPokok + tunjanganJabatan + totalHarian;
+                const totalDenda = ((parseInt(row.telat_kali) || 0) * dTelat) + 
+                                   ((parseInt(row.alpa) || 0) * dAlpa) + 
+                                   ((parseInt(row.psw_kali) || 0) * dPsw) + 
+                                   ((parseInt(row.tanpa_absen_pulang) || 0) * dLupa);
+                const totalPotongan = totalDenda + bpjs + pajak;
+                totalGaji += Math.max(0, totalPendapatan - totalPotongan);
+
                 tbody.innerHTML += `
                     <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-blue-50/50 border-b border-slate-100 last:border-0 group">
-                        <td class="md:sticky md:left-0 md:z-10 bg-white group-hover:bg-blue-50/50 px-6 py-4 text-center font-mono text-slate-700 md:border-r border-slate-100">${index + 1}</td>
-                        <td class="md:sticky md:left-16 md:z-10 bg-white group-hover:bg-blue-50/50 px-6 py-4 font-mono text-slate-700 md:border-r border-slate-100">${row.id_karyawan}</td>
-                        <td class="md:sticky md:left-40 md:z-10 bg-white group-hover:bg-blue-50/50 px-6 py-4 font-bold text-slate-700 md:border-r border-slate-100 md:shadow-sm">${row.nama}</td>
+                        <td class="md:sticky md:left-0 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 text-center font-mono text-slate-700 md:border-r border-slate-100">${index + 1}</td>
+                        <td class="md:sticky md:left-16 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 font-mono text-slate-700 md:border-r border-slate-100">${row.id_karyawan}</td>
+                        <td class="md:sticky md:left-40 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 font-bold text-slate-700 md:border-r border-slate-100 md:shadow-sm">${row.nama}</td>
                         <td class="pl-16 pr-6 py-4 text-sm text-slate-700">${row.jabatan || '-'}</td>
                         <td class="px-6 py-4 text-center">
                             <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
@@ -401,6 +462,15 @@ async function loadMonthlyRecap() {
                     <td class="px-6 py-3 text-center">${tNoOut}</td>
                     <td class="px-6 py-3 text-center">${tPot}</td>
                     <td class="px-6 py-3"></td>
+                </tr>
+                <!-- [NEW] Baris Total Pengeluaran Gaji -->
+                <tr class="bg-emerald-50 font-bold border-t border-emerald-200 text-emerald-900 print:bg-white print:border-black break-inside-avoid">
+                    <td colspan="11" class="px-6 py-4 text-right uppercase text-sm tracking-wider">
+                        Total Estimasi Pengeluaran Gaji (Bulan Ini):
+                    </td>
+                    <td colspan="4" class="px-6 py-4 text-right text-xl font-black text-emerald-700 border-l border-emerald-200">
+                        ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totalGaji)}
+                    </td>
                 </tr>
             `;
         } else {
@@ -767,7 +837,8 @@ async function submitManualStatus() {
         if (response.ok && result.success) {
             showToast("Status berhasil disimpan!", 'success');
             closeManualModal();
-            loadDailyData(); // Refresh tabel
+            loadDailyData(); // Refresh tabel harian
+            loadOverviewData(); // Refresh statistik atas (Hadir/Alpa)
         } else {
             // Tampilkan pesan error asli dari server
             showToast(`Gagal menyimpan: ${result.message}`, 'error');
@@ -1044,6 +1115,24 @@ async function openModal(idKaryawan) {
     `;
     document.getElementById('modal-stats-grid').innerHTML = statsHTML;
 
+    // [NEW] Tambahkan Tombol Cetak Slip Gaji di Modal
+    const btnContainerId = 'modal-print-btn-container';
+    let btnContainer = document.getElementById(btnContainerId);
+    
+    // Jika container belum ada, buat baru setelah grid stats
+    if (!btnContainer) {
+        btnContainer = document.createElement('div');
+        btnContainer.id = btnContainerId;
+        btnContainer.className = 'mt-6 flex justify-center border-t border-slate-100 pt-4';
+        document.getElementById('modal-stats-grid').parentNode.appendChild(btnContainer);
+    }
+
+    btnContainer.innerHTML = `
+        <button onclick="printSalarySlip('${emp.id_karyawan}')" class="flex items-center gap-2 px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold text-sm transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+            <i class="fa-solid fa-print"></i> Cetak Slip Gaji
+        </button>
+    `;
+
     // Animasi Masuk
     modal.classList.remove('hidden');
     // Sedikit delay agar transisi opacity jalan
@@ -1165,16 +1254,46 @@ function changeTheme(colorName) {
 }
 
 // --- FITUR: KONFIGURASI TANDA TANGAN (LOCAL STORAGE) ---
-function saveSignatureConfig() {
+async function saveSignatureConfig() {
     const config = {
         kepalaNama: document.getElementById('conf-kepala-nama').value,
         kepalaNip: document.getElementById('conf-kepala-nip').value,
         petugasNama: document.getElementById('conf-petugas-nama').value,
-        petugasNip: document.getElementById('conf-petugas-nip').value
+        petugasNip: document.getElementById('conf-petugas-nip').value,
+        // NEW: Konfigurasi Gaji
+        gajiPokok: document.getElementById('conf-gaji-pokok')?.value || 0,
+        tunjanganJabatan: document.getElementById('conf-tunjangan-jabatan')?.value || 0,
+        uangMakan: document.getElementById('conf-uang-makan')?.value || 0,
+        uangTransport: document.getElementById('conf-uang-transport')?.value || 0,
+        bpjs: document.getElementById('conf-bpjs')?.value || 0,
+        pajak: document.getElementById('conf-pajak')?.value || 0,
+        dendaTelat: document.getElementById('conf-denda-telat')?.value || 0,
+        dendaAlpa: document.getElementById('conf-denda-alpa')?.value || 0,
+        dendaPsw: document.getElementById('conf-denda-psw')?.value || 0, // [NEW]
+        dendaLupa: document.getElementById('conf-denda-lupa')?.value || 0, // [NEW]
+        gajiJabatanStr: document.getElementById('conf-gaji-jabatan')?.value || '', 
+     // [NEW] Simpan string mapping jabatan
+        jamPulangJumat: document.getElementById('conf-jam-pulang-jumat')?.value || '', // [NEW]
+        jamPulangSabtu: document.getElementById('conf-jam-pulang-sabtu')?.value || ''  // [NEW]
     };
     
     localStorage.setItem('signatureConfig', JSON.stringify(config));
-    showToast('Konfigurasi tanda tangan disimpan!', 'success');
+    
+    // [NEW] Kirim Update Jam Pulang ke Server
+    try {
+        const response = await fetch(`${API_BASE}/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                jam_pulang_jumat: config.jamPulangJumat, 
+                jam_pulang_sabtu: config.jamPulangSabtu 
+            })
+        });
+        const result = await response.json();
+        if(result.success) console.log("Server config updated.");
+    } catch(e) { console.error("Gagal update config server:", e); }
+
+    showToast('Konfigurasi & Jam Pulang berhasil disimpan!', 'success');
     applySignatureToPrint(); // Update tampilan langsung
 }
 
@@ -1182,12 +1301,27 @@ function loadSignatureConfig() {
     const saved = localStorage.getItem('signatureConfig');
     if (saved) {
         const config = JSON.parse(saved);
-        // Isi Form Settings
+        // Isi Form Settings Tanda Tangan
         if(document.getElementById('conf-kepala-nama')) document.getElementById('conf-kepala-nama').value = config.kepalaNama || '';
         if(document.getElementById('conf-kepala-nip')) document.getElementById('conf-kepala-nip').value = config.kepalaNip || '';
         if(document.getElementById('conf-petugas-nama')) document.getElementById('conf-petugas-nama').value = config.petugasNama || '';
         if(document.getElementById('conf-petugas-nip')) document.getElementById('conf-petugas-nip').value = config.petugasNip || '';
         
+        // Isi Form Settings Gaji (NEW)
+        if(document.getElementById('conf-gaji-pokok')) document.getElementById('conf-gaji-pokok').value = config.gajiPokok || '';
+        if(document.getElementById('conf-tunjangan-jabatan')) document.getElementById('conf-tunjangan-jabatan').value = config.tunjanganJabatan || '';
+        if(document.getElementById('conf-uang-makan')) document.getElementById('conf-uang-makan').value = config.uangMakan || '';
+        if(document.getElementById('conf-uang-transport')) document.getElementById('conf-uang-transport').value = config.uangTransport || '';
+        if(document.getElementById('conf-bpjs')) document.getElementById('conf-bpjs').value = config.bpjs || '';
+        if(document.getElementById('conf-pajak')) document.getElementById('conf-pajak').value = config.pajak || '';
+        if(document.getElementById('conf-denda-telat')) document.getElementById('conf-denda-telat').value = config.dendaTelat || '';
+        if(document.getElementById('conf-denda-alpa')) document.getElementById('conf-denda-alpa').value = config.dendaAlpa || '';
+        if(document.getElementById('conf-denda-psw')) document.getElementById('conf-denda-psw').value = config.dendaPsw || ''; // [NEW]
+        if(document.getElementById('conf-denda-lupa')) document.getElementById('conf-denda-lupa').value = config.dendaLupa || ''; // [NEW]
+        if(document.getElementById('conf-gaji-jabatan')) document.getElementById('conf-gaji-jabatan').value = config.gajiJabatanStr || ''; // [NEW] Load mapping
+        if(document.getElementById('conf-jam-pulang-jumat')) document.getElementById('conf-jam-pulang-jumat').value = config.jamPulangJumat || ''; // [NEW]
+        if(document.getElementById('conf-jam-pulang-sabtu')) document.getElementById('conf-jam-pulang-sabtu').value = config.jamPulangSabtu || ''; // [NEW]
+
         // Terapkan ke View Print
         applySignatureToPrint();
     }
@@ -1282,4 +1416,170 @@ function filterTable(tableBodyId, inputId) {
         const text = rows[i].textContent.toLowerCase();
         rows[i].style.display = text.indexOf(filter) > -1 ? "" : "none";
     }
+}
+
+// --- FITUR: CETAK SLIP GAJI (NEW) ---
+function printSalarySlip(id) {
+    const emp = globalPerformanceData.find(e => e.id_karyawan === id);
+    if (!emp) return;
+
+    const monthInput = document.getElementById('filter-month');
+    const periode = monthInput ? monthInput.value : new Date().toISOString().slice(0, 7);
+    
+    // [NEW] Ambil Konfigurasi Gaji dari LocalStorage
+    const savedConfig = localStorage.getItem('signatureConfig');
+    const config = savedConfig ? JSON.parse(savedConfig) : {};
+    
+    let gajiPokok = parseInt(config.gajiPokok) || 0;
+
+    // [NEW] Override Gaji Pokok jika ada konfigurasi per jabatan
+    if (config.gajiJabatanStr && emp.jabatan) {
+        const lines = config.gajiJabatanStr.split('\n');
+        for (const line of lines) {
+            const parts = line.split('=');
+            if (parts.length === 2) {
+                const jobTitle = parts[0].trim().toLowerCase();
+                const salary = parseInt(parts[1].trim());
+                // Cek jika jabatan pegawai mengandung kata kunci (misal "Dokter Umum" cocok dengan "Dokter")
+                if (emp.jabatan.toLowerCase() === jobTitle && !isNaN(salary)) {
+                    gajiPokok = salary;
+                    break; 
+                }
+            }
+        }
+    }
+
+    const tunjanganJabatan = parseInt(config.tunjanganJabatan) || 0;
+    const uangMakan = parseInt(config.uangMakan) || 0;
+    const uangTransport = parseInt(config.uangTransport) || 0;
+    const bpjs = parseInt(config.bpjs) || 0;
+    const pajak = parseInt(config.pajak) || 0;
+    const dendaTelat = parseInt(config.dendaTelat) || 0;
+    const dendaAlpa = parseInt(config.dendaAlpa) || 0;
+    const dendaPsw = parseInt(config.dendaPsw) || 0; // [NEW]
+    const dendaLupa = parseInt(config.dendaLupa) || 0; // [NEW]
+
+    // [NEW] Hitung Komponen Gaji
+    const totalHadir = (parseInt(emp.total_masuk) || 0) + (parseInt(emp.total_dl) || 0);
+    const totalUangMakan = totalHadir * uangMakan;
+    const totalUangTransport = totalHadir * uangTransport;
+    
+    const totalDenda = ((parseInt(emp.telat_kali) || 0) * dendaTelat) + 
+                       ((parseInt(emp.alpa) || 0) * dendaAlpa) + 
+                       ((parseInt(emp.psw_kali) || 0) * dendaPsw) + 
+                       ((parseInt(emp.tanpa_absen_pulang) || 0) * dendaLupa);
+    
+    const totalPotongan = totalDenda + bpjs + pajak;
+    const totalPendapatan = gajiPokok + tunjanganJabatan + totalUangMakan + totalUangTransport;
+    const totalDiterima = Math.max(0, totalPendapatan - totalPotongan);
+
+    // Helper Format Rupiah
+    const formatRupiah = (angka) => {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+    };
+
+    const printWindow = window.open('', '_blank', 'width=800,height=800');
+    
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Slip Gaji - ${emp.nama}</title>
+            <style>
+                body { font-family: 'Courier New', monospace; padding: 40px; color: #1f2937; max-width: 800px; margin: 0 auto; }
+                .header { border-bottom: 3px double #1f2937; padding-bottom: 20px; margin-bottom: 30px; position: relative; min-height: 70px; }
+                .header-content { text-align: center; width: 100%; }
+                .logo { position: absolute; left: 0; top: 0; width: 70px; height: auto; object-fit: contain; }
+                .header h1 { margin: 0; font-size: 24px; letter-spacing: 2px; }
+                .header p { margin: 5px 0 0; font-size: 14px; color: #4b5563; }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+                .info-item { display: flex; flex-direction: column; }
+                .label { font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: bold; }
+                .value { font-size: 14px; font-weight: bold; }
+                
+                .section { margin-bottom: 25px; }
+                .section-title { font-size: 14px; font-weight: bold; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px; text-transform: uppercase; color: #374151; }
+                
+                .table-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; border-bottom: 1px dashed #f3f4f6; }
+                .table-row:last-child { border-bottom: none; }
+                
+                .total-box { border: 2px solid #1f2937; padding: 15px; margin-top: 30px; display: flex; justify-content: space-between; align-items: center; background: #f9fafb; }
+                .total-label { font-weight: bold; font-size: 16px; text-transform: uppercase; }
+                .total-value { font-weight: bold; font-size: 18px; }
+                
+                .signatures { display: flex; justify-content: space-between; margin-top: 60px; text-align: center; font-size: 12px; }
+                .sign-box { width: 200px; }
+                .sign-line { margin-top: 80px; border-top: 1px solid #1f2937; }
+                
+                .footer { margin-top: 50px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+                
+                @media print {
+                    body { padding: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <img src="logo.jpg" class="logo" alt="Logo" onerror="this.style.display='none'">
+                <div class="header-content">
+                    <h1>PUSKESMAS WANA</h1>
+                    <p>SLIP GAJI & LAPORAN KINERJA</p>
+                    <p>PERIODE: ${periode}</p>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-item"><span class="label">Nama Pegawai</span><span class="value">${emp.nama}</span></div>
+                <div class="info-item"><span class="label">ID Pegawai</span><span class="value">${emp.id_karyawan}</span></div>
+                <div class="info-item"><span class="label">Jabatan</span><span class="value">${emp.jabatan || '-'}</span></div>
+                <div class="info-item"><span class="label">Tanggal Cetak</span><span class="value">${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Rincian Kehadiran</div>
+                <div class="table-row"><span>Total Kehadiran</span> <span>${emp.total_masuk} Hari</span></div>
+                <div class="table-row"><span>Dinas Luar (DL)</span> <span>${emp.total_dl} Hari</span></div>
+                <div class="table-row"><span>Tidak Hadir (Alpa)</span> <span>${emp.alpa} Hari</span></div>
+                <div class="table-row"><span><strong>Total Jam Kerja Efektif</strong></span> <span><strong>${emp.total_jam_kerja}</strong></span></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Potongan & Disiplin</div>
+                <div class="table-row"><span>Keterlambatan</span> <span>${emp.telat_kali}x (${emp.telat_menit} Menit)</span></div>
+                <div class="table-row"><span>Pulang Sebelum Waktu (PSW)</span> <span>${emp.psw_kali || 0}x (${emp.psw_menit || 0} Menit)</span></div>
+                <div class="table-row"><span>Lupa Absen Pulang</span> <span>${emp.tanpa_absen_pulang}x</span></div>
+                <div class="table-row"><span><strong>Total Potongan Jam</strong></span> <span><strong>${emp.potongan_jam} Jam</strong></span></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Rincian Penerimaan (Estimasi)</div>
+                <div class="table-row"><span>Gaji Pokok</span> <span>${formatRupiah(gajiPokok)}</span></div>
+                <div class="table-row"><span>Tunjangan Jabatan</span> <span>${formatRupiah(tunjanganJabatan)}</span></div>
+                <div class="table-row"><span>Uang Makan (${totalHadir} hari x ${formatRupiah(uangMakan)})</span> <span>${formatRupiah(totalUangMakan)}</span></div>
+                <div class="table-row"><span>Uang Transport (${totalHadir} hari x ${formatRupiah(uangTransport)})</span> <span>${formatRupiah(totalUangTransport)}</span></div>
+                <div class="table-row" style="margin-top:5px; border-top:1px solid #eee; padding-top:5px;"><span><strong>Total Pendapatan</strong></span> <span><strong>${formatRupiah(totalPendapatan)}</strong></span></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Rincian Potongan</div>
+                <div class="table-row"><span>BPJS Kesehatan/TK</span> <span>(${formatRupiah(bpjs)})</span></div>
+                <div class="table-row"><span>Pajak / PPh21</span> <span>(${formatRupiah(pajak)})</span></div>
+                <div class="table-row"><span>Denda Disiplin (Telat/Alpa/PSW)</span> <span>(${formatRupiah(totalDenda)})</span></div>
+                <div class="table-row" style="margin-top:5px; border-top:1px solid #eee; padding-top:5px;"><span><strong>Total Potongan</strong></span> <span><strong>(${formatRupiah(totalPotongan)})</strong></span></div>
+            </div>
+
+            <div class="total-box"><span class="total-label">Total Diterima</span><span class="total-value">${formatRupiah(totalDiterima)}</span></div>
+            <div style="font-size: 11px; color: #666; margin-top: 5px; font-style: italic;">*Slip ini valid sebagai bukti kinerja & kehadiran.</div>
+
+            <div class="signatures">
+                <div class="sign-box"><p>Penerima,</p><div class="sign-line"></div><p>${emp.nama}</p></div>
+                <div class="sign-box"><p>Kepala Puskesmas,</p><div class="sign-line"></div><p>( ${config.kepalaNama || '...........................'} )</p></div>
+            </div>
+
+            <div class="footer">Dicetak otomatis oleh Sistem Biometrik Puskesmas Wana.<br>ID: ${Date.now().toString(36).toUpperCase()}</div>
+            <script>window.onload = function() { window.print(); }</script>
+        </body></html>`;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
 }

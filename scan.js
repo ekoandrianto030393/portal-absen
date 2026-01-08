@@ -69,6 +69,44 @@ let confidenceHistory = []; // Untuk grafik live
 let recognition; // Variabel untuk Voice Recognition
 let faceParticles = []; // NEW: Global particle array
 
+// --- LIVENESS DETECTION ENGINE (ANTI-SPOOFING) ---
+class LivenessDetector {
+    constructor() {
+        this.movementDetected = false;
+        this.lastYaw = 0;
+    }
+
+    reset() {
+        this.movementDetected = false;
+        this.lastYaw = 0;
+    }
+
+    update(landmarks) {
+        const leftEye = landmarks.getLeftEye();
+        const rightEye = landmarks.getRightEye();
+        
+        // Estimasi Yaw (Rotasi Kepala) untuk UI AR
+        const nose = landmarks.getNose()[3];
+        const leftEyeCenter = leftEye[0]; 
+        const rightEyeCenter = rightEye[3]; 
+        const faceWidth = Math.abs(rightEyeCenter.x - leftEyeCenter.x);
+        if (faceWidth > 0) {
+            const noseRel = (nose.x - leftEyeCenter.x) / faceWidth;
+            this.lastYaw = (noseRel - 0.5) * 2; 
+        }
+
+        // Logika Deteksi Gerakan Kepala (Yaw)
+        // Jika kepala menoleh ke kiri/kanan (Threshold 0.2)
+        if (Math.abs(this.lastYaw) > 0.2) {
+            this.movementDetected = true;
+        }
+
+        return this.movementDetected;
+    }
+}
+// Inisialisasi Global Liveness Check
+window.LivenessCheck = new LivenessDetector();
+
 // --- AUDIO & VOICE ENGINE (WEB AUDIO API) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -248,7 +286,7 @@ if (stealthToggle) {
     });
 }
 
-let FACE_MATCHING_THRESHOLD = 0.36;
+let FACE_MATCHING_THRESHOLD = 0.45; // Ditingkatkan (0.36 -> 0.45) agar lebih toleran di kondisi gelap
 // --- DEFINISI WARNA (Futuristik) ---
 const PROFESSIONAL_STATUS_COLOR = '#00FF7F'; 
 const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
@@ -784,12 +822,14 @@ function drawARDataPoints(ctx, box, color) {
     ctx.fillStyle = color;
     ctx.globalAlpha = 0.7 + 0.2 * Math.sin(time / 200); // Efek alpha berdenyut
 
+    // DEBUG LIVENESS: Ambil nilai EAR dari modul LivenessCheck
+    const yawVal = window.LivenessCheck ? window.LivenessCheck.lastYaw.toFixed(2) : '0.50'; // NEW: Debug Yaw
+
     // Data points dengan nilai acak untuk efek visual
     const data = [
         { label: 'TEMP', value: (36.5 + Math.random() * 0.5).toFixed(1) + '°C', pos: [x + w + 5, y + 10] },
         { label: 'PULSE', value: (70 + Math.floor(Math.random() * 5)) + ' BPM', pos: [x + w + 5, y + h - 5] },
-        { label: 'RESP', value: (16 + Math.floor(Math.random() * 3)) + ' RPM', pos: [x - 5, y + 10], align: 'right' },
-        { label: 'SIG', value: 'STABLE', pos: [x - 5, y + h - 5], align: 'right' }
+        { label: 'YAW', value: `${yawVal}`, pos: [x - 5, y + h - 5], align: 'right' } // Tampilkan nilai rotasi kepala
     ];
 
     data.forEach(d => {
@@ -1205,6 +1245,12 @@ function updateClock() {
     const utcH = String(now.getUTCHours()).padStart(2, '0');
     const utcM = String(now.getUTCMinutes()).padStart(2, '0');
     
+    // FIX: Ambil elemen secara dinamis karena di-inject via JS (animateTitle)
+    const clockH = document.getElementById('clock-h');
+    const clockM = document.getElementById('clock-m');
+    const clockS = document.getElementById('clock-s');
+    const clockDate = document.getElementById('clock-date');
+
     // Update Jam, Menit, Detik
     if (clockH) clockH.textContent = String(now.getHours()).padStart(2, '0');
     if (clockM) clockM.textContent = String(now.getMinutes()).padStart(2, '0');
@@ -1286,33 +1332,98 @@ function animateTitle() {
         sigerContainer.style.justifyContent = 'center';
         sigerContainer.style.alignItems = 'center';
         sigerContainer.style.width = '100%';
-        sigerContainer.style.marginBottom = '-5px'; // Rapat dengan teks
-        
-        // SVG Siger Stilasi (Gold Gradient) + Logo Kiri Kanan
+        sigerContainer.style.marginBottom = '20px'; // Jarak bawah diperbaiki agar tidak tertimpa
+        sigerContainer.style.marginTop = '10px'; 
         sigerContainer.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 20px;">
-            <svg width="240" height="90" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));">
-                <defs>
-                    <linearGradient id="gradGold" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FFF8DC"/><stop offset="40%" stop-color="#FFD700"/><stop offset="100%" stop-color="#DAA520"/></linearGradient>
-                    <linearGradient id="gradShimmer" x1="0%" y1="0%" x2="100%" y2="0%" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="rgba(255,255,255,0)"/>
-                        <stop offset="50%" stop-color="rgba(255,255,255,0.9)"/>
-                        <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
-                        <animate attributeName="x1" from="-200" to="400" dur="2.5s" repeatCount="indefinite" />
-                        <animate attributeName="x2" from="-100" to="500" dur="2.5s" repeatCount="indefinite" />
-                    </linearGradient>
-                </defs>
-                <path d="M10,90 L190,90 L185,70 Q170,85 160,50 Q150,75 140,40 Q130,70 120,30 Q110,60 100,10 Q90,60 80,30 Q70,70 60,40 Q50,75 40,50 Q30,85 15,70 Z" 
-                      fill="url(#gradGold)" stroke="#B8860B" stroke-width="2" stroke-linejoin="round" />
-                <path d="M10,90 L190,90 L185,70 Q170,85 160,50 Q150,75 140,40 Q130,70 120,30 Q110,60 100,10 Q90,60 80,30 Q70,70 60,40 Q50,75 40,50 Q30,85 15,70 Z" 
-                      fill="url(#gradShimmer)" style="mix-blend-mode: overlay;" pointer-events="none"/>
-                <circle cx="100" cy="80" r="4" fill="#FFF" opacity="0.9"/>
-            </svg>
+        <div style="
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            width: 100%; 
+            max-width: 640px; /* Samakan dengan lebar video */
+            margin: 0 auto; 
+            padding: 15px; /* Padding diperbesar agar foto tidak sesak */
+            border: 1px solid rgba(0, 255, 255, 0.6); 
+            border-radius: 12px;
+            background: rgba(0, 20, 30, 0.6);
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            animation: floatLogo 4s ease-in-out infinite; 
+        ">
+            <!-- NEW WRAPPER with flex-direction: row -->
+            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center; width: 100%; gap: 15px;">
+                
+                <!-- LEFT DATA BLOCK -->
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: 'Courier New', monospace; color: #00FFFF; text-transform: uppercase;">
+                    <div style="font-size: 9px; letter-spacing: 2px; opacity: 0.8; color: #00FF7F; margin-bottom: 2px;">SYSTEM TIME</div>
+                    <div style="display: flex; align-items: baseline; gap: 2px; font-weight: bold; text-shadow: 0 0 10px rgba(0,255,255,0.6);">
+                        <span id="clock-h" style="font-size: 28px; line-height: 1;">--</span>
+                        <span style="font-size: 18px; opacity: 0.8; animation: blink 1s infinite;">:</span>
+                        <span id="clock-m" style="font-size: 28px; line-height: 1;">--</span>
+                        <span id="clock-s" style="font-size: 14px; color: #FFD700; margin-left: 2px;">--</span>
+                    </div>
+                    <div style="width: 80%; height: 1px; background: linear-gradient(90deg, transparent, #00FFFF, transparent); margin: 4px 0;"></div>
+                    <div id="clock-date" style="font-size: 9px; transform: scale(0.9);">--</div>
+                </div>
+
+                <!-- CENTER IMAGE -->
+                <div style="flex: 2.5; height: 120px; position: relative; overflow: hidden; border-radius: 8px; border: 1px solid #00FFFF; box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);">
+                    <img src="pkm.jpg" alt="Banner" style="width: 100%; height: 100%; object-fit: cover; object-position: center; animation: holo-flicker 5s infinite;">
+                    <!-- Scanline Overlay -->
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.1) 3px); pointer-events: none;"></div>
+                </div>
+
+                <!-- RIGHT DATA BLOCK -->
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-family: 'Courier New', monospace; font-size: 10px; color: #00FFFF; text-transform: uppercase;">
+                    <div style="font-weight: bold; letter-spacing: 1px;">BIOMETRIC KERNEL</div>
+                    <div style="width: 80%; height: 20px; display: flex; gap: 2px; align-items: flex-end; border: 1px solid #00FFFF33; padding: 2px;">
+                        <div class="data-bar" style="width: 20%; background: #00FFFF;"></div>
+                        <div class="data-bar" style="width: 20%; background: #00FFFF;"></div>
+                        <div class="data-bar" style="width: 20%; background: #00FFFF;"></div>
+                        <div class="data-bar" style="width: 20%; background: #00FFFF;"></div>
+                        <div class="data-bar" style="width: 20%; background: #00FFFF;"></div>
+                    </div>
+                    <div style="width: 80%; height: 1px; background: #00FFFF; margin-top: 2px;"></div>
+                    <div style="font-size: 12px; font-weight: bold; color: #FFD700;">v4.5 STABLE</div>
+                </div>
+
+            </div>
+            <div style="width: 80%; height: 2px; background: linear-gradient(90deg, transparent, #00FFFF, transparent); margin-top: 12px; opacity: 0.8; box-shadow: 0 0 5px #00FFFF;"></div>
         </div>
         <style>
             @keyframes floatLogo {
                 0%, 100% { transform: translateY(0px); }
-                50% { transform: translateY(-8px); }
+                50% { transform: translateY(-5px); }
+            }
+            @keyframes pulse-green {
+                0% { box-shadow: 0 0 5px #00FF7F; }
+                50% { box-shadow: 0 0 15px #00FF7F; }
+                100% { box-shadow: 0 0 5px #00FF7F; }
+            }
+            @keyframes bar-pulse {
+                0% { height: 20%; opacity: 0.7; }
+                50% { height: 100%; opacity: 1; }
+                100% { height: 20%; opacity: 0.7; }
+            }
+            .data-bar {
+                animation: bar-pulse 1.5s ease-in-out infinite;
+            }
+            .data-bar:nth-child(2) { animation-delay: 0.2s; }
+            .data-bar:nth-child(3) { animation-delay: 0.5s; }
+            .data-bar:nth-child(4) { animation-delay: 0.3s; }
+            .data-bar:nth-child(5) { animation-delay: 0.6s; }
+            
+            @keyframes holo-flicker {
+                0%, 100% { opacity: 1; filter: brightness(1) hue-rotate(0deg); }
+                2% { opacity: 0.5; filter: brightness(1.5) hue-rotate(90deg); transform: skewX(2deg); }
+                4% { opacity: 1; filter: brightness(1) hue-rotate(0deg); transform: skewX(0deg); }
+                25% { opacity: 0.8; }
+                26% { opacity: 0.4; filter: brightness(1.2); }
+                27% { opacity: 0.8; }
+                70% { filter: hue-rotate(0deg); }
+                72% { filter: hue-rotate(180deg) brightness(1.5); }
+                74% { filter: hue-rotate(0deg); }
             }
         </style>`;
         
@@ -1322,17 +1433,24 @@ function animateTitle() {
     // Setup awal: Buat span jika belum sesuai (Hanya sekali)
     if (mainTitle.children.length !== targetText.length) {
         mainTitle.innerHTML = '';
+        
+        // --- POSISI JUDUL: POJOK KIRI ATAS (HUD STYLE) ---
+        mainTitle.style.position = 'fixed';
+        mainTitle.style.top = '25px';
+        mainTitle.style.left = '30px';
+        mainTitle.style.zIndex = '100';
+        mainTitle.style.margin = '0';
+
         mainTitle.style.opacity = '1';
         mainTitle.style.display = 'inline-flex';
-        mainTitle.style.justifyContent = 'center';
         mainTitle.style.gap = '4px'; 
         mainTitle.style.perspective = '1000px'; // Efek 3D
         
         // GAYA HURUF BARU: Lebih tebal, solid, dan futuristik
         mainTitle.style.fontFamily = '"Rajdhani", "Orbitron", "Arial Black", sans-serif';
         mainTitle.style.fontWeight = '900';
-        mainTitle.style.fontSize = 'clamp(2rem, 4vw, 3.5rem)'; // Responsif Besar
-        mainTitle.style.letterSpacing = '6px';
+        mainTitle.style.fontSize = 'clamp(1.5rem, 2vw, 2.5rem)'; // Ukuran Header
+        mainTitle.style.letterSpacing = '4px';
         mainTitle.style.textTransform = 'uppercase';
         // Hapus filter drop-shadow container agar tidak tumpang tindih
         mainTitle.style.filter = 'drop-shadow(0 0 15px rgba(0,255,255,0.15))'; 
@@ -1448,8 +1566,6 @@ function animateTitle() {
     }, 50); 
 }
 
-updateClock(); // Start loop animasi jam (requestAnimationFrame)
-
 // --- NEW: PERSONNEL ROSTER ---
 let rosterScrollInterval = null; // Variabel kontrol animasi scroll
 
@@ -1478,13 +1594,17 @@ function populatePersonnelRoster() {
         item.className = 'flex items-center gap-4 p-2.5 border-b border-cyan-500/30 hover:bg-cyan-500/20 transition-colors duration-200 cursor-pointer';
         item.dataset.name = emp.nama.toLowerCase(); // Simpan nama untuk search
 
+        // Indikator Status: Hijau (Siap) atau Abu-abu (Belum Rekam Wajah)
+        const statusColor = emp.hasFace ? 'bg-green-500 shadow-[0_0_5px_#00FF00] animate-pulse' : 'bg-gray-500';
+        const statusTitle = emp.hasFace ? 'Biometric Ready' : 'No Face Data';
+
         item.innerHTML = `
             <img src="data:image/jpeg;base64,${emp.foto}" class="w-10 h-10 rounded-full object-cover border border-cyan-400/60 shadow-[0_0_5px_rgba(0,255,255,0.4)] flex-shrink-0 bg-gray-900">
             <div class="flex-grow overflow-hidden">
                 <p class="font-bold text-sm text-white tracking-wide truncate drop-shadow-md leading-tight" title="${emp.nama}">${emp.nama}</p>
                 <p class="text-[11px] text-cyan-200/80 truncate font-mono mt-0.5" title="${emp.jabatan}">${emp.jabatan}</p>
             </div>
-            <div class="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_5px_#00FF00] flex-shrink-0 animate-pulse" title="Registered & Online"></div>
+            <div class="w-2 h-2 ${statusColor} rounded-full flex-shrink-0" title="${statusTitle}"></div>
         `;
         return item;
     };
@@ -1552,13 +1672,21 @@ const api = {
         }
     },
     postAttendance: async (karyawanId) => {
-        const response = await fetch('/api/absensi', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_karyawan: karyawanId })
-        });
-        if (!response.ok) throw new Error(`Server returned an error status (${response.status}).`);
-        return await response.json();
+        try {
+            const response = await fetch('/api/absensi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_karyawan: karyawanId })
+            });
+            if (!response.ok) throw new Error(`Server Error (${response.status})`);
+            return await response.json();
+        } catch (e) {
+            // Tangani error jaringan (ECONNRESET / Server Down)
+            if (e.name === 'TypeError' || e.message.includes('fetch')) {
+                throw new Error("CONNECTION LOST: Server tidak merespon (ECONNRESET).");
+            }
+            throw e;
+        }
     },
     getTodayAttendance: async () => {
         if (window.location.protocol === 'file:') return [];
@@ -1599,16 +1727,22 @@ async function loadLabeledImages() {
             return [];
         }
 
-        const descriptors = descriptorsData.map(item => {
-            const descriptorArray = typeof item.face_descriptor === 'string' 
-                ? JSON.parse(item.face_descriptor) 
-                : item.face_descriptor;
+        const descriptors = [];
+        
+        descriptorsData.forEach(item => {
+            // 1. Masukkan SEMUA pegawai ke Map (untuk Roster)
             employeeMap[item.id_karyawan] = {
                 nama: item.nama,
                 jabatan: item.jabatan || 'N/A',
-                foto: item.foto // Simpan foto base64
+                foto: item.foto, // Simpan foto base64
+                hasFace: !!item.face_descriptor // Flag punya wajah atau tidak
             };
-            return new faceapi.LabeledFaceDescriptors(item.id_karyawan, [new Float32Array(descriptorArray)]);
+
+            // 2. Hanya masukkan ke Engine Deteksi jika punya data wajah
+            if (item.face_descriptor) {
+                const descriptorArray = typeof item.face_descriptor === 'string' ? JSON.parse(item.face_descriptor) : item.face_descriptor;
+                descriptors.push(new faceapi.LabeledFaceDescriptors(item.id_karyawan, [new Float32Array(descriptorArray)]));
+            }
         });
 
         
@@ -1711,6 +1845,9 @@ async function startCamera(deviceId = null) {
         currentStream = stream;
         video.srcObject = stream;
         
+        // VISUAL BOOST: Terangkan tampilan video (Brightness 130%) agar user nyaman saat gelap
+        video.style.filter = 'brightness(1.3) contrast(1.1)';
+        
         logSystem(`Camera Stream Established.`, 'text-green-500');
 
         await new Promise(resolve => video.onloadedmetadata = resolve);
@@ -1785,6 +1922,10 @@ video.addEventListener('play', async () => {
 
     if (!labeledDescriptors) {
         labeledDescriptors = await loadLabeledImages();
+
+       // Tambahkan style/class di sini untuk frame video saat scanning dimulai
+       videoContainer.classList.add('scanning-border');
+
     }
     
     resetTargetData(); // Reset data saat video mulai
@@ -1826,10 +1967,25 @@ async function detectFace() {
     
     const displaySize = { width: canvas.width, height: canvas.height };
 
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.80 }))
+    // LOW LIGHT OPTIMIZATION: scoreThreshold diturunkan (0.50 -> 0.30) agar wajah gelap/samar tetap terdeteksi
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.30 }))
 	.withFaceLandmarks()
     .withFaceExpressions() // NEW: Detect Expressions
-        .withFaceDescriptor();
+    .withFaceDescriptor();
+
+    // Efek transisi ketika wajah terdeteksi dan frame aktif
+    if (detections) {
+        // NEW: Tambahkan frame pembatas (border) di sekitar video
+        videoContainer.classList.add('scanning-border');
+        // Hapus inline style lama jika ada agar class CSS berlaku
+        videoContainer.style.border = ''; 
+        videoContainer.style.boxShadow = '';
+    } else {
+         // Jika tidak ada wajah terdeteksi, reset style ke semula (hilangkan border)
+         videoContainer.classList.remove('scanning-border', 'scanning-border-error');
+         videoContainer.style.border = 'none';
+         videoContainer.style.boxShadow = 'none';
+     }
 
     if(!isProcessing) videoContainer.classList.remove('scan-success');
 
@@ -1848,6 +2004,7 @@ async function detectFace() {
         video.style.transform = 'scaleX(-1)'; 
 
         // --- GAMBAR EFEK CANGGIH BARU ---
+
         // 1. Hexagonal Force Field di latar belakang wajah
         drawHexGridOverlay(context, box, '#00FFFF');
         
@@ -1875,115 +2032,128 @@ async function detectFace() {
             isTargetLocked = true;
         }
 
-        setStatusVisual('SUBJECT DETECTED. PROCESSING BIOMETRICS...', 'text-amber-500', true);
-        setSystemTheme('SCANNING'); // Update Theme to Scanning (Blue/Cyan)
-
+        // --- LOGIKA BARU: RECOGNITION DULU -> BARU LIVENESS ---
+        // 1. Lakukan Pengenalan Wajah Terlebih Dahulu (Agar nama langsung muncul)
         let faceLabel = 'UNKNOWN';
         let faceColor = '#FF0055'; 
         let confidence = 0;
+        let recognizedId = null;
+        let employee = null;
 
         if (labeledDescriptors && labeledDescriptors.length > 0) {
             const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, FACE_MATCHING_THRESHOLD);
             const bestMatch = faceMatcher.findBestMatch(detections.descriptor);
-
             const matchDistance = bestMatch.distance;
+            
+            // Hitung Confidence
             const confidenceRaw = Math.max(0, FACE_MATCHING_THRESHOLD - matchDistance); 
             confidence = (confidenceRaw / FACE_MATCHING_THRESHOLD) * 100;
             
-            // Update History Grafik
+            // Update Grafik Diagnostik
             confidenceHistory.push(confidence);
             if (confidenceHistory.length > 50) confidenceHistory.shift();
-            
             updateSystemDiagnostics(confidence);
 
             if (bestMatch.label !== 'unknown' && matchDistance <= FACE_MATCHING_THRESHOLD) {
-                const recognizedId = bestMatch.label;
-                const employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
-
+                recognizedId = bestMatch.label;
+                employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
                 faceLabel = employee.nama;
-                
-                // --- LOGIKA DECRYPT TEXT ---
-                if (faceLabel !== targetLabel) {
-                    targetLabel = faceLabel;
-                    decryptionFrame = 0;
-                }
-                if (decryptionFrame < 15) { // 15 frame untuk decrypt
-                    decryptionFrame++;
-                    faceLabel = resolveText(targetLabel, decryptionFrame, 15);
-                }
+                faceColor = '#00FF7F'; // Hijau (Match)
+            }
+        } else {
+            // DB Offline
+            faceLabel = 'DB OFFLINE';
+            faceColor = '#FF00FF';
+            updateSystemDiagnostics(0);
+        }
 
-                faceColor = '#00FF7F'; 
+        // 2. Cek Liveness (Gerakan/Kedipan) secara background
 
-                // Hanya update jika ID berubah atau belum ada match sebelumnya
-                if (!lastKnownMatch || lastKnownMatch.id !== recognizedId) {
-                    // Ambil data lengkap dari employeeMap yang sudah dimuat di awal
-                    const { nama, jabatan } = employee;
-                    
-                    // Update Foto dengan Efek Scan
-                    if (userPhotoDisplay) {
-                        userPhotoDisplay.src = `data:image/jpeg;base64,${employee.foto}`;
-                        if (photoContainer) {
-                            photoContainer.classList.remove('photo-scan-active');
-                            void photoContainer.offsetWidth; // Trigger reflow
-                            photoContainer.classList.add('photo-scan-active');
-                        }
-                    }
-                    // Update Teks dengan Efek Mengetik
-                    if (userIdDisplay) animateText(userIdDisplay, nama);
-                    if (userJabatanDisplay) animateText(userJabatanDisplay, jabatan || 'N/A');
-                }
+        const isLive = true; // MODIFIKASI: Bypass sensor gerakan kepala (Normal Mode)
+
+        // 3. Logika UI & Eksekusi
+        if (recognizedId) {
+            // --- WAJAH DIKENALI ---
+            
+            // Efek Decrypt Nama
+            if (faceLabel !== targetLabel) {
+                targetLabel = faceLabel;
+                decryptionFrame = 0;
+            }
+            if (decryptionFrame < 15) {
+                decryptionFrame++;
+                faceLabel = resolveText(targetLabel, decryptionFrame, 15);
+            }
+
+            // Update Panel Kiri (Foto & Nama) - Langsung Tampil agar user tahu dia dikenali
+            if (!lastKnownMatch || lastKnownMatch.id !== recognizedId) {
+                if (userPhotoDisplay) userPhotoDisplay.src = `data:image/jpeg;base64,${employee.foto}`;
+                videoContainer.classList.remove('scanning-border-error'); // Reset ke Cyan (Normal) jika dikenali
+                if (userIdDisplay) animateText(userIdDisplay, employee.nama);
+                if (userJabatanDisplay) animateText(userJabatanDisplay, employee.jabatan || 'N/A');
                 
+                // Trigger efek scan foto
+                if (photoContainer) {
+                    photoContainer.classList.remove('photo-scan-active');
+                    void photoContainer.offsetWidth; 
+                    photoContainer.classList.add('photo-scan-active');
+                }
+            }
+
+            // Update Emosi
+            if(userEmotionDisplay) userEmotionDisplay.textContent = dominantEmotion.toUpperCase();
+
+            // CEK LIVENESS UNTUK EKSEKUSI
+            if (isLive) {
+                // SUDAH BERGERAK -> PROSES ABSEN
                 userStatusDisplay.textContent = 'VERIFYING...';
                 userStatusDisplay.className = 'text-lg font-bold text-amber-500';
+                setSystemTheme('SUCCESS');
 
-                // Update Panel Kiri dengan Emosi
-                if(userEmotionDisplay) userEmotionDisplay.textContent = dominantEmotion.toUpperCase();
-                
                 if (!isProcessing) { 
-                    setStatusVisual(`ID MATCH: ${employee.nama}. AUTHORIZING...`, 'text-cyan-400', true);
+                    setStatusVisual(`LIVENESS CONFIRMED. AUTHORIZING ${employee.nama}...`, 'text-cyan-400', true);
+                    setStatusVisual(`AUTHORIZING ${employee.nama}...`, 'text-cyan-400', true);
                     isProcessing = true;
                     // Simpan match terakhir sebelum proses absensi
                     lastKnownMatch = { id: recognizedId, box: resizedDetections.detection.box, landmarks: resizedDetections.landmarks, faceLabel: faceLabel, faceColor: faceColor };
- 		    await processAttendance(recognizedId);
+                    
+                    if(window.LivenessCheck) window.LivenessCheck.reset(); // Reset status liveness
+                    await processAttendance(recognizedId);
                 }
-
             } else {
-                resetTargetData();
-                const potentialMatch = (bestMatch.label !== 'unknown') ? employeeMap[bestMatch.label] : null;
-                const potentialName = potentialMatch ? potentialMatch.nama : 'Unknown';
-
-                // Panggil nama jika ada kandidat, bahkan jika ditolak
-                if (potentialMatch) {
-                    setStatusVisual(`IDENTITY MISMATCH: ${potentialName}. ACCESS DENIED.`, 'text-red-500');
-                    SoundFX.speak(`Access Denied, ${potentialName}`);
-                } else {
-                    setStatusVisual('WAJAH TIDAK DIKENAL...', 'text-red-500');
-                    SoundFX.speak('ACCES DENIED');
-                }
+                // BELUM BERGERAK -> MINTA GERAKAN (TAPI NAMA SUDAH MUNCUL)
+                setStatusVisual(`HALO ${employee.nama}. GERAKKAN KEPALA UNTUK ABSEN`, 'text-yellow-400', true);
+                userStatusDisplay.textContent = 'MOVE HEAD';
+                userStatusDisplay.className = 'text-lg font-bold text-yellow-400 animate-pulse';
+                setSystemTheme('SCANNING');
                 
- 		        userStatusDisplay.textContent = 'ACCESS DENIED';
-                faceLabel = 'DENIED ACCESS';
-                if(userEmotionDisplay) userEmotionDisplay.textContent = 'UNKNOWN';
-                targetLabel = ''; // Reset decrypt target
-                
-                // Efek Berkedip Merah (Blinking Red)
-                if (Math.floor(Date.now() / 200) % 2 === 0) {
-                    faceColor = '#FF0055'; 
-                } else {
-                    faceColor = 'rgba(255, 0, 85, 0.1)'; 
-                }
-                lastKnownMatch = null;
+                // Ubah warna HUD jadi Kuning (Waiting)
+                faceColor = '#FFD700'; 
             }
+
         } else {
-            // DB Offline, hanya deteksi wajah
+            // --- WAJAH TIDAK DIKENAL / DB OFFLINE ---
             resetTargetData();
-            updateSystemDiagnostics(0);
-            userStatusDisplay.textContent = 'DB OFFLINE';
-            faceLabel = 'DB OFFLINE';
-            if(userEmotionDisplay) userEmotionDisplay.textContent = 'OFFLINE';
+            
+            videoContainer.classList.add('scanning-border-error'); // Ubah border jadi Merah
+            if (labeledDescriptors && labeledDescriptors.length > 0) {
+                // Unknown Face
+                setStatusVisual('WAJAH TIDAK DIKENAL', 'text-red-500');
+                userStatusDisplay.textContent = 'ACCESS DENIED';
+                faceLabel = 'UNKNOWN';
+                faceColor = '#FF0055';
+                
+                // Efek Berkedip Merah
+                if (Math.floor(Date.now() / 200) % 2 === 0) faceColor = '#FF0055'; 
+                else faceColor = 'rgba(255, 0, 85, 0.1)';
+            } else {
+                // DB Offline
+                setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-red-500');
+                userStatusDisplay.textContent = 'DB OFFLINE';
+            }
+            
+            if(userEmotionDisplay) userEmotionDisplay.textContent = 'UNKNOWN';
             targetLabel = '';
-            faceColor = '#FF00FF'; 
-            setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-red-500');
             lastKnownMatch = null;
         }
         
@@ -2007,6 +2177,7 @@ async function detectFace() {
 
     } else {
         // Tidak ada deteksi wajah
+        if(window.LivenessCheck) window.LivenessCheck.reset();
         resetTargetData();
         isTargetLocked = false; // Reset status lock
         updateSystemDiagnostics(0);
@@ -2114,7 +2285,6 @@ async function processAttendance(karyawanId) {
             // AUDIO & VISUAL SUCCESS
             SoundFX.play('success');
             SoundFX.speak(`Welcome, ${display_name}`);
-            triggerScreenFlash('#00FF7F');
             
             setSystemTheme('SUCCESS'); // Theme Green
             if(window.setWarpMode) window.setWarpMode(true); // Trigger 3D Warp
@@ -2215,7 +2385,6 @@ async function processAttendance(karyawanId) {
             // VISUAL UPDATES (Dipindahkan ke sini agar override isWarning di switch berlaku)
             SoundFX.play('error');
             SoundFX.speak(isWarning ? `Notice, ${display_name}` : `Access Denied, ${display_name}`);
-            triggerScreenFlash(isWarning ? '#FFD700' : '#FF0055');
             setSystemTheme('ERROR'); 
 
             setStatusVisual(`${display_name}: ${cleanMessage}`, isWarning ? 'text-amber-500' : 'text-red-500');
@@ -2451,6 +2620,7 @@ async function processAttendance(karyawanId) {
 
             // Trigger Screen Shake on Stamp Impact (Sync with CSS animation delay 1.2s + duration 0.4s)
             setTimeout(() => {
+                triggerScreenFlash(finalStatusColor); // Flash dipindah ke saat Impact (Stempel Menghantam)
                 document.body.classList.add('screen-shake');
                 setTimeout(() => document.body.classList.remove('screen-shake'), 500);
             }, 1600);
@@ -2719,316 +2889,150 @@ function initBackground3D() {
 
     const createScene = function () {
         const scene = new BABYLON.Scene(engine);
-        scene.clearColor = new BABYLON.Color4(0.0, 0.0, 0.0, 0.0); // Transparan
+        // Professional Dark Void Background (Transparan untuk CSS)
+        scene.clearColor = new BABYLON.Color4(0.0, 0.0, 0.0, 0.0); 
+        
+        // Fog for depth (Memberikan kedalaman ruang)
+        scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
+        scene.fogDensity = 0.02;
+        scene.fogColor = new BABYLON.Color3(0.0, 0.0, 0.0);
 
-        // --- NEW: GLOW LAYER (EFEK NEON) ---
+        // Camera - Fixed angle, professional view
+        const camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, Math.PI / 2.2, 25, BABYLON.Vector3.Zero(), scene);
+        camera.wheelPrecision = 50;
+        
+        // Lighting
+        const light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
+        light1.intensity = 0.3;
+        const light2 = new BABYLON.PointLight("light2", new BABYLON.Vector3(0, 0, 0), scene);
+        light2.intensity = 1.0;
+        light2.diffuse = new BABYLON.Color3(0, 1, 1); // Cyan light
+
+        // Glow Layer (Essential for Sci-Fi look)
         const gl = new BABYLON.GlowLayer("glow", scene, {
             blurKernelSize: 64 // Blur lebih halus
         });
         gl.intensity = 1.5; // Default intensity
 
-        // 1. CAMERA
-        const camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, Math.PI / 2.5, 20, BABYLON.Vector3.Zero(), scene);
-        camera.wheelPrecision = 50;
+        // --- 1. CENTRAL NEURAL CORE (Abstract Brain/Server) ---
+        const corePivot = new BABYLON.TransformNode("corePivot", scene);
+        
+        // A. Inner Nucleus (Solid Dark)
+        const nucleus = BABYLON.MeshBuilder.CreateSphere("nucleus", {diameter: 5, segments: 32}, scene);
+        nucleus.parent = corePivot;
+        const nMat = new BABYLON.StandardMaterial("nMat", scene);
+        nMat.emissiveColor = new BABYLON.Color3(0.0, 0.05, 0.1);
+        nMat.disableLighting = true;
+        nucleus.material = nMat;
 
-        // --- FITUR BARU: MOUSE PARALLAX INTERACTION ---
+        // B. Wireframe Shell (IcoSphere - Network Structure)
+        const shell = BABYLON.MeshBuilder.CreateIcoSphere("shell", {radius: 5.2, subdivisions: 2}, scene);
+        shell.parent = corePivot;
+        const sMat = new BABYLON.StandardMaterial("sMat", scene);
+        sMat.wireframe = true;
+        sMat.emissiveColor = new BABYLON.Color3(0, 0.8, 1); // Cyan
+        shell.material = sMat;
+
+        // C. Orbital Data Rings (Gyroscope effect)
+        const createRing = (radius, angleX, angleZ, speed) => {
+            const ring = BABYLON.MeshBuilder.CreateTorus("ring", {diameter: radius, thickness: 0.05, tessellation: 64}, scene);
+            ring.parent = corePivot;
+            ring.rotation.x = angleX;
+            ring.rotation.z = angleZ;
+            const rMat = new BABYLON.StandardMaterial("rMat", scene);
+            rMat.emissiveColor = new BABYLON.Color3(0.0, 0.3, 0.7);
+            ring.material = rMat;
+            return { mesh: ring, speed: speed };
+        };
+
+        const rings = [
+            createRing(12, Math.PI / 2.5, 0, 0.01),
+            createRing(14, 0, Math.PI / 3, -0.008),
+            createRing(16, Math.PI / 4, Math.PI / 4, 0.005)
+        ];
+
+        // --- 2. FLOATING DATA NODES (Constellation) ---
+        const nodeCount = 60;
+        const nodes = [];
+        const nodeMaster = BABYLON.MeshBuilder.CreateSphere("nodeM", {diameter: 0.2}, scene);
+        nodeMaster.isVisible = false;
+        const nodeMat = new BABYLON.StandardMaterial("nodeMat", scene);
+        nodeMat.emissiveColor = new BABYLON.Color3(1, 1, 1);
+        nodeMaster.material = nodeMat;
+
+        for(let i=0; i<nodeCount; i++) {
+            const n = nodeMaster.createInstance("n"+i);
+            const angle = Math.random() * Math.PI * 2;
+            const height = (Math.random() - 0.5) * 25;
+            const radius = 8 + Math.random() * 20;
+            
+            n.position = new BABYLON.Vector3(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
+            nodes.push({
+                mesh: n,
+                angle: angle,
+                radius: radius,
+                speed: (Math.random() * 0.005) + 0.002,
+                yBase: height,
+                ySpeed: Math.random() * 0.02
+            });
+        }
+
+        // --- 3. DIGITAL FLOOR GRID (Infinite Plane Effect) ---
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 200, height: 200, subdivisions: 40}, scene);
+        ground.position.y = -15;
+        const gMat = new BABYLON.StandardMaterial("gMat", scene);
+        gMat.wireframe = true;
+        gMat.emissiveColor = new BABYLON.Color3(0.05, 0.05, 0.15);
+        gMat.alpha = 0.15;
+        ground.material = gMat;
+
+        // --- 4. PARTICLE SYSTEM (Upward Data Flow) ---
+        const ps = new BABYLON.ParticleSystem("ps", 2000, scene);
+        ps.particleTexture = new BABYLON.Texture("https://www.babylonjs-playground.com/textures/flare.png", scene);
+        ps.emitter = new BABYLON.Vector3(0, -20, 0);
+        ps.minEmitBox = new BABYLON.Vector3(-50, 0, -50);
+        ps.maxEmitBox = new BABYLON.Vector3(50, 0, 50);
+        ps.color1 = new BABYLON.Color4(0, 1, 1, 0.5);
+        ps.color2 = new BABYLON.Color4(0, 0.1, 0.3, 0.0);
+        ps.minSize = 0.1; ps.maxSize = 0.3;
+        ps.minLifeTime = 2; ps.maxLifeTime = 5;
+        ps.emitRate = 300;
+        ps.gravity = new BABYLON.Vector3(0, 3, 0);
+        ps.start();
+
+        // --- MOUSE INTERACTION ---
         let mouseX = 0, mouseY = 0;
         window.addEventListener('mousemove', (e) => {
             mouseX = (e.clientX / window.innerWidth) - 0.5;
             mouseY = (e.clientY / window.innerHeight) - 0.5;
         });
 
-        // --- A. BACKGROUND: PROCEDURAL SKYBOX (CUSTOM SHADER) ---
-        BABYLON.Effect.ShadersStore["customSkyVertexShader"] = `
-            precision highp float;
-            attribute vec3 position;
-            uniform mat4 world;
-            uniform mat4 view;
-            uniform mat4 projection;
-            varying vec3 vPosition;
-            void main() {
-                vec4 p = vec4(position, 1.0);
-                vPosition = position;
-                gl_Position = projection * view * world * p;
-            }
-        `;
-
-        BABYLON.Effect.ShadersStore["customSkyFragmentShader"] = `
-            precision highp float;
-            varying vec3 vPosition;
-            uniform float time;
-            float rand(vec2 co) { return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453); }
-            void main() {
-                vec3 dir = normalize(vPosition);
-                float s = rand(dir.xy * 50.0 + dir.z * 50.0);
-                float stars = step(0.995, s) * (0.5 + 0.5 * sin(time * 2.0 + s * 10.0));
-                float atmosphere = max(0.0, dot(dir, vec3(0.0, 1.0, 0.0)));
-                vec3 skyColor = mix(vec3(0.0, 0.0, 0.05), vec3(0.05, 0.0, 0.1), atmosphere);
-                gl_FragColor = vec4(skyColor + vec3(stars), 1.0);
-            }
-        `;
-
-        const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
-        const skyboxMaterial = new BABYLON.ShaderMaterial("skyBox", scene, {
-            vertex: "customSky", fragment: "customSky",
-        }, { attributes: ["position"], uniforms: ["world", "view", "projection", "time"] });
-        skyboxMaterial.backFaceCulling = false;
-        skybox.material = skyboxMaterial;
-
-        // --- B. FOUNDATION: HOLOGRAPHIC GRID ---
-        BABYLON.Effect.ShadersStore["holoGridVertexShader"] = `
-            precision highp float;
-            attribute vec3 position; attribute vec2 uv;
-            uniform mat4 world; uniform mat4 view; uniform mat4 projection;
-            uniform float time;
-            varying vec3 vPosition; varying vec2 vUV;
-            void main() { 
-                vec3 p = position;
-                // EFEK DIGITAL TERRAIN (Gelombang Data)
-                p.y += sin(p.x * 0.1 + time) * cos(p.z * 0.1 + time) * 1.5;
-                vPosition = p; vUV = uv; 
-                gl_Position = projection * view * world * vec4(p, 1.0); 
-            }
-        `;
-
-        BABYLON.Effect.ShadersStore["holoGridFragmentShader"] = `
-            precision highp float;
-            varying vec3 vPosition; varying vec2 vUV;
-            uniform float time; uniform vec3 cameraPosition;
-            void main() {
-                // Grid Pattern yang lebih tajam
-                float gridX = step(0.95, fract(vPosition.x * 0.2));
-                float gridZ = step(0.95, fract(vPosition.z * 0.2));
-                float grid = max(gridX, gridZ);
-                float dist = distance(vPosition, cameraPosition);
-                float alpha = max(0.0, 1.0 - dist / 80.0);
-                
-                // Warna Dasar Cyan
-                vec3 color = vec3(0.0, 1.0, 1.0) * grid * 2.0;
-                
-                // Pulse Gelombang Scan
-                float pulse = fract((vPosition.z - time * 5.0) * 0.05);
-                float pulseLine = smoothstep(0.9, 0.95, pulse);
-                color += vec3(0.5, 0.8, 1.0) * pulseLine * 3.0; // Garis scan terang
-
-                if (alpha <= 0.01) discard;
-                gl_FragColor = vec4(color, alpha * 0.8);
-            }
-        `;
-
-        const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 200, height: 200, subdivisions: 2 }, scene);
-        ground.position.y = -5;
-        const gridMat = new BABYLON.ShaderMaterial("gridMat", scene, {
-            vertex: "holoGrid", fragment: "holoGrid",
-        }, { attributes: ["position", "uv"], uniforms: ["world", "view", "projection", "time", "cameraPosition"], needAlphaBlending: true });
-        ground.material = gridMat;
-
-        // --- C. VOLUMETRIC LIGHT & GLOBE ---
-        const sunMesh = BABYLON.MeshBuilder.CreateSphere("sun", { diameter: 2 }, scene);
-        sunMesh.position = new BABYLON.Vector3(0, 5, 30);
-        const sunMat = new BABYLON.StandardMaterial("sunMat", scene);
-        sunMat.emissiveColor = new BABYLON.Color3(1, 1, 1);
-        sunMat.disableLighting = true;
-        sunMesh.material = sunMat;
-
-        const vls = new BABYLON.VolumetricLightScatteringPostProcess("vls", 1.0, camera, sunMesh, 100, BABYLON.Texture.BILINEAR_SAMPLINGMODE, engine, false);
-        vls.exposure = 0.3; vls.decay = 0.96815; vls.weight = 0.98767; vls.density = 0.926;
-
-        const globe = BABYLON.MeshBuilder.CreateSphere("globe", { diameter: 40, segments: 16 }, scene);
-        globe.position = new BABYLON.Vector3(0, 10, 40);
-        const globeMat = new BABYLON.StandardMaterial("globeMat", scene);
-        globeMat.wireframe = true;
-        globeMat.emissiveColor = new BABYLON.Color3(0, 0.5, 0.5);
-        globeMat.disableLighting = true;
-        globe.material = globeMat;
-        globe.rotation.z = Math.PI / 4;
-
-        // --- D. PARTICLES ---
-        const particleSystem = new BABYLON.GPUParticleSystem("particles", { capacity: 5000 }, scene);
-        const particleTexture = new BABYLON.DynamicTexture("pTex", 64, scene);
-        const ctx = particleTexture.getContext();
-        ctx.beginPath(); ctx.arc(32, 32, 30, 0, 2 * Math.PI); ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; ctx.fill();
-        particleTexture.update();
-        particleSystem.particleTexture = particleTexture;
-        particleSystem.emitter = new BABYLON.Vector3(0, 0, 0);
-        particleSystem.minEmitBox = new BABYLON.Vector3(-50, -20, -50); particleSystem.maxEmitBox = new BABYLON.Vector3(50, 20, 50);
-        particleSystem.color1 = new BABYLON.Color4(0.0, 1.0, 1.0, 1.0); particleSystem.color2 = new BABYLON.Color4(0.5, 0.0, 1.0, 1.0);
-        particleSystem.minSize = 0.1; particleSystem.maxSize = 0.3;
-        particleSystem.emitRate = 500;
-        particleSystem.start();
-
-        // --- WARP DRIVE CONTROL ---
-        let warpActive = false;
-        window.setWarpMode = (active) => { warpActive = active; };
-
-        // --- E. INDONESIAN FLAG ORBITER ---
-        const flagPivot = new BABYLON.TransformNode("flagPivot", scene);
-        flagPivot.position = globe.position;
-
-        const flag = BABYLON.MeshBuilder.CreatePlane("flag", { width: 12, height: 8, subdivisions: 25 }, scene);
-        flag.parent = flagPivot;
-        flag.position.x = 35; 
-        flag.rotation.y = Math.PI / 2; 
-
-        const flagMat = new BABYLON.StandardMaterial("flagMat", scene);
-        const flagTexture = new BABYLON.DynamicTexture("flagTex", {width:512, height:256}, scene);
-        const ctxFlag = flagTexture.getContext();
-        ctxFlag.fillStyle = "#FF0000"; 
-        ctxFlag.fillRect(0, 0, 512, 128);
-        ctxFlag.fillStyle = "#FFFFFF"; 
-        ctxFlag.fillRect(0, 128, 512, 128);
-        flagTexture.update();
-        flagMat.diffuseTexture = flagTexture;
-        flagMat.emissiveColor = new BABYLON.Color3(1, 1, 1);
-        flagMat.backFaceCulling = false;
-        flagMat.disableLighting = true; 
-        flag.material = flagMat;
-        
-        const originalPositions = flag.getVerticesData(BABYLON.VertexBuffer.PositionKind);
-
-        // --- F. CYBER ELEPHANTS (Gajah Futuristik) ---
-        const elephants = [];
-        const createElephant = (id, radius, startAngle, scale) => {
-            const pivot = new BABYLON.TransformNode("pivot" + id, scene);
-            pivot.position = globe.position;
-            pivot.rotation.y = startAngle;
-
-            const group = new BABYLON.TransformNode("elephant" + id, scene);
-            group.parent = pivot;
-            group.position.x = radius;
-
-            const mat = new BABYLON.StandardMaterial("eleMat" + id, scene);
-            mat.emissiveColor = new BABYLON.Color3(0.4, 0.8, 1); // Cyan Blue
-            mat.wireframe = true;
-
-            // Body
-            const body = BABYLON.MeshBuilder.CreateBox("body" + id, {width: 4, height: 3.5, depth: 5}, scene);
-            body.parent = group;
-            body.material = mat;
-
-            // Head
-            const head = BABYLON.MeshBuilder.CreateBox("head" + id, {width: 3, height: 3, depth: 3}, scene);
-            head.parent = group;
-            head.position.z = -3.5;
-            head.position.y = 1;
-            head.material = mat;
-
-            // Trunk (Belalai)
-            const trunk = BABYLON.MeshBuilder.CreateTube("trunk" + id, {
-                path: [
-                    new BABYLON.Vector3(0, -0.5, -1.6),
-                    new BABYLON.Vector3(0, -2, -2),
-                    new BABYLON.Vector3(0, -3, -1.5)
-                ],
-                radius: 0.5,
-                cap: BABYLON.Mesh.CAP_ALL
-            }, scene);
-            trunk.parent = head;
-            trunk.material = mat;
-
-            // Legs
-            const legSize = {width: 1.2, height: 3, depth: 1.2};
-            const l1 = BABYLON.MeshBuilder.CreateBox("l1"+id, legSize, scene); l1.parent = group; l1.position = new BABYLON.Vector3(-1.5, -2.5, 1.5); l1.material = mat;
-            const l2 = BABYLON.MeshBuilder.CreateBox("l2"+id, legSize, scene); l2.parent = group; l2.position = new BABYLON.Vector3(1.5, -2.5, 1.5); l2.material = mat;
-            const l3 = BABYLON.MeshBuilder.CreateBox("l3"+id, legSize, scene); l3.parent = group; l3.position = new BABYLON.Vector3(-1.5, -2.5, -1.5); l3.material = mat;
-            const l4 = BABYLON.MeshBuilder.CreateBox("l4"+id, legSize, scene); l4.parent = group; l4.position = new BABYLON.Vector3(1.5, -2.5, -1.5); l4.material = mat;
-
-            // Ears (Holographic Discs)
-            const earMat = mat.clone("earMat"+id);
-            earMat.wireframe = false;
-            earMat.alpha = 0.3;
-            const ear1 = BABYLON.MeshBuilder.CreateDisc("e1"+id, {radius: 2, tessellation: 16}, scene);
-            ear1.parent = head; ear1.position.x = -1.6; ear1.rotation.y = Math.PI/4; ear1.material = earMat; ear1.sideOrientation = BABYLON.Mesh.DOUBLESIDE;
-            const ear2 = BABYLON.MeshBuilder.CreateDisc("e2"+id, {radius: 2, tessellation: 16}, scene);
-            ear2.parent = head; ear2.position.x = 1.6; ear2.rotation.y = -Math.PI/4; ear2.material = earMat; ear2.sideOrientation = BABYLON.Mesh.DOUBLESIDE;
-
-            group.scaling = new BABYLON.Vector3(scale, scale, scale);
-            return { pivot, group };
-        };
-
-        // Tambahkan 3 Gajah Mengorbit
-        elephants.push(createElephant(1, 60, 0, 0.5));
-        elephants.push(createElephant(2, 70, 2, 0.4));
-        elephants.push(createElephant(3, 55, 4, 0.6));
-
-        // --- G. DRONE SWARM (Armada Penjaga) ---
-        const drones = [];
-        const createDrone = (radius, speed, offsetY) => {
-            const drone = new BABYLON.TransformNode("drone", scene);
-            
-            // Bentuk Drone (Pyramid)
-            const body = BABYLON.MeshBuilder.CreateCylinder("dBody", {diameterTop: 0, diameterBottom: 1.5, height: 2, tessellation: 3}, scene);
-            body.parent = drone;
-            body.rotation.x = Math.PI / 2; // Menghadap depan
-            
-            const mat = new BABYLON.StandardMaterial("dMat", scene);
-            mat.emissiveColor = new BABYLON.Color3(1, 0.2, 0); // Oranye Neon
-            mat.wireframe = true;
-            body.material = mat;
-
-            // Engine Glow
-            const glow = BABYLON.MeshBuilder.CreateSphere("dGlow", {diameter: 0.5}, scene);
-            glow.parent = drone;
-            glow.position.z = -1;
-            glow.material = mat;
-
-            drones.push({ mesh: drone, radius, speed, angle: Math.random() * Math.PI * 2, offsetY });
-        };
-
-        for(let i=0; i<8; i++) createDrone(45 + Math.random()*10, 0.01 + Math.random()*0.01, (Math.random()-0.5)*10);
-
         let time = 0;
         scene.registerBeforeRender(() => {
             time += 0.01;
-            skyboxMaterial.setFloat("time", time);
-            gridMat.setFloat("time", time);
-            gridMat.setVector3("cameraPosition", camera.position);
-            sunMesh.position.x = Math.sin(time * 0.2) * 20; sunMesh.position.y = 5 + Math.cos(time * 0.3) * 5;
-            globe.rotation.y += 0.002; globe.rotation.x += 0.001;
 
-            // AUDIO REACTIVE GLOW (Background berdenyut sesuai suara)
-            if (window.audioLevel) {
-                gl.intensity = 1.2 + (window.audioLevel / 150.0); 
-            }
-
-            // PARALLAX CAMERA UPDATE (Smooth Follow)
-            camera.alpha += ((-Math.PI / 2 + (mouseX * 1.0)) - camera.alpha) * 0.05;
-            camera.beta += ((Math.PI / 2.5 + (mouseY * 0.5)) - camera.beta) * 0.05;
-
-            // WARP EFFECT LOGIC
-            if (warpActive) {
-                particleSystem.emitRate = 2000;
-                particleSystem.minSize = 0.5;
-                particleSystem.speed = 5;
-            } else {
-                particleSystem.emitRate = 500;
-                particleSystem.minSize = 0.1;
-                particleSystem.speed = 1;
-            }
-
-            // Flag Animation
-            flagPivot.rotation.y -= 0.015; 
-            const positions = flag.getVerticesData(BABYLON.VertexBuffer.PositionKind);
-            for (let i = 0; i < positions.length; i += 3) {
-                positions[i + 2] = Math.sin(originalPositions[i] * 0.5 + time * 5) * 1.0; 
-            }
-            flag.updateVerticesData(BABYLON.VertexBuffer.PositionKind, positions);
-
-            // Elephant Animation
-            elephants.forEach((el, idx) => {
-                el.pivot.rotation.y += 0.003 * (idx + 1); // Kecepatan orbit variatif
-                el.group.position.y = Math.sin(time * 2 + idx) * 2; // Efek melayang naik turun
-                el.group.rotation.z = Math.sin(time * 5 + idx) * 0.05; // Sedikit goyangan
+            // Core Animation
+            corePivot.rotation.y += 0.005;
+            shell.rotation.z -= 0.002;
+            shell.rotation.x += 0.001;
+            
+            // Rings
+            rings.forEach(r => {
+                r.mesh.rotation.y += r.speed;
+                r.mesh.rotation.x += r.speed * 0.5;
             });
 
-            // Drone Animation
-            drones.forEach(d => {
-                d.angle += d.speed;
-                d.mesh.position.x = Math.cos(d.angle) * d.radius;
-                d.mesh.position.z = Math.sin(d.angle) * d.radius;
-                d.mesh.position.y = d.offsetY + Math.sin(time * 3 + d.angle) * 2;
-                d.mesh.lookAt(new BABYLON.Vector3(0, 0, 0)); // Selalu menghadap pusat (Globe)
+            // Nodes Orbit
+            nodes.forEach(n => {
+                n.angle += n.speed;
+                n.mesh.position.x = Math.cos(n.angle) * n.radius;
+                n.mesh.position.z = Math.sin(n.angle) * n.radius;
+                n.mesh.position.y = n.yBase + Math.sin(time + n.angle) * 1;
             });
+
+            // Mouse Parallax
+            camera.alpha += ((-Math.PI / 2 + (mouseX * 0.5)) - camera.alpha) * 0.05;
+            camera.beta += ((Math.PI / 2.2 + (mouseY * 0.2)) - camera.beta) * 0.05;
         });
         
         // --- H. DYNAMIC THEME CONTROLLER (NEW) ---
@@ -3038,12 +3042,10 @@ function initBackground3D() {
             if (status === 'SUCCESS') targetColor = new BABYLON.Color3(0, 1, 0.3); // Green
             if (status === 'ERROR') targetColor = new BABYLON.Color3(1, 0, 0.2); // Red
             
-            // Animate Globe Color
-            BABYLON.Animation.CreateAndStartAnimation("globeColor", globeMat, "emissiveColor", 30, 30, globeMat.emissiveColor, targetColor, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
-            
-            // Update Particles Immediate
-            particleSystem.color1 = new BABYLON.Color4(targetColor.r, targetColor.g, targetColor.b, 1.0);
-            particleSystem.color2 = new BABYLON.Color4(targetColor.r * 0.5, targetColor.g * 0.5, targetColor.b * 0.5, 1.0);
+            // Animate Color Change
+            BABYLON.Animation.CreateAndStartAnimation("color", sMat, "emissiveColor", 30, 30, sMat.emissiveColor, targetColor, 0);
+            light2.diffuse = targetColor;
+            ps.color1 = new BABYLON.Color4(targetColor.r, targetColor.g, targetColor.b, 0.5);
         };
         
         return scene;
@@ -3067,7 +3069,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // CSS ADJUSTMENT: Geser area scan (Video Container) sedikit ke atas
     if (videoContainer) {
-        videoContainer.style.marginTop = "-40px"; 
+        videoContainer.style.marginTop = "-90px"; 
     }
 });
 
@@ -3084,3 +3086,40 @@ window.cekKoneksi = async () => {
         alert(`KONEKSI GAGAL:\n${e.message}`);
     }
 };
+
+// --- INJECT CSS ANIMASI BORDER (SCANNING EFFECT) ---
+function injectScanningStyles() {
+    const css = `
+    @keyframes border-march {
+        0% { background-position: 0 0, 100% 100%, 0 100%, 100% 0; }
+        100% { background-position: 40px 0, -40px 100%, 0 -40px, 100% 40px; }
+    }
+    .scanning-border {
+        background-image: 
+            linear-gradient(90deg, #00FFFF 50%, transparent 50%), 
+            linear-gradient(90deg, #00FFFF 50%, transparent 50%), 
+            linear-gradient(0deg, #00FFFF 50%, transparent 50%), 
+            linear-gradient(0deg, #00FFFF 50%, transparent 50%);
+        background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+        background-size: 30px 2px, 30px 2px, 2px 30px, 2px 30px;
+        animation: border-march 1s infinite linear;
+        box-shadow: 0 0 25px rgba(0, 255, 255, 0.6), inset 0 0 15px rgba(0, 255, 255, 0.3) !important;
+        border: 1px solid rgba(0, 255, 255, 0.1) !important;
+        transition: all 0.3s ease;
+    }
+    .scanning-border-error {
+        background-image: 
+            linear-gradient(90deg, #FF0055 50%, transparent 50%), 
+            linear-gradient(90deg, #FF0055 50%, transparent 50%), 
+            linear-gradient(0deg, #FF0055 50%, transparent 50%), 
+            linear-gradient(0deg, #FF0055 50%, transparent 50%);
+        box-shadow: 0 0 25px rgba(255, 0, 85, 0.6), inset 0 0 15px rgba(255, 0, 85, 0.3) !important;
+        border: 1px solid rgba(255, 0, 85, 0.1) !important;
+    }
+    `;
+    const style = document.createElement('style');
+    style.type = 'text/css';
+    style.appendChild(document.createTextNode(css));
+    document.head.appendChild(style);
+}
+injectScanningStyles();

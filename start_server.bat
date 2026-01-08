@@ -11,6 +11,13 @@ echo [SYSTEM] Sedang mempersiapkan server...
 echo [SYSTEM] Mohon tunggu sebentar...
 echo.
 
+echo ============================================================
+echo [INFO] UNTUK AKSES DARI KOMPUTER/HP LAIN (SATU WIFI):
+echo Gunakan IP Address di bawah ini, contoh: http://192.168.1.5:3000/scan.html
+ipconfig | findstr /i "IPv4 IP Address Alamat"
+echo ============================================================
+echo.
+
 :: 1. Buka Browser Otomatis (Delay 3 detik agar server siap)
 timeout /t 3 /nobreak >nul
 echo [SYSTEM] Membuka Dashboard Absensi...

@@ -41,6 +41,9 @@ CREATE TABLE absensi (
     jam_masuk TIME NULL,
     jam_keluar TIME NULL,
     status VARCHAR(50),
+    keterangan VARCHAR(255),
+    telat_menit INT DEFAULT 0,
+    psw_menit INT DEFAULT 0,
     UNIQUE KEY unique_absensi_harian (id_karyawan, tanggal),
     FOREIGN KEY (id_karyawan) REFERENCES karyawan(id_karyawan) ON DELETE CASCADE
 );
@@ -56,16 +59,20 @@ SELECT
     k.jabatan,
     m.periode,
     COUNT(a.jam_masuk) AS total_masuk,
-    GREATEST(0, m.total_hari_kerja - COUNT(a.jam_masuk)) AS alpa,
-    SUM(CASE WHEN a.jam_masuk > '08:20:00' THEN 1 ELSE 0 END) AS telat_kali,
-    COALESCE(SUM(CASE WHEN a.jam_masuk > '08:20:00' THEN FLOOR((TIME_TO_SEC(a.jam_masuk) - TIME_TO_SEC('08:00:00')) / 60) ELSE 0 END), 0) AS telat_menit,
-    SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN 1 ELSE 0 END) AS tanpa_absen_pulang,
-    SUM(CASE WHEN a.jam_keluar IS NOT NULL THEN 1 ELSE 0 END) AS pulang_kali,
-    SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN 2 ELSE 0 END) AS potongan_jam, -- Nilai default 2, akan diupdate otomatis oleh server.js dari .env
+    SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END) AS total_dl,
+    GREATEST(0, m.total_hari_kerja - COUNT(a.jam_masuk) - SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI') THEN 1 ELSE 0 END)) AS alpa, -- [SYNC] Logika Alpa: Total Hari - Hadir - Izin/Sakit
+    SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END) AS telat_kali,
+    COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
+    SUM(CASE WHEN a.psw_menit > 0 THEN 1 ELSE 0 END) AS psw_kali,
+    COALESCE(SUM(a.psw_menit), 0) AS psw_menit,
+    (COALESCE(SUM(a.telat_menit), 0) + COALESCE(SUM(a.psw_menit), 0)) AS total_pelanggaran_menit,
+    SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan LIKE '%Otomatis%') THEN 1 ELSE 0 END) AS tanpa_absen_pulang,
+    SUM(CASE WHEN a.jam_keluar IS NOT NULL AND (a.keterangan IS NULL OR a.keterangan NOT LIKE '%Otomatis%') THEN 1 ELSE 0 END) AS pulang_kali,
+    SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan LIKE '%Otomatis%') THEN 1 ELSE 0 END) AS potongan_jam, -- [CONFIG] Diambil dari POTONGAN_LUPA_PULANG di .env
     SEC_TO_TIME(SUM(
         CASE 
             WHEN a.jam_keluar IS NOT NULL THEN TIMESTAMPDIFF(SECOND, a.jam_masuk, a.jam_keluar)
-            WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN GREATEST(0, TIMESTAMPDIFF(SECOND, a.jam_masuk, '14:00:00'))
+            WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN GREATEST(0, TIMESTAMPDIFF(SECOND, a.jam_masuk, '14:00:00')) -- [CONFIG] Diambil dari AUTO_PULANG_DEFAULT di .env
             ELSE 0 
         END
     )) AS total_jam_kerja
@@ -92,7 +99,10 @@ SELECT
     a.tanggal,
     a.jam_masuk,
     a.jam_keluar,
-    a.status
+    a.status,
+    a.keterangan,
+    a.telat_menit,
+    a.psw_menit
 FROM absensi a
 JOIN karyawan k ON a.id_karyawan = k.id_karyawan
 ORDER BY a.tanggal DESC, a.jam_masuk DESC;

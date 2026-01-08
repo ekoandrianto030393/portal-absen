@@ -68,6 +68,18 @@
             background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
         }
 
+        /* Zebra Striping for Monthly Recap (Screen View) */
+        #table-rekap tbody tr:nth-child(even) {
+            background-color: #f8fafc; /* slate-50 */
+        }
+        /* Ensure sticky columns match the row background (opaque) */
+        #table-rekap tbody tr:nth-child(even) .sticky-col {
+            background-color: #f8fafc;
+        }
+        #table-rekap tbody tr:nth-child(odd) .sticky-col {
+            background-color: #ffffff;
+        }
+
         .card-accent-top {
             border-top-width: 4px;
         }
@@ -543,6 +555,88 @@
                                             class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                                     </div>
                                 </div>
+                                <!-- KONFIGURASI GAJI & TUNJANGAN (REVISED) -->
+                                <h4 class="font-medium text-slate-700 mb-2 mt-4 border-t border-slate-100 pt-4">Konfigurasi Penggajian</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                    <!-- Pendapatan -->
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Gaji Pokok Default</label>
+                                        <input type="number" id="conf-gaji-pokok" placeholder="Contoh: 2000000"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Tunjangan Jabatan (Flat)</label>
+                                        <input type="number" id="conf-tunjangan-jabatan" placeholder="Contoh: 500000"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Uang Makan (Per Kehadiran)</label>
+                                        <input type="number" id="conf-uang-makan" placeholder="Contoh: 25000"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Uang Transport (Per Kehadiran)</label>
+                                        <input type="number" id="conf-uang-transport" placeholder="Contoh: 25000"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <!-- Potongan -->
+                                    <hr class="md:col-span-2 border-slate-200 my-1">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Potongan BPJS (Flat)</label>
+                                        <input type="number" id="conf-bpjs" placeholder="Contoh: 50000"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Potongan Pajak (Flat)</label>
+                                        <input type="number" id="conf-pajak" placeholder="Contoh: 75000"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <!-- Denda -->
+                                    <hr class="md:col-span-2 border-slate-200 my-1">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Denda Telat (Per Kali)</label>
+                                        <input type="number" id="conf-denda-telat" placeholder="Contoh: 25000"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Denda Alpa (Per Hari)</label>
+                                        <input type="number" id="conf-denda-alpa" placeholder="Contoh: 100000"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <!-- NEW: Denda PSW & Lupa Absen -->
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Denda PSW (Per Kali)</label>
+                                        <input type="number" id="conf-denda-psw" placeholder="Contoh: 15000"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Denda Lupa Absen (Per Kejadian)</label>
+                                        <input type="number" id="conf-denda-lupa" placeholder="Contoh: 50000"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Gaji Khusus per Jabatan (Format:
+                                            Jabatan=Nominal)</label>
+                                        <textarea id="conf-gaji-jabatan" rows="3"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                                            placeholder="Dokter=5000000&#10;Perawat=3500000"></textarea>
+                                    </div>
+                                </div>
+                                <!-- KONFIGURASI JAM PULANG KHUSUS (Sesuai .env) -->
+                                <h4 class="font-medium text-slate-700 mb-2 mt-4 border-t border-slate-100 pt-4">Konfigurasi Jam Pulang Khusus</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Jam Pulang Jumat</label>
+                                        <input type="time" id="conf-jam-pulang-jumat"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Jam Pulang Sabtu</label>
+                                        <input type="time" id="conf-jam-pulang-sabtu"
+                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-end">
                                 <button onclick="saveSignatureConfig()"
                                     class="bg-slate-800 text-white px-4 py-2 rounded text-sm hover:bg-slate-700 transition">Simpan
                                     Konfigurasi</button>

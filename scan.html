@@ -1196,122 +1196,6 @@
         <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 mt-0 p-2">
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
-                <div class="widget-panel relative overflow-hidden group p-0 border-cyan-500/50">
-                    <!-- Tech Background -->
-                    <div class="absolute inset-0 opacity-30 pointer-events-none"
-                        style="background-image: radial-gradient(circle at 50% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 60%), repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.05) 3px); background-size: 100% 100%, 100% 4px;">
-                    </div>
-
-                    <!-- Header with JS Hook -->
-                    <div id="quantumChronoHeader"
-                        class="relative z-10 flex justify-between items-center px-4 py-2 bg-black/40 border-b border-cyan-500/30 backdrop-blur-md">
-                        <h2
-                            class="widget-title text-sm font-bold text-cyan-400 tracking-[0.2em] m-0 p-0 border-none shadow-none flex items-center gap-2">
-                            <span>QUANTUM CHRONO</span>
-                        </h2>
-                        <div class="flex items-center gap-1">
-                            <span
-                                class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_5px_#00FF00]"></span>
-                            <span class="text-[9px] font-mono text-cyan-600">SYNC.OK</span>
-                        </div>
-                    </div>
-
-                    <!-- Main Clock Display -->
-                    <div class="relative z-10 flex flex-col items-center justify-center py-6">
-
-                        <!-- Rotating Rings (CSS Animation) -->
-                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                            <div
-                                class="w-56 h-56 border border-cyan-500/30 rounded-full animate-[spin_20s_linear_infinite]">
-                            </div>
-                            <div
-                                class="w-48 h-48 border border-dashed border-cyan-500/40 rounded-full animate-[spin_15s_linear_infinite_reverse]">
-                            </div>
-                            <div class="w-64 h-64 border border-cyan-500/10 rounded-full animate-pulse"></div>
-                        </div>
-
-                        <!-- Time Digits -->
-                        <div class="flex items-baseline gap-2 relative z-20">
-                            <!-- Hours -->
-                            <div
-                                class="flex flex-col items-center group-hover:scale-105 transition-transform duration-500">
-                                <span id="clock-h"
-                                    class="text-6xl lg:text-7xl font-black text-white tracking-tighter drop-shadow-[0_0_15px_rgba(0,255,255,0.9)]"
-                                    style="font-family: 'Courier New', monospace; -webkit-text-stroke: 1px rgba(0,255,255,0.3);">--</span>
-                                <span class="text-[9px] text-cyan-600 tracking-[0.3em] mt-[-5px]">HRS</span>
-                            </div>
-
-                            <div class="flex flex-col justify-center h-16 space-y-2 opacity-80">
-                                <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></div>
-                                <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse delay-75"></div>
-                            </div>
-
-                            <!-- Minutes -->
-                            <div
-                                class="flex flex-col items-center group-hover:scale-105 transition-transform duration-500 delay-75">
-                                <span id="clock-m"
-                                    class="text-6xl lg:text-7xl font-black text-white tracking-tighter drop-shadow-[0_0_15px_rgba(0,255,255,0.9)]"
-                                    style="font-family: 'Courier New', monospace; -webkit-text-stroke: 1px rgba(0,255,255,0.3);">--</span>
-                                <span class="text-[9px] text-cyan-600 tracking-[0.3em] mt-[-5px]">MIN</span>
-                            </div>
-
-                            <div class="flex flex-col justify-center h-16 space-y-2 opacity-80">
-                                <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></div>
-                                <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse delay-75"></div>
-                            </div>
-
-                            <!-- Seconds (Highlighted) -->
-                            <div
-                                class="flex flex-col items-center relative group-hover:scale-105 transition-transform duration-500 delay-150">
-                                <div class="absolute inset-0 bg-cyan-400/10 blur-2xl rounded-full"></div>
-                                <span id="clock-s"
-                                    class="text-6xl lg:text-7xl font-black text-cyan-300 tracking-tighter drop-shadow-[0_0_25px_#00FFFF]"
-                                    style="font-family: 'Courier New', monospace;">--</span>
-                                <span class="text-[9px] text-cyan-400 tracking-[0.3em] mt-[-5px]">SEC</span>
-                            </div>
-                        </div>
-
-                        <!-- Sub-Data Row -->
-                        <div class="w-full flex justify-between items-end px-6 mt-6 relative z-20">
-                            <!-- Date Block -->
-                            <div class="flex flex-col items-start">
-                                <div class="flex items-center gap-1 mb-1">
-                                    <div class="w-1 h-1 bg-cyan-500"></div>
-                                    <span class="text-[8px] text-cyan-700 tracking-widest">CALENDAR.SYS</span>
-                                </div>
-                                <div id="clock-date" style="min-height: 40px;"
-                                    class="text-xs font-bold font-mono text-cyan-400 tracking-wider pl-2 border-l-2 border-cyan-600/50">
-                                    ...
-                                </div>
-                            </div>
-
-                            <!-- Milliseconds Block -->
-                            <div class="flex flex-col items-end">
-                                <span class="text-[8px] text-cyan-700 tracking-widest mb-1">MS.OFFSET</span>
-                                <div
-                                    class="flex items-center gap-1 bg-black/60 px-3 py-1 rounded border border-cyan-800/60 shadow-[inset_0_0_10px_rgba(0,255,255,0.1)]">
-                                    <span id="clock-ms"
-                                        class="text-xl font-mono text-amber-400 w-12 text-right leading-none tracking-widest">000</span>
-                                    <span class="text-[8px] text-cyan-600">ms</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Bottom Status Bar -->
-                    <div
-                        class="relative z-10 bg-black/80 border-t border-cyan-800/50 px-3 py-1.5 flex justify-between items-center mt-auto">
-                        <div class="flex items-center gap-3 w-full">
-                            <span class="text-[8px] text-cyan-800 font-mono whitespace-nowrap">CYCLE LOAD</span>
-                            <div class="flex-grow h-1 bg-gray-900 rounded-full overflow-hidden relative">
-                                <div id="clock-bar"
-                                    class="h-full bg-gradient-to-r from-cyan-600 via-cyan-400 to-white w-0 shadow-[0_0_10px_#00FFFF] transition-all duration-100 ease-linear">
-                                </div>
-                            </div>
-                            <span class="text-[8px] text-cyan-600 font-mono whitespace-nowrap">UTC+7</span>
-                        </div>
-                    </div>
-                </div>
                 <div class="widget-panel">
                     <h2 class="widget-title">:: DEVICE SELECT ::</h2>
                     <select id="cameraSelect"
@@ -1541,6 +1425,83 @@
                 </div>
             </div>
         </div>
+
+        <!-- ANTI-SPOOFING / LIVENESS DETECTION MODULE -->
+        <script>
+            /**
+             * LivenessCheck: Modul untuk mendeteksi apakah wajah hidup (berkedip) atau foto mati.
+             * Cara pakai di scan.js:
+             * 1. Panggil LivenessCheck.update(landmarks) setiap frame.
+             * 2. Jika return true, berarti user sudah berkedip (valid).
+             */
+            window.LivenessCheck = {
+                EAR_THRESHOLD: 0.35, // DIPERMUDAH LAGI: Naik ke 0.35 (Mata sipit/biasa lebih mudah)
+                BLINK_FRAMES: 1,
+                YAW_THRESHOLD_L: 0.4, // Batas nengok kiri (Rasio < 0.4)
+                YAW_THRESHOLD_R: 0.6, // Batas nengok kanan (Rasio > 0.6)
+                consecutiveCloseFrames: 0,
+                lastEAR: 0,          // DEBUG: Simpan nilai EAR terakhir
+                lastYaw: 0.5,        // DEBUG: Simpan nilai Yaw (0.5 = Tengah)
+                isLive: false,
+
+                getEAR: function (eye) {
+                    // Menghitung jarak Euclidean antar titik mata
+                    const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+                    // Titik landmark mata: 0,3 (horizontal), 1,5 (vertikal 1), 2,4 (vertikal 2)
+                    const v1 = dist(eye[1], eye[5]);
+                    const v2 = dist(eye[2], eye[4]);
+                    const h = dist(eye[0], eye[3]);
+                    return (v1 + v2) / (2.0 * h);
+                },
+
+                getHeadYaw: function (landmarks) {
+                    const nose = landmarks.getNose()[3]; // Ujung hidung
+                    const leftJaw = landmarks.getJawOutline()[0]; // Tepi rahang kiri
+                    const rightJaw = landmarks.getJawOutline()[16]; // Tepi rahang kanan
+
+                    const distLeft = Math.hypot(nose.x - leftJaw.x, nose.y - leftJaw.y);
+                    const distRight = Math.hypot(nose.x - rightJaw.x, nose.y - rightJaw.y);
+
+                    if (distLeft + distRight === 0) return 0.5;
+                    return distLeft / (distLeft + distRight);
+                },
+
+                update: function (landmarks) {
+                    if (!landmarks) return false;
+                    if (this.isLive) return true; // Sekali hidup, tetap hidup
+
+                    const leftEye = landmarks.getLeftEye();
+                    const rightEye = landmarks.getRightEye();
+
+                    // Rata-rata rasio kedua mata
+                    const avgEAR = (this.getEAR(leftEye) + this.getEAR(rightEye)) / 2.0;
+                    this.lastEAR = avgEAR; // Update nilai untuk debugging
+
+                    // 1. CEK KEDIPAN
+                    if (avgEAR < this.EAR_THRESHOLD) {
+                        this.consecutiveCloseFrames++;
+                        if (this.consecutiveCloseFrames >= this.BLINK_FRAMES) {
+                            this.isLive = true;
+                            return true;
+                        }
+                    } else {
+                        this.consecutiveCloseFrames = 0;
+                    }
+
+                    // 2. CEK GERAKAN KEPALA (NOLEH)
+                    const yaw = this.getHeadYaw(landmarks);
+                    this.lastYaw = yaw;
+
+                    // Jika rasio hidung bergeser jauh dari tengah (0.5)
+                    if (yaw < this.YAW_THRESHOLD_L || yaw > this.YAW_THRESHOLD_R) {
+                        this.isLive = true;
+                    }
+                    return this.isLive;
+                },
+
+                reset: function () { this.isLive = false; this.consecutiveCloseFrames = 0; }
+            };
+        </script>
 
         <script src="scan.js"></script>
 
