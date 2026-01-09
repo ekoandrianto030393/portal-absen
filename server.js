@@ -19,17 +19,20 @@ const formatTime = (t) => {
 };
 
 // --- KONFIGURASI JAM OPERASIONAL (Bisa disesuaikan) ---
-const JAM_MASUK_START      = formatTime(process.env.JAM_MASUK_START      || '06:00:00');
-const JAM_MASUK_END        = formatTime(process.env.JAM_MASUK_END        || '12:00:00');
-const JAM_PULANG_START     = formatTime(process.env.JAM_PULANG_START     || '14:00:00');
-const BATAS_MIN_PULANG     = formatTime(process.env.BATAS_MIN_PULANG     || '10:00:00');
-const JAM_KERJA_MULAI      = formatTime(process.env.JAM_KERJA_MULAI      || '08:00:00');
-const BATAS_TELAT          = formatTime(process.env.BATAS_TELAT          || '08:25:00');
-const POTONGAN_LUPA_PULANG = process.env.POTONGAN_LUPA_PULANG || 2;          // Jam potongan
-const AUTO_PULANG_DEFAULT  = formatTime(process.env.AUTO_PULANG_DEFAULT  || '14:00:00');
+const JAM_MASUK_START      = formatTime(process.env.JAM_MASUK_START);
+const JAM_MASUK_END        = formatTime(process.env.JAM_MASUK_END);
+const JAM_PULANG_START     = formatTime(process.env.JAM_PULANG_START);
+const BATAS_MIN_PULANG     = formatTime(process.env.BATAS_MIN_PULANG);
+const JAM_KERJA_MULAI      = formatTime(process.env.JAM_KERJA_MULAI);
+const BATAS_TELAT          = formatTime(process.env.BATAS_TELAT);
+const POTONGAN_LUPA_PULANG = process.env.POTONGAN_LUPA_PULANG;          // Jam potongan
+const AUTO_PULANG_DEFAULT  = formatTime(process.env.AUTO_PULANG_DEFAULT);
+// [NEW] Auto Pulang Khusus Hari Jumat & Sabtu (Fallback ke Default jika tidak di-set di .env)
+const AUTO_PULANG_JUMAT    = process.env.AUTO_PULANG_DEFAULT_JUMAT ? formatTime(process.env.AUTO_PULANG_DEFAULT_JUMAT) : AUTO_PULANG_DEFAULT;
+const AUTO_PULANG_SABTU    = process.env.AUTO_PULANG_DEFAULT_SABTU ? formatTime(process.env.AUTO_PULANG_DEFAULT_SABTU) : AUTO_PULANG_DEFAULT;
 // [NEW] Jam Pulang Khusus Jumat & Sabtu (Default jika tidak ada di .env)
-let JAM_PULANG_JUMAT       = formatTime(process.env.JAM_PULANG_JUMAT     || '11:00:00');
-let JAM_PULANG_SABTU       = formatTime(process.env.JAM_PULANG_SABTU     || '12:30:00');
+let JAM_PULANG_JUMAT       = formatTime(process.env.JAM_PULANG_JUMAT);
+let JAM_PULANG_SABTU       = formatTime(process.env.JAM_PULANG_SABTU);
 
 // Middleware untuk parsing JSON body (limit besar untuk upload foto)
 app.use(bodyParser.json({ limit: '50mb' }));
@@ -73,10 +76,12 @@ pool.getConnection((err, connection) => {
         console.log(`   - Batas Telat: ${BATAS_TELAT}`);
         console.log(`   - Jam Pulang: ${JAM_PULANG_START} (Min Pulang: ${BATAS_MIN_PULANG})`);
         console.log(`   - Jam Pulang (Senin-Kamis): ${JAM_PULANG_START}`);
-        console.log(`   - Jam Pulang (Jumat): ${JAM_PULANG_JUMAT} (via .env)`);
-        console.log(`   - Jam Pulang (Sabtu): ${JAM_PULANG_SABTU} (via .env)`);
+        console.log(`   - Jam Pulang (Jumat): ${JAM_PULANG_JUMAT}`);
+        console.log(`   - Jam Pulang (Sabtu): ${JAM_PULANG_SABTU}`);
         console.log(`   - Potongan Lupa Pulang: ${POTONGAN_LUPA_PULANG} Jam (Sesuai Request)`);
         console.log(`   - Auto Pulang Default: ${AUTO_PULANG_DEFAULT} (Hitung jam kerja s/d jam ini)`);
+        console.log(`   - Auto Pulang Jumat: ${AUTO_PULANG_JUMAT} ${process.env.AUTO_PULANG_DEFAULT_JUMAT ? '[CUSTOM .ENV]' : '[DEFAULT]'}`);
+        console.log(`   - Auto Pulang Sabtu: ${AUTO_PULANG_SABTU} ${process.env.AUTO_PULANG_DEFAULT_SABTU ? '[CUSTOM .ENV]' : '[DEFAULT]'}`);
         console.log(`   - Fitur Grafik: /api/stats/daily-range (Aktif)`);
         console.log(`   - Status Auto-Fix: ✅ AKTIF (Reset deteksi tiap jam 00:00)`);
         console.log(`   ℹ️  Logika Lupa Pulang: Hitung jam kerja s/d ${AUTO_PULANG_DEFAULT} + Potongan ${POTONGAN_LUPA_PULANG} Jam (FIX)`);
@@ -124,8 +129,12 @@ pool.getConnection((err, connection) => {
                 k.nama,
                 k.jabatan,
                 m.periode,
+                m.total_hari_kerja,
                 COUNT(a.jam_masuk) AS total_masuk,
                 SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END) AS total_dl,
+                SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END) AS total_sakit,
+                SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END) AS total_izin,
+                SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END) AS total_cuti,
                 GREATEST(0, m.total_hari_kerja - COUNT(a.jam_masuk) - SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI') THEN 1 ELSE 0 END)) AS alpa, -- [SYNC] Logika Alpa: Total Hari - Hadir - Izin/Sakit
                 SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END) AS telat_kali,
                 
@@ -298,6 +307,160 @@ app.get('/api/rekap', (req, res) => {
         console.log('---------------------------------------------------------------------------------\n');
 
         res.json({ success: true, data: results });
+    });
+});
+
+// [NEW] Endpoint: Cetak Slip Gaji Resmi (HTML Print-Ready)
+app.get('/api/slip_gaji/print', (req, res) => {
+    const { id_karyawan, periode } = req.query;
+    
+    if (!id_karyawan || !periode) {
+        return res.status(400).send("<h3>Error: Parameter id_karyawan dan periode (YYYY-MM) wajib disertakan.</h3>");
+    }
+
+    const sql = "SELECT * FROM view_rekap_bulanan WHERE id_karyawan = ? AND periode = ?";
+    
+    pool.query(sql, [id_karyawan, periode], (err, results) => {
+        if (err) return res.status(500).send(err.message);
+        if (results.length === 0) return res.status(404).send("<h3>Data absensi tidak ditemukan untuk periode ini.</h3>");
+
+        const d = results[0];
+
+        // --- SIMULASI PERHITUNGAN GAJI (Bisa disesuaikan / Ambil dari DB jika ada) ---
+        const GAJI_POKOK = 5000000;      // Contoh Gaji Pokok
+        const TUNJANGAN_HADIR = 50000;   // Per hari hadir
+        const DENDA_TELAT_PER_MENIT = 1000; 
+        const DENDA_PSW_PER_MENIT = 1000;
+        const DENDA_ALPA = 150000;       // Per hari Alpha
+
+        // Hitung Komponen
+        const totalTunjanganHadir = d.total_masuk * TUNJANGAN_HADIR;
+        const totalDendaTelat = d.telat_menit * DENDA_TELAT_PER_MENIT;
+        const totalDendaPsw = d.psw_menit * DENDA_PSW_PER_MENIT;
+        const totalDendaAlpa = d.alpa * DENDA_ALPA;
+        
+        const totalPendapatan = GAJI_POKOK + totalTunjanganHadir;
+        const totalPotongan = totalDendaTelat + totalDendaPsw + totalDendaAlpa;
+        const gajiBersih = totalPendapatan - totalPotongan;
+
+        // Formatter Rupiah
+        const rp = (n) => "Rp " + n.toLocaleString('id-ID');
+
+        // Template HTML Slip Gaji Resmi
+        const html = `
+            <!DOCTYPE html>
+            <html lang="id">
+            <head>
+                <meta charset="UTF-8">
+                <title>Slip Gaji - ${d.nama}</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #555; padding: 20px; display: flex; justify-content: center; }
+                    .slip-container { width: 210mm; min-height: 140mm; background: white; padding: 40px; box-shadow: 0 0 15px rgba(0,0,0,0.3); position: relative; }
+                    .header { border-bottom: 3px double #333; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+                    .company-info h1 { margin: 0; font-size: 22px; text-transform: uppercase; color: #2c3e50; }
+                    .company-info p { margin: 2px 0; font-size: 12px; color: #7f8c8d; }
+                    .slip-title { text-align: right; }
+                    .slip-title h2 { margin: 0; font-size: 24px; color: #333; letter-spacing: 2px; }
+                    .slip-title p { margin: 0; font-size: 14px; color: #666; }
+                    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; font-size: 13px; }
+                    .info-row { display: flex; margin-bottom: 5px; }
+                    .label { width: 100px; font-weight: bold; color: #555; }
+                    .value { flex: 1; }
+                    .section-header { background: #f2f2f2; padding: 8px; font-weight: bold; font-size: 13px; border-left: 4px solid #2c3e50; margin-bottom: 10px; margin-top: 20px; }
+                    .table-rincian { width: 100%; border-collapse: collapse; font-size: 13px; }
+                    .table-rincian td { padding: 6px 8px; border-bottom: 1px dashed #eee; }
+                    .text-right { text-align: right; }
+                    .text-red { color: #e74c3c; }
+                    .total-row td { border-top: 2px solid #333; border-bottom: none; padding-top: 10px; font-weight: bold; font-size: 15px; }
+                    .footer { margin-top: 40px; display: flex; justify-content: space-between; font-size: 12px; }
+                    .ttd-box { text-align: center; width: 150px; }
+                    .ttd-space { height: 60px; }
+                    .ttd-line { border-top: 1px solid #333; margin-top: 5px; }
+                    @media print {
+                        body { background: white; padding: 0; }
+                        .slip-container { box-shadow: none; width: 100%; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="slip-container">
+                    <div class="header">
+                        <div class="company-info">
+                            <h1>PT. BIOMETRIK INDONESIA</h1>
+                            <p>Jl. Teknologi Masa Depan No. 88, Jakarta Selatan</p>
+                            <p>Telp: (021) 555-8888 | Email: hrd@biometrik.co.id</p>
+                        </div>
+                        <div class="slip-title">
+                            <h2>SLIP GAJI</h2>
+                            <p>Periode: ${d.periode}</p>
+                        </div>
+                    </div>
+
+                    <div class="info-grid">
+                        <div>
+                            <div class="info-row"><span class="label">ID Karyawan</span><span class="value">: ${d.id_karyawan}</span></div>
+                            <div class="info-row"><span class="label">Nama</span><span class="value">: <strong>${d.nama}</strong></span></div>
+                            <div class="info-row"><span class="label">Jabatan</span><span class="value">: ${d.jabatan}</span></div>
+                        </div>
+                        <div>
+                            <div class="info-row"><span class="label">Status</span><span class="value">: Karyawan Tetap</span></div>
+                            <div class="info-row"><span class="label">Cetak</span><span class="value">: ${new Date().toLocaleDateString('id-ID')}</span></div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 30px;">
+                        <div style="flex: 1;">
+                            <div class="section-header">PENERIMAAN (INCOME)</div>
+                            <table class="table-rincian">
+                                <tr><td>Gaji Pokok</td><td class="text-right">${rp(GAJI_POKOK)}</td></tr>
+                                <tr><td>Tunjangan Hadir (${d.total_masuk} hari)</td><td class="text-right">${rp(totalTunjanganHadir)}</td></tr>
+                                <tr><td><strong>Total Penerimaan</strong></td><td class="text-right"><strong>${rp(totalPendapatan)}</strong></td></tr>
+                            </table>
+                        </div>
+                        <div style="flex: 1;">
+                            <div class="section-header">POTONGAN (DEDUCTION)</div>
+                            <table class="table-rincian">
+                                <tr><td>Telat (${d.telat_menit} menit)</td><td class="text-right text-red">(${rp(totalDendaTelat)})</td></tr>
+                                <tr><td>PSW (${d.psw_menit} menit)</td><td class="text-right text-red">(${rp(totalDendaPsw)})</td></tr>
+                                <tr><td>Alpha (${d.alpa} hari)</td><td class="text-right text-red">(${rp(totalDendaAlpa)})</td></tr>
+                                <tr><td><strong>Total Potongan</strong></td><td class="text-right text-red"><strong>(${rp(totalPotongan)})</strong></td></tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; border: 2px solid #333; padding: 15px; background: #f9f9f9;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 14px; font-weight: bold;">TAKE HOME PAY (GAJI BERSIH)</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #27ae60;">${rp(gajiBersih)}</div>
+                        </div>
+                        <div style="font-size: 11px; color: #666; margin-top: 5px; font-style: italic;">* Terbilang: ${rp(gajiBersih).replace('Rp', '')} Rupiah</div>
+                    </div>
+
+                    <div class="footer">
+                        <div class="ttd-box">
+                            <div>Penerima,</div>
+                            <div class="ttd-space"></div>
+                            <div class="ttd-line"></div>
+                            <div>${d.nama}</div>
+                        </div>
+                        <div class="ttd-box">
+                            <div>Jakarta, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</div>
+                            <div>Manager HRD,</div>
+                            <div class="ttd-space"></div>
+                            <div class="ttd-line"></div>
+                            <div>Admin Biometrik</div>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    // Auto Print saat dibuka
+                    setTimeout(() => window.print(), 1000);
+                </script>
+            </body>
+            </html>
+        `;
+        
+        res.send(html);
     });
 });
 
@@ -496,14 +659,16 @@ app.post('/api/absensi', (req, res) => {
                 } else {
                     // --- KASUS 3: SUDAH MASUK, BELUM PULANG -> CHECK OUT (AUTO FIX) ---
                     
-                    // [UPDATE] Deteksi Hari untuk Jam Pulang Dinamis
+                    // [UPDATE] Deteksi Hari untuk Jam Pulang & Batas Min Pulang Dinamis
                     const dayIndex = now.getDay(); // 0=Minggu, 1=Senin... 5=Jumat, 6=Sabtu
                     let jamPulangEfektif = JAM_PULANG_START;
+                    // Gunakan BATAS_MIN_PULANG dari .env (11:00:00) untuk semua hari
+                    let batasMinPulangEfektif = BATAS_MIN_PULANG; 
 
                     if (dayIndex === 5) jamPulangEfektif = JAM_PULANG_JUMAT;
                     else if (dayIndex === 6) jamPulangEfektif = JAM_PULANG_SABTU;
 
-                    console.log(`[CHECK-OUT] Hari: ${dayIndex}, Jam Pulang Efektif: ${jamPulangEfektif} (Sumber: .env)`);
+                    console.log(`[CHECK-OUT] Hari: ${dayIndex}, Jam Pulang: ${jamPulangEfektif}, Min Pulang: ${batasMinPulangEfektif}`);
 
                     // --- LOGIKA BARU: Cek Pulang Sebelum Waktunya (PSW) ---
                     let keteranganPulang = null;
@@ -547,10 +712,10 @@ app.post('/api/absensi', (req, res) => {
                     }
 
                     // [BARU] Validasi Batas Minimum Pulang (Cegah PSW terlalu dini/Scan Ganda)
-                    if (currentTime < BATAS_MIN_PULANG) {
+                    if (currentTime < batasMinPulangEfektif) {
                         return res.json({
                             success: false,
-                            message: `Absen Pulang/PSW belum dibuka. Minimal jam ${BATAS_MIN_PULANG}.`,
+                            message: `Absen Pulang/PSW belum dibuka. Minimal jam ${batasMinPulangEfektif}.`,
                             nama: k.nama,
                             jabatan: k.jabatan,
                             result_code: 'TOO_EARLY_OUT',
@@ -777,19 +942,23 @@ const runAutoFix = () => {
     const sql = `
         UPDATE absensi 
         SET 
-            jam_keluar = ?, 
+            jam_keluar = CASE 
+                WHEN DAYOFWEEK(tanggal) = 6 THEN ? 
+                WHEN DAYOFWEEK(tanggal) = 7 THEN ? 
+                ELSE ? 
+            END, 
             keterangan = CONCAT(IFNULL(keterangan, ''), ' [Otomatis: Lupa Absen Pulang]'),
             psw_menit = 0
         WHERE jam_masuk IS NOT NULL AND jam_keluar IS NULL AND tanggal < CURDATE()
     `;
 
-    pool.query(sql, [AUTO_PULANG_DEFAULT], (err, result) => {
+    pool.query(sql, [AUTO_PULANG_JUMAT, AUTO_PULANG_SABTU, AUTO_PULANG_DEFAULT], (err, result) => {
         if (err) console.error('⚠️ Auto-Fix Error:', err.message);
         else if (result.affectedRows > 0) {
             const timestamp = new Date().toLocaleString('id-ID');
             console.log(`[${timestamp}] 🤖 Auto-Fix: ${result.affectedRows} data diperbarui.`);
-            console.log(`   ✅ LOGIKA FIX: Jam Pulang diset ke ${AUTO_PULANG_DEFAULT}.`);
-            console.log(`   ✅ TOTAL JAM KERJA: Dihitung dari Jam Masuk s/d ${AUTO_PULANG_DEFAULT}.`);
+            console.log(`   ✅ LOGIKA FIX: Jam Pulang diset ke Default: ${AUTO_PULANG_DEFAULT}, Jumat: ${AUTO_PULANG_JUMAT}, Sabtu: ${AUTO_PULANG_SABTU}.`);
+            console.log(`   ✅ TOTAL JAM KERJA: Dihitung dari Jam Masuk s/d Auto Pulang.`);
             console.log(`   ✅ SANKSI: Diterapkan potongan ${POTONGAN_LUPA_PULANG} Jam (dari .env).`);
         }
     });

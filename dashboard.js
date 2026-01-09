@@ -339,7 +339,11 @@ async function loadMonthlyRecap() {
                 <th class="pl-16 pr-6 py-4 text-left">Jabatan</th>
                 <th class="px-6 py-4 text-center">Hadir</th>
                 <th class="px-6 py-4 text-center">DL</th>
+                <th class="px-6 py-4 text-center bg-rose-50 text-rose-700 border-l border-r border-indigo-500/20">S</th>
+                <th class="px-6 py-4 text-center bg-purple-50 text-purple-700 border-r border-indigo-500/20">I</th>
+                <th class="px-6 py-4 text-center bg-orange-50 text-orange-700 border-r border-indigo-500/20">C</th>
                 <th class="px-6 py-4 text-center">Alpa</th>
+                <th class="px-6 py-4 text-center font-bold text-blue-600">% Hadir</th>
                 <th class="px-6 py-4 text-center">Telat (x)</th>
                 <th class="px-6 py-4 text-center">Telat (Min)</th>
                 <th class="px-6 py-4 text-center">PSW (x)</th>
@@ -366,7 +370,7 @@ async function loadMonthlyRecap() {
 
         if (result.data && result.data.length > 0) {
             // Inisialisasi variabel total
-            let tHadir = 0, tDL = 0, tAlpa = 0, tTelat = 0, tTelatMin = 0, tPsw = 0, tPswMin = 0, tPelanggaranMin = 0, tNoOut = 0, tPot = 0;
+            let tHadir = 0, tDL = 0, tSakit = 0, tIzin = 0, tCuti = 0, tAlpa = 0, tTelat = 0, tTelatMin = 0, tPsw = 0, tPswMin = 0, tPelanggaranMin = 0, tNoOut = 0, tPot = 0;
             
             // [NEW] Variabel Total Gaji & Load Config
             let totalGaji = 0;
@@ -387,6 +391,9 @@ async function loadMonthlyRecap() {
                 // Hitung total saat looping
                 tHadir += parseInt(row.total_masuk) || 0;
                 tDL += parseInt(row.total_dl) || 0;
+                tSakit += parseInt(row.total_sakit) || 0;
+                tIzin += parseInt(row.total_izin) || 0;
+                tCuti += parseInt(row.total_cuti) || 0;
                 tAlpa += parseInt(row.alpa) || 0;
                 tTelat += parseInt(row.telat_kali) || 0;
                 tTelatMin += parseInt(row.telat_menit) || 0;
@@ -423,6 +430,10 @@ async function loadMonthlyRecap() {
                 const totalPotongan = totalDenda + bpjs + pajak;
                 totalGaji += Math.max(0, totalPendapatan - totalPotongan);
 
+                // Hitung Persentase Kehadiran
+                const totalHariKerja = parseInt(row.total_hari_kerja) || 20; // Default 20 jika null
+                const persentase = Math.round(((parseInt(row.total_masuk) + parseInt(row.total_dl)) / totalHariKerja) * 100);
+
                 tbody.innerHTML += `
                     <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-blue-50/50 border-b border-slate-100 last:border-0 group">
                         <td class="md:sticky md:left-0 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 text-center font-mono text-slate-700 md:border-r border-slate-100">${index + 1}</td>
@@ -435,7 +446,11 @@ async function loadMonthlyRecap() {
                         <td class="px-6 py-4 text-center">
                             <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold text-xs border border-blue-200">${row.total_dl || 0}</span>
                         </td>
+                        <td class="px-6 py-4 text-center bg-rose-50/50 text-rose-600 font-medium border-l border-r border-slate-100">${row.total_sakit || 0}</td>
+                        <td class="px-6 py-4 text-center bg-purple-50/50 text-purple-600 font-medium border-r border-slate-100">${row.total_izin || 0}</td>
+                        <td class="px-6 py-4 text-center bg-orange-50/50 text-orange-600 font-medium border-r border-slate-100">${row.total_cuti || 0}</td>
                         <td class="px-6 py-4 text-center ${row.alpa > 0 ? 'text-red-600 font-bold' : 'text-slate-500'}">${row.alpa}</td>
+                        <td class="px-6 py-4 text-center font-bold ${persentase >= 95 ? 'text-emerald-600' : (persentase >= 80 ? 'text-blue-600' : 'text-red-600')}">${persentase}%</td>
                         <td class="px-6 py-4 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-bold' : 'text-slate-500'}">${row.telat_kali}</td>
                         <td class="px-6 py-4 text-center text-slate-500">${row.telat_menit}</td>
                         <td class="px-6 py-4 text-center ${row.psw_kali > 0 ? 'text-amber-600 font-bold' : 'text-slate-500'}">${row.psw_kali || 0}</td>
@@ -453,7 +468,11 @@ async function loadMonthlyRecap() {
                     <td colspan="4" class="px-6 py-3 text-right uppercase text-xs tracking-wider">Total Ringkasan:</td>
                     <td class="px-6 py-3 text-center">${tHadir}</td>
                     <td class="px-6 py-3 text-center">${tDL}</td>
+                    <td class="px-6 py-3 text-center text-rose-700 bg-rose-100/50">${tSakit}</td>
+                    <td class="px-6 py-3 text-center text-purple-700 bg-purple-100/50">${tIzin}</td>
+                    <td class="px-6 py-3 text-center text-orange-700 bg-orange-100/50">${tCuti}</td>
                     <td class="px-6 py-3 text-center">${tAlpa}</td>
+                    <td class="px-6 py-3 text-center">-</td>
                     <td class="px-6 py-3 text-center">${tTelat}</td>
                     <td class="px-6 py-3 text-center text-slate-500 text-xs">${tTelatMin}</td>
                     <td class="px-6 py-3 text-center">${tPsw}</td>
@@ -465,7 +484,7 @@ async function loadMonthlyRecap() {
                 </tr>
                 <!-- [NEW] Baris Total Pengeluaran Gaji -->
                 <tr class="bg-emerald-50 font-bold border-t border-emerald-200 text-emerald-900 print:bg-white print:border-black break-inside-avoid">
-                    <td colspan="11" class="px-6 py-4 text-right uppercase text-sm tracking-wider">
+                    <td colspan="15" class="px-6 py-4 text-right uppercase text-sm tracking-wider">
                         Total Estimasi Pengeluaran Gaji (Bulan Ini):
                     </td>
                     <td colspan="4" class="px-6 py-4 text-right text-xl font-black text-emerald-700 border-l border-emerald-200">

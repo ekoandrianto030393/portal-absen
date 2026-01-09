@@ -2482,15 +2482,23 @@ async function processAttendance(karyawanId) {
                                  <!-- ID Card Content -->
                                  <div class="bg-gradient-to-br from-slate-900 to-black text-white p-0 rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.8)] w-full border border-white/20 relative overflow-hidden font-sans transform transition-all duration-500 hover:scale-[1.02] hover:rotate-y-6 z-10">
                                     
+                                    <!-- CHIP EMAS -->
+                                    <div class="absolute top-28 right-6 w-12 h-9 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-md border border-yellow-300/50 shadow-md z-20 overflow-hidden opacity-90">
+                                        <div class="absolute top-1/2 left-0 w-full h-[1px] bg-black/20"></div>
+                                        <div class="absolute left-1/3 top-0 w-[1px] h-full bg-black/20"></div>
+                                        <div class="absolute left-2/3 top-0 w-[1px] h-full bg-black/20"></div>
+                                        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 border border-black/10 rounded-sm"></div>
+                                    </div>
+
                                     <!-- Header ID Card -->
-                                    <div class="relative h-24 bg-gradient-to-r from-emerald-800 to-teal-900 flex items-center px-6 overflow-hidden">
+                                    <div class="relative h-24 bg-gradient-to-r from-blue-900 to-indigo-900 flex items-center px-6 overflow-hidden">
                                         <div class="absolute inset-0 opacity-20" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjIiIGZpbGw9IiNmZmZmZmYiLz48L3N2Zz4=');"></div>
                                         <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/30 mr-4 shadow-lg backdrop-blur-sm overflow-hidden">
                                             <img src="logo.jpg" class="w-full h-full object-cover">
                                         </div>
                                         <div class="z-10">
                                             <h2 class="text-xl font-black text-white tracking-widest uppercase leading-none drop-shadow-md">PUSKESMAS WANA</h2>
-                                            <p class="text-[10px] text-emerald-100 tracking-[0.3em] mt-1 uppercase font-semibold">Kartu Identitas Pegawai</p>
+                                            <p class="text-[10px] text-blue-100 tracking-[0.3em] mt-1 uppercase font-semibold">Kartu Identitas Pegawai</p>
                                         </div>
                                         <!-- Decorative Line -->
                                         <div class="absolute bottom-0 left-0 w-full h-1 bg-yellow-500"></div>
