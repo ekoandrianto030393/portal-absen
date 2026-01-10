@@ -78,13 +78,13 @@ pool.getConnection((err, connection) => {
         console.log(`   - Jam Pulang (Senin-Kamis): ${JAM_PULANG_START}`);
         console.log(`   - Jam Pulang (Jumat): ${JAM_PULANG_JUMAT}`);
         console.log(`   - Jam Pulang (Sabtu): ${JAM_PULANG_SABTU}`);
-        console.log(`   - Potongan Lupa Pulang: ${POTONGAN_LUPA_PULANG} Jam (Sesuai Request)`);
+        console.log(`   - Potongan Tanpa Absen Pulang: ${POTONGAN_LUPA_PULANG} Jam (Sesuai Request)`);
         console.log(`   - Auto Pulang Default: ${AUTO_PULANG_DEFAULT} (Hitung jam kerja s/d jam ini)`);
         console.log(`   - Auto Pulang Jumat: ${AUTO_PULANG_JUMAT} ${process.env.AUTO_PULANG_DEFAULT_JUMAT ? '[CUSTOM .ENV]' : '[DEFAULT]'}`);
         console.log(`   - Auto Pulang Sabtu: ${AUTO_PULANG_SABTU} ${process.env.AUTO_PULANG_DEFAULT_SABTU ? '[CUSTOM .ENV]' : '[DEFAULT]'}`);
         console.log(`   - Fitur Grafik: /api/stats/daily-range (Aktif)`);
         console.log(`   - Status Auto-Fix: ✅ AKTIF (Reset deteksi tiap jam 00:00)`);
-        console.log(`   ℹ️  Logika Lupa Pulang: Hitung jam kerja s/d ${AUTO_PULANG_DEFAULT} + Potongan ${POTONGAN_LUPA_PULANG} Jam (FIX)`);
+        console.log(`   ℹ️  Logika Tanpa Absen Pulang: Hitung jam kerja s/d ${AUTO_PULANG_DEFAULT} + Potongan ${POTONGAN_LUPA_PULANG} Jam (FIX)`);
         console.log(`   ℹ️  Logika Manual Absen: Status 'HADIR', Hitung Telat & PSW Otomatis (FIX)`);
         
         // --- SINKRONISASI SKEMA DATABASE (Berdasarkan skema_final.sql) ---
@@ -332,15 +332,17 @@ app.get('/api/slip_gaji/print', (req, res) => {
         const DENDA_TELAT_PER_MENIT = 1000; 
         const DENDA_PSW_PER_MENIT = 1000;
         const DENDA_ALPA = 150000;       // Per hari Alpha
+        const DENDA_TANPA_ABSEN = 50000; // Denda per kejadian Tanpa Absen Pulang
 
         // Hitung Komponen
         const totalTunjanganHadir = d.total_masuk * TUNJANGAN_HADIR;
         const totalDendaTelat = d.telat_menit * DENDA_TELAT_PER_MENIT;
         const totalDendaPsw = d.psw_menit * DENDA_PSW_PER_MENIT;
         const totalDendaAlpa = d.alpa * DENDA_ALPA;
+        const totalDendaTanpaAbsen = d.tanpa_absen_pulang * DENDA_TANPA_ABSEN;
         
         const totalPendapatan = GAJI_POKOK + totalTunjanganHadir;
-        const totalPotongan = totalDendaTelat + totalDendaPsw + totalDendaAlpa;
+        const totalPotongan = totalDendaTelat + totalDendaPsw + totalDendaAlpa + totalDendaTanpaAbsen;
         const gajiBersih = totalPendapatan - totalPotongan;
 
         // Formatter Rupiah
@@ -423,6 +425,7 @@ app.get('/api/slip_gaji/print', (req, res) => {
                                 <tr><td>Telat (${d.telat_menit} menit)</td><td class="text-right text-red">(${rp(totalDendaTelat)})</td></tr>
                                 <tr><td>PSW (${d.psw_menit} menit)</td><td class="text-right text-red">(${rp(totalDendaPsw)})</td></tr>
                                 <tr><td>Alpha (${d.alpa} hari)</td><td class="text-right text-red">(${rp(totalDendaAlpa)})</td></tr>
+                                <tr><td>Tanpa Absen Pulang (${d.tanpa_absen_pulang}x)</td><td class="text-right text-red">(${rp(totalDendaTanpaAbsen)})</td></tr>
                                 <tr><td><strong>Total Potongan</strong></td><td class="text-right text-red"><strong>(${rp(totalPotongan)})</strong></td></tr>
                             </table>
                         </div>
@@ -825,7 +828,7 @@ app.get('/api/monitoring/lupa_pulang', (req, res) => {
     // Query dasar
     let sql = `SELECT k.id_karyawan, k.nama, 1 as total_kasus 
                FROM absensi a JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
-               WHERE ((a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR a.keterangan LIKE '%Lupa Absen Pulang%')`;
+               WHERE ((a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR a.keterangan LIKE '%Tanpa Absen Pulang%' OR a.keterangan LIKE '%Lupa Absen Pulang%')`;
     
     const params = [];
     if (tanggal) {
@@ -835,7 +838,7 @@ app.get('/api/monitoring/lupa_pulang', (req, res) => {
         // Jika bulanan, hitung total kasus per orang
         sql = `SELECT k.id_karyawan, k.nama, COUNT(*) as total_kasus 
                FROM absensi a JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
-               WHERE ((a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR a.keterangan LIKE '%Lupa Absen Pulang%')
+               WHERE ((a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR a.keterangan LIKE '%Tanpa Absen Pulang%' OR a.keterangan LIKE '%Lupa Absen Pulang%')
                AND DATE_FORMAT(a.tanggal, '%Y-%m') = ?
                GROUP BY k.id_karyawan, k.nama HAVING total_kasus > 0 ORDER BY total_kasus DESC`;
         params.push(periode);
@@ -866,7 +869,7 @@ app.get('/api/monitoring/terlambat_lengkap', (req, res) => {
 // 4. Monitoring: Terlambat & Lupa Pulang (Kasus Berat)
 app.get('/api/monitoring/terlambat_lupa', (req, res) => {
     const { tanggal, periode } = req.query;
-    let whereClause = `WHERE a.jam_masuk > '${BATAS_TELAT}' AND ((a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR a.keterangan LIKE '%Lupa Absen Pulang%')`;
+    let whereClause = `WHERE a.jam_masuk > '${BATAS_TELAT}' AND ((a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR a.keterangan LIKE '%Tanpa Absen Pulang%' OR a.keterangan LIKE '%Lupa Absen Pulang%')`;
     let params = [];
 
     if (tanggal) { whereClause += " AND a.tanggal = ?"; params.push(tanggal); }
@@ -947,7 +950,7 @@ const runAutoFix = () => {
                 WHEN DAYOFWEEK(tanggal) = 7 THEN ? 
                 ELSE ? 
             END, 
-            keterangan = CONCAT(IFNULL(keterangan, ''), ' [Otomatis: Lupa Absen Pulang]'),
+            keterangan = CONCAT(IFNULL(keterangan, ''), ' [Otomatis: Tanpa Absen Pulang]'),
             psw_menit = 0
         WHERE jam_masuk IS NOT NULL AND jam_keluar IS NULL AND tanggal < CURDATE()
     `;

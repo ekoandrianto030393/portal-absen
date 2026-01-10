@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- LOAD CONFIG DARI SERVER ---
 async function loadSystemConfig() {
     try {
-        const response = await fetch(`${API_BASE}/config`);
+        const response = await fetch(`${API_BASE}/config?_t=${Date.now()}`);
         const result = await response.json();
         if (result.success) {
             systemConfig = result.config;
@@ -131,8 +131,8 @@ async function loadOverviewData() {
         // 1. Ambil Data Harian
         // OPTIMISASI: Gunakan Promise.all untuk request paralel
         const [resDailyRaw, resEmpRaw] = await Promise.all([
-            fetch(`${API_BASE}/absensi/harian`),
-            fetch(`${API_BASE}/karyawan/descriptors`)
+            fetch(`${API_BASE}/absensi/harian?_t=${Date.now()}`),
+            fetch(`${API_BASE}/karyawan/descriptors?_t=${Date.now()}`)
         ]);
 
         const jsonDaily = await resDailyRaw.json();
@@ -218,7 +218,7 @@ async function loadDailyData(silent = false) {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/absensi/harian`);
+        const response = await fetch(`${API_BASE}/absensi/harian?_t=${Date.now()}`);
         const result = await response.json();
         
         tbody.innerHTML = '';
@@ -333,9 +333,9 @@ async function loadMonthlyRecap() {
     table.innerHTML = `
         <thead class="uppercase text-xs font-bold tracking-wider border-b border-indigo-500 bg-indigo-600 text-white print:bg-gray-200 print:text-black">
             <tr>
-                <th class="md:sticky md:left-0 md:z-20 bg-indigo-600 text-white print:bg-gray-200 print:text-black px-6 py-4 text-center w-16 md:border-r border-indigo-500 print:border-black">No.</th>
-                <th class="md:sticky md:left-16 md:z-20 bg-indigo-600 text-white print:bg-gray-200 print:text-black px-6 py-4 w-24 md:border-r border-indigo-500 print:border-black">ID</th>
-                <th class="md:sticky md:left-40 md:z-20 bg-indigo-600 text-white print:bg-gray-200 print:text-black px-6 py-4 w-64 md:border-r border-indigo-500 print:border-black md:shadow-sm text-left">Nama Pegawai</th>
+                <th class="md:sticky md:left-0 md:z-20 bg-indigo-600 text-white print:bg-white print:text-black print:static px-6 py-4 text-center w-16 md:border-r border-indigo-500 print:border-black">No.</th>
+                <th class="md:sticky md:left-16 md:z-20 bg-indigo-600 text-white print:bg-white print:text-black print:static px-6 py-4 w-24 md:border-r border-indigo-500 print:border-black">ID</th>
+                <th class="md:sticky md:left-40 md:z-20 bg-indigo-600 text-white print:bg-white print:text-black print:static px-6 py-4 w-64 md:border-r border-indigo-500 print:border-black md:shadow-sm text-left">Nama Pegawai</th>
                 <th class="pl-16 pr-6 py-4 text-left">Jabatan</th>
                 <th class="px-6 py-4 text-center">Hadir</th>
                 <th class="px-6 py-4 text-center">DL</th>
@@ -343,13 +343,13 @@ async function loadMonthlyRecap() {
                 <th class="px-6 py-4 text-center bg-purple-50 text-purple-700 border-r border-indigo-500/20">I</th>
                 <th class="px-6 py-4 text-center bg-orange-50 text-orange-700 border-r border-indigo-500/20">C</th>
                 <th class="px-6 py-4 text-center">Alpa</th>
-                <th class="px-6 py-4 text-center font-bold text-blue-600">% Hadir</th>
+                <th class="px-6 py-4 text-center font-bold text-yellow-300">% Hadir</th>
                 <th class="px-6 py-4 text-center">Telat (x)</th>
                 <th class="px-6 py-4 text-center">Telat (Min)</th>
                 <th class="px-6 py-4 text-center">PSW (x)</th>
                 <th class="px-6 py-4 text-center">PSW (Min)</th>
-                <th class="px-6 py-4 text-center font-bold text-yellow-300 border-l border-indigo-500">Total Pelanggaran (Min)</th>
-                <th class="px-6 py-4 text-center">Tanpa Pulang</th>
+                <th class="px-6 py-4 text-center font-bold text-yellow-300 border-l border-indigo-500 print:text-black">Total Pelanggaran (Min)</th>
+                <th class="px-6 py-4 text-center">Tanpa Absen Pulang</th>
                 <th class="px-6 py-4 text-center">Potongan</th>
                 <th class="px-6 py-4 text-right">Total Jam Kerja</th>
             </tr>
@@ -359,7 +359,7 @@ async function loadMonthlyRecap() {
     `;
 
     try {
-        const response = await fetch(`${API_BASE}/rekap?periode=${month}`);
+        const response = await fetch(`${API_BASE}/rekap?periode=${month}&_t=${Date.now()}`);
         const result = await response.json();
         
         // Update global data agar modal detail bisa dibuka saat baris diklik
@@ -436,9 +436,9 @@ async function loadMonthlyRecap() {
 
                 tbody.innerHTML += `
                     <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-blue-50/50 border-b border-slate-100 last:border-0 group">
-                        <td class="md:sticky md:left-0 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 text-center font-mono text-slate-700 md:border-r border-slate-100">${index + 1}</td>
-                        <td class="md:sticky md:left-16 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 font-mono text-slate-700 md:border-r border-slate-100">${row.id_karyawan}</td>
-                        <td class="md:sticky md:left-40 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 font-bold text-slate-700 md:border-r border-slate-100 md:shadow-sm">${row.nama}</td>
+                        <td class="md:sticky md:left-0 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 text-center font-mono text-slate-700 md:border-r border-slate-100 print:static print:bg-white print:border-b print:border-slate-200">${index + 1}</td>
+                        <td class="md:sticky md:left-16 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 font-mono text-slate-700 md:border-r border-slate-100 print:static print:bg-white print:border-b print:border-slate-200">${row.id_karyawan}</td>
+                        <td class="md:sticky md:left-40 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 font-bold text-slate-700 md:border-r border-slate-100 md:shadow-sm print:static print:bg-white print:border-b print:border-slate-200">${row.nama}</td>
                         <td class="pl-16 pr-6 py-4 text-sm text-slate-700">${row.jabatan || '-'}</td>
                         <td class="px-6 py-4 text-center">
                             <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
@@ -518,7 +518,7 @@ async function loadPerformanceData() {
     try {
         // Gunakan data rekap bulan ini untuk analisis
         const month = document.getElementById('filter-month').value;
-        const response = await fetch(`${API_BASE}/rekap?periode=${month}`);
+        const response = await fetch(`${API_BASE}/rekap?periode=${month}&_t=${Date.now()}`);
         const result = await response.json();
         
         globalPerformanceData = result.data || []; // Simpan ke global
@@ -605,7 +605,7 @@ async function loadEmployees() {
     grid.innerHTML = '<div class="col-span-full text-center text-slate-400 italic py-8">Memuat direktori...</div>';
 
     try {
-        const response = await fetch(`${API_BASE}/karyawan/descriptors`);
+        const response = await fetch(`${API_BASE}/karyawan/descriptors?_t=${Date.now()}`);
         const result = await response.json();
         const employees = result.descriptors || [];
         globalEmployees = employees; // Simpan ke global agar bisa diedit
@@ -788,7 +788,7 @@ async function openManualModal() {
         if (globalEmployees.length === 0) {
             // Coba load data pegawai jika belum ada
             try {
-                const res = await fetch(`${API_BASE}/karyawan/descriptors`);
+                const res = await fetch(`${API_BASE}/karyawan/descriptors?_t=${Date.now()}`);
                 const json = await res.json();
                 globalEmployees = json.descriptors || [];
             } catch (e) {
@@ -901,7 +901,7 @@ async function updateChartFilter() {
     if(!start || !end) return;
 
     try {
-        const response = await fetch(`${API_BASE}/stats/daily-range?start=${start}&end=${end}`);
+        const response = await fetch(`${API_BASE}/stats/daily-range?start=${start}&end=${end}&_t=${Date.now()}`);
         
         // Handle jika endpoint belum ada (404) atau error server (500)
         if (!response.ok) {
@@ -1067,7 +1067,7 @@ async function openModal(idKaryawan) {
             // Fetch data rekap bulan ini (default)
             const now = new Date();
             const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            const response = await fetch(`${API_BASE}/rekap?periode=${monthStr}`);
+            const response = await fetch(`${API_BASE}/rekap?periode=${monthStr}&_t=${Date.now()}`);
             const result = await response.json();
             
             if (result.success) {
@@ -1343,6 +1343,14 @@ function loadSignatureConfig() {
 
         // Terapkan ke View Print
         applySignatureToPrint();
+    } else {
+        // [FIX] Jika tidak ada data tersimpan (habis reset), paksa kosongkan input
+        // Ini mencegah browser mengembalikan nilai lama dari cache saat refresh
+        const fields = ['conf-kepala-nama', 'conf-kepala-nip', 'conf-petugas-nama', 'conf-petugas-nip'];
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.value = '';
+        });
     }
 }
 
@@ -1355,6 +1363,39 @@ function applySignatureToPrint() {
         if(config.petugasNama) document.getElementById('print-petugas-nama').textContent = `( ${config.petugasNama} )`;
         if(config.petugasNip) document.getElementById('print-petugas-nip').textContent = `NIP. ${config.petugasNip}`;
     }
+}
+
+// --- FITUR: RESET CONFIGURATION ---
+function resetSignatureConfig() {
+    if (!confirm('Apakah Anda yakin ingin mereset semua pengaturan ke default? Data konfigurasi lokal akan dihapus.')) return;
+
+    // Hapus dari Local Storage
+    localStorage.removeItem('signatureConfig');
+
+    // Daftar ID input yang perlu dikosongkan
+    const fields = [
+        'conf-kepala-nama', 'conf-kepala-nip', 'conf-petugas-nama', 'conf-petugas-nip',
+        'conf-gaji-pokok', 'conf-tunjangan-jabatan', 'conf-uang-makan', 'conf-uang-transport',
+        'conf-bpjs', 'conf-pajak', 'conf-denda-telat', 'conf-denda-alpa', 
+        'conf-denda-psw', 'conf-denda-lupa', 'conf-gaji-jabatan',
+        'conf-jam-pulang-jumat', 'conf-jam-pulang-sabtu'
+    ];
+
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+
+    // Reset tampilan tanda tangan di laporan secara manual (karena localStorage sudah kosong)
+    if(document.getElementById('print-kepala-nama')) document.getElementById('print-kepala-nama').textContent = '( ....................................................... )';
+    if(document.getElementById('print-kepala-nip')) document.getElementById('print-kepala-nip').textContent = 'NIP. ...........................................';
+    if(document.getElementById('print-petugas-nama')) document.getElementById('print-petugas-nama').textContent = '( ....................................................... )';
+    if(document.getElementById('print-petugas-nip')) document.getElementById('print-petugas-nip').textContent = 'NIP. ...........................................';
+
+    // Muat ulang konfigurasi sistem dari server (untuk mengisi kembali default jam pulang jika ada)
+    loadSystemConfig();
+
+    showToast('Pengaturan berhasil direset ke default.', 'success');
 }
 
 // Apply theme on load
@@ -1476,7 +1517,7 @@ function printSalarySlip(id) {
     const dendaTelat = parseInt(config.dendaTelat) || 0;
     const dendaAlpa = parseInt(config.dendaAlpa) || 0;
     const dendaPsw = parseInt(config.dendaPsw) || 0; // [NEW]
-    const dendaLupa = parseInt(config.dendaLupa) || 0; // [NEW]
+    const dendaLupa = parseInt(config.dendaLupa) || 50000; // [FIX] Default 50.000 agar sinkron dengan Server
 
     // [NEW] Hitung Komponen Gaji
     const totalHadir = (parseInt(emp.total_masuk) || 0) + (parseInt(emp.total_dl) || 0);
@@ -1566,7 +1607,7 @@ function printSalarySlip(id) {
                 <div class="section-title">Potongan & Disiplin</div>
                 <div class="table-row"><span>Keterlambatan</span> <span>${emp.telat_kali}x (${emp.telat_menit} Menit)</span></div>
                 <div class="table-row"><span>Pulang Sebelum Waktu (PSW)</span> <span>${emp.psw_kali || 0}x (${emp.psw_menit || 0} Menit)</span></div>
-                <div class="table-row"><span>Lupa Absen Pulang</span> <span>${emp.tanpa_absen_pulang}x</span></div>
+                <div class="table-row"><span>Tanpa Absen Pulang</span> <span>${emp.tanpa_absen_pulang}x</span></div>
                 <div class="table-row"><span><strong>Total Potongan Jam</strong></span> <span><strong>${emp.potongan_jam} Jam</strong></span></div>
             </div>
 
@@ -1601,4 +1642,48 @@ function printSalarySlip(id) {
     
     printWindow.document.write(html);
     printWindow.document.close();
+}
+
+// --- FITUR: REFRESH & CLEAR CACHE ---
+async function manualRefresh(btn) {
+    // Animasi Spin pada Icon
+    let icon;
+    if (btn) {
+        icon = btn.querySelector('i');
+        if (icon) icon.classList.add('fa-spin'); // Tambah animasi putar
+        btn.disabled = true; // Cegah klik ganda
+    }
+
+    const activeTab = document.querySelector('.nav-item.active');
+    if (activeTab) {
+        const tabId = activeTab.id;
+        
+        // Gunakan await agar animasi menunggu proses selesai
+        if (tabId === 'nav-overview') await loadOverviewData();
+        if (tabId === 'nav-daily') await loadDailyData();
+        if (tabId === 'nav-monthly') await loadMonthlyRecap();
+        if (tabId === 'nav-performance') await loadPerformanceData();
+        if (tabId === 'nav-employees') await loadEmployees();
+        if (tabId === 'nav-settings') {
+            await loadSystemConfig();
+            loadSignatureConfig();
+        }
+        
+        // Beri sedikit delay agar animasi terlihat smooth
+        setTimeout(() => {
+            if (icon) icon.classList.remove('fa-spin'); // Hapus animasi
+            if (btn) btn.disabled = false;
+            showToast('Data berhasil diperbarui (Cache Cleared)', 'success');
+        }, 500);
+    }
+}
+
+function hardRefresh() {
+    // Hapus cache browser dan reload halaman
+    if ('caches' in window) {
+        caches.keys().then((names) => {
+            names.forEach((name) => caches.delete(name));
+        });
+    }
+    window.location.reload(true);
 }

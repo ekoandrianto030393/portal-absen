@@ -456,31 +456,38 @@ function drawHexGridOverlay(ctx, box, color) {
 
 // --- FITUR BARU: TOPOGRAPHIC FACE MAPPING ---
 function drawTopographicFeatures(ctx, landmarks, color) {
-    const jaw = landmarks.getJawOutline();
-    const nose = landmarks.getNose();
     const time = Date.now() / 1000;
     
     ctx.save();
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.8;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 10;
     
     // EFEK BARU: Garis putus-putus yang mengalir (seperti data dikirim)
     ctx.setLineDash([4, 4]);
-    ctx.lineDashOffset = -time * 20; 
+    ctx.lineDashOffset = -time * 30; 
 
-    // Hubungkan rahang ke hidung (Kontur Pipi)
-    ctx.beginPath();
-    for(let i=0; i<jaw.length; i+=2) {
-        ctx.moveTo(jaw[i].x, jaw[i].y);
-        // Tarik garis ke tengah hidung
-        ctx.bezierCurveTo(
-            jaw[i].x, jaw[i].y, 
-            (jaw[i].x + nose[3].x)/2, (jaw[i].y + nose[3].y)/2 + 20, 
-            nose[3].x, nose[3].y
-        );
-    }
-    ctx.stroke();
+    const drawContour = (points, close = false) => {
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            ctx.lineTo(points[i].x, points[i].y);
+        }
+        if (close) ctx.closePath();
+        ctx.stroke();
+    };
+
+    // Gambar kontur fitur wajah (Jaw, Brows, Nose, Eyes, Mouth)
+    drawContour(landmarks.getJawOutline(), false);
+    drawContour(landmarks.getLeftEyeBrow(), false);
+    drawContour(landmarks.getRightEyeBrow(), false);
+    drawContour(landmarks.getNose(), false);
+    drawContour(landmarks.getLeftEye(), true);
+    drawContour(landmarks.getRightEye(), true);
+    drawContour(landmarks.getMouth(), true);
+
     ctx.restore();
 }
 
@@ -1434,10 +1441,23 @@ function animateTitle() {
     if (mainTitle.children.length !== targetText.length) {
         mainTitle.innerHTML = '';
         
+        // --- SETUP LOGO DI SAMPING JUDUL ---
+        const mainLogo = document.getElementById('mainLogo');
+        if (mainLogo) {
+            mainLogo.style.display = 'block';
+            mainLogo.style.position = 'fixed';
+            mainLogo.style.top = '15px';
+            mainLogo.style.left = '30px';
+            mainLogo.style.width = '60px';
+            mainLogo.style.height = '60px';
+            mainLogo.style.zIndex = '101';
+            mainLogo.style.filter = 'drop-shadow(0 0 8px rgba(0,255,255,0.6))';
+        }
+
         // --- POSISI JUDUL: POJOK KIRI ATAS (HUD STYLE) ---
         mainTitle.style.position = 'fixed';
         mainTitle.style.top = '25px';
-        mainTitle.style.left = '30px';
+        mainTitle.style.left = '100px'; // Geser ke kanan (30px + 60px logo + 10px gap)
         mainTitle.style.zIndex = '100';
         mainTitle.style.margin = '0';
 

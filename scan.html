@@ -438,6 +438,7 @@
             z-index: 10;
             pointer-events: none;
             /* Penting: Canvas tidak boleh menghalangi klik */
+            filter: drop-shadow(0 0 4px rgba(0, 255, 255, 0.7)); /* NEW: Glow Effect */
         }
 
         .video-container video {
@@ -1202,6 +1203,17 @@
                         class="bg-gray-900/50 border border-cyan-500/50 text-cyan-400 p-2 text-sm w-full font-mono mb-3 backdrop-blur-sm">
                     </select>
 
+                    <!-- MODEL LOADER & CAMERA CONTROLS -->
+                    <div id="modelControls" class="mt-2">
+                        <div class="text-[10px] text-gray-400 mb-1">Model status</div>
+                        <div class="loader-bar" aria-hidden="true"><div id="modelProgress" class="loader-fill" style="width:0%"></div></div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <button id="btnStartCamera" class="text-[11px] px-3 py-1 bg-cyan-700/20 border border-cyan-500/40 text-cyan-200 rounded">Start</button>
+                            <button id="btnStopCamera" class="text-[11px] px-3 py-1 bg-red-700/10 border border-red-500/30 text-red-300 rounded">Stop</button>
+                            <span id="modelStatus" class="text-[11px] text-gray-300 font-mono ml-2">Idle</span>
+                        </div>
+                    </div>
+
                     <!-- STEALTH MODE TOGGLE -->
                     <div class="flex items-center justify-between border-t border-cyan-500/30 pt-2">
                         <div class="flex items-center gap-2">
@@ -1282,6 +1294,7 @@
 
             <div class="col-span-1 lg:col-span-2 flex flex-col items-center justify-start gap-4 order-1 lg:order-2">
                 <div class="fancy-header w-full text-center">
+                    <img id="mainLogo" src="logo.jpg" class="hidden" alt="Logo Instansi">
                     <h1 id="mainTitle" class="text-4xl lg:text-5xl font-extrabold tracking-widest text-center">AETHER
                     </h1>
                     <p class="text-xs text-cyan-700 mt-1 font-mono">SECURE ACCESS POINT: A-9 // [CONNECTED]</p>

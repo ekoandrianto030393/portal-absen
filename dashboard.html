@@ -536,22 +536,22 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                                     <div>
                                         <label class="block text-xs font-medium text-slate-500 mb-1">Nama Kepala Puskesmas</label>
-                                        <input type="text" id="conf-kepala-nama" placeholder="Nama Kepala"
+                                        <input type="text" id="conf-kepala-nama" placeholder="Nama Kepala" autocomplete="off"
                                             class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-slate-500 mb-1">NIP Kepala Puskesmas</label>
-                                        <input type="text" id="conf-kepala-nip" placeholder="NIP Kepala"
+                                        <input type="text" id="conf-kepala-nip" placeholder="NIP Kepala" autocomplete="off"
                                             class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-slate-500 mb-1">Nama Petugas Absensi</label>
-                                        <input type="text" id="conf-petugas-nama" placeholder="Nama Petugas"
+                                        <input type="text" id="conf-petugas-nama" placeholder="Nama Petugas" autocomplete="off"
                                             class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-slate-500 mb-1">NIP Petugas Absensi</label>
-                                        <input type="text" id="conf-petugas-nip" placeholder="NIP Petugas"
+                                        <input type="text" id="conf-petugas-nip" placeholder="NIP Petugas" autocomplete="off"
                                             class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                                     </div>
                                 </div>
@@ -636,7 +636,15 @@
                                             class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                                     </div>
                                 </div>
-                                <div class="mt-4 flex justify-end">
+                                <div class="mt-4 flex justify-end gap-2">
+                                    <button onclick="manualRefresh(this)" type="button"
+                                        class="bg-white border border-slate-300 text-slate-600 px-4 py-2 rounded text-sm hover:bg-slate-50 transition flex items-center gap-2 shadow-sm">
+                                        <i class="fa-solid fa-rotate"></i> Refresh
+                                    </button>
+                                    <button onclick="resetSignatureConfig()" type="button"
+                                        class="bg-white border border-red-300 text-red-600 px-4 py-2 rounded text-sm hover:bg-red-50 transition flex items-center gap-2 shadow-sm">
+                                        <i class="fa-solid fa-trash"></i> Reset
+                                    </button>
                                 <button onclick="saveSignatureConfig()"
                                     class="bg-slate-800 text-white px-4 py-2 rounded text-sm hover:bg-slate-700 transition">Simpan
                                     Konfigurasi</button>
