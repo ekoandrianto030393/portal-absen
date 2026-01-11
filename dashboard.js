@@ -307,7 +307,14 @@ async function loadDailyData(silent = false) {
                             ${keteranganHtml}
                         </td>
                         <td class="px-6 py-4 ${lateClass} font-mono">${lateDisplay}</td>
-                        <td class="px-6 py-4 font-mono text-slate-600">${row.jam_keluar || '<span class="text-slate-400">-</span>'}</td>
+                        <td class="px-6 py-4 font-mono text-slate-600">
+                            <div class="flex justify-between items-center gap-2">
+                                <div>${row.jam_keluar || '<span class="text-slate-400">-</span>'}</div>
+                                <button onclick="deleteAbsensi(event, ${row.id_absensi}, this.dataset.name)" data-name="${escapeHtml(row.nama_karyawan)}" class="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Hapus Absensi">
+                                    <i class="fa-solid fa-trash text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
                     </tr>
                 `;
                 tbody.innerHTML += tr;
@@ -354,7 +361,7 @@ async function loadMonthlyRecap() {
                 <th class="px-6 py-4 text-right">Total Jam Kerja</th>
             </tr>
         </thead>
-        <tbody class="text-slate-700 divide-y divide-slate-100 text-sm bg-white">
+        <tbody id="table-rekap-body" class="text-slate-700 divide-y divide-slate-100 text-sm bg-white">
         </tbody>
     `;
 
@@ -864,6 +871,27 @@ async function submitManualStatus() {
         }
     } catch (e) {
         showToast("Error koneksi: " + e.message, 'error');
+    }
+}
+
+// --- FITUR: DELETE ABSENSI HARIAN ---
+async function deleteAbsensi(event, id, nama) {
+    event.stopPropagation(); // Mencegah modal detail terbuka saat klik tombol hapus
+    if (!confirm(`PERINGATAN: Apakah Anda yakin ingin menghapus data absensi harian untuk "${nama}"?\n\nData yang dihapus tidak dapat dikembalikan.`)) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/absensi/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+
+        if (result.success) {
+            showToast('Data absensi berhasil dihapus', 'success');
+            loadDailyData(); // Refresh tabel harian
+            loadOverviewData(); // Refresh statistik
+        } else {
+            showToast(`Gagal menghapus: ${result.message}`, 'error');
+        }
+    } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
     }
 }
 

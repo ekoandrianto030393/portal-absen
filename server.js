@@ -72,8 +72,8 @@ pool.getConnection((err, connection) => {
         console.log('✅ Terkoneksi ke Database MySQL (Pool)');
         console.log('📋 Konfigurasi Absensi (dari .env):');
         console.log(`   - Jam Masuk: ${JAM_MASUK_START} s/d ${JAM_MASUK_END}`);
-        console.log(`   - Jam Kerja Mulai: ${JAM_KERJA_MULAI} (Acuan hitung telat)`);
-        console.log(`   - Batas Telat: ${BATAS_TELAT}`);
+        console.log(`   - Jam Kerja Mulai: ${JAM_KERJA_MULAI}`);
+        console.log(`   - Batas Telat: ${BATAS_TELAT} (Acuan hitung telat)`);
         console.log(`   - Jam Pulang: ${JAM_PULANG_START} (Min Pulang: ${BATAS_MIN_PULANG})`);
         console.log(`   - Jam Pulang (Senin-Kamis): ${JAM_PULANG_START}`);
         console.log(`   - Jam Pulang (Jumat): ${JAM_PULANG_JUMAT}`);
@@ -627,10 +627,12 @@ app.post('/api/absensi', (req, res) => {
                 let telatMenit = 0;
                 if (currentTime > BATAS_TELAT) {
                     const [hC, mC, sC] = currentTime.split(':').map(Number);
-                    const [hS, mS, sS] = JAM_KERJA_MULAI.split(':').map(Number);
+                    // [REQUEST] Menghitung telat dimulai dari BATAS_TELAT (diambil dari .env)
+                    const [hS, mS, sS] = BATAS_TELAT.split(':').map(Number); 
                     const curSec = hC * 3600 + mC * 60 + sC;
                     const startSec = hS * 3600 + mS * 60 + sS;
                     telatMenit = Math.floor((curSec - startSec) / 60);
+                    console.log(`   ⚠️ Terlambat: ${telatMenit} menit (Masuk: ${currentTime}, Batas: ${BATAS_TELAT})`);
                 }
 
                 const insertSql = 'INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, status, telat_menit) VALUES (?, ?, ?, ?, ?)';
@@ -786,7 +788,7 @@ app.post('/api/absensi/manual', (req, res) => {
         // [FIX] Hitung Keterlambatan Manual
         if (finalJamMasuk && finalJamMasuk > BATAS_TELAT) {
             const masukSec = timeToSeconds(finalJamMasuk);
-            const startSec = timeToSeconds(JAM_KERJA_MULAI);
+            const startSec = timeToSeconds(BATAS_TELAT);
             telatMenit = Math.floor((masukSec - startSec) / 60);
         }
 
@@ -808,6 +810,16 @@ app.post('/api/absensi/manual', (req, res) => {
     pool.query(sql, [id_karyawan, tanggal, finalJamMasuk, finalJamKeluar, finalStatus, keterangan, telatMenit, pswMenit], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, message: 'Data manual berhasil disimpan (Telat/PSW terhitung).' });
+    });
+});
+
+// Endpoint: Hapus Absensi Harian
+app.delete('/api/absensi/:id', (req, res) => {
+    const id = req.params.id;
+    pool.query('DELETE FROM absensi WHERE id_absensi = ?', [id], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Data absensi tidak ditemukan' });
+        res.json({ success: true, message: 'Data absensi berhasil dihapus.' });
     });
 });
 
