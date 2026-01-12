@@ -286,7 +286,7 @@ if (stealthToggle) {
     });
 }
 
-let FACE_MATCHING_THRESHOLD = 0.45; // Ditingkatkan (0.36 -> 0.45) agar lebih toleran di kondisi gelap
+let FACE_MATCHING_THRESHOLD = 0.44; // Ditingkatkan (0.36 -> 0.)
 // --- DEFINISI WARNA (Futuristik) ---
 const PROFESSIONAL_STATUS_COLOR = '#00FF7F'; 
 const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
@@ -956,6 +956,23 @@ function triggerScreenFlash(color) {
         flash.style.backgroundColor = color;
         flash.style.opacity = 0.4;
         setTimeout(() => flash.style.opacity = 0, 100);
+    }
+}
+
+// --- VISUAL FX: GLITCH EFFECT ---
+function triggerGlitch() {
+    const container = document.getElementById('videoContainer');
+    if (container) {
+        container.classList.add('glitch-active');
+        // Random shift
+        const shiftX = (Math.random() - 0.5) * 20;
+        const shiftY = (Math.random() - 0.5) * 10;
+        container.style.transform = `translate(${shiftX}px, ${shiftY}px)`;
+        
+        setTimeout(() => {
+            container.classList.remove('glitch-active');
+            container.style.transform = 'none';
+        }, 150);
     }
 }
 
@@ -1988,7 +2005,7 @@ async function detectFace() {
     const displaySize = { width: canvas.width, height: canvas.height };
 
     // LOW LIGHT OPTIMIZATION: scoreThreshold diturunkan (0.50 -> 0.30) agar wajah gelap/samar tetap terdeteksi
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.30 }))
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.50 }))
 	.withFaceLandmarks()
     .withFaceExpressions() // NEW: Detect Expressions
     .withFaceDescriptor();
@@ -2166,6 +2183,9 @@ async function detectFace() {
                 // Efek Berkedip Merah
                 if (Math.floor(Date.now() / 200) % 2 === 0) faceColor = '#FF0055'; 
                 else faceColor = 'rgba(255, 0, 85, 0.1)';
+
+                // Trigger Glitch Effect on Unknown Face (Interference)
+                if (Math.random() < 0.15) triggerGlitch();
             } else {
                 // DB Offline
                 setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-red-500');
@@ -2194,6 +2214,9 @@ async function detectFace() {
 
         // NEW: Digital Particles (Efek Menguap)
         drawDigitalParticles(context, box, faceColor);
+
+        // Random Ambient Glitch (Signal Noise)
+        if (Math.random() < 0.005) triggerGlitch();
 
     } else {
         // Tidak ada deteksi wajah

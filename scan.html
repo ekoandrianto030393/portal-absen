@@ -103,41 +103,76 @@
         /* --- 3. WIDGET PANELS (KOTAK KIRI & KANAN) --- */
         .widget-panel {
             /* Tech Corners: Aksen siku di setiap sudut menggunakan Gradient */
-            background: rgba(6, 15, 20, 0.75);
-            border: 1px solid var(--hud-primary);
+            background: rgba(6, 15, 20, 0.85);
+            /* BORDER LEBIH TIPIS & HALUS (Base) */
+            border: 1px solid rgba(0, 255, 255, 0.2);
             padding: 1rem;
-            border-radius: 2px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            border-radius: 2px; /* Sudut lebih tajam */
+            /* EFEK CAHAYA CANGGIH (Box Shadow Berlapis) */
+            box-shadow: 
+                0 0 30px rgba(0, 0, 0, 0.8),
+                inset 0 0 20px rgba(0, 255, 255, 0.05);
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
             position: relative;
             overflow: hidden;
-            transition: border-color 0.5s ease, box-shadow 0.5s ease;
+            transition: all 0.3s ease;
             backdrop-filter: blur(12px);
+            animation: panel-pulse-glitch 4s infinite;
         }
 
-        /* Aksen Tech di sudut panel (Pengganti border pelangi) */
-        .widget-panel::after {
+        @keyframes panel-pulse-glitch {
+            0%, 100% { 
+                border-color: rgba(0, 255, 255, 0.2); 
+                box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 255, 255, 0.05);
+            }
+            50% {
+                border-color: rgba(0, 255, 255, 0.6);
+                box-shadow: 0 0 25px rgba(0, 255, 255, 0.2), inset 0 0 10px rgba(0, 255, 255, 0.1);
+            }
+            92% { transform: translate(0,0); }
+            93% { transform: translate(-2px, 1px); border-color: rgba(255, 0, 85, 0.5); box-shadow: 0 0 10px rgba(255, 0, 85, 0.4); }
+            94% { transform: translate(2px, -1px); border-color: rgba(0, 255, 255, 0.8); }
+            95% { transform: translate(0,0); }
+        }
+
+        /* 1. CORNER BRACKETS (Siku Taktis Tebal di 4 Sudut) */
+        .widget-panel::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10;
             pointer-events: none;
+            
+            /* Gradient Borders for Corners (Thick 3px) */
             background:
-                linear-gradient(to right, var(--hud-primary) 2px, transparent 2px) 0 0,
-                linear-gradient(to bottom, var(--hud-primary) 2px, transparent 2px) 0 0,
-                linear-gradient(to left, var(--hud-primary) 2px, transparent 2px) 100% 100%,
-                linear-gradient(to top, var(--hud-primary) 2px, transparent 2px) 100% 100%;
-            background-size: 10px 10px;
+                linear-gradient(to right, var(--hud-primary) 3px, transparent 3px) 0 0,
+                linear-gradient(to bottom, var(--hud-primary) 3px, transparent 3px) 0 0,
+                linear-gradient(to left, var(--hud-primary) 3px, transparent 3px) 100% 0,
+                linear-gradient(to bottom, var(--hud-primary) 3px, transparent 3px) 100% 0,
+                linear-gradient(to right, var(--hud-primary) 3px, transparent 3px) 0 100%,
+                linear-gradient(to top, var(--hud-primary) 3px, transparent 3px) 0 100%,
+                linear-gradient(to left, var(--hud-primary) 3px, transparent 3px) 100% 100%,
+                linear-gradient(to top, var(--hud-primary) 3px, transparent 3px) 100% 100%;
+                
+            background-size: 20px 20px; /* Ukuran Siku */
             background-repeat: no-repeat;
-            opacity: 0.6;
+            
+            animation: bracket-pulse 2s infinite alternate;
+        }
+        
+        @keyframes bracket-pulse {
+            0% {
+                filter: drop-shadow(0 0 2px var(--hud-primary)); opacity: 0.5;
+            }
+            100% {
+                filter: drop-shadow(0 0 8px var(--hud-primary)); opacity: 1;
+            }
         }
 
-        /* EFEK GRID BERGERAK DI BACKGROUND PANEL */
-        .widget-panel::before {
+        /* 2. MOVING GRID BACKGROUND (Latar Belakang Grid Bergerak) */
+        .widget-panel::after {
             content: '';
             position: absolute;
             top: -50%;
@@ -145,16 +180,11 @@
             width: 200%;
             height: 200%;
             background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 20px 20px;
+            background-size: 30px 30px; /* Grid lebih besar */
             transform: rotate(15deg);
             animation: grid-pan 20s linear infinite;
             z-index: 0;
             pointer-events: none;
-        }
-
-        .widget-panel>* {
-            position: relative;
-            z-index: 2;
         }
 
         @keyframes grid-pan {
@@ -170,16 +200,24 @@
         .widget-title {
             font-size: 1.1rem;
             font-weight: 700;
-            color: var(--hud-primary);
-            background: linear-gradient(90deg, var(--hud-glow), transparent);
-            border-left: 4px solid var(--hud-primary);
-            padding: 0.4rem 0.8rem;
+            color: #000; /* Teks Hitam agar kontras */
+            background: var(--hud-primary); /* Background Solid Cyan */
+            padding: 0.2rem 0.8rem;
             margin-bottom: 0.8rem;
             text-shadow: none;
             letter-spacing: 3px;
             text-transform: uppercase;
             display: flex;
             align-items: center;
+            /* Potongan Sudut Header */
+            clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%);
+            box-shadow: 0 0 15px var(--hud-primary);
+            animation: title-pulse 3s infinite alternate;
+        }
+
+        @keyframes title-pulse {
+            0% { box-shadow: 0 0 10px var(--hud-primary); }
+            100% { box-shadow: 0 0 25px var(--hud-primary), 0 0 5px white; }
         }
 
         @keyframes text-flicker {
@@ -509,6 +547,59 @@
             text-shadow: -3px 0 #00FFFF, 3px 0 #ac00ac, 0 0 15px #FF00FF;
             animation: glitch-anim 3s infinite ease-in-out alternate-reverse;
             text-transform: uppercase;
+        }
+
+        @keyframes glitch-anim {
+            0% { text-shadow: -2px 3px 0 #ff0055, 2px -3px 0 #00ffff; transform: translate(0); }
+            20% { text-shadow: 2px -3px 0 #ff0055, -2px 3px 0 #00ffff; transform: translate(-2px, 2px); }
+            40% { text-shadow: -2px 3px 0 #ff0055, 2px -3px 0 #00ffff; transform: translate(2px, -2px); }
+            60% { text-shadow: 2px -3px 0 #ff0055, -2px 3px 0 #00ffff; transform: translate(-2px, 2px); }
+            80% { text-shadow: -2px 3px 0 #ff0055, 2px -3px 0 #00ffff; transform: translate(2px, -2px); }
+            100% { text-shadow: 2px -3px 0 #ff0055, -2px 3px 0 #00ffff; transform: translate(0); }
+        }
+
+        /* CONTAINER GLITCH EFFECT */
+        .glitch-active {
+            position: relative;
+        }
+        .glitch-active::before,
+        .glitch-active::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: inherit;
+            pointer-events: none;
+            z-index: 20;
+            opacity: 0.5;
+        }
+        .glitch-active::before {
+            background-color: rgba(255, 0, 85, 0.3);
+            animation: glitch-anim-1 0.3s infinite linear alternate-reverse;
+            mix-blend-mode: hard-light;
+        }
+        .glitch-active::after {
+            background-color: rgba(0, 255, 255, 0.3);
+            animation: glitch-anim-2 0.3s infinite linear alternate-reverse;
+            mix-blend-mode: hard-light;
+        }
+        @keyframes glitch-anim-1 {
+            0% { clip-path: inset(20% 0 80% 0); transform: translate(-5px, 0); }
+            20% { clip-path: inset(60% 0 10% 0); transform: translate(5px, 0); }
+            40% { clip-path: inset(40% 0 50% 0); transform: translate(-5px, 0); }
+            60% { clip-path: inset(80% 0 5% 0); transform: translate(5px, 0); }
+            80% { clip-path: inset(10% 0 70% 0); transform: translate(-5px, 0); }
+            100% { clip-path: inset(30% 0 50% 0); transform: translate(5px, 0); }
+        }
+        @keyframes glitch-anim-2 {
+            0% { clip-path: inset(10% 0 60% 0); transform: translate(5px, 0); }
+            20% { clip-path: inset(30% 0 20% 0); transform: translate(-5px, 0); }
+            40% { clip-path: inset(70% 0 10% 0); transform: translate(5px, 0); }
+            60% { clip-path: inset(20% 0 50% 0); transform: translate(-5px, 0); }
+            80% { clip-path: inset(60% 0 30% 0); transform: translate(5px, 0); }
+            100% { clip-path: inset(50% 0 40% 0); transform: translate(-5px, 0); }
         }
 
         .fancy-header {
