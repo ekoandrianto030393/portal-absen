@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         initLineChart();
         updateChartFilter();
         loadSignatureConfig(); // Load setting tanda tangan saat start
+        setupSidebarToggle(); // [NEW] Init Sidebar Toggle
     });
 
     // AUTO REFRESH (Setiap 60 Detik) - Fitur Canggih
@@ -611,6 +612,8 @@ async function loadEmployees() {
     const countSpan = document.getElementById('total-emp-count');
     grid.innerHTML = '<div class="col-span-full text-center text-slate-400 italic py-8">Memuat direktori...</div>';
 
+    let corruptCount = 0; // [NEW] Hitung jumlah data rusak
+
     try {
         const response = await fetch(`${API_BASE}/karyawan/descriptors?_t=${Date.now()}`);
         const result = await response.json();
@@ -624,6 +627,48 @@ async function loadEmployees() {
             employees.forEach(emp => {
                 // Gunakan foto asli jika ada, jika tidak pakai avatar UI
                 const photoSrc = emp.foto ? `data:image/jpeg;base64,${emp.foto}` : `https://ui-avatars.com/api/?name=${emp.nama}&background=10b981&color=fff`;
+
+                // [NEW] Hitung Jumlah Sampel Wajah
+                let sampleCount = 0;
+                let isCorrupt = false; // Flag untuk data rusak
+
+                if (Array.isArray(emp.face_descriptor)) {
+                    if (emp.face_descriptor.length > 0 && Array.isArray(emp.face_descriptor[0])) {
+                        sampleCount = emp.face_descriptor.length; // Multi Sample
+                        // Validasi sampel pertama
+                        if (emp.face_descriptor[0].length !== 128) isCorrupt = true;
+                    } else if (emp.face_descriptor.length > 0) {
+                        sampleCount = 1; // Single Sample (Legacy)
+                        // Validasi panjang array harus 128
+                        if (emp.face_descriptor.length !== 128) isCorrupt = true;
+                    }
+                } else {
+                    // Jika bukan array (misal null/object kosong), anggap 0
+                    sampleCount = 0;
+                }
+                
+                // Cek jika sampel ada tapi terdeteksi corrupt
+                if (sampleCount > 0 && isCorrupt) {
+                    sampleCount = -1; // Tandai error
+                    corruptCount++; // [NEW] Increment counter
+                    // [DEBUG] Tampilkan detail data rusak di Console (Tekan F12 di browser)
+                    console.group(`🚨 DATA RUSAK DITEMUKAN: ${emp.nama}`);
+                    console.error(`ID: ${emp.id_karyawan}`);
+                    console.error("Raw Descriptor:", emp.face_descriptor);
+                    console.groupEnd();
+                }
+
+                // [NEW] Warna Badge Sampel (Indikator Kualitas Data)
+                let sampleBadgeColor = 'bg-red-50 text-red-600 border-red-100'; // 0 Sampel (Buruk)
+                if (sampleCount >= 5) sampleBadgeColor = 'bg-emerald-50 text-emerald-600 border-emerald-100'; // Sangat Baik
+                else if (sampleCount >= 3) sampleBadgeColor = 'bg-blue-50 text-blue-600 border-blue-100'; // Baik
+                else if (sampleCount >= 1) sampleBadgeColor = 'bg-amber-50 text-amber-600 border-amber-100'; // Cukup
+
+                let sampleLabel = `${sampleCount} Sampel`;
+                if (sampleCount === -1 || isCorrupt) {
+                    sampleLabel = "DATA RUSAK";
+                    sampleBadgeColor = "bg-red-600 text-white border-red-700 animate-pulse font-bold";
+                }
 
                 const card = `
                     <div class="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 group border border-slate-200 overflow-hidden relative flex flex-col">
@@ -643,8 +688,12 @@ async function loadEmployees() {
                                 <div class="flex justify-between items-start">
                                     <div onclick="openModal('${emp.id_karyawan}')" class="cursor-pointer flex-1 min-w-0 mr-2">
                                         <h4 class="text-slate-800 font-bold truncate text-base group-hover:text-indigo-600 transition-colors" title="${escapeHtml(emp.nama)}">${escapeHtml(emp.nama)}</h4>
-                                        <div class="flex items-center gap-2 mt-1">
+                                        <div class="flex flex-wrap items-center gap-2 mt-1">
                                             <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wide truncate max-w-full">${escapeHtml(emp.jabatan || 'Staff')}</span>
+                                            <!-- [NEW] Badge Sampel Wajah -->
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${sampleBadgeColor} border uppercase tracking-wide truncate" title="Status Data Wajah">
+                                                <i class="fa-solid fa-fingerprint mr-1"></i>${sampleLabel}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -657,6 +706,9 @@ async function loadEmployees() {
                                     
                                     <!-- Actions -->
                                     <div class="flex gap-1">
+                                        <button onclick="window.location.href='admin.html?id=${emp.id_karyawan}&name=${encodeURIComponent(emp.nama)}&role=${encodeURIComponent(emp.jabatan || '')}'" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all border border-transparent hover:border-emerald-100" title="Rekam Wajah / Update Descriptor">
+                                            <i class="fa-solid fa-camera text-xs"></i>
+                                        </button>
                                         <button onclick="openEditModal('${emp.id_karyawan}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100" title="Edit">
                                             <i class="fa-solid fa-pen-to-square text-xs"></i>
                                         </button>
@@ -671,6 +723,25 @@ async function loadEmployees() {
                 `;
                 grid.innerHTML += card;
             });
+
+            // [NEW] Tampilkan Banner Peringatan & Tombol Hapus Massal jika ada data rusak
+            if (corruptCount > 0) {
+                const banner = `
+                    <div class="col-span-full bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 animate-pulse">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                            <div>
+                                <p class="font-bold text-lg">PERINGATAN: Ditemukan ${corruptCount} Data Wajah Rusak!</p>
+                                <p class="text-sm">Data ini dapat menyebabkan kesalahan deteksi (False Positive). Segera hapus dan rekam ulang.</p>
+                            </div>
+                        </div>
+                        <button onclick="deleteAllCorruptData()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded shadow-lg transition-all transform hover:scale-105 flex items-center gap-2">
+                            <i class="fa-solid fa-trash-can"></i> Hapus Semua (${corruptCount})
+                        </button>
+                    </div>
+                `;
+                grid.insertAdjacentHTML('afterbegin', banner);
+            }
 
             // Fitur Pencarian Sederhana
             document.getElementById('search-employee').addEventListener('input', (e) => {
@@ -706,6 +777,51 @@ async function deleteEmployee(id, nama) {
     } catch(e) {
         showToast(`Error: ${e.message}`, 'error');
     }
+}
+
+// --- FITUR: HAPUS SEMUA DATA RUSAK (MASS DELETE) ---
+async function deleteAllCorruptData() {
+    if (!confirm(`PERINGATAN KERAS:\n\nAnda akan menghapus SEMUA pegawai yang terdeteksi memiliki data wajah rusak.\nTindakan ini TIDAK DAPAT DIBATALKAN.\n\nApakah Anda yakin ingin melanjutkan?`)) return;
+
+    // Filter pegawai yang datanya rusak (Logika sama dengan loadEmployees)
+    const corruptEmployees = globalEmployees.filter(emp => {
+        let isCorrupt = false;
+        let sampleCount = 0;
+
+        if (Array.isArray(emp.face_descriptor)) {
+            if (emp.face_descriptor.length > 0 && Array.isArray(emp.face_descriptor[0])) {
+                sampleCount = emp.face_descriptor.length;
+                if (emp.face_descriptor[0].length !== 128) isCorrupt = true;
+            } else if (emp.face_descriptor.length > 0) {
+                sampleCount = 1;
+                if (emp.face_descriptor.length !== 128) isCorrupt = true;
+            }
+        }
+        
+        return sampleCount > 0 && isCorrupt;
+    });
+
+    if (corruptEmployees.length === 0) {
+        showToast("Tidak ada data rusak yang ditemukan.", "info");
+        return;
+    }
+
+    showToast(`Memproses penghapusan ${corruptEmployees.length} data...`, "info");
+    let successCount = 0;
+
+    for (const emp of corruptEmployees) {
+        try {
+            const response = await fetch(`${API_BASE}/karyawan/${emp.id_karyawan}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (result.success) successCount++;
+        } catch (e) {
+            console.error(`Gagal hapus ${emp.nama}`, e);
+        }
+    }
+
+    showToast(`Selesai! Berhasil menghapus ${successCount} dari ${corruptEmployees.length} data rusak.`, "success");
+    loadEmployees(); // Refresh halaman
+    loadOverviewData(); // Update statistik
 }
 
 // --- FITUR: EDIT EMPLOYEE ---
@@ -1020,6 +1136,41 @@ function toggleFullscreen() {
             document.exitFullscreen();
             document.getElementById('icon-fullscreen').classList.replace('fa-compress', 'fa-expand');
         }
+    }
+}
+
+// --- FITUR: SIDEBAR TOGGLE (Full Width) ---
+function toggleSidebar() {
+    const nav = document.getElementById('nav-overview');
+    // Coba cari elemen sidebar (prioritas: tag <aside>, lalu parent dari nav)
+    const sidebar = document.querySelector('aside') || (nav ? nav.parentElement.parentElement : null);
+    
+    if (sidebar) {
+        // [FIX] Gunakan margin negatif (-ml-64) agar layout konten ikut bergeser (Full Width)
+        // Tambahkan class transisi agar animasi halus
+        sidebar.classList.add('transition-all', 'duration-300', 'ease-in-out');
+        
+        // Toggle margin kiri negatif sebesar lebarnya (w-64 = 16rem)
+        sidebar.classList.toggle('-ml-64');
+        
+        // Hapus class translate lama jika ada (cleanup)
+        sidebar.classList.remove('translate-x-[-100%]');
+
+        // Trigger resize event untuk memperbaiki layout grafik Chart.js
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+    }
+}
+
+function setupSidebarToggle() {
+    const title = document.getElementById('page-title');
+    if (title && title.parentNode && !document.getElementById('btn-sidebar-toggle')) {
+        const btn = document.createElement('button');
+        btn.id = 'btn-sidebar-toggle';
+        btn.className = 'mr-4 text-slate-500 hover:text-blue-600 transition-colors p-1 rounded hover:bg-slate-100';
+        btn.innerHTML = '<i class="fa-solid fa-bars text-xl"></i>';
+        btn.onclick = toggleSidebar;
+        btn.title = "Sembunyikan Menu (Full Width)";
+        title.parentNode.insertBefore(btn, title);
     }
 }
 

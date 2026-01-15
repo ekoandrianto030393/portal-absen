@@ -69,6 +69,14 @@ let confidenceHistory = []; // Untuk grafik live
 let recognition; // Variabel untuk Voice Recognition
 let faceParticles = []; // NEW: Global particle array
 
+// --- STABILIZER VARS (ANTI-ACAK) ---
+let recognitionHistory = []; // Menyimpan hasil deteksi beberapa frame terakhir
+const HISTORY_LIMIT = 5;     // [UPDATE] Turunkan ke 5 agar nama lebih CEPAT muncul (Responsif)
+const MIN_CONSENSUS = 3;     // [UPDATE] Minimal 3 frame konsisten agar hasil AKURAT (Stabil)
+let lockGraceCounter = 0;    // [NEW] Counter untuk menahan hasil lama (Anti-Flicker)
+let lastStableResult = null; // [NEW] Menyimpan hasil valid terakhir
+let isLastFaceCentered = false; // [NEW] Status posisi wajah frame sebelumnya (untuk warna target)
+
 // --- LIVENESS DETECTION ENGINE (ANTI-SPOOFING) ---
 class LivenessDetector {
     constructor() {
@@ -286,7 +294,7 @@ if (stealthToggle) {
     });
 }
 
-let FACE_MATCHING_THRESHOLD = 0.44; // Ditingkatkan (0.36 -> 0.)
+let FACE_MATCHING_THRESHOLD = 0.40; // [UPDATE] Diperketat ke 0.40 untuk mengurangi False Positive (Hasil Acak)
 // --- DEFINISI WARNA (Futuristik) ---
 const PROFESSIONAL_STATUS_COLOR = '#00FF7F'; 
 const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
@@ -731,6 +739,129 @@ function drawTacticalHUD(ctx, box, color) {
     ctx.restore();
 }
 
+// --- FITUR BARU: VISUAL GUIDE OVERLAY (Lingkaran Target) ---
+function drawGuideOverlay(ctx, w, h, isCentered = false) {
+    const cx = w / 2;
+    const cy = h / 2;
+    const radius = Math.min(w, h) * 0.28; // Ukuran target (sesuai area deteksi optimal)
+
+    // [UPDATE] Logika Warna Dinamis (Cyan = Standby, Hijau = Pas)
+    const baseColor = isCentered ? '0, 255, 127' : '0, 255, 255'; // RGB: SpringGreen vs Cyan
+    const strokeStyle = `rgba(${baseColor}, ${isCentered ? 0.8 : 0.15})`; // Lebih terang jika pas
+
+    ctx.save();
+    // 1. Lingkaran Target (Putus-putus)
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = strokeStyle; 
+    ctx.lineWidth = 2;
+    ctx.setLineDash([15, 15]); 
+    ctx.stroke();
+
+    // 2. Crosshair Tengah
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 15, cy); ctx.lineTo(cx + 15, cy);
+    ctx.moveTo(cx, cy - 15); ctx.lineTo(cx, cy + 15);
+    ctx.stroke();
+
+    // 3. Teks Panduan
+    const blinkAlpha = 0.5 + Math.abs(Math.sin(Date.now() / 500)) * 0.5; // [UPDATE] Opacity lebih terang (0.5 - 1.0)
+    ctx.font = 'bold 16px "Courier New", monospace'; // [UPDATE] Font lebih besar & tebal
+    
+    // [NEW] Background Kotak Hitam Transparan agar lebih terbaca
+    // [UPDATE] Teks berubah jika posisi pas
+    const text = isCentered ? "POSISI PAS - TAHAN" : "POSISIKAN WAJAH DI SINI";
+    
+    const textMetrics = ctx.measureText(text);
+    const boxWidth = textMetrics.width + 40; // Beri padding horizontal
+    const boxHeight = 32;
+    const boxX = cx - (boxWidth / 2);
+    const boxY = cy + radius + 35 - 24; // Posisikan di atas baseline teks
+
+    ctx.fillStyle = `rgba(0, 10, 20, ${0.7 * blinkAlpha})`; // Warna background sinkron dengan kedipan
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+    
+    // [UPDATE] Warna Teks: Hijau jika pas, Kuning jika belum
+    ctx.fillStyle = isCentered ? `rgba(0, 255, 127, ${blinkAlpha})` : `rgba(255, 255, 0, ${blinkAlpha})`;
+    ctx.textAlign = 'center';
+    ctx.fillText(text, cx, cy + radius + 35);
+
+    // 4. Panah Animasi (Pointing Inward)
+    // Jarak dasar dari lingkaran + animasi bounce (gerak 8px)
+    const arrowDist = radius + 20; 
+    const arrowBounce = Math.abs(Math.sin(Date.now() / 500)) * 8; 
+    const arrowSize = 8; // [UPDATE] Panah sedikit lebih besar
+
+    const drawPointer = (angle) => {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angle);
+        ctx.translate(0, -(arrowDist + arrowBounce)); // Pindah ke posisi luar
+        
+        // Gambar Segitiga
+        ctx.beginPath();
+        ctx.moveTo(0, 0); // Ujung (menunjuk ke pusat)
+        ctx.lineTo(-arrowSize, -arrowSize * 1.5); 
+        ctx.lineTo(arrowSize, -arrowSize * 1.5); 
+        ctx.closePath();
+        // [UPDATE] Warna Panah mengikuti status (Hijau/Kuning)
+        ctx.fillStyle = isCentered ? `rgba(0, 255, 127, ${blinkAlpha})` : `rgba(255, 255, 0, ${blinkAlpha})`;
+        ctx.fill();
+        ctx.restore();
+    };
+
+    // Gambar 4 arah
+    drawPointer(0);            // Atas
+    drawPointer(Math.PI / 2);  // Kanan
+    drawPointer(Math.PI);      // Bawah
+    drawPointer(-Math.PI / 2); // Kiri
+
+    ctx.restore();
+}
+
+// --- FITUR BARU: DYNAMIC SCREEN CORNERS (Siku-Siku Layar) ---
+function drawDynamicScreenCorners(ctx, w, h, box, color) {
+    const pad = 30;  // Jarak dasar dari pinggir layar
+    const len = 40;  // Panjang garis siku
+    let offX = 0, offY = 0;
+    
+    // Animasi Breathing saat Idle (Bergerak pelan jika tidak ada wajah)
+    const breathe = box ? 0 : Math.sin(Date.now() / 800) * 5;
+
+    if (box) {
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+        // Parallax Effect: Sudut bergerak MENGIKUTI posisi wajah (Dynamic Framing)
+        // Memberikan efek kedalaman 3D seolah HUD sedang tracking wajah
+        offX = ((cx - w/2) / (w/2)) * 25; 
+        offY = ((cy - h/2) / (h/2)) * 25;
+    }
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 15;
+    ctx.lineCap = 'square';
+
+    const drawCorner = (x, y, dx, dy) => {
+        ctx.beginPath();
+        ctx.moveTo(x + (dx * len), y); // Garis Horizontal
+        ctx.lineTo(x, y);              // Titik Sudut
+        ctx.lineTo(x, y + (dy * len)); // Garis Vertikal
+        ctx.stroke();
+    };
+
+    drawCorner(pad + offX - breathe, pad + offY - breathe, 1, 1);       // Kiri Atas
+    drawCorner(w - pad + offX + breathe, pad + offY - breathe, -1, 1);  // Kanan Atas
+    drawCorner(w - pad + offX + breathe, h - pad + offY + breathe, -1, -1); // Kanan Bawah
+    drawCorner(pad + offX - breathe, h - pad + offY + breathe, 1, -1);  // Kiri Bawah
+
+    ctx.restore();
+}
+
 // --- FITUR BARU: TARGET LOCK HUD ---
 function drawTargetLock(ctx, x, y, radius) {
     const time = Date.now() / 1000;
@@ -1111,12 +1242,12 @@ async function runBootSequence() {
 }
 
 // --- NEW FEATURE: SMART HUD LABEL ---
-function drawSmartHUD(ctx, box, label, color, confidence, emotion = 'ANALYZING') {
+function drawSmartHUD(ctx, box, label, color, confidence, emotion = 'ANALYZING', gender = '-', age = '-') {
     const padding = 10;
     const tagX = box.x + box.width + 30; // Posisi di kanan wajah
     const tagY = box.y;
     const hudWidth = 180;
-    const hudHeight = 70;
+    const hudHeight = 90; // [UPDATE] Dipertinggi agar muat info Gender/Umur
 
     // 1. Garis Penghubung (Connector Line)
     ctx.beginPath();
@@ -1161,6 +1292,10 @@ function drawSmartHUD(ctx, box, label, color, confidence, emotion = 'ANALYZING')
     ctx.fillStyle = '#00FFFF';
     ctx.font = '10px "Courier New", monospace';
     ctx.fillText(`PSYCHE: ${emotion.toUpperCase()}`, tagX + 15, tagY + 75);
+
+    // 8. Gender & Age Readout (NEW)
+    ctx.fillStyle = '#FFD700'; // Warna Emas
+    ctx.fillText(`BIO: ${gender.toUpperCase()} / ${age} YRS`, tagX + 15, tagY + 87);
 }
 
 // =============================================================================
@@ -1777,8 +1912,23 @@ async function loadLabeledImages() {
 
             // 2. Hanya masukkan ke Engine Deteksi jika punya data wajah
             if (item.face_descriptor) {
-                const descriptorArray = typeof item.face_descriptor === 'string' ? JSON.parse(item.face_descriptor) : item.face_descriptor;
-                descriptors.push(new faceapi.LabeledFaceDescriptors(item.id_karyawan, [new Float32Array(descriptorArray)]));
+                const rawData = typeof item.face_descriptor === 'string' ? JSON.parse(item.face_descriptor) : item.face_descriptor;
+                let float32Arrays = [];
+
+                // Cek apakah Single Descriptor (Legacy) atau Multi Descriptor (New)
+                if (Array.isArray(rawData)) {
+                    if (rawData.length > 0 && typeof rawData[0] === 'number') {
+                        // Format Lama: [0.1, 0.2, ...]
+                        float32Arrays.push(new Float32Array(rawData));
+                    } else if (rawData.length > 0 && Array.isArray(rawData[0])) {
+                        // Format Baru: [[0.1, ...], [0.2, ...]]
+                        rawData.forEach(d => float32Arrays.push(new Float32Array(d)));
+                    }
+                }
+
+                if (float32Arrays.length > 0) {
+                    descriptors.push(new faceapi.LabeledFaceDescriptors(item.id_karyawan, float32Arrays));
+                }
             }
         });
 
@@ -1935,7 +2085,8 @@ async function initializeApp() {
             faceapi.nets.tinyFaceDetector.loadFromUri('./models'),
             faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
             faceapi.nets.faceRecognitionNet.loadFromUri('./models'),
-            faceapi.nets.faceExpressionNet.loadFromUri('./models') // NEW: Load Emotion Model
+            faceapi.nets.faceExpressionNet.loadFromUri('./models'), // NEW: Load Emotion Model
+            faceapi.nets.ageGenderNet.loadFromUri('./models') // [NEW] Load Age & Gender Model
         ]);
         
         logSystem('Neural Network Models Loaded.', 'text-green-500');
@@ -1999,15 +2150,20 @@ async function detectFace() {
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
 
+    // [NEW] Gambar Lingkaran Target di Tengah Layar (Panduan Posisi)
+    // [UPDATE] Gunakan status frame sebelumnya agar warna responsif
+    drawGuideOverlay(context, canvas.width, canvas.height, isLastFaceCentered);
+
     if (isProcessing) return; // Jangan lakukan apapun jika sedang memproses absensi
     if (video.paused || video.ended || !faceapi.nets.tinyFaceDetector.params || !labeledDescriptors) return;
     
     const displaySize = { width: canvas.width, height: canvas.height };
 
     // LOW LIGHT OPTIMIZATION: scoreThreshold diturunkan (0.50 -> 0.30) agar wajah gelap/samar tetap terdeteksi
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.50 }))
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.50 })) // [UPDATE] Turunkan threshold deteksi agar wajah lebih mudah tertangkap, filter dilakukan saat matching
 	.withFaceLandmarks()
     .withFaceExpressions() // NEW: Detect Expressions
+    .withAgeAndGender() // [NEW] Detect Age & Gender
     .withFaceDescriptor();
 
     // Efek transisi ketika wajah terdeteksi dan frame aktif
@@ -2035,6 +2191,10 @@ async function detectFace() {
         const expressions = resizedDetections.expressions;
         const sortedEmotions = Object.keys(expressions).sort((a, b) => expressions[b] - expressions[a]);
         const dominantEmotion = sortedEmotions[0] || 'NEUTRAL';
+
+        // [NEW] Extract Gender & Age
+        const gender = resizedDetections.gender || '-';
+        const age = Math.round(resizedDetections.age) || 0;
 
         // --- FITUR: STABILISASI KAMERA (NO ZOOM) ---
         // Zoom dihapus agar resolusi tajam & orientasi stabil seperti HUD Taktis.
@@ -2076,10 +2236,24 @@ async function detectFace() {
         let confidence = 0;
         let recognizedId = null;
         let employee = null;
+        let bestMatch = null; // Define bestMatch scope
 
-        if (labeledDescriptors && labeledDescriptors.length > 0) {
+        // [UPDATE] Filter Kualitas: Hanya proses jika wajah cukup besar (> 90px) agar AKURAT & TEPAT SASARAN
+        // Ini mencegah deteksi orang yang lewat di kejauhan (background noise)
+        const isQualityFace = box.width > 90;
+        
+        // [NEW] Filter Posisi: Pastikan wajah di area tengah (Tepat Sasaran)
+        // Mencegah deteksi wajah orang iseng di pinggir layar
+        const centerX = box.x + box.width / 2;
+        const imgCenter = displaySize.width / 2;
+        const isCentered = Math.abs(centerX - imgCenter) < (displaySize.width * 0.35); // Toleransi 35% dari tengah
+
+        // [UPDATE] Update status global: Hijau jika Cukup Besar (Dekat) DAN Di Tengah
+        isLastFaceCentered = isQualityFace && isCentered;
+
+        if (labeledDescriptors && labeledDescriptors.length > 0 && isQualityFace && isCentered) {
             const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, FACE_MATCHING_THRESHOLD);
-            const bestMatch = faceMatcher.findBestMatch(detections.descriptor);
+            bestMatch = faceMatcher.findBestMatch(detections.descriptor);
             const matchDistance = bestMatch.distance;
             
             // Hitung Confidence
@@ -2091,17 +2265,85 @@ async function detectFace() {
             if (confidenceHistory.length > 50) confidenceHistory.shift();
             updateSystemDiagnostics(confidence);
 
-            if (bestMatch.label !== 'unknown' && matchDistance <= FACE_MATCHING_THRESHOLD) {
-                recognizedId = bestMatch.label;
-                employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
-                faceLabel = employee.nama;
-                faceColor = '#00FF7F'; // Hijau (Match)
-            }
         } else {
             // DB Offline
             faceLabel = 'DB OFFLINE';
             faceColor = '#FF00FF';
             updateSystemDiagnostics(0);
+            
+            // Beri instruksi jika wajah terlalu jauh
+            if (!isQualityFace) {
+                faceLabel = "MOVE CLOSER"; 
+                faceColor = "#FFD700"; // Kuning (Peringatan)
+            } else if (!isCentered) {
+                // [NEW] Instruksi jika wajah di pinggir
+                faceLabel = "CENTER FACE";
+                faceColor = "#00FFFF"; // Cyan
+                bestMatch = null; // Jangan diproses voting
+            }
+        }
+
+        // --- LOGIKA STABILIZER (VOTING SYSTEM) ---
+        // Mencegah hasil berubah-ubah (flickering) dengan mengambil suara terbanyak dari N frame terakhir
+        if (bestMatch) {
+            // [UPDATE] Turbo Match: Jika sangat mirip (< 0.25), langsung isi penuh history agar INSTAN
+            if (bestMatch.distance < 0.25) {
+                // Push berkali-kali agar langsung menang voting (Bypass antrian)
+                for(let i=0; i<MIN_CONSENSUS; i++) recognitionHistory.push(bestMatch.label);
+            }
+            recognitionHistory.push(bestMatch.label);
+            
+            // Jaga ukuran history buffer
+            while (recognitionHistory.length > HISTORY_LIMIT) recognitionHistory.shift();
+        } else {
+            // Jika wajah hilang/tidak terdeteksi, reset history perlahan atau langsung
+            if (recognitionHistory.length > 0) recognitionHistory.shift();
+        }
+
+        // Hitung Modus (Label yang paling sering muncul)
+        const counts = {};
+        let maxCount = 0;
+        let stabilizedLabel = 'unknown';
+
+        recognitionHistory.forEach(label => {
+            counts[label] = (counts[label] || 0) + 1;
+            if (counts[label] > maxCount) {
+                maxCount = counts[label];
+                stabilizedLabel = label;
+            }
+        });
+
+        // Hanya anggap valid jika konsensus terpenuhi
+        if (stabilizedLabel !== 'unknown' && maxCount >= MIN_CONSENSUS) {
+            recognizedId = stabilizedLabel;
+            
+            // [NEW] Smart Locking: Simpan hasil valid & reset grace period
+            lastStableResult = recognizedId;
+            lockGraceCounter = 12; // Tahan hasil selama ~1.2 detik jika wajah goyang/hilang
+            
+            employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
+            faceLabel = employee.nama;
+            faceColor = '#00FF7F'; // Hijau (Match)
+        } else {
+            // [NEW] Grace Period Logic (Anti-Acak)
+            // Jika hasil jadi unknown tapi kita punya lock baru-baru ini, pertahankan hasil lama sebentar
+            if (lockGraceCounter > 0 && lastStableResult) {
+                recognizedId = lastStableResult;
+                lockGraceCounter--; // Kurangi durasi tahan
+                
+                employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
+                faceLabel = employee.nama; // Tetap tampilkan nama (Stabil)
+                faceColor = '#00FF7F';
+            } else {
+                // Benar-benar unknown atau grace period habis
+                recognizedId = null;
+                lastStableResult = null;
+                
+                if (maxCount > 1) {
+                    faceLabel = "VERIFYING...";
+                    faceColor = "#00FFFF"; 
+                }
+            }
         }
 
         // 2. Cek Liveness (Gerakan/Kedipan) secara background
@@ -2201,7 +2443,11 @@ async function detectFace() {
         drawTacticalHUD(context, box, faceColor);
         
         // Gunakan Smart HUD baru
-        drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion);
+        drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion, gender, age);
+        
+        // [NEW] Gambar Siku-Siku Layar yang Bergerak (Dynamic Corners)
+        drawDynamicScreenCorners(context, canvas.width, canvas.height, box, faceColor);
+
         drawARDataPoints(context, box, faceColor); // Panggil fungsi AR Data Points
         
         // Gambar Grafik Live di bawah HUD
@@ -2224,6 +2470,9 @@ async function detectFace() {
         resetTargetData();
         isTargetLocked = false; // Reset status lock
         updateSystemDiagnostics(0);
+        // [UPDATE] Jangan langsung kosongkan history agar Grace Period bekerja
+        if (recognitionHistory.length > 0) recognitionHistory.shift(); 
+        
         // Reset transform (tetap mirror)
         video.style.transform = 'scaleX(-1)';
         setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
@@ -2236,6 +2485,10 @@ async function detectFace() {
         
         // Draw Idle Radar when no face detected
         drawIdleRadar(context, canvas.width / 2, canvas.height / 2, canvas.height / 3);
+        isLastFaceCentered = false; // [UPDATE] Reset status jika wajah hilang
+        
+        // [NEW] Gambar Siku-Siku Layar (Mode Idle/Breathing)
+        drawDynamicScreenCorners(context, canvas.width, canvas.height, null, '#00FFFF');
     }
 }
 

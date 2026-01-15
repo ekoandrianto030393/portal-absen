@@ -75,7 +75,15 @@ video.addEventListener('play', () => {
                 resizedDetections.forEach(det => {
                     const { x, y, width, height } = det.detection.box;
                     const detScore = Math.round(det.detection.score * 100);
-                    const color = detScore > 80 ? '#39FF14' : '#00eaff'; // Green if high conf, else Cyan
+                    
+                    // Kriteria Kualitas Wajah
+                    const isHighConf = detScore >= 90; // Naikkan ke 90%
+                    const isCloseEnough = width > 110; // [UPDATE] Batas jarak dilonggarkan (150 -> 110)
+                    const centerX = x + width / 2;
+                    const isCentered = centerX > canvas.width * 0.2 && centerX < canvas.width * 0.8; // [UPDATE] Area tengah diperluas
+
+                    const isQualityOk = isHighConf; // [UPDATE] Hijau jika 90% (Abaikan posisi ketat untuk visual)
+                    const color = isQualityOk ? '#39FF14' : '#00eaff'; // Green if perfect, else Cyan
 
                     ctx.save();
                     
@@ -117,21 +125,31 @@ video.addEventListener('play', () => {
                 thresholdFill.style.width = `${score}%`;
                 thresholdStatus.innerText = `${score}%`;
                 
-                if (score > 80) {
+                // Validasi Kualitas sebelum Register Aktif
+                const isCloseEnough = face.detection.box.width > 110; // [UPDATE] Batas jarak dilonggarkan (180 -> 110)
+                const centerX = face.detection.box.x + face.detection.box.width / 2;
+                const isCentered = centerX > canvas.width * 0.2 && centerX < canvas.width * 0.8; // [UPDATE] Area tengah diperluas
+
+                // [UPDATE] Tombol muncul jika Score >= 90% (Syarat jarak/posisi dibuat opsional)
+                if (score >= 90) {
                     thresholdFill.style.backgroundColor = '#39FF14'; // Green
                     btnRegister.disabled = false;
                     btnRegister.classList.remove('opacity-50', 'cursor-not-allowed');
                     btnText.innerText = "CAPTURE & REGISTER";
                     document.getElementById('faceStatus').innerText = "TARGET LOCKED";
                     document.getElementById('faceStatus').className = "text-lg text-center mt-4 text-green-500 font-bold uppercase";
+                } else if (!isCloseEnough) {
+                    resetBtn("MOJO LEBIH DEKAT (MOVE CLOSER)");
+                } else if (!isCentered) {
+                    resetBtn("POSISIKAN DI TENGAH");
                 } else {
                     thresholdFill.style.backgroundColor = '#00eaff'; // Blue
-                    resetBtn();
+                    resetBtn("HOLD STILL...");
                 }
             } else {
                 thresholdFill.style.width = '0%';
                 thresholdStatus.innerText = '0%';
-                resetBtn();
+                resetBtn("WAITING FOR FACE...");
             }
         }
         // Schedule next frame
@@ -141,12 +159,12 @@ video.addEventListener('play', () => {
     onPlay();
 });
 
-function resetBtn() {
+function resetBtn(msg = "WAITING FOR FACE...") {
     btnRegister.disabled = true;
     btnRegister.classList.add('opacity-50', 'cursor-not-allowed');
-    btnText.innerText = "WAITING FOR FACE...";
-    document.getElementById('faceStatus').innerText = "SEARCHING...";
-    document.getElementById('faceStatus').className = "text-lg text-center mt-4 text-red-500 font-bold uppercase";
+    btnText.innerText = msg;
+    document.getElementById('faceStatus').innerText = msg === "WAITING FOR FACE..." ? "SEARCHING..." : "ADJUST POSITION";
+    document.getElementById('faceStatus').className = "text-lg text-center mt-4 text-amber-500 font-bold uppercase";
 }
 
 /**
@@ -418,7 +436,7 @@ async function saveToServer(id, name, role, descriptor, photo) {
         }
 
         const result = await response.json();
-        if (result.success) log("Server", "Data synced to database ✅");
+        if (result.success) log("Server", result.message || "Data synced to database ✅");
         else log("Server Error", result.message || "Upload failed ❌");
     } catch (error) {
         log("Network", "Gagal koneksi ke server database (Mode Offline).");
@@ -453,3 +471,24 @@ function log(type, message) {
     div.innerHTML = `<span class="text-gray-500">[${new Date().toLocaleTimeString()}]</span> <span class="${type === 'Error' ? 'text-red-500' : 'text-cyan-400'}">${type}: ${message}</span>`;
     logStream.prepend(div);
 }
+
+// --- AUTO-FILL FORM FROM URL PARAMS (Integration with Dashboard) ---
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('id')) {
+        const idField = document.getElementById('regIdKaryawan');
+        const nameField = document.getElementById('regNama');
+        const roleField = document.getElementById('regJabatan');
+
+        if (idField) {
+            idField.value = params.get('id');
+            // Opsional: Kunci field ID agar tidak bisa diubah jika dari dashboard
+            idField.readOnly = true; 
+            idField.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        if (nameField) nameField.value = params.get('name') || '';
+        if (roleField) roleField.value = params.get('role') || '';
+        
+        log("System", `Pre-filled data for ID: ${params.get('id')}`);
+    }
+});

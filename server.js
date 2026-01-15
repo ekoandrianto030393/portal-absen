@@ -5,6 +5,8 @@ const express = require('express');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
 const path = require('path');
+const { exec } = require('child_process'); // [NEW] Untuk menjalankan mysqldump
+const fs = require('fs'); // [NEW] Untuk manajemen file backup
 const app = express();
 const port = 3000;
 
@@ -151,7 +153,14 @@ pool.getConnection((err, connection) => {
                 SEC_TO_TIME(SUM(
                     CASE 
                         WHEN a.jam_keluar IS NOT NULL THEN TIMESTAMPDIFF(SECOND, a.jam_masuk, a.jam_keluar)
-                        WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN GREATEST(0, TIMESTAMPDIFF(SECOND, a.jam_masuk, '${AUTO_PULANG_DEFAULT}'))
+                        WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN
+                            GREATEST(0, TIMESTAMPDIFF(SECOND, a.jam_masuk, 
+                                CASE 
+                                    WHEN DAYOFWEEK(a.tanggal) = 6 THEN '${AUTO_PULANG_JUMAT}' -- Jumat
+                                    WHEN DAYOFWEEK(a.tanggal) = 7 THEN '${AUTO_PULANG_SABTU}' -- Sabtu
+                                    ELSE '${AUTO_PULANG_DEFAULT}'
+                                END
+                            ))
                         ELSE 0 
                     END
                 )) AS total_jam_kerja
@@ -246,22 +255,50 @@ app.post('/register', (req, res) => {
     const base64Data = foto.replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(base64Data, 'base64');
 
-    const sql = `INSERT INTO karyawan (id_karyawan, nama, jabatan, foto, face_descriptor) 
-                 VALUES (?, ?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE 
-                 nama = VALUES(nama), 
-                 jabatan = VALUES(jabatan), 
-                 foto = VALUES(foto), 
-                 face_descriptor = VALUES(face_descriptor)`;
+    // [UPDATE] Logika Multi-Descriptor: Baca dulu data lama, lalu tambahkan yang baru
+    pool.query('SELECT face_descriptor FROM karyawan WHERE id_karyawan = ?', [id_karyawan], (err, rows) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
 
-    // Gunakan pool.query
-    pool.query(sql, [id_karyawan, nama, jabatan, buffer, face_descriptor], (err, result) => {
-        if (err) {
-            console.error('Database Error:', err);
-            return res.status(500).json({ success: false, message: err.message });
+        let descriptorList = [];
+        let newDescriptor;
+        
+        try {
+            newDescriptor = JSON.parse(face_descriptor); // Descriptor baru dari client
+        } catch (e) {
+            return res.status(400).json({ success: false, message: 'Format descriptor invalid' });
         }
-        console.log(`✅ Data tersimpan: ${id_karyawan} - ${nama}`);
-        res.json({ success: true, message: 'Berhasil disimpan' });
+
+        if (rows.length > 0 && rows[0].face_descriptor) {
+            // User sudah ada, ambil data lama
+            try {
+                let currentData = JSON.parse(rows[0].face_descriptor);
+                
+                // Cek apakah format lama (Single Array) atau baru (Array of Arrays)
+                if (Array.isArray(currentData)) {
+                    if (currentData.length > 0 && typeof currentData[0] === 'number') {
+                        descriptorList.push(currentData); // Konversi single ke list
+                    } else if (currentData.length > 0 && Array.isArray(currentData[0])) {
+                        descriptorList = currentData; // Sudah format list
+                    }
+                }
+            } catch (e) { /* Abaikan error parse, mulai dari kosong */ }
+        }
+
+        // Tambahkan descriptor baru ke list
+        descriptorList.push(newDescriptor);
+
+        // Simpan kembali sebagai JSON String
+        const finalDescriptorString = JSON.stringify(descriptorList);
+        
+        const sql = `INSERT INTO karyawan (id_karyawan, nama, jabatan, foto, face_descriptor) VALUES (?, ?, ?, ?, ?)
+                     ON DUPLICATE KEY UPDATE nama=VALUES(nama), jabatan=VALUES(jabatan), foto=VALUES(foto), face_descriptor=VALUES(face_descriptor)`;
+
+        pool.query(sql, [id_karyawan, nama, jabatan, buffer, finalDescriptorString], (err, result) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            
+            console.log(`✅ Data tersimpan: ${id_karyawan} - ${nama} (Total Sampel: ${descriptorList.length})`);
+            res.json({ success: true, message: `Berhasil disimpan. Total sampel wajah: ${descriptorList.length}` });
+        });
     });
 });
 
@@ -983,6 +1020,64 @@ const runAutoFix = () => {
 runAutoFix();
 console.log('✅ Auto-Fix Scheduler: BERFUNGSI 100% (Interval 1 Jam)');
 setInterval(runAutoFix, 3600000); 
+
+// --- SCHEDULER: AUTO BACKUP DATABASE (Setiap Malam jam 02:00) ---
+const BACKUP_DIR = path.join(__dirname, 'backups');
+
+// Pastikan folder backup ada
+if (!fs.existsSync(BACKUP_DIR)){
+    try { fs.mkdirSync(BACKUP_DIR); } catch(e) {}
+}
+
+const runBackup = () => {
+    const dbName = process.env.DB_NAME || 'biometrik_absensi_wajah_db';
+    const dbUser = process.env.DB_USER || 'root';
+    const dbPass = process.env.DB_PASS || '';
+    
+    const date = new Date();
+    // Format Timestamp: YYYY-MM-DD_HH-mm-ss
+    const timestamp = date.getFullYear() + '-' +
+        String(date.getMonth() + 1).padStart(2, '0') + '-' +
+        String(date.getDate()).padStart(2, '0') + '_' +
+        String(date.getHours()).padStart(2, '0') + '-' +
+        String(date.getMinutes()).padStart(2, '0') + '-' +
+        String(date.getSeconds()).padStart(2, '0');
+        
+    const fileName = `backup_${dbName}_${timestamp}.sql`;
+    const filePath = path.join(BACKUP_DIR, fileName);
+
+    // Command mysqldump (Pastikan mysqldump ada di Environment Variables PATH)
+    const authPart = dbPass ? `-u ${dbUser} -p"${dbPass}"` : `-u ${dbUser}`;
+    const cmd = `mysqldump ${authPart} --routines --events --triggers ${dbName} > "${filePath}"`;
+
+    console.log(`[BACKUP] Memulai backup database otomatis...`);
+    
+    exec(cmd, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`[BACKUP] Gagal: ${error.message}`);
+            console.error(`[BACKUP] TIPS: Pastikan 'C:\\xampp\\mysql\\bin' sudah ditambahkan ke System Environment Variables (Path).`);
+            return;
+        }
+        
+        console.log(`[BACKUP] Sukses: ${fileName}`);
+        
+        // Rotasi: Hapus backup lama (Simpan 7 file terakhir untuk menghemat ruang)
+        fs.readdir(BACKUP_DIR, (err, files) => {
+            if (err) return;
+            const sqlFiles = files.filter(f => f.endsWith('.sql')).sort();
+            if (sqlFiles.length > 7) {
+                const filesToDelete = sqlFiles.slice(0, sqlFiles.length - 7);
+                filesToDelete.forEach(f => fs.unlink(path.join(BACKUP_DIR, f), () => {}));
+            }
+        });
+    });
+};
+
+// Cek waktu setiap menit, jalankan backup jam 02:00
+setInterval(() => {
+    const now = new Date();
+    if (now.getHours() === 2 && now.getMinutes() === 0) runBackup();
+}, 60000);
 
 // Jalankan Server
 app.listen(port, () => {
