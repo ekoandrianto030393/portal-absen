@@ -76,6 +76,8 @@ const MIN_CONSENSUS = 3;     // [UPDATE] Minimal 3 frame konsisten agar hasil AK
 let lockGraceCounter = 0;    // [NEW] Counter untuk menahan hasil lama (Anti-Flicker)
 let lastStableResult = null; // [NEW] Menyimpan hasil valid terakhir
 let isLastFaceCentered = false; // [NEW] Status posisi wajah frame sebelumnya (untuk warna target)
+let lastNosePosition = null; // [NEW] Untuk deteksi kestabilan gerakan
+let stabilityCounter = 0;    // [NEW] Counter frame stabil
 
 // --- LIVENESS DETECTION ENGINE (ANTI-SPOOFING) ---
 class LivenessDetector {
@@ -294,7 +296,7 @@ if (stealthToggle) {
     });
 }
 
-let FACE_MATCHING_THRESHOLD = 0.40; // [UPDATE] Diperketat ke 0.40 untuk mengurangi False Positive (Hasil Acak)
+let FACE_MATCHING_THRESHOLD = 0.38; // [UPDATE] Diperketat ke 0.38 untuk Akurasi Tinggi (Anti-Acak)
 // --- DEFINISI WARNA (Futuristik) ---
 const PROFESSIONAL_STATUS_COLOR = '#00FF7F'; 
 const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
@@ -2145,6 +2147,32 @@ function resetTargetData() {
     }
 }
 
+// --- HELPER: GEOMETRY CHECK (AKURASI TINGGI) ---
+function checkFaceGeometry(landmarks) {
+    const nose = landmarks.getNose()[3];
+    const leftJaw = landmarks.getJawOutline()[0];
+    const rightJaw = landmarks.getJawOutline()[16];
+    
+    // Hitung rasio simetri wajah (Yaw)
+    const distLeft = Math.abs(nose.x - leftJaw.x);
+    const distRight = Math.abs(nose.x - rightJaw.x);
+    const total = distLeft + distRight;
+    const yawRatio = total === 0 ? 0.5 : distLeft / total; // 0.5 = Tegak Lurus Sempurna
+    
+    // 2. ROLL (Miring Kiri/Kanan) - [NEW]
+    const leftEye = landmarks.getLeftEye()[0];
+    const rightEye = landmarks.getRightEye()[3];
+    const dy = rightEye.y - leftEye.y;
+    const dx = rightEye.x - leftEye.x;
+    const rollAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    return {
+        isFrontal: yawRatio > 0.42 && yawRatio < 0.58, // Toleransi sempit (harus lurus)
+        isLevel: Math.abs(rollAngle) < 10, // [NEW] Toleransi miring max 10 derajat
+        yaw: yawRatio,
+        roll: rollAngle
+    };
+}
 
 async function detectFace() {
     const context = canvas.getContext('2d');
@@ -2238,20 +2266,38 @@ async function detectFace() {
         let employee = null;
         let bestMatch = null; // Define bestMatch scope
 
-        // [UPDATE] Filter Kualitas: Hanya proses jika wajah cukup besar (> 90px) agar AKURAT & TEPAT SASARAN
-        // Ini mencegah deteksi orang yang lewat di kejauhan (background noise)
-        const isQualityFace = box.width > 90;
+        // --- FILTER AKURASI TINGGI (STRICT MODE) ---
+        // 1. Filter Ukuran: Wajah harus cukup besar (> 130px) agar detail terlihat jelas
+        const isQualityFace = box.width > 130;
         
-        // [NEW] Filter Posisi: Pastikan wajah di area tengah (Tepat Sasaran)
-        // Mencegah deteksi wajah orang iseng di pinggir layar
+        // 2. Filter Posisi: Wajah harus di tengah (Toleransi 25% dari pusat)
         const centerX = box.x + box.width / 2;
         const imgCenter = displaySize.width / 2;
-        const isCentered = Math.abs(centerX - imgCenter) < (displaySize.width * 0.35); // Toleransi 35% dari tengah
+        const isCentered = Math.abs(centerX - imgCenter) < (displaySize.width * 0.25);
+
+        // 3. Filter Sudut: Wajah harus menghadap lurus ke kamera
+        const geometry = checkFaceGeometry(landmarks);
+        const isFrontal = geometry.isFrontal;
+        const isLevel = geometry.isLevel; // [NEW]
+
+        // 4. Filter Kestabilan (Anti-Blur) - [NEW]
+        const currentNose = landmarks.getNose()[3];
+        let isStable = false;
+        if (lastNosePosition) {
+            const movement = Math.hypot(currentNose.x - lastNosePosition.x, currentNose.y - lastNosePosition.y);
+            if (movement < 5) { // Gerakan < 5 pixel dianggap stabil
+                stabilityCounter++;
+            } else {
+                stabilityCounter = 0; // Reset jika bergerak
+            }
+        }
+        lastNosePosition = currentNose;
+        isStable = stabilityCounter > 2; // Harus stabil minimal 3 frame (approx 300ms)
 
         // [UPDATE] Update status global: Hijau jika Cukup Besar (Dekat) DAN Di Tengah
-        isLastFaceCentered = isQualityFace && isCentered;
+        isLastFaceCentered = isQualityFace && isCentered && isFrontal && isLevel && isStable;
 
-        if (labeledDescriptors && labeledDescriptors.length > 0 && isQualityFace && isCentered) {
+        if (labeledDescriptors && labeledDescriptors.length > 0 && isQualityFace && isCentered && isFrontal && isLevel && isStable) {
             const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, FACE_MATCHING_THRESHOLD);
             bestMatch = faceMatcher.findBestMatch(detections.descriptor);
             const matchDistance = bestMatch.distance;
@@ -2273,12 +2319,27 @@ async function detectFace() {
             
             // Beri instruksi jika wajah terlalu jauh
             if (!isQualityFace) {
-                faceLabel = "MOVE CLOSER"; 
+                faceLabel = "DEKATKAN WAJAH"; 
                 faceColor = "#FFD700"; // Kuning (Peringatan)
             } else if (!isCentered) {
                 // [NEW] Instruksi jika wajah di pinggir
-                faceLabel = "CENTER FACE";
+                faceLabel = "POSISIKAN DI TENGAH";
                 faceColor = "#00FFFF"; // Cyan
+                bestMatch = null; // Jangan diproses voting
+            } else if (!isFrontal) {
+                // [NEW] Instruksi jika wajah miring
+                faceLabel = "LIHAT LURUS";
+                faceColor = "#FF0055"; // Merah
+                bestMatch = null; // Jangan diproses voting
+            } else if (!isLevel) {
+                // [NEW] Instruksi jika kepala miring ke bahu
+                faceLabel = "KEPALA TEGAK";
+                faceColor = "#FF0055"; // Merah
+                bestMatch = null; // Jangan diproses voting
+            } else if (!isStable) {
+                // [NEW] Instruksi jika bergerak
+                faceLabel = "TAHAN POSISI";
+                faceColor = "#00FFFF"; // Cyan (Waiting)
                 bestMatch = null; // Jangan diproses voting
             }
         }
@@ -2414,24 +2475,38 @@ async function detectFace() {
             // --- WAJAH TIDAK DIKENAL / DB OFFLINE ---
             resetTargetData();
             
-            videoContainer.classList.add('scanning-border-error'); // Ubah border jadi Merah
-            if (labeledDescriptors && labeledDescriptors.length > 0) {
-                // Unknown Face
-                setStatusVisual('WAJAH TIDAK DIKENAL', 'text-red-500');
-                userStatusDisplay.textContent = 'ACCESS DENIED';
-                faceLabel = 'UNKNOWN';
-                faceColor = '#FF0055';
-                
-                // Efek Berkedip Merah
-                if (Math.floor(Date.now() / 200) % 2 === 0) faceColor = '#FF0055'; 
-                else faceColor = 'rgba(255, 0, 85, 0.1)';
+            // [FIX] Cek apakah sedang dalam mode instruksi (Wajah terdeteksi tapi belum pas)
+            // Jika faceLabel sudah berisi instruksi (misal "TAHAN POSISI"), jangan ditimpa jadi "UNKNOWN"
+            const isInstruction = ["DEKATKAN WAJAH", "POSISIKAN DI TENGAH", "LIHAT LURUS", "KEPALA TEGAK", "TAHAN POSISI"].includes(faceLabel);
 
-                // Trigger Glitch Effect on Unknown Face (Interference)
-                if (Math.random() < 0.15) triggerGlitch();
+            if (isInstruction) {
+                // Mode Instruksi: Tampilkan pesan kuning (Guidance)
+                videoContainer.classList.remove('scanning-border-error');
+                setStatusVisual(faceLabel, 'text-yellow-400', true); // Pulsing
+                userStatusDisplay.textContent = 'ALIGNING';
+                userStatusDisplay.className = 'text-lg font-bold text-yellow-400';
+                // faceColor sudah diset kuning/cyan di logika filter sebelumnya
             } else {
-                // DB Offline
-                setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-red-500');
-                userStatusDisplay.textContent = 'DB OFFLINE';
+                // Mode Unknown: Benar-benar tidak dikenal (Merah)
+                videoContainer.classList.add('scanning-border-error'); // Ubah border jadi Merah
+                if (labeledDescriptors && labeledDescriptors.length > 0) {
+                    // Unknown Face
+                    setStatusVisual('WAJAH TIDAK DIKENAL', 'text-red-500');
+                    userStatusDisplay.textContent = 'ACCESS DENIED';
+                    faceLabel = 'UNKNOWN';
+                    faceColor = '#FF0055';
+                    
+                    // Efek Berkedip Merah
+                    if (Math.floor(Date.now() / 200) % 2 === 0) faceColor = '#FF0055'; 
+                    else faceColor = 'rgba(255, 0, 85, 0.1)';
+
+                    // Trigger Glitch Effect on Unknown Face (Interference)
+                    if (Math.random() < 0.15) triggerGlitch();
+                } else {
+                    // DB Offline
+                    setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-red-500');
+                    userStatusDisplay.textContent = 'DB OFFLINE';
+                }
             }
             
             if(userEmotionDisplay) userEmotionDisplay.textContent = 'UNKNOWN';

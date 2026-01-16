@@ -27,6 +27,16 @@ document.addEventListener('DOMContentLoaded', () => {
     updateClock();
     setInterval(updateClock, 1000);
 
+    // [NEW] Init Dark Mode dari LocalStorage
+    if (localStorage.getItem('darkMode') === 'enabled') {
+        document.body.classList.add('dark');
+        const btn = document.getElementById('btn-dark-mode');
+        if(btn) {
+            btn.innerHTML = '<i class="fa-solid fa-sun"></i>';
+            btn.title = 'Light Mode';
+        }
+    }
+
     // Init Date Inputs for Chart (Last 7 Days)
     const today = new Date();
     const lastWeek = new Date();
@@ -49,6 +59,13 @@ document.addEventListener('DOMContentLoaded', () => {
         monthInput.addEventListener('change', loadMonthlyRecap);
     }
 
+    // [NEW] Init Daily Date Filter (Laporan Harian)
+    const dailyDateInput = document.getElementById('filter-daily-date');
+    if (dailyDateInput) {
+        dailyDateInput.valueAsDate = new Date(); // Default Hari Ini
+        dailyDateInput.addEventListener('change', () => loadDailyData());
+    }
+
     // Load Config dulu, baru load data
     loadSystemConfig().then(() => {
         loadOverviewData();
@@ -63,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         // Hanya refresh jika tab aktif adalah overview atau daily
         const activeTab = document.querySelector('.nav-item.active').id;
-        if (activeTab === 'nav-overview') loadOverviewData();
+        if (activeTab === 'nav-overview') loadOverviewData(true); // true = silent refresh
         if (activeTab === 'nav-daily') loadDailyData(true); // true = silent refresh
     }, 60000);
 });
@@ -126,8 +143,17 @@ function updateClock() {
     document.getElementById('clock-date').textContent = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+// --- HELPER: LOADING SPINNER ---
+function showSpinner() {
+    document.getElementById('loading-spinner').classList.remove('hidden');
+}
+function hideSpinner() {
+    document.getElementById('loading-spinner').classList.add('hidden');
+}
+
 // --- DATA LOADER: OVERVIEW ---
-async function loadOverviewData() {
+async function loadOverviewData(silent = false) {
+    if (!silent) showSpinner();
     try {
         // 1. Ambil Data Harian
         // OPTIMISASI: Gunakan Promise.all untuk request paralel
@@ -167,6 +193,8 @@ async function loadOverviewData() {
 
     } catch (error) {
         console.error("Error loading overview:", error);
+    } finally {
+        if (!silent) hideSpinner();
     }
 }
 
@@ -190,20 +218,20 @@ function renderRecentActivity(data) {
         // [FIX] Gunakan data 'telat_menit' dari DB
         const isLate = item.telat_menit > 0;
         const timeClass = isLate 
-            ? 'bg-red-100 text-red-700 border-red-200' 
-            : 'bg-emerald-100 text-emerald-700 border-emerald-200';
+            ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' 
+            : 'bg-emerald-100 text-emerald-800 border-emerald-200 font-bold';
         
         const html = `
-            <div class="flex items-center gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200 hover:bg-white hover:shadow-md hover:border-blue-200 transition-all duration-200 group">
-                <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-sm font-bold text-slate-700 shadow-sm border border-slate-200 group-hover:border-blue-500 group-hover:text-blue-600 transition-colors">
+            <div class="flex items-center gap-4 p-4 rounded bg-white border border-slate-200 hover:shadow-md hover:border-blue-500 transition-all duration-200 group">
+                <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-700 border border-slate-300 group-hover:border-blue-500 group-hover:text-blue-600 transition-colors">
                     ${escapeHtml(item.nama_karyawan).substring(0, 1).toUpperCase()}
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">${escapeHtml(item.nama_karyawan)}</p>
-                    <p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(item.jabatan || 'Staff')}</p>
+                    <p class="text-xs text-slate-500 truncate mt-0.5 uppercase tracking-wide font-semibold">${escapeHtml(item.jabatan || 'Staff')}</p>
                 </div>
                 <div class="text-right">
-                    <span class="text-xs font-mono font-bold px-3 py-1.5 rounded-lg border ${timeClass} shadow-sm block text-center min-w-[80px]">${item.jam_masuk}</span>
+                    <span class="text-xs font-mono font-medium px-3 py-1 rounded border ${timeClass} block text-center min-w-[70px]">${item.jam_masuk}</span>
                 </div>
             </div>
         `;
@@ -214,8 +242,10 @@ function renderRecentActivity(data) {
 // --- DATA LOADER: DAILY ---
 async function loadDailyData(silent = false) {
     const tbody = document.getElementById('table-daily-body');
+    
+    // Jika silent (auto-refresh), jangan tampilkan spinner full screen, tapi skeleton row di tabel
     if (!silent) {
-        tbody.innerHTML = getSkeletonRows(6, 5);
+        showSpinner();
     }
 
     try {
@@ -238,21 +268,21 @@ async function loadDailyData(silent = false) {
                 const status = row.status;
                 
                 if (status === 'DL' || status === 'DINAS_LUAR') {
-                    statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200 flex items-center w-fit gap-1"><i class="fa-solid fa-briefcase"></i> Dinas Luar</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-briefcase"></i> Dinas Luar</span>`;
                     // Tampilkan indikator DL di kolom jam agar jelas
                     row.jam_masuk = '<span class="text-blue-600 font-bold tracking-wider">DL</span>';
                     row.jam_keluar = '<span class="text-blue-600 font-bold tracking-wider">DL</span>';
                 } else if (status === 'SAKIT') {
-                    statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200 flex items-center w-fit gap-1"><i class="fa-solid fa-heart-pulse"></i> Sakit</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-heart-pulse"></i> Sakit</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
                 } else if (status === 'IZIN' || status === 'CUTI') {
-                    statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 flex items-center w-fit gap-1"><i class="fa-solid fa-file-signature"></i> Izin/Cuti</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-file-signature"></i> Izin/Cuti</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
                 } else if (status === 'HADIR_MANUAL') {
                     // [SYNC] Tampilkan badge khusus untuk input manual, jam tetap tampil sesuai input
-                    statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center w-fit gap-1"><i class="fa-solid fa-keyboard"></i> Hadir (Manual)</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-keyboard"></i> Hadir (Manual)</span>`;
                 } else if (row.jam_masuk) {
                     // --- LOGIKA HADIR NORMAL ---
                     
@@ -265,11 +295,11 @@ async function loadDailyData(silent = false) {
                     }
                     
                     // UPDATE: Status "Hadir", Keterlambatan "Terlambat/Tepat Waktu"
-                    statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center w-fit gap-1"><i class="fa-solid fa-check"></i> Hadir</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-check"></i> Hadir</span>`;
                     
                     if (isLate) {
                         lateDisplay = `Terlambat (${lateMinutes} Menit)`;
-                        lateClass = 'text-red-600 font-bold';
+                        lateClass = 'text-rose-600 font-bold';
                     } else {
                         lateDisplay = 'Tepat Waktu';
                         lateClass = 'text-emerald-600 font-bold';
@@ -281,14 +311,14 @@ async function loadDailyData(silent = false) {
                     if (row.jam_keluar && row.jam_keluar !== '-' && row.psw_menit > 0) {
                         row.jam_keluar = `
                             <div class="flex flex-col">
-                                <span class="font-mono text-slate-700">${row.jam_keluar}</span>
-                                <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-1 rounded border border-amber-100 w-fit mt-0.5">PSW: ${row.psw_menit}m</span>
+                                <span class="font-mono text-slate-800 font-bold">${row.jam_keluar}</span>
+                                <span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 w-fit mt-0.5">PSW: ${row.psw_menit}m</span>
                             </div>
                         `;
                     }
                 } else {
                     // Fallback jika data tidak lengkap
-                    statusBadge = `<span class="text-slate-400 text-xs">Tidak Ada Data</span>`;
+                    statusBadge = `<span class="text-slate-400 text-xs italic">Tidak Ada Data</span>`;
                 }
 
                 // [NEW] Tampilkan Keterangan dari Database (Sesuai Request)
@@ -298,20 +328,24 @@ async function loadDailyData(silent = false) {
                     keteranganHtml = `<div class="text-[10px] text-slate-500 italic mt-1.5 border-t border-slate-100 pt-1 leading-tight"><i class="fa-solid fa-circle-info text-[9px] mr-1"></i>${escapeHtml(row.keterangan)}</div>`;
                 }
 
+                // [NEW] Highlight baris jika terlambat (Pink Background)
+                const rowBgClass = isLate ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-slate-50';
+                const rowBorderClass = isLate ? 'border-rose-200' : 'border-slate-200';
+
                 const tr = `
-                    <tr onclick="openModal('${row.id_karyawan}')" class="hover:bg-blue-50/50 transition cursor-pointer group border-b border-slate-100 last:border-0">
-                        <td class="px-6 py-4 font-mono text-blue-600 font-medium">${row.jam_masuk}</td>
-                        <td class="px-6 py-4 font-bold text-slate-800 group-hover:text-blue-600 transition">${row.nama_karyawan}</td>
-                        <td class="px-6 py-4 text-slate-500 text-sm">${row.jabatan || '-'}</td>
+                    <tr onclick="openModal('${row.id_karyawan}')" class="${rowBgClass} transition cursor-pointer group border-b ${rowBorderClass} last:border-0">
+                        <td class="px-6 py-3 font-mono text-slate-800 font-bold">${row.jam_masuk}</td>
+                        <td class="px-6 py-3 font-bold text-slate-800 group-hover:text-blue-700 transition">${row.nama_karyawan}</td>
+                        <td class="px-6 py-3 text-slate-600 text-xs font-bold uppercase tracking-wider">${row.jabatan || '-'}</td>
                         <td class="p-5">
                             ${statusBadge}
                             ${keteranganHtml}
                         </td>
                         <td class="px-6 py-4 ${lateClass} font-mono">${lateDisplay}</td>
-                        <td class="px-6 py-4 font-mono text-slate-600">
+                        <td class="px-6 py-4 font-mono text-slate-800 font-bold">
                             <div class="flex justify-between items-center gap-2">
                                 <div>${row.jam_keluar || '<span class="text-slate-400">-</span>'}</div>
-                                <button onclick="deleteAbsensi(event, ${row.id_absensi}, this.dataset.name)" data-name="${escapeHtml(row.nama_karyawan)}" class="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Hapus Absensi">
+                                <button onclick="deleteAbsensi(event, ${row.id_absensi}, this.dataset.name)" data-name="${escapeHtml(row.nama_karyawan)}" class="opacity-0 group-hover:opacity-100 w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Hapus Absensi">
                                     <i class="fa-solid fa-trash text-xs"></i>
                                 </button>
                             </div>
@@ -327,45 +361,54 @@ async function loadDailyData(silent = false) {
         // Update Notifikasi Otomatis
         updateNotifications(result.data || []);
 
+        // [NEW] Re-apply search filter if exists (Agar hasil pencarian tidak hilang saat refresh/ganti tanggal)
+        const searchInput = document.getElementById('search-daily');
+        if (searchInput && searchInput.value) {
+            filterTable('table-daily-body', 'search-daily');
+        }
+
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
+    } finally {
+        if (!silent) hideSpinner();
     }
 }
 
 // --- DATA LOADER: MONTHLY RECAP ---
-async function loadMonthlyRecap() {
+async function loadMonthlyRecap(silent = false) {
     const month = document.getElementById('filter-month').value;
     const table = document.getElementById('table-rekap');
     
     // Header Table
     table.innerHTML = `
-        <thead class="uppercase text-xs font-bold tracking-wider border-b border-indigo-500 bg-indigo-600 text-white print:bg-gray-200 print:text-black">
+        <thead class="uppercase text-xs font-bold tracking-wider border-b border-slate-700 bg-slate-800 text-white print:bg-white print:text-black">
             <tr>
-                <th class="md:sticky md:left-0 md:z-20 bg-indigo-600 text-white print:bg-white print:text-black print:static px-6 py-4 text-center w-16 md:border-r border-indigo-500 print:border-black">No.</th>
-                <th class="md:sticky md:left-16 md:z-20 bg-indigo-600 text-white print:bg-white print:text-black print:static px-6 py-4 w-24 md:border-r border-indigo-500 print:border-black">ID</th>
-                <th class="md:sticky md:left-40 md:z-20 bg-indigo-600 text-white print:bg-white print:text-black print:static px-6 py-4 w-64 md:border-r border-indigo-500 print:border-black md:shadow-sm text-left">Nama Pegawai</th>
-                <th class="pl-16 pr-6 py-4 text-left">Jabatan</th>
-                <th class="px-6 py-4 text-center">Hadir</th>
-                <th class="px-6 py-4 text-center">DL</th>
-                <th class="px-6 py-4 text-center bg-rose-50 text-rose-700 border-l border-r border-indigo-500/20">S</th>
-                <th class="px-6 py-4 text-center bg-purple-50 text-purple-700 border-r border-indigo-500/20">I</th>
-                <th class="px-6 py-4 text-center bg-orange-50 text-orange-700 border-r border-indigo-500/20">C</th>
-                <th class="px-6 py-4 text-center">Alpa</th>
-                <th class="px-6 py-4 text-center font-bold text-yellow-300">% Hadir</th>
-                <th class="px-6 py-4 text-center">Telat (x)</th>
-                <th class="px-6 py-4 text-center">Telat (Min)</th>
-                <th class="px-6 py-4 text-center">PSW (x)</th>
-                <th class="px-6 py-4 text-center">PSW (Min)</th>
-                <th class="px-6 py-4 text-center font-bold text-yellow-300 border-l border-indigo-500 print:text-black">Total Pelanggaran (Min)</th>
-                <th class="px-6 py-4 text-center">Tanpa Absen Pulang</th>
-                <th class="px-6 py-4 text-center">Potongan</th>
-                <th class="px-6 py-4 text-right">Total Jam Kerja</th>
+                <th class="md:sticky md:left-0 md:z-20 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 text-center w-16 md:border-r border-slate-700 print:border-black">No.</th>
+                <th onclick="sortTable('table-rekap-body', 1)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-16 md:z-20 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 w-24 md:border-r border-slate-700 print:border-black text-center">ID <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 2)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-40 md:z-20 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 w-64 md:border-r border-slate-700 print:border-black md:shadow-sm text-left">Nama Pegawai <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 3)" class="cursor-pointer hover:bg-slate-700 transition-colors pl-16 pr-6 py-3 text-left">Jabatan <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 4)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="px-6 py-3 text-center">DL</th>
+                <th class="px-6 py-3 text-center bg-rose-50 text-rose-800 border-l border-r border-slate-200">S</th>
+                <th class="px-6 py-3 text-center bg-purple-50 text-purple-800 border-r border-slate-200">I</th>
+                <th class="px-6 py-3 text-center bg-orange-50 text-orange-800 border-r border-slate-200">C</th>
+                <th onclick="sortTable('table-rekap-body', 9)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Alpa <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 10)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300">% Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="px-6 py-3 text-center">Telat (x)</th>
+                <th class="px-6 py-3 text-center">Telat (Min)</th>
+                <th class="px-6 py-3 text-center">PSW (x)</th>
+                <th class="px-6 py-3 text-center">PSW (Min)</th>
+                <th onclick="sortTable('table-rekap-body', 15)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300 border-l border-slate-700 print:text-black">Total Pelanggaran <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="px-6 py-3 text-center">Tanpa Absen Pulang</th>
+                <th class="px-6 py-3 text-center">Potongan</th>
+                <th class="px-6 py-3 text-center">Total Jam Kerja</th>
             </tr>
         </thead>
-        <tbody id="table-rekap-body" class="text-slate-700 divide-y divide-slate-100 text-sm bg-white">
+        <tbody id="table-rekap-body" class="text-slate-800 divide-y divide-slate-200 text-sm bg-white">
         </tbody>
     `;
 
+    if (!silent) showSpinner();
     try {
         const response = await fetch(`${API_BASE}/rekap?periode=${month}&_t=${Date.now()}`);
         const result = await response.json();
@@ -443,49 +486,49 @@ async function loadMonthlyRecap() {
                 const persentase = Math.round(((parseInt(row.total_masuk) + parseInt(row.total_dl)) / totalHariKerja) * 100);
 
                 tbody.innerHTML += `
-                    <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-blue-50/50 border-b border-slate-100 last:border-0 group">
-                        <td class="md:sticky md:left-0 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 text-center font-mono text-slate-700 md:border-r border-slate-100 print:static print:bg-white print:border-b print:border-slate-200">${index + 1}</td>
-                        <td class="md:sticky md:left-16 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 font-mono text-slate-700 md:border-r border-slate-100 print:static print:bg-white print:border-b print:border-slate-200">${row.id_karyawan}</td>
-                        <td class="md:sticky md:left-40 md:z-10 sticky-col group-hover:!bg-blue-50/50 px-6 py-4 font-bold text-slate-700 md:border-r border-slate-100 md:shadow-sm print:static print:bg-white print:border-b print:border-slate-200">${row.nama}</td>
-                        <td class="pl-16 pr-6 py-4 text-sm text-slate-700">${row.jabatan || '-'}</td>
-                        <td class="px-6 py-4 text-center">
-                            <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
+                    <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-slate-50 border-b border-slate-200 last:border-0 group">
+                        <td class="md:sticky md:left-0 md:z-10 sticky-col group-hover:!bg-slate-50 px-6 py-3 text-center font-mono text-slate-800 md:border-r border-slate-200 print:static print:bg-white print:border-b print:border-black">${index + 1}</td>
+                        <td class="md:sticky md:left-16 md:z-10 sticky-col group-hover:!bg-slate-50 px-6 py-3 font-mono text-slate-800 md:border-r border-slate-200 print:static print:bg-white print:border-b print:border-black text-center">${row.id_karyawan}</td>
+                        <td class="md:sticky md:left-40 md:z-10 sticky-col group-hover:!bg-slate-50 px-6 py-3 font-bold text-slate-800 md:border-r border-slate-200 md:shadow-sm print:static print:bg-white print:border-b print:border-black">${row.nama}</td>
+                        <td class="pl-16 pr-6 py-3 text-sm text-slate-600 uppercase tracking-wide font-semibold">${row.jabatan || '-'}</td>
+                        <td class="px-6 py-3 text-center">
+                            <span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
                         </td>
-                        <td class="px-6 py-4 text-center">
-                            <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold text-xs border border-blue-200">${row.total_dl || 0}</span>
+                        <td class="px-6 py-3 text-center">
+                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold text-xs border border-blue-200">${row.total_dl || 0}</span>
                         </td>
-                        <td class="px-6 py-4 text-center bg-rose-50/50 text-rose-600 font-medium border-l border-r border-slate-100">${row.total_sakit || 0}</td>
-                        <td class="px-6 py-4 text-center bg-purple-50/50 text-purple-600 font-medium border-r border-slate-100">${row.total_izin || 0}</td>
-                        <td class="px-6 py-4 text-center bg-orange-50/50 text-orange-600 font-medium border-r border-slate-100">${row.total_cuti || 0}</td>
-                        <td class="px-6 py-4 text-center ${row.alpa > 0 ? 'text-red-600 font-bold' : 'text-slate-500'}">${row.alpa}</td>
-                        <td class="px-6 py-4 text-center font-bold ${persentase >= 95 ? 'text-emerald-600' : (persentase >= 80 ? 'text-blue-600' : 'text-red-600')}">${persentase}%</td>
-                        <td class="px-6 py-4 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-bold' : 'text-slate-500'}">${row.telat_kali}</td>
-                        <td class="px-6 py-4 text-center text-slate-500">${row.telat_menit}</td>
-                        <td class="px-6 py-4 text-center ${row.psw_kali > 0 ? 'text-amber-600 font-bold' : 'text-slate-500'}">${row.psw_kali || 0}</td>
-                        <td class="px-6 py-4 text-center ${row.psw_menit > 0 ? 'text-amber-600' : 'text-slate-500'}">${row.psw_menit || 0}</td>
-                        <td class="px-6 py-4 text-center font-bold text-red-600 bg-red-50 border-l border-slate-200">${row.total_pelanggaran_menit || 0}</td>
-                        <td class="px-6 py-4 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-bold' : 'text-slate-500'}">${row.tanpa_absen_pulang}</td>
-                        <td class="px-6 py-4 text-center text-red-600">${row.potongan_jam} Jam</td>
-                        <td class="px-6 py-4 text-right font-mono text-emerald-600 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
+                        <td class="px-6 py-3 text-center bg-rose-50/50 text-rose-700 font-bold border-l border-r border-slate-200">${row.total_sakit || 0}</td>
+                        <td class="px-6 py-3 text-center bg-purple-50/50 text-purple-700 font-bold border-r border-slate-200">${row.total_izin || 0}</td>
+                        <td class="px-6 py-3 text-center bg-orange-50/50 text-orange-700 font-bold border-r border-slate-200">${row.total_cuti || 0}</td>
+                        <td class="px-6 py-3 text-center ${row.alpa > 0 ? 'text-red-600 font-black' : 'text-slate-300'}">${row.alpa}</td>
+                        <td class="px-6 py-3 text-center font-bold ${persentase >= 95 ? 'text-emerald-600' : (persentase >= 80 ? 'text-blue-600' : 'text-red-600')}">${persentase}%</td>
+                        <td class="px-6 py-3 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-black' : 'text-slate-300'}">${row.telat_kali}</td>
+                        <td class="px-6 py-3 text-center text-slate-500">${row.telat_menit}</td>
+                        <td class="px-6 py-3 text-center ${row.psw_kali > 0 ? 'text-amber-600 font-black' : 'text-slate-300'}">${row.psw_kali || 0}</td>
+                        <td class="px-6 py-3 text-center ${row.psw_menit > 0 ? 'text-amber-600' : 'text-slate-300'}">${row.psw_menit || 0}</td>
+                        <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-200">${row.total_pelanggaran_menit || 0}</td>
+                        <td class="px-6 py-3 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-black' : 'text-slate-300'}">${row.tanpa_absen_pulang}</td>
+                        <td class="px-6 py-3 text-center text-red-600">${row.potongan_jam} Jam</td>
+                        <td class="px-6 py-3 text-center font-mono text-emerald-600 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
                     </tr>
                 `;
             });
 
             tbody.innerHTML += `
-                <tr class="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-900 print:bg-gray-200 print:border-black break-inside-avoid group">
+                <tr class="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-800 print:bg-gray-200 print:border-black break-inside-avoid group">
                     <td colspan="4" class="px-6 py-3 text-right uppercase text-xs tracking-wider">Total Ringkasan:</td>
                     <td class="px-6 py-3 text-center">${tHadir}</td>
                     <td class="px-6 py-3 text-center">${tDL}</td>
-                    <td class="px-6 py-3 text-center text-rose-700 bg-rose-100/50">${tSakit}</td>
-                    <td class="px-6 py-3 text-center text-purple-700 bg-purple-100/50">${tIzin}</td>
-                    <td class="px-6 py-3 text-center text-orange-700 bg-orange-100/50">${tCuti}</td>
+                    <td class="px-6 py-3 text-center text-rose-800 bg-rose-100">${tSakit}</td>
+                    <td class="px-6 py-3 text-center text-purple-800 bg-purple-100">${tIzin}</td>
+                    <td class="px-6 py-3 text-center text-orange-800 bg-orange-100">${tCuti}</td>
                     <td class="px-6 py-3 text-center">${tAlpa}</td>
                     <td class="px-6 py-3 text-center">-</td>
                     <td class="px-6 py-3 text-center">${tTelat}</td>
                     <td class="px-6 py-3 text-center text-slate-500 text-xs">${tTelatMin}</td>
                     <td class="px-6 py-3 text-center">${tPsw}</td>
                     <td class="px-6 py-3 text-center text-slate-500 text-xs">${tPswMin}</td>
-                    <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-100 border-l border-slate-300">${tPelanggaranMin}</td>
+                    <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-300">${tPelanggaranMin}</td>
                     <td class="px-6 py-3 text-center">${tNoOut}</td>
                     <td class="px-6 py-3 text-center">${tPot}</td>
                     <td class="px-6 py-3"></td>
@@ -495,7 +538,7 @@ async function loadMonthlyRecap() {
                     <td colspan="15" class="px-6 py-4 text-right uppercase text-sm tracking-wider">
                         Total Estimasi Pengeluaran Gaji (Bulan Ini):
                     </td>
-                    <td colspan="4" class="px-6 py-4 text-right text-xl font-black text-emerald-700 border-l border-emerald-200">
+                    <td colspan="4" class="px-6 py-4 text-right text-xl font-black text-emerald-800 border-l border-emerald-200">
                         ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totalGaji)}
                     </td>
                 </tr>
@@ -503,8 +546,31 @@ async function loadMonthlyRecap() {
         } else {
             tbody.innerHTML = '<tr><td colspan="15" class="p-4 text-center text-slate-500">Tidak ada data untuk periode ini.</td></tr>';
         }
+
+        // [NEW] Re-apply search filter if exists (Agar hasil pencarian tidak hilang saat refresh)
+        const searchInput = document.getElementById('search-rekap');
+        if (searchInput && searchInput.value) {
+            filterTable('table-rekap-body', 'search-rekap');
+        }
     } catch (e) {
         console.error(e);
+    } finally {
+        if (!silent) hideSpinner();
+    }
+}
+
+// --- FITUR: SHORTCUT CEK HARIAN DARI REKAP ---
+function checkDailyFromRecap(dateVal) {
+    if (!dateVal) return;
+    
+    const dailyInput = document.getElementById('filter-daily-date');
+    if (dailyInput) {
+        dailyInput.value = dateVal;
+        switchTab('daily'); // Pindah tab & otomatis load data
+        
+        // Reset input ini agar bisa pilih tanggal yang sama lagi jika kembali
+        const sourceInput = document.getElementById('quick-daily-check');
+        if (sourceInput) sourceInput.value = '';
     }
 }
 
@@ -519,9 +585,10 @@ function calculatePerformanceScore(emp) {
     return Math.max(0, score);
 }
 
-async function loadPerformanceData() {
+async function loadPerformanceData(silent = false) {
     const grid = document.getElementById('performance-grid');
-    grid.innerHTML = '<div class="col-span-full text-center text-slate-500 italic py-8">Menganalisis Kinerja...</div>';
+    
+    if (!silent) showSpinner();
 
     try {
         // Gunakan data rekap bulan ini untuk analisis
@@ -558,41 +625,41 @@ async function loadPerformanceData() {
 
                 // Render Card
                 const card = `
-                    <div onclick="openModal('${emp.id_karyawan}')" class="bg-white rounded-2xl p-6 border-t-4 ${colorClass} relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer shadow-sm border border-slate-100">
+                    <div onclick="openModal('${emp.id_karyawan}')" class="bg-white rounded-lg p-6 border-t-4 ${colorClass} relative overflow-hidden group hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer shadow-sm border border-gray-200">
                         <div class="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition">
                             <i class="fa-solid ${icon} text-6xl"></i>
                         </div>
                         
                         <div class="relative z-10">
-                            <h3 class="text-lg font-bold text-slate-800 truncate">${escapeHtml(emp.nama)}</h3>
-                            <p class="text-xs text-slate-500 mb-4 uppercase tracking-wide">${escapeHtml(emp.jabatan || 'Staff')} • ID: ${emp.id_karyawan}</p>
+                            <h3 class="text-lg font-bold text-[#2c3e50] truncate">${escapeHtml(emp.nama)}</h3>
+                            <p class="text-xs text-gray-500 mb-4 uppercase tracking-wide">${escapeHtml(emp.jabatan || 'Staff')} • ID: ${emp.id_karyawan}</p>
                             
                             <div class="flex items-end gap-2 mb-2">
-                                <span class="text-4xl font-bold text-slate-800">${score}</span>
-                                <span class="text-sm text-slate-400 mb-1">/ 100</span>
+                                <span class="text-4xl font-bold text-[#2c3e50]">${score}</span>
+                                <span class="text-sm text-gray-400 mb-1">/ 100</span>
                             </div>
                             
-                            <div class="w-full bg-slate-100 h-2 rounded-full mb-4 overflow-hidden">
+                            <div class="w-full bg-gray-100 h-2 rounded-full mb-4 overflow-hidden">
                                 <div class="h-full ${colorClass.replace('text', 'bg').split(' ')[1]}" style="width: ${score}%"></div>
                             </div>
 
                             <div class="grid grid-cols-3 gap-2 text-center text-xs">
-                                <div class="bg-slate-50 p-2 rounded border border-slate-200">
-                                    <div class="text-slate-500">Hadir</div>
-                                    <div class="font-bold text-slate-800">${emp.total_masuk}</div>
+                                <div class="bg-gray-50 p-2 rounded border border-gray-200">
+                                    <div class="text-gray-500">Hadir</div>
+                                    <div class="font-bold text-[#2c3e50]">${emp.total_masuk}</div>
                                     ${emp.total_dl ? `<div class="text-[9px] text-blue-500">(${emp.total_dl} DL)</div>` : ''}
                                 </div>
-                                <div class="bg-slate-50 p-2 rounded border border-slate-200">
-                                    <div class="text-slate-500">Telat</div>
+                                <div class="bg-gray-50 p-2 rounded border border-gray-200">
+                                    <div class="text-gray-500">Telat</div>
                                     <div class="font-bold text-amber-600">${emp.telat_kali}</div>
                                 </div>
-                                <div class="bg-slate-50 p-2 rounded border border-slate-200">
-                                    <div class="text-slate-500">Alpa</div>
+                                <div class="bg-gray-50 p-2 rounded border border-gray-200">
+                                    <div class="text-gray-500">Alpa</div>
                                     <div class="font-bold text-red-600">${emp.alpa}</div>
                                 </div>
                             </div>
 
-                            <div class="mt-4 text-center font-bold text-xs tracking-widest ${colorClass.split(' ')[1]} border border-dashed border-slate-300 p-2 rounded uppercase">
+                            <div class="mt-4 text-center font-bold text-xs tracking-widest ${colorClass.split(' ')[1]} border border-dashed border-gray-300 p-2 rounded uppercase">
                                 ${status}
                             </div>
                         </div>
@@ -603,15 +670,17 @@ async function loadPerformanceData() {
         }
     } catch (e) { 
         console.error(e);
+    } finally {
+        if (!silent) hideSpinner();
     }
 }
 
 // --- DATA LOADER: EMPLOYEES DIRECTORY (NEW) ---
-async function loadEmployees() {
+async function loadEmployees(silent = false) {
     const grid = document.getElementById('employees-grid');
     const countSpan = document.getElementById('total-emp-count');
-    grid.innerHTML = '<div class="col-span-full text-center text-slate-400 italic py-8">Memuat direktori...</div>';
-
+    
+    if (!silent) showSpinner();
     let corruptCount = 0; // [NEW] Hitung jumlah data rusak
 
     try {
@@ -671,14 +740,14 @@ async function loadEmployees() {
                 }
 
                 const card = `
-                    <div class="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 group border border-slate-200 overflow-hidden relative flex flex-col">
+                    <div class="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 group border border-gray-200 overflow-hidden relative flex flex-col">
                         <!-- Decorative Top Bar -->
-                        <div class="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+                        <div class="h-1.5 w-full bg-[#2c3e50]"></div>
                         
                         <div class="p-5 flex items-start gap-4">
                             <!-- Avatar -->
                             <div onclick="openModal('${emp.id_karyawan}')" class="cursor-pointer relative flex-shrink-0">
-                                <div class="w-16 h-16 rounded-full p-0.5 bg-gradient-to-br from-blue-400 to-purple-500 shadow-md group-hover:scale-105 transition-transform duration-300">
+                                <div class="w-16 h-16 rounded-full p-0.5 bg-gray-100 shadow-sm group-hover:scale-105 transition-transform duration-300">
                                     <img src="${photoSrc}" class="w-full h-full object-cover rounded-full border-2 border-white bg-slate-100">
                                 </div>
                             </div>
@@ -687,9 +756,9 @@ async function loadEmployees() {
                             <div class="flex-1 min-w-0">
                                 <div class="flex justify-between items-start">
                                     <div onclick="openModal('${emp.id_karyawan}')" class="cursor-pointer flex-1 min-w-0 mr-2">
-                                        <h4 class="text-slate-800 font-bold truncate text-base group-hover:text-indigo-600 transition-colors" title="${escapeHtml(emp.nama)}">${escapeHtml(emp.nama)}</h4>
+                                        <h4 class="text-[#2c3e50] font-bold truncate text-base group-hover:text-[#2980b9] transition-colors" title="${escapeHtml(emp.nama)}">${escapeHtml(emp.nama)}</h4>
                                         <div class="flex flex-wrap items-center gap-2 mt-1">
-                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wide truncate max-w-full">${escapeHtml(emp.jabatan || 'Staff')}</span>
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wide truncate max-w-full">${escapeHtml(emp.jabatan || 'Staff')}</span>
                                             <!-- [NEW] Badge Sampel Wajah -->
                                             <span class="px-2 py-0.5 rounded text-[10px] font-bold ${sampleBadgeColor} border uppercase tracking-wide truncate" title="Status Data Wajah">
                                                 <i class="fa-solid fa-fingerprint mr-1"></i>${sampleLabel}
@@ -699,20 +768,20 @@ async function loadEmployees() {
                                 </div>
                                 
                                 <div class="mt-3 flex items-center justify-between">
-                                    <div class="flex items-center gap-2 text-xs text-slate-500 font-mono bg-slate-50 px-2 py-1 rounded border border-slate-100">
-                                        <i class="fa-solid fa-id-badge text-slate-400"></i>
-                                        <span class="font-bold text-slate-700">${emp.id_karyawan}</span>
+                                    <div class="flex items-center gap-2 text-xs text-gray-500 font-mono bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                                        <i class="fa-solid fa-id-badge text-gray-400"></i>
+                                        <span class="font-bold text-gray-700">${emp.id_karyawan}</span>
                                     </div>
                                     
                                     <!-- Actions -->
                                     <div class="flex gap-1">
-                                        <button onclick="window.location.href='admin.html?id=${emp.id_karyawan}&name=${encodeURIComponent(emp.nama)}&role=${encodeURIComponent(emp.jabatan || '')}'" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all border border-transparent hover:border-emerald-100" title="Rekam Wajah / Update Descriptor">
+                                        <button onclick="window.location.href='admin.html?id=${emp.id_karyawan}&name=${encodeURIComponent(emp.nama)}&role=${encodeURIComponent(emp.jabatan || '')}'" class="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all border border-transparent hover:border-emerald-100" title="Rekam Wajah / Update Descriptor">
                                             <i class="fa-solid fa-camera text-xs"></i>
                                         </button>
-                                        <button onclick="openEditModal('${emp.id_karyawan}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100" title="Edit">
+                                        <button onclick="openEditModal('${emp.id_karyawan}')" class="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100" title="Edit">
                                             <i class="fa-solid fa-pen-to-square text-xs"></i>
                                         </button>
-                                        <button onclick="deleteEmployee('${emp.id_karyawan}', this.dataset.name)" data-name="${escapeHtml(emp.nama)}" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100" title="Hapus">
+                                        <button onclick="deleteEmployee('${emp.id_karyawan}', this.dataset.name)" data-name="${escapeHtml(emp.nama)}" class="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100" title="Hapus">
                                             <i class="fa-solid fa-trash text-xs"></i>
                                         </button>
                                     </div>
@@ -755,6 +824,8 @@ async function loadEmployees() {
         }
     } catch (e) {
         grid.innerHTML = `<div class="col-span-full text-center text-red-500">Gagal memuat data: ${e.message}</div>`;
+    } finally {
+        if (!silent) hideSpinner();
     }
 }
 
@@ -855,12 +926,22 @@ function closeEditModal() {
     setTimeout(() => modal.classList.add('hidden'), 300);
 }
 
+// Helper: Convert File to Base64
+const toBase64 = file => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+});
+
 async function updateEmployee() {
     const id = document.getElementById('edit-id').value;
     const nama = document.getElementById('edit-nama').value;
     const jabatan = document.getElementById('edit-jabatan').value;
+    const fileInput = document.getElementById('edit-foto-input');
 
     try {
+        // 1. Update Data Teks (Nama & Jabatan)
         const response = await fetch(`${API_BASE}/karyawan/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -868,13 +949,58 @@ async function updateEmployee() {
         });
         const result = await response.json();
 
+        if (!result.success) throw new Error(result.message);
+
+        // 2. Update Foto (Jika ada file dipilih)
+        if (fileInput && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            if (file.size > 5 * 1024 * 1024) throw new Error("Ukuran foto terlalu besar (Max 5MB).");
+            
+            const base64Foto = await toBase64(file);
+            const resFoto = await fetch(`${API_BASE}/karyawan/${encodeURIComponent(id)}/photo`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ foto: base64Foto })
+            });
+            
+            const resFotoJson = await resFoto.json();
+            if (!resFotoJson.success) throw new Error("Gagal upload foto: " + resFotoJson.message);
+        }
+
+        showToast('Data pegawai & foto berhasil diperbarui!', 'success');
+        closeEditModal();
+        loadEmployees(); // Refresh list
+        loadOverviewData();
+        
+        // Reset input file
+        if(fileInput) fileInput.value = '';
+
+    } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
+    }
+}
+
+// --- FITUR: RESET BIOMETRIC DATA (HAPUS FOTO & DESCRIPTOR) ---
+async function resetBiometricData() {
+    const id = document.getElementById('edit-id').value;
+    if (!id) return showToast('ID Pegawai tidak valid.', 'error');
+
+    if (!confirm('PERINGATAN: Apakah Anda yakin ingin menghapus FOTO dan DATA WAJAH pegawai ini?\n\nPegawai tidak akan bisa absen sampai melakukan perekaman ulang.')) return;
+
+    try {
+        // Encode ID untuk menangani karakter spesial dan cek status server
+        const response = await fetch(`${API_BASE}/karyawan/${encodeURIComponent(id)}/reset_biometric`, { method: 'PUT' });
+        
+        if (!response.ok) throw new Error(`Gagal menghubungi server (${response.status}). Pastikan server.js sudah direstart.`);
+        
+        const result = await response.json();
+
         if (result.success) {
-            showToast('Data berhasil diperbarui!', 'success');
+            showToast('Data biometrik berhasil direset!', 'success');
             closeEditModal();
-            loadEmployees(); // Refresh list
-            loadOverviewData(); // Refresh stats if needed
+            loadEmployees(); // Refresh list (akan muncul status "0 Sampel")
         } else {
-            showToast(`Gagal memperbarui: ${result.message}`, 'error');
+            showToast(`Gagal: ${result.message}`, 'error');
         }
     } catch (e) {
         showToast(`Error: ${e.message}`, 'error');
@@ -1229,6 +1355,60 @@ function printReport() {
     });
     const tsEl = document.getElementById('print-timestamp');
     if (tsEl) tsEl.textContent = fullTime;
+
+    // [NEW] INJECT TABEL KE AREA CETAK (Gaya Akademik & Resmi)
+    const sourceTable = document.getElementById('table-rekap');
+    const printContainer = document.getElementById('print-table-container');
+
+    if (sourceTable && printContainer) {
+        printContainer.innerHTML = ''; // Bersihkan konten lama
+        
+        // Clone tabel agar tidak merusak tampilan dashboard asli
+        const tableClone = sourceTable.cloneNode(true);
+        
+        // Hapus class Tailwind yang tidak cocok untuk cetak resmi
+        tableClone.className = 'w-full border-collapse border border-black text-[10px] font-serif leading-tight';
+        
+        // Styling Header (Hitam Putih, Tegas)
+        const thead = tableClone.querySelector('thead');
+        if (thead) {
+            thead.className = 'bg-gray-100 text-black font-bold border-b-2 border-black';
+            const ths = thead.querySelectorAll('th');
+            ths.forEach(th => {
+                th.className = 'border border-black px-1 py-1 text-center align-middle uppercase';
+                th.style.position = 'static'; // Hapus sticky
+                // Hapus ikon sort
+                const icon = th.querySelector('i');
+                if (icon) icon.remove();
+            });
+        }
+
+        // Styling Body (Border Hitam, Bersih dari Badge Warna)
+        const tbody = tableClone.querySelector('tbody');
+        if (tbody) {
+            tbody.className = ''; 
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach(row => {
+                row.className = ''; // Hapus class row (warna bg dll)
+                row.removeAttribute('onclick'); // Hapus interaksi
+                
+                const cells = row.querySelectorAll('td');
+                cells.forEach(cell => {
+                    cell.className = 'border border-black px-1 py-1 align-middle text-black';
+                    cell.style.backgroundColor = 'transparent';
+                    cell.style.color = 'black';
+                    cell.style.position = 'static';
+                    
+                    // Bersihkan Badge/Icon (Ambil Text Saja agar terlihat resmi)
+                    if (cell.children.length > 0) {
+                        cell.innerHTML = cell.innerText.trim();
+                    }
+                });
+            });
+        }
+
+        printContainer.appendChild(tableClone);
+    }
 
     // Pastikan data tanda tangan terbaru diterapkan sebelum print
     applySignatureToPrint();
@@ -1634,9 +1814,18 @@ function sortTable(tableBodyId, colIndex) {
     const isAsc = tbody.getAttribute('data-order') === 'asc';
     
     rows.sort((a, b) => {
-        const aText = a.cells[colIndex].innerText.toLowerCase();
-        const bText = b.cells[colIndex].innerText.toLowerCase();
-        return isAsc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+        let aVal = a.cells[colIndex].innerText.trim();
+        let bVal = b.cells[colIndex].innerText.trim();
+        
+        // [UPDATE] Cek jika kolom berisi angka (hapus simbol non-digit seperti % atau Rp)
+        const aNum = parseFloat(aVal.replace(/[^0-9.-]+/g,""));
+        const bNum = parseFloat(bVal.replace(/[^0-9.-]+/g,""));
+
+        if (!isNaN(aNum) && !isNaN(bNum) && aVal.match(/\d/)) {
+            return isAsc ? aNum - bNum : bNum - aNum;
+        }
+
+        return isAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     });
 
     tbody.setAttribute('data-order', isAsc ? 'desc' : 'asc');
@@ -1725,12 +1914,16 @@ function printSalarySlip(id) {
         <head>
             <title>Slip Gaji - ${emp.nama}</title>
             <style>
-                body { font-family: 'Courier New', monospace; padding: 40px; color: #1f2937; max-width: 800px; margin: 0 auto; }
-                .header { border-bottom: 3px double #1f2937; padding-bottom: 20px; margin-bottom: 30px; position: relative; min-height: 70px; }
-                .header-content { text-align: center; width: 100%; }
-                .logo { position: absolute; left: 0; top: 0; width: 70px; height: auto; object-fit: contain; }
-                .header h1 { margin: 0; font-size: 24px; letter-spacing: 2px; }
-                .header p { margin: 5px 0 0; font-size: 14px; color: #4b5563; }
+                body { font-family: 'Times New Roman', serif; padding: 40px; color: #000; max-width: 800px; margin: 0 auto; }
+                
+                /* KOP SURAT */
+                .kop-surat { display: flex; align-items: center; justify-content: space-between; border-bottom: 4px double #000; padding-bottom: 15px; margin-bottom: 25px; }
+                .logo { width: 80px; height: 80px; object-fit: contain; }
+                .kop-text { text-align: center; flex: 1; padding: 0 10px; }
+                .kop-text h3 { margin: 0; font-size: 14px; text-transform: uppercase; font-weight: bold; line-height: 1.2; }
+                .kop-text h1 { margin: 5px 0; font-size: 20px; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; line-height: 1.2; }
+                .kop-text p { margin: 0; font-size: 12px; font-style: italic; }
+
                 .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
                 .info-item { display: flex; flex-direction: column; }
                 .label { font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: bold; }
@@ -1758,13 +1951,20 @@ function printSalarySlip(id) {
             </style>
         </head>
         <body>
-            <div class="header">
-                <img src="logo.jpg" class="logo" alt="Logo" onerror="this.style.display='none'">
-                <div class="header-content">
-                    <h1>PUSKESMAS WANA</h1>
-                    <p>SLIP GAJI & LAPORAN KINERJA</p>
-                    <p>PERIODE: ${periode}</p>
+            <div class="kop-surat">
+                <img src="Lambang_kabupaten_lampung_timur.png" class="logo" alt="Logo Kab" onerror="this.style.display='none'">
+                <div class="kop-text">
+                    <h3>PEMERINTAH KABUPATEN LAMPUNG TIMUR</h3>
+                    <h3>DINAS KESEHATAN</h3>
+                    <h1>UPTD PUSKESMAS WANA</h1>
+                    <p>Jl. Pengiran Iro Kusumo Wana Kecamatan Melinting</p>
                 </div>
+                <img src="logo.jpg" class="logo" alt="Logo PKM">
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="margin:0; text-decoration: underline; text-transform: uppercase;">SLIP GAJI PEGAWAI</h2>
+                <p style="margin:5px 0 0; font-size: 14px;">PERIODE: ${periode}</p>
             </div>
 
             <div class="info-grid">
@@ -1865,4 +2065,20 @@ function hardRefresh() {
         });
     }
     window.location.reload(true);
+}
+
+// --- FITUR: DARK MODE TOGGLE ---
+function toggleDarkMode() {
+    document.body.classList.toggle('dark');
+    const isDark = document.body.classList.contains('dark');
+    
+    // Simpan preferensi user
+    localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+    
+    // Update Icon Button
+    const btn = document.getElementById('btn-dark-mode');
+    if(btn) {
+        btn.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+        btn.title = isDark ? 'Light Mode' : 'Dark Mode';
+    }
 }

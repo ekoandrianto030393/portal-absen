@@ -612,6 +612,35 @@ app.put('/api/karyawan/:id', (req, res) => {
     });
 });
 
+// [NEW] Endpoint: Update Foto Karyawan Manual (Tanpa Ubah Biometrik)
+app.put('/api/karyawan/:id/photo', (req, res) => {
+    const id = req.params.id;
+    const { foto } = req.body; // Base64 string
+
+    if (!foto) return res.status(400).json({ success: false, message: 'Data foto tidak dikirim.' });
+
+    const base64Data = foto.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const sql = 'UPDATE karyawan SET foto = ? WHERE id_karyawan = ?';
+    pool.query(sql, [buffer, id], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'ID tidak ditemukan' });
+        res.json({ success: true, message: 'Foto profil berhasil diperbarui.' });
+    });
+});
+
+// [NEW] Endpoint: Reset Biometric Data (Hapus Foto & Descriptor Wajah)
+app.put('/api/karyawan/:id/reset_biometric', (req, res) => {
+    const id = req.params.id;
+    const sql = 'UPDATE karyawan SET face_descriptor = NULL, foto = NULL WHERE id_karyawan = ?';
+    pool.query(sql, [id], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'ID tidak ditemukan' });
+        res.json({ success: true, message: 'Data biometrik (Wajah & Foto) berhasil direset.' });
+    });
+});
+
 // Endpoint: Hapus Karyawan (Beserta data absensinya karena CASCADE)
 app.delete('/api/karyawan/:id', (req, res) => {
     const id = req.params.id;

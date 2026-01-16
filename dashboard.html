@@ -1,828 +1,615 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Puskesmas Wana</title>
-    <link rel="icon" href="data:,">
-    <script>
-        // Menyembunyikan peringatan "production" dari Tailwind CDN agar console bersih
-        const originalWarn = console.warn;
-        console.warn = (...args) => {
-            if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
-            originalWarn.apply(console, args);
-        };
-    </script>
+    <title>Dashboard Absensi - Puskesmas Wana</title>
+    
+    <!-- 1. TIPOGRAFI: Font Inter (Modern Sans Serif) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        /* KONFIGURASI DESAIN UTAMA */
+        :root {
+            --primary-color: #1e293b; /* Slate 800 - Deep Professional */
+            --secondary-color: #334155; /* Slate 700 */
+            --accent-color: #2563eb; /* Royal Blue */
+            --bg-color: #f8fafc; /* Slate 50 - Paper White */
+            --text-main: #0f172a; /* Slate 900 - High Contrast */
+            --text-body: #475569; /* Slate 600 - Readable Gray */
+            --border-color: #cbd5e1; /* Slate 300 - Distinct Borders */
+        }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: 'Inter', sans-serif; /* Font Utama */
+            background-color: var(--bg-color);
+            color: var(--text-body);
+            font-size: 14px; /* Base font size 14px-16px */
         }
 
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        /* Styling Scrollbar Halus */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Card Styling: Border Radius 12px & Shadow Halus */
+        .card-academic {
+            background: white;
+            border-radius: 8px; /* Sudut lebih tegas (Professional) */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Depth */
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        /* Active Navigation State */
+        /* Sidebar Active State */
         .nav-item.active {
-            background: rgba(255, 255, 255, 0.1);
-            border-left: 4px solid #60a5fa;
-            color: #ffffff;
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--accent-color);
+            border-right: 3px solid var(--accent-color);
         }
 
-        /* Enhanced UI Styles for Data Sections */
-        .table-gradient-header {
-            background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
-            color: white;
+        /* Header Typography */
+        h1, h2, h3 { font-weight: 600; letter-spacing: -0.025em; }
+        .page-header { font-family: 'Inter', sans-serif; font-size: 22px; font-weight: 800; color: var(--primary-color); letter-spacing: -0.5px; }
+        
+        /* Table Styling Academic */
+        table { border-collapse: collapse; width: 100%; }
+        th { font-family: 'Inter', sans-serif; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; color: #f8fafc; background: linear-gradient(to bottom, #1e293b, #0f172a); }
+        td { border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        
+        /* --- DARK MODE OVERRIDES --- */
+        body.dark {
+            --primary-color: #f1f5f9; /* Slate 100 */
+            --secondary-color: #94a3b8; /* Slate 400 */
+            --accent-color: #60a5fa; /* Blue 400 */
+            --bg-color: #0f172a; /* Slate 900 */
+            --text-main: #f8fafc; /* Slate 50 */
+            --text-body: #cbd5e1; /* Slate 300 */
+            --border-color: #334155; /* Slate 700 */
         }
         
-        /* Target JS generated headers for Monthly Recap */
-        #table-rekap thead {
-            color: white;
-        }
-        #table-rekap th {
-            padding: 1rem;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+        /* Force Override Tailwind Classes in Dark Mode */
+        body.dark .bg-white { background-color: #1e293b !important; color: #e2e8f0; }
+        body.dark .bg-slate-50, body.dark .bg-gray-50 { background-color: #0f172a !important; }
+        body.dark .bg-gray-100 { background-color: #334155 !important; color: #e2e8f0; }
+        
+        body.dark .text-slate-800, body.dark .text-gray-800, body.dark .text-\[\#2c3e50\] { color: #f1f5f9 !important; }
+        body.dark .text-slate-700, body.dark .text-gray-700 { color: #e2e8f0 !important; }
+        body.dark .text-slate-600, body.dark .text-gray-600 { color: #cbd5e1 !important; }
+        body.dark .text-slate-500, body.dark .text-gray-500 { color: #94a3b8 !important; }
+        
+        body.dark .border-slate-200, body.dark .border-gray-200, body.dark .border-gray-100 { border-color: #334155 !important; }
+        
+        body.dark .card-academic, body.dark aside { background-color: #1e293b; border-color: #334155; }
+        body.dark header { background-color: rgba(30, 41, 59, 0.9); border-color: #334155; }
+        body.dark .nav-item:hover { background-color: #334155; color: #fff; }
+        
+        body.dark input, body.dark select, body.dark textarea { background-color: #0f172a; border-color: #475569; color: #f1f5f9; }
+        body.dark tbody tr:hover { background-color: #334155 !important; }
+        
+        /* Advanced Gradient Text */
+        .text-gradient {
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-image: linear-gradient(45deg, var(--primary-color), var(--accent-color));
         }
 
-        /* Zebra Striping for Monthly Recap (Screen View) */
-        #table-rekap tbody tr:nth-child(even) {
-            background-color: #f8fafc; /* slate-50 */
-        }
-        /* Ensure sticky columns match the row background (opaque) */
-        #table-rekap tbody tr:nth-child(even) .sticky-col {
-            background-color: #f8fafc;
-        }
-        #table-rekap tbody tr:nth-child(odd) .sticky-col {
-            background-color: #ffffff;
-        }
-
-        .card-accent-top {
-            border-top-width: 4px;
-        }
-
-        /* --- CSS KHUSUS CETAK (PRINT FIX) --- */
+        /* [NEW] Print Styles for Academic Look */
         @media print {
-            @page {
-                size: landscape; /* Paksa Landscape agar tabel lebar muat */
-                margin: 5mm;     /* Margin tipis untuk memaksimalkan ruang */
+            @page { 
+                size: landscape; 
+                margin: 10mm 10mm 15mm 10mm; /* Margin bawah 15mm untuk ruang footer */
+                
+                /* Menampilkan nomor halaman (Support: Firefox & PDF Tools) */
+                @bottom-right {
+                    content: "Halaman " counter(page) " dari " counter(pages);
+                    font-family: 'Times New Roman', serif;
+                    font-size: 9pt;
+                }
             }
+            /* Reset Body untuk Cetak Panjang (Mencegah terpotong 1 halaman) */
+            body { 
+                -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important;
+                height: auto !important; overflow: visible !important; 
+            }
+            #print-area { background-color: white; width: 100%; }
             
-            body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                background: white !important;
-            }
-
-            /* Perkecil padding dan font tabel secara drastis saat print */
-            #table-rekap th, 
-            #table-rekap td {
-                padding: 4px 2px !important; /* Override padding besar (px-6) */
-                font-size: 9pt !important;   /* Font lebih kecil agar muat */
-                border: 1px solid #000 !important; /* Border hitam tegas */
-                white-space: nowrap; /* Usahakan teks satu baris */
-            }
-
-            /* Izinkan wrap (turun baris) khusus untuk Nama & Jabatan jika kepanjangan */
-            #table-rekap td:nth-child(2), 
-            #table-rekap td:nth-child(3) {
-                white-space: normal !important;
-            }
-
-            #table-rekap thead {
-                background-color: #d1d5db !important; /* Header abu-abu agar jelas */
-                color: #000 !important;
-                display: table-header-group; /* Header tabel muncul ulang di tiap halaman baru */
-            }
-
-            /* Mencegah baris tabel terpotong di tengah (setengah di hal 1, setengah di hal 2) */
-            #table-rekap tr {
-                break-inside: avoid;
-                page-break-inside: avoid;
-            }
-
-            /* Zebra Striping (Belang-belang) agar mudah dibaca */
-            #table-rekap tbody tr:nth-child(even) {
-                background-color: #f1f5f9 !important; /* Abu-abu muda */
-            }
-
-            /* Pastikan container tidak scroll (overflow) saat dicetak */
-            .overflow-x-auto {
-                overflow: visible !important;
-                display: block !important;
-                width: 100% !important;
-            }
-
-            /* FIX: Reset Layout agar konten panjang tidak terpotong (Masalah Utama) */
-            html, body, .h-screen, .overflow-hidden, .overflow-y-auto {
-                height: auto !important;
-                overflow: visible !important;
-                position: static !important;
-            }
-
-            /* Sembunyikan Sidebar, Header & Tombol saat Print */
-            aside, header, .no-print {
-                display: none !important;
-            }
-
-            /* Paksa Footer Tanda Tangan Muncul & Tidak Terpotong */
-            #print-footer {
-                display: flex !important;
-                page-break-inside: avoid;
-                break-inside: avoid; /* KUNCI: Mencegah TTD terbelah. Jika tidak muat, pindah semua ke hal baru */
-                margin-top: 50px;    /* Jarak aman. Membantu browser memutuskan untuk pindah halaman jika sempit */
-            }
-
-            /* Footer Tetap di Setiap Halaman (Pojok Kanan Bawah) */
-            #print-fixed-footer {
-                position: fixed !important;
-                bottom: 0;
-                right: 0;
-                width: 100%;
-                z-index: 9999;
-            }
+            /* Optimasi Tabel Panjang & Lebar */
+            thead { display: table-header-group; } /* Header berulang di tiap halaman baru */
+            tr { break-inside: avoid; page-break-inside: avoid; } /* Mencegah baris terpotong di tengah teks */
         }
     </style>
 </head>
+<body class="flex h-screen overflow-hidden">
 
-<body class="bg-slate-50 text-slate-800">
-    <div class="flex h-screen overflow-hidden">
-        <!-- Sidebar -->
-        <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-10 hidden md:flex text-slate-400">
-            <div class="p-6 border-b border-slate-800 flex items-center gap-3">
-                <img src="logo.jpg" class="w-14 h-14 object-contain" alt="Logo Puskesmas">
-                <div>
-                    <h1 class="font-black text-xl tracking-wider text-white leading-none">PUSKESMAS <span
-                            class="text-emerald-500">WANA</span></h1>
-                    <p class="text-[10px] text-slate-400 font-medium tracking-[0.15em] mt-1 uppercase">Biometric System</p>
-                </div>
-            </div>
+    <!-- SIDEBAR -->
+    <aside
+        class="w-64 bg-white border-r border-slate-200 flex flex-col z-20 transition-all duration-300 shadow-lg print:hidden">
+        <div class="h-16 flex items-center px-6 border-b border-slate-200 bg-slate-50">
+            <i class="fa-solid fa-building-columns text-2xl text-slate-800 mr-3"></i>
+            <span class="text-lg font-extrabold text-slate-800 tracking-tight">SIMPUS<span
+                    class="text-blue-600">WANA</span></span>
+        </div>
 
-            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
-                <button onclick="switchTab('overview')" id="nav-overview"
-                    class="nav-item active w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all hover:bg-slate-800 hover:text-white">
-                    <i class="fa-solid fa-chart-pie w-5"></i> Overview
-                </button>
-                <button onclick="switchTab('daily')" id="nav-daily"
-                    class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all hover:bg-slate-800 hover:text-white">
-                    <i class="fa-solid fa-calendar-day w-5"></i> Absensi Harian
-                </button>
-                <button onclick="switchTab('monthly')" id="nav-monthly"
-                    class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all hover:bg-slate-800 hover:text-white">
-                    <i class="fa-solid fa-file-invoice w-5"></i> Rekap Bulanan
-                </button>
-                <button onclick="switchTab('performance')" id="nav-performance"
-                    class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all hover:bg-slate-800 hover:text-white">
-                    <i class="fa-solid fa-chart-line w-5"></i> Kinerja Pegawai
-                </button>
-                <button onclick="switchTab('employees')" id="nav-employees"
-                    class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all hover:bg-slate-800 hover:text-white">
-                    <i class="fa-solid fa-users w-5"></i> Data Pegawai
-                </button>
-                <button onclick="switchTab('settings')" id="nav-settings"
-                    class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all hover:bg-slate-800 hover:text-white">
-                    <i class="fa-solid fa-cog w-5"></i> Pengaturan
-                </button>
-            </nav>
+        <nav class="flex-1 overflow-y-auto py-4">
+            <ul class="space-y-1 px-3">
+                <li><button id="nav-overview" onclick="switchTab('overview')"
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors active"><i
+                            class="fa-solid fa-chart-pie w-5"></i> Overview</button></li>
+                <li><button id="nav-daily" onclick="switchTab('daily')"
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"><i
+                            class="fa-solid fa-calendar-day w-5"></i> Laporan Harian</button></li>
+                <li><button id="nav-monthly" onclick="switchTab('monthly')"
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"><i
+                            class="fa-solid fa-table w-5"></i> Rekap Bulanan</button></li>
+                <li><button id="nav-performance" onclick="switchTab('performance')"
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"><i
+                            class="fa-solid fa-chart-line w-5"></i> Kinerja Pegawai</button></li>
+                <li><button id="nav-employees" onclick="switchTab('employees')"
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"><i
+                            class="fa-solid fa-users w-5"></i> Data Pegawai</button></li>
+                <li class="pt-4 mt-4 border-t border-gray-100"><button id="nav-settings" onclick="switchTab('settings')"
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"><i
+                            class="fa-solid fa-sliders w-5"></i> Pengaturan</button></li>
+            </ul>
+        </nav>
 
-            <div class="p-4 border-t border-slate-800">
-                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
-                    <div id="clock-time" class="text-xl font-bold text-white text-center font-mono">--:--:--</div>
-                    <div id="clock-date" class="text-xs text-slate-400 text-center mt-1">...</div>
-                </div>
-            </div>
+        <div class="p-4 border-t border-slate-200 text-[10px] text-center text-slate-400 font-mono uppercase tracking-wider">
+            Sistem Informasi Manajemen Puskesmas<br>Ver 4.5.2 (Stable)
+        </div>
         </aside>
 
-        <!-- Main Content -->
-        <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-100">
-            <!-- Top Header -->
-            <header
-                class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 lg:px-8 shadow-sm z-20">
-                <h2 id="page-title" class="text-xl font-bold text-slate-800">Dashboard Overview</h2>
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-50 print:hidden">
+        <!-- HEADER -->
+        <header
+            class="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-6 z-10 sticky top-0">
+            <div class="flex items-center">
+                <h1 id="page-title" class="page-header text-slate-800">Dashboard Overview</h1>
+            </div>
+            <div class="flex items-center gap-6">
+                <!-- Clock -->
+                <div class="text-right hidden md:block">
+                    <div id="clock-time" class="text-lg font-bold text-[#2c3e50] leading-none">00:00:00</div>
+                    <div id="clock-date" class="text-xs text-gray-500 mt-1">Senin, 1 Januari 2024</div>
+                </div>
 
-                <div class="flex items-center gap-4">
-                    <!-- Notifications -->
+                <!-- Actions -->
+                <div class="flex items-center gap-3">
+                    <!-- Dark Mode Toggle -->
+                    <button id="btn-dark-mode" onclick="toggleDarkMode()"
+                        class="p-2 text-gray-400 hover:text-[#3498db] transition-colors" title="Toggle Dark Mode"><i
+                            class="fa-solid fa-moon"></i></button>
+                    <button onclick="manualRefresh(this)" class="p-2 text-gray-400 hover:text-[#3498db] transition-colors"
+                        title="Refresh Data"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    <button onclick="toggleFullscreen()" class="p-2 text-gray-400 hover:text-[#3498db] transition-colors"><i
+                            id="icon-fullscreen" class="fa-solid fa-expand"></i></button>
+                
+                    <!-- Notification -->
                     <div class="relative">
-                        <button onclick="toggleNotifications()"
-                            class="p-2 text-slate-400 hover:text-slate-600 transition relative">
-                            <i class="fa-solid fa-bell text-lg"></i>
-                            <span id="notif-badge"
-                                class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white hidden"></span>
-                        </button>
+                        <button onclick="toggleNotifications()" class="p-2 text-gray-400 hover:text-[#3498db] transition-colors"><i
+                                class="fa-solid fa-bell"></i></button>
+                        <span id="notif-badge" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>
                         <!-- Dropdown -->
                         <div id="notif-dropdown"
-                            class="hidden absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-slate-100 z-50 overflow-hidden">
-                            <div class="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                                <span class="text-xs font-bold text-slate-700">Notifikasi</span>
-                                <button onclick="clearNotifications()"
-                                    class="text-[10px] text-slate-500 hover:text-emerald-600">Bersihkan</button>
-                            </div>
-                            <div id="notif-list" class="max-h-64 overflow-y-auto">
-                                <div class="p-4 text-center text-xs text-slate-400">Tidak ada notifikasi baru.</div>
-                            </div>
+                            class="hidden absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
+                            <div class="px-4 py-2 border-b border-gray-50 font-bold text-xs text-gray-500 uppercase">Notifikasi</div>
+                            <div id="notif-list" class="max-h-64 overflow-y-auto"></div>
                         </div>
                     </div>
-
-                    <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-slate-600 transition">
-                        <i id="icon-fullscreen" class="fa-solid fa-expand text-lg"></i>
-                    </button>
-
-                    <div class="h-8 w-px bg-slate-200 mx-2"></div>
-
-                    <div class="flex items-center gap-3">
-                        <div class="text-right hidden sm:block">
-                            <div class="text-sm font-bold text-slate-700">Admin</div>
-                            <div class="text-xs text-slate-500">Administrator</div>
-                        </div>
-                        <div
-                            class="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 border border-slate-200">
-                            <i class="fa-solid fa-user"></i>
-                        </div>
                     </div>
-                </div>
-            </header>
+                    </div>
+                    </header>
 
-            <!-- Content Scrollable Area -->
-            <div class="flex-1 overflow-y-auto p-6 lg:p-8">
-
-                <!-- VIEW: OVERVIEW -->
-                <div id="view-overview" class="space-y-6">
-                    <!-- Stats Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div
-                            class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 border-l-4 border-l-blue-500">
-                            <div
-                                class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center text-xl text-blue-600">
-                                <i class="fa-solid fa-users-line"></i>
-                            </div>
-                            <div>
-                                <div class="text-sm text-slate-500 font-medium">Total Pegawai</div>
-                                <div id="stat-total-emp" class="text-2xl font-bold">0</div>
-                            </div>
-                        </div>
-                        <div
-                            class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 border-l-4 border-l-emerald-500">
-                            <div
-                                class="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center text-xl text-emerald-600">
-                                <i class="fa-solid fa-clipboard-check"></i>
-                            </div>
-                            <div>
-                                <div class="text-sm text-slate-500 font-medium">Hadir Hari Ini</div>
-                                <div id="stat-present" class="text-2xl font-bold">0</div>
-                            </div>
-                        </div>
-                        <div
-                            class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 border-l-4 border-l-amber-500">
-                            <div
-                                class="w-12 h-12 rounded-lg bg-amber-50 flex items-center justify-center text-xl text-amber-600">
-                                <i class="fa-solid fa-clock-rotate-left"></i>
-                            </div>
-                            <div>
-                                <div class="text-sm text-slate-500 font-medium">Terlambat</div>
-                                <div id="stat-late" class="text-2xl font-bold">0</div>
-                            </div>
-                        </div>
-                        <div
-                            class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 border-l-4 border-l-rose-500">
-                            <div
-                                class="w-12 h-12 rounded-lg bg-rose-50 flex items-center justify-center text-xl text-rose-600">
-                                <i class="fa-solid fa-user-slash"></i>
-                            </div>
-                            <div>
-                                <div class="text-sm text-slate-500 font-medium">Tidak Hadir</div>
-                                <div id="stat-absent" class="text-2xl font-bold">0</div>
-                            </div>
-                        </div>
+        <!-- CONTENT VIEWS -->
+        <div class="flex-1 overflow-y-auto p-6 scroll-smooth">
+        
+            <!-- VIEW: OVERVIEW -->
+            <div id="view-overview" class="space-y-6">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="card-academic p-5 border-t-4 border-blue-600">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Pegawai</p>
+                        <p id="stat-total-emp" class="text-3xl font-black text-slate-800 mt-1">-</p>
+                    </div>
+                    <div class="card-academic p-5 border-t-4 border-emerald-600">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Hadir Hari Ini</p>
+                        <p id="stat-present" class="text-3xl font-black text-emerald-700 mt-1">-</p>
+                    </div>
+                    <div class="card-academic p-5 border-t-4 border-amber-500">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Terlambat</p>
+                        <p id="stat-late" class="text-3xl font-black text-amber-600 mt-1">-</p>
+                    </div>
+                    <div class="card-academic p-5 border-t-4 border-rose-600">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Belum Hadir / Alpa</p>
+                        <p id="stat-absent" class="text-3xl font-black text-rose-700 mt-1">-</p>
+                    </div>
                     </div>
 
-                    <!-- Charts Section -->
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Line Chart -->
-                        <div
-                            class="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm card-accent-top border-t-blue-500 hover:shadow-md transition-shadow">
-                            <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
-                                <h3 class="font-bold text-slate-700">Tren Kehadiran</h3>
-                                <div class="flex items-center gap-2 text-xs bg-slate-50 p-1 rounded-lg border border-slate-200">
-                                    <input type="date" id="chart-start"
-                                        class="bg-white border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-600">
-                                    <span class="text-slate-400">-</span>
-                                    <input type="date" id="chart-end"
-                                        class="bg-white border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-600">
-                                    <button onclick="updateChartFilter()"
-                                        class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition shadow-sm font-medium"><i
-                                            class="fa-solid fa-filter mr-1"></i> Filter</button>
-                                </div>
-                            </div>
-                            <div class="h-64 w-full">
-                                <canvas id="attendanceChart"></canvas>
+                <!-- Charts Area -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Line Chart -->
+                    <div class="card-academic p-6 lg:col-span-2">
+                        <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                            <h3 class="text-lg font-bold text-slate-800">Analisis Tren Kehadiran</h3>
+                            <div class="flex gap-2">
+                                <input type="date" id="chart-start" class="text-xs border border-gray-300 rounded px-2 py-1 bg-gray-50"
+                                    onchange="updateChartFilter()">
+                                <span class="text-gray-400">-</span>
+                                <input type="date" id="chart-end" class="text-xs border border-gray-300 rounded px-2 py-1 bg-gray-50"
+                                    onchange="updateChartFilter()">
                             </div>
                         </div>
-                        <!-- Pie Chart -->
-                        <div
-                            class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm card-accent-top border-t-emerald-500 hover:shadow-md transition-shadow">
-                            <h3 class="font-bold text-slate-700 mb-4">Komposisi Hari Ini</h3>
-                            <div class="h-64 w-full flex items-center justify-center">
+                        <div class="h-64">
+                            <canvas id="attendanceChart"></canvas>
+                        </div>
+                        </div>
+<!-- Pie Chart & Activity -->
+<div class="space-y-6">
+    <div class="card-academic p-6">
+        <h3 class="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Komposisi Kehadiran</h3>
+        <div class="h-48">
                                 <canvas id="pieChart"></canvas>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Recent Activity -->
-                    <div
-                        class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm card-accent-top border-t-amber-500 hover:shadow-md transition-shadow">
-                        <h3 class="font-bold text-slate-700 mb-4">Aktivitas Terbaru</h3>
-                        <div id="recent-activity-list" class="space-y-3">
-                            <!-- Populated by JS -->
-                            <div class="text-center text-sm text-slate-400 py-4">Memuat aktivitas...</div>
+                        <div class="card-academic p-6">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Log Aktivitas Real-time</h3>
+                            <div id="recent-activity-list" class="space-y-3 max-h-64 overflow-y-auto pr-2">
+                                <!-- JS Injected -->
+                            </div>
                         </div>
-                    </div>
-                </div>
+                        </div>
+                        </div>
+                        </div>
 
-                <!-- VIEW: DAILY -->
-                <div id="view-daily" class="hidden space-y-6">
-                    <div class="flex flex-wrap justify-between items-center gap-4">
-                        <div class="relative w-full max-w-xs">
-                            <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="search-daily" onkeyup="filterTable('table-daily-body', 'search-daily')"
-                                placeholder="Cari nama atau jabatan..."
-                                class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm shadow-sm">
+            <!-- VIEW: DAILY REPORT -->
+            <div id="view-daily" class="hidden space-y-6">
+                <div class="card-academic overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 flex flex-wrap gap-4 justify-between items-center bg-slate-50">
+                        <div class="flex items-center gap-3">
+                            <h3 class="font-bold text-slate-800 uppercase tracking-wide">Laporan Harian</h3>
+                            <div class="h-6 w-px bg-slate-300 mx-2"></div>
+                            <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded border border-slate-300 shadow-sm">
+                                <i class="fa-solid fa-calendar text-slate-500 text-xs"></i>
+                                <input type="date" id="filter-daily-date"
+                                    class="text-sm border-none bg-transparent focus:ring-0 p-0 text-slate-700 font-bold cursor-pointer">
+                            </div>
+                            <!-- [NEW] Filter Pencarian Harian -->
+                            <div class="relative ml-2">
+                                <i
+                                    class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" id="search-daily" onkeyup="filterTable('table-daily-body', 'search-daily')"
+                                    placeholder="Cari Nama..." class="pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-48 bg-white">
+                            </div>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="loadDailyData()"
-                                class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-2">
-                                <i class="fa-solid fa-rotate"></i> Refresh
-                            </button>
+                            <button onclick="loadDailyData()" class="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                                title="Refresh Data"><i class="fa-solid fa-arrows-rotate"></i></button>
                             <button onclick="openManualModal()"
-                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-2">
-                                <i class="fa-solid fa-pen-to-square"></i> Input Manual
+                                class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded text-sm font-bold transition-colors shadow-md border border-slate-900">
+                                <i class="fa-solid fa-plus mr-2"></i>Input Manual
                             </button>
                         </div>
                     </div>
-                    <div class="bg-white rounded-xl border border-slate-200 shadow-lg shadow-slate-200/50 overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-slate-50 text-slate-600 uppercase text-xs font-bold tracking-wider border-b border-slate-200">
-                                    <tr class="cursor-pointer select-none">
-                                        <th class="p-4 hover:bg-slate-100" onclick="sortTable('table-daily-body', 0)">Jam Masuk <i
-                                                class="fa-solid fa-sort text-slate-300 ml-1"></i></th>
-                                        <th class="p-4 hover:bg-slate-100" onclick="sortTable('table-daily-body', 1)">Nama Pegawai <i
-                                                class="fa-solid fa-sort text-slate-300 ml-1"></i></th>
-                                        <th class="p-4 hover:bg-slate-100" onclick="sortTable('table-daily-body', 2)">Jabatan <i
-                                                class="fa-solid fa-sort text-slate-300 ml-1"></i></th>
-                                        <th class="p-4">Status</th>
-                                        <th class="p-4">Keterlambatan</th>
-                                        <th class="p-4">Jam Keluar</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="table-daily-body" class="divide-y divide-slate-100">
-                                    <!-- Populated by JS -->
-                                </tbody>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-800 text-white text-xs uppercase font-bold tracking-wider">
+                                <tr>
+                                    <th class="px-6 py-4 border-b border-slate-600">Jam Masuk</th>
+                                    <th class="px-6 py-4 border-b border-slate-600">Nama Pegawai</th>
+                                    <th class="px-6 py-4 border-b border-slate-600">Jabatan</th>
+                                    <th class="px-6 py-4 border-b border-slate-600">Status</th>
+                                    <th class="px-6 py-4 border-b border-slate-600">Keterangan Waktu</th>
+                                    <th class="px-6 py-4 border-b border-slate-600">Jam Pulang</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-daily-body" class="text-sm text-slate-700 divide-y divide-slate-200">
+                                <!-- JS Injected -->
+                            </tbody>
                             </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- VIEW: MONTHLY -->
-                <div id="view-monthly" class="hidden space-y-6">
-                    <!-- Header Khusus Print (Hidden di layar biasa) -->
-                    <div id="print-header"
-                        class="hidden print:block border-b-4 border-double border-slate-900 pb-4 mb-6 relative text-slate-900">
-                        <div class="flex items-center gap-6 justify-center text-center relative">
-                            <!-- Logo (Absolute Left) -->
-                            <img src="Lambang_Kabupaten_Lampung_Timur.png" onerror="this.style.display='none'"
-                                class="absolute left-4 top-1/2 transform -translate-y-1/2 h-24 w-auto object-contain"
-                                alt="Logo Lampung Timur">
-                    
-                            <div class="flex-1 px-32">
-                                <h3 class="text-xl font-bold uppercase leading-tight tracking-wide">PEMERINTAH KABUPATEN LAMPUNG TIMUR</h3>
-                                <h3 class="text-xl font-bold uppercase leading-tight tracking-wide">DINAS KESEHATAN LAMPUNG TIMUR</h3>
-                                <h1 class="text-3xl font-extrabold uppercase leading-tight mt-2 tracking-wider">UPTD PUSKESMAS WANA</h1>
-                                <p class="text-base italic mt-1">Jl. Pengiran Iro Kusumo Wana Kecamatan Melinting</p>
                             </div>
-                            <!-- Logo Kanan (Absolute Right) -->
-                            <img src="logo.jpg" onerror="this.style.display='none'"
-                                class="absolute right-4 top-1/2 transform -translate-y-1/2 h-24 w-auto object-contain" alt="Logo Kanan">
-                        </div>
-                        <div class="mt-4 pt-2 text-center">
-                            <h2 class="text-xl font-bold uppercase underline decoration-2 underline-offset-4">LAPORAN ABSENSI PEGAWAI</h2>
-                            <p class="text-sm font-medium mt-2" id="print-period">Periode: -</p>
-                        </div>
-                    </div>
-
-                    <div
-                        class="no-print flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                        <div class="flex flex-wrap items-center gap-4">
-                            <div class="flex items-center gap-2">
-                                <label class="text-sm font-medium text-slate-600">Periode:</label>
-                                <input type="month" id="filter-month"
-                                    class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                             </div>
-                            <div class="relative">
-                                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                <input type="text" id="search-monthly" onkeyup="filterTable('table-rekap-body', 'search-monthly')"
-                                    placeholder="Cari nama pegawai..."
-                                    class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm w-64">
                             </div>
+
+            <!-- VIEW: MONTHLY RECAP -->
+            <div id="view-monthly" class="hidden space-y-6">
+                <div class="flex flex-wrap gap-4 items-center justify-between mb-4">
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-white p-2 rounded border border-slate-300 shadow-sm">
+                            <span class="text-sm text-slate-500 pl-2 font-bold uppercase">Periode Laporan:</span>
+                            <input type="month" id="filter-month"
+                                class="border-none bg-transparent text-slate-800 font-black focus:ring-0 cursor-pointer">
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick="printReport()"
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 shadow-sm">
-                                <i class="fa-solid fa-print"></i> Cetak
-                            </button>
-                            <button onclick="exportExcel()"
-                                class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 shadow-sm">
-                                <i class="fa-solid fa-file-excel"></i> Export CSV
-                            </button>
+                        <!-- [NEW] Filter Cek Harian -->
+                        <div class="flex items-center gap-2 bg-white p-2 rounded border border-slate-300 shadow-sm">
+                            <span class="text-sm text-slate-500 pl-2 font-bold uppercase">Cek Harian:</span>
+                            <input type="date" id="quick-daily-check"
+                                class="border-none bg-transparent text-slate-800 font-bold focus:ring-0 cursor-pointer"
+                                onchange="checkDailyFromRecap(this.value)">
                         </div>
-                    </div>
-
-                    <div
-                        class="bg-white rounded-xl border border-slate-200 shadow-lg shadow-slate-200/50 overflow-hidden print:shadow-none print:border-0">
-                        <div class="overflow-x-auto overflow-y-auto max-h-[75vh] print:overflow-visible print:max-h-none">
-                            <table id="table-rekap" class="min-w-full text-left text-sm">
-                                <!-- Populated by JS -->
-                            </table>
-                        </div>
-                    </div>
-<!-- Footer Khusus Print (Tanda Tangan) -->
-<div id="print-footer" class="hidden print:flex justify-between mt-12 px-8 text-slate-900 break-inside-avoid">
-    <div class="text-center">
-        <p class="font-medium">Mengetahui,</p>
-        <p class="font-bold mb-24">Kepala UPTD Puskesmas Wana</p>
-        <p class="font-bold underline decoration-1 underline-offset-4 mb-1" id="print-kepala-nama">(
-            ....................................................... )</p>
-        <p class="font-medium" id="print-kepala-nip">NIP. ...........................................</p>
-    </div>
-    <div class="text-center">
-        <p class="font-medium">Wana, <span id="print-date-now"></span></p>
-        <p class="font-bold mb-24">Petugas Absensi</p>
-        <p class="font-bold underline decoration-1 underline-offset-4 mb-1" id="print-petugas-nama">(
-            ....................................................... )</p>
-        <p class="font-medium" id="print-petugas-nip">NIP. ...........................................</p>
-    </div>
-</div>
-
-<!-- Fixed Footer per Halaman (Tanggal Cetak) -->
-<div id="print-fixed-footer" class="hidden print:block text-right text-[10px] text-slate-400 italic pr-8 bg-white">
-    Dicetak pada: <span id="print-timestamp"></span>
-</div>
-                </div>
-
-                <!-- VIEW: PERFORMANCE -->
-                <div id="view-performance" class="hidden space-y-6">
-                    <div id="performance-grid"
-                        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
-
-                <!-- VIEW: EMPLOYEES -->
-                <div id="view-employees" class="hidden space-y-6">
-                    <div class="flex flex-wrap items-center justify-between gap-4">
-                        <div class="relative w-full max-w-md">
-                            <i
-                                class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="search-employee" placeholder="Cari nama pegawai..."
-                                class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white shadow-sm">
-                        </div>
-                        <div class="text-sm text-slate-500">
-                            Total: <span id="total-emp-count" class="font-bold text-slate-800">0</span> Pegawai
-                        </div>
-                    </div>
-
-                    <div id="employees-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
-
-                <!-- VIEW: SETTINGS -->
-                <div id="view-settings" class="hidden space-y-6">
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm max-w-2xl">
-                        <h3 class="font-bold text-lg text-slate-800 mb-4">Pengaturan Sistem</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Tema Warna</label>
-                                <div class="flex gap-3">
-                                    <button onclick="changeTheme('emerald')"
-                                        class="w-8 h-8 rounded-full bg-emerald-500 ring-2 ring-offset-2 ring-emerald-500"></button>
-                                    <button onclick="changeTheme('cyan')"
-                                        class="w-8 h-8 rounded-full bg-cyan-500 hover:ring-2 hover:ring-offset-2 hover:ring-cyan-500"></button>
-                                    <button onclick="changeTheme('violet')"
-                                        class="w-8 h-8 rounded-full bg-violet-500 hover:ring-2 hover:ring-offset-2 hover:ring-violet-500"></button>
-                                    <button onclick="changeTheme('amber')"
-                                        class="w-8 h-8 rounded-full bg-amber-500 hover:ring-2 hover:ring-offset-2 hover:ring-amber-500"></button>
-                                </div>
-                                <p class="text-xs text-slate-500 mt-2">Klik untuk mengubah aksen warna dashboard.</p>
-                            </div>
-                            <hr class="border-slate-100">
-                            <!-- Konfigurasi Tanda Tangan -->
-                            <div>
-                                <h4 class="font-medium text-slate-700 mb-2">Konfigurasi Tanda Tangan Laporan</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Nama Kepala Puskesmas</label>
-                                        <input type="text" id="conf-kepala-nama" placeholder="Nama Kepala" autocomplete="off"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">NIP Kepala Puskesmas</label>
-                                        <input type="text" id="conf-kepala-nip" placeholder="NIP Kepala" autocomplete="off"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Nama Petugas Absensi</label>
-                                        <input type="text" id="conf-petugas-nama" placeholder="Nama Petugas" autocomplete="off"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">NIP Petugas Absensi</label>
-                                        <input type="text" id="conf-petugas-nip" placeholder="NIP Petugas" autocomplete="off"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                </div>
-                                <!-- KONFIGURASI GAJI & TUNJANGAN (REVISED) -->
-                                <h4 class="font-medium text-slate-700 mb-2 mt-4 border-t border-slate-100 pt-4">Konfigurasi Penggajian</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                                    <!-- Pendapatan -->
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Gaji Pokok Default</label>
-                                        <input type="number" id="conf-gaji-pokok" placeholder="Contoh: 2000000"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Tunjangan Jabatan (Flat)</label>
-                                        <input type="number" id="conf-tunjangan-jabatan" placeholder="Contoh: 500000"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Uang Makan (Per Kehadiran)</label>
-                                        <input type="number" id="conf-uang-makan" placeholder="Contoh: 25000"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Uang Transport (Per Kehadiran)</label>
-                                        <input type="number" id="conf-uang-transport" placeholder="Contoh: 25000"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <!-- Potongan -->
-                                    <hr class="md:col-span-2 border-slate-200 my-1">
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Potongan BPJS (Flat)</label>
-                                        <input type="number" id="conf-bpjs" placeholder="Contoh: 50000"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Potongan Pajak (Flat)</label>
-                                        <input type="number" id="conf-pajak" placeholder="Contoh: 75000"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <!-- Denda -->
-                                    <hr class="md:col-span-2 border-slate-200 my-1">
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Denda Telat (Per Kali)</label>
-                                        <input type="number" id="conf-denda-telat" placeholder="Contoh: 25000"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Denda Alpa (Per Hari)</label>
-                                        <input type="number" id="conf-denda-alpa" placeholder="Contoh: 100000"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <!-- NEW: Denda PSW & Lupa Absen -->
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Denda PSW (Per Kali)</label>
-                                        <input type="number" id="conf-denda-psw" placeholder="Contoh: 15000"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Denda Lupa Absen (Per Kejadian)</label>
-                                        <input type="number" id="conf-denda-lupa" placeholder="Contoh: 50000"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div class="md:col-span-2">
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Gaji Khusus per Jabatan (Format:
-                                            Jabatan=Nominal)</label>
-                                        <textarea id="conf-gaji-jabatan" rows="3"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
-                                            placeholder="Dokter=5000000&#10;Perawat=3500000"></textarea>
-                                    </div>
-                                </div>
-                                <!-- KONFIGURASI JAM PULANG KHUSUS (Sesuai .env) -->
-                                <h4 class="font-medium text-slate-700 mb-2 mt-4 border-t border-slate-100 pt-4">Konfigurasi Jam Pulang Khusus</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Jam Pulang Jumat</label>
-                                        <input type="time" id="conf-jam-pulang-jumat"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Jam Pulang Sabtu</label>
-                                        <input type="time" id="conf-jam-pulang-sabtu"
-                                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                                    </div>
-                                </div>
-                                <div class="mt-4 flex justify-end gap-2">
-                                    <button onclick="manualRefresh(this)" type="button"
-                                        class="bg-white border border-slate-300 text-slate-600 px-4 py-2 rounded text-sm hover:bg-slate-50 transition flex items-center gap-2 shadow-sm">
-                                        <i class="fa-solid fa-rotate"></i> Refresh
-                                    </button>
-                                    <button onclick="resetSignatureConfig()" type="button"
-                                        class="bg-white border border-red-300 text-red-600 px-4 py-2 rounded text-sm hover:bg-red-50 transition flex items-center gap-2 shadow-sm">
-                                        <i class="fa-solid fa-trash"></i> Reset
-                                    </button>
-                                <button onclick="saveSignatureConfig()"
-                                    class="bg-slate-800 text-white px-4 py-2 rounded text-sm hover:bg-slate-700 transition">Simpan
-                                    Konfigurasi</button>
-                            </div>
-                            <hr class="border-slate-100">
-                            <div>
-                                <h4 class="font-medium text-slate-700 mb-2">Tentang Aplikasi</h4>
-                                <p class="text-sm text-slate-500">Sistem Absensi Biometrik Puskesmas Wana v1.0</p>
-                                <p class="text-xs text-slate-400 mt-1">&copy; 2025 Puskesmas Wana. All rights reserved.
-                                </p>
-                            </div>
-                            <hr class="border-slate-100">
-                            <div>
-                                <h4 class="font-medium text-slate-700 mb-2">Diagnostik Scanner</h4>
-                                <div class="text-xs text-slate-500 mb-1">Akurasi Pencocokan (Threshold)</div>
-                                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                    <div id="matchThresholdBar"
-                                        class="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                                        style="width: 0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </main>
-    </div>
-
-    <!-- MODAL: DETAIL EMPLOYEE -->
-    <div id="modal-employee" class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300">
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeModal()"></div>
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div id="modal-content"
-                class="bg-white rounded-2xl shadow-2xl w-full max-w-md relative transform scale-95 transition-transform duration-300 overflow-hidden">
-                <button onclick="closeModal()" class="absolute top-4 right-4 text-white/80 hover:text-white z-10">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-
-                <div class="relative h-32 bg-gradient-to-r from-emerald-500 to-teal-600">
-                    <div class="absolute -bottom-12 left-1/2 transform -translate-x-1/2">
                         <div class="relative">
-                            <img id="modal-foto" src=""
-                                class="w-24 h-24 rounded-full border-4 border-white shadow-md object-cover bg-slate-200">
-                            <div id="modal-score-badge"
-                                class="absolute bottom-0 right-0 bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-full border-2 border-white">
-                                100</div>
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="search-rekap" onkeyup="filterTable('table-rekap-body', 'search-rekap')"
+                                placeholder="Cari Nama/ID/Jabatan..."
+                                class="pl-9 pr-4 py-2.5 text-sm border border-slate-300 rounded shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-64 bg-white">
+                            </div>
+                            </div>
+                            <div class="flex gap-2">
+                        <button onclick="exportExcel()"
+                            class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded text-sm font-bold shadow-md transition-colors border border-emerald-800"><i
+                                class="fa-solid fa-file-excel mr-2"></i>Export CSV</button>
+                        <button onclick="printReport()"
+                            class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded text-sm font-bold shadow-md transition-colors border border-slate-900"><i
+                                class="fa-solid fa-print mr-2"></i>Cetak Laporan</button>
                         </div>
-                    </div>
-                </div>
+                        </div>
 
-                <div class="pt-16 pb-8 px-6 text-center">
-                    <h3 id="modal-nama" class="text-xl font-bold text-slate-800">Nama Pegawai</h3>
-                    <p id="modal-jabatan" class="text-sm text-slate-500">Jabatan</p>
-                    <div class="mt-2 inline-block px-3 py-1 bg-slate-100 rounded-full text-xs font-mono text-slate-600"
-                        id="modal-id">ID: 000</div>
-
-                    <div class="mt-6">
-                        <div id="modal-status" class="text-lg font-bold text-emerald-600">SANGAT BAIK</div>
-                        <p class="text-xs text-slate-400">Status Kinerja Bulan Ini</p>
-                    </div>
-
-                    <div id="modal-stats-grid" class="grid grid-cols-4 gap-2 mt-6 border-t border-slate-100 pt-6">
-                        <!-- Populated by JS -->
+                <div class="card-academic overflow-hidden">
+                    <div class="overflow-x-auto max-h-[75vh]">
+                        <table id="table-rekap" class="w-full text-left border-collapse">
+                            <!-- Header Injected by JS with Academic Blue Theme -->
+                            <tbody id="table-rekap-body"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- MODAL: EDIT EMPLOYEE -->
-    <div id="modal-edit-employee" class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300">
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeEditModal()"></div>
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div id="modal-edit-content"
-                class="bg-white rounded-xl shadow-2xl w-full max-w-md relative transform scale-95 transition-transform duration-300 p-6">
-                <h3 class="text-lg font-bold text-slate-800 mb-4">Edit Data Pegawai</h3>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">ID Karyawan</label>
-                        <input type="text" id="edit-id-display" disabled
-                            class="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-slate-500 cursor-not-allowed">
-                        <input type="hidden" id="edit-id">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap</label>
-                        <input type="text" id="edit-nama"
-                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Jabatan</label>
-                        <input type="text" id="edit-jabatan"
-                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-3 mt-6">
-                    <button onclick="closeEditModal()"
-                        class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">Batal</button>
-                    <button onclick="updateEmployee()"
-                        class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition shadow-sm">Simpan
-                        Perubahan</button>
+            <!-- VIEW: PERFORMANCE -->
+            <div id="view-performance" class="hidden">
+                <div id="performance-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- JS Injected Cards -->
                 </div>
             </div>
+
+            <!-- VIEW: EMPLOYEES -->
+            <div id="view-employees" class="hidden space-y-6">
+                <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="relative w-full max-w-md">
+                        <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
+                        <input type="text" id="search-employee" placeholder="Cari nama atau jabatan..."
+                            class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#3498db] focus:ring-1 focus:ring-[#3498db] transition-all">
+                        </div>
+                    <div class="text-sm text-gray-500">Total: <span id="total-emp-count" class="font-bold text-[#2c3e50]">0</span> Pegawai
+                    </div>
+                    </div>
+                <div id="employees-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- JS Injected Cards -->
+                    </div>
+                    </div>
+
+            <!-- VIEW: SETTINGS -->
+            <div id="view-settings" class="hidden max-w-4xl mx-auto">
+                <div class="card-academic p-8">
+                    <h3 class="text-xl font-bold text-[#2c3e50] mb-6 border-b border-gray-100 pb-4">Konfigurasi Laporan & Gaji</h3>
+            
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Kolom Kiri: Tanda Tangan -->
+                        <div class="space-y-4">
+                            <h4 class="font-bold text-gray-600 uppercase text-xs tracking-wider mb-2">Tanda Tangan Laporan</h4>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Kepala Puskesmas</label>
+                                <input type="text" id="conf-kepala-nama"
+                                    class="w-full border-gray-300 rounded-lg shadow-sm focus:border-[#3498db] focus:ring-[#3498db]">
+                                </div>
+                                <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">NIP Kepala</label>
+                                <input type="text" id="conf-kepala-nip"
+                                    class="w-full border-gray-300 rounded-lg shadow-sm focus:border-[#3498db] focus:ring-[#3498db]">
+                                </div>
+                            <div class="pt-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Petugas Absensi</label>
+                                <input type="text" id="conf-petugas-nama"
+                                    class="w-full border-gray-300 rounded-lg shadow-sm focus:border-[#3498db] focus:ring-[#3498db]">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">NIP Petugas</label>
+                                <input type="text" id="conf-petugas-nip"
+                                    class="w-full border-gray-300 rounded-lg shadow-sm focus:border-[#3498db] focus:ring-[#3498db]">
+                                </div>
+                        </div>
+<!-- Kolom Kanan: Gaji & Denda -->
+<div class="space-y-4">
+    <h4 class="font-bold text-gray-600 uppercase text-xs tracking-wider mb-2">Parameter Gaji & Denda</h4>
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+                                    <label class="block text-xs font-medium text-gray-500">Gaji Pokok (Default)</label>
+                                    <input type="number" id="conf-gaji-pokok" class="w-full border-gray-300 rounded text-sm">
+                                    </div>
+                                    <div>
+                                    <label class="block text-xs font-medium text-gray-500">Tunjangan Jabatan</label>
+                                    <input type="number" id="conf-tunjangan-jabatan" class="w-full border-gray-300 rounded text-sm">
+                                    </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500">Denda Telat (per kali)</label>
+                                    <input type="number" id="conf-denda-telat" class="w-full border-gray-300 rounded text-sm text-red-600">
+                                    </div>
+                                    <div>
+                                    <label class="block text-xs font-medium text-gray-500">Denda Alpa (per hari)</label>
+                                    <input type="number" id="conf-denda-alpa" class="w-full border-gray-300 rounded text-sm text-red-600">
+                                    </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Override Gaji per Jabatan (Format: Jabatan=Nominal)</label>
+                                <textarea id="conf-gaji-jabatan" rows="3" class="w-full border-gray-300 rounded text-sm font-mono"
+                                    placeholder="Dokter=7000000&#10;Perawat=4500000"></textarea>
+                                </div>
+                        </div>
+                        </div>
+<div class="mt-8 pt-6 border-t border-gray-100 flex justify-end gap-3">
+    <button onclick="resetSignatureConfig()"
+        class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors">Reset
+        Default</button>
+    <button onclick="saveSignatureConfig()"
+        class="px-6 py-2 bg-[#2c3e50] hover:bg-[#1a252f] text-white rounded-lg font-bold shadow-md transition-transform transform hover:-translate-y-0.5">Simpan
+        Konfigurasi</button>
+                    </div>
+                    </div>
+                    </div>
+
+        </div>
+        </main>
+<!-- TOAST CONTAINER -->
+<div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 print:hidden"></div>
+
+    <!-- MODALS (Hidden by default) -->
+    <!-- Modal Detail Pegawai -->
+    <div id="modal-employee"
+        class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <div id="modal-content"
+            class="bg-white rounded-2xl shadow-2xl w-full max-w-md transform scale-95 transition-transform duration-300 overflow-hidden">
+            <div class="relative h-24 bg-[#2c3e50]">
+                <button onclick="closeModal()" class="absolute top-3 right-3 text-white/70 hover:text-white"><i
+                        class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="px-6 pb-6 -mt-12 text-center">
+                <div class="relative inline-block">
+                    <img id="modal-foto" src=""
+                        class="w-24 h-24 rounded-full border-4 border-white shadow-md bg-gray-200 object-cover">
+                    <div id="modal-score-badge" class=""></div>
+                </div>
+                <h3 id="modal-nama" class="text-xl font-bold text-[#2c3e50] mt-3">Nama Pegawai</h3>
+                <p id="modal-jabatan" class="text-sm text-gray-500 font-medium uppercase tracking-wide">Jabatan</p>
+                <p id="modal-id" class="text-xs text-gray-400 font-mono mt-1 mb-4">ID: -</p>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="text-xs font-bold text-gray-400 uppercase mb-2">Status Kinerja</div>
+                    <div id="modal-status" class="text-lg"></div>
+                </div>
+
+                <div id="modal-stats-grid" class="grid grid-cols-4 gap-2 mt-4 text-center divide-x divide-gray-100">
+                    <!-- JS Injected -->
+                </div>
+                <div id="modal-print-btn-container"></div>
+                </div>
+                </div>
+                </div>
+<!-- Modal Input Manual & Edit Employee (Placeholder Structure) -->
+<div id="modal-manual-status"
+    class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center opacity-0 transition-opacity">
+    <div id="modal-manual-content" class="bg-white p-6 rounded-xl w-96">
+        <h3 class="font-bold mb-4">Input Manual</h3><select id="manual-emp-select"
+            class="w-full border p-2 rounded mb-2"></select><select id="manual-type"
+            class="w-full border p-2 rounded mb-2">
+            <option value="HADIR_MANUAL">Hadir Manual</option>
+            <option value="DL">Dinas Luar</option>
+            <option value="IZIN">Izin</option>
+            <option value="SAKIT">Sakit</option>
+        </select>
+        <div id="manual-time-container"><input type="time" id="manual-jam-masuk"
+                class="w-full border p-2 rounded mb-2"><input type="time" id="manual-jam-keluar"
+                class="w-full border p-2 rounded mb-2"></div><input type="date" id="manual-date"
+            class="w-full border p-2 rounded mb-2"><textarea id="manual-desc" class="w-full border p-2 rounded mb-4"
+            placeholder="Keterangan"></textarea>
+        <div class="flex justify-end gap-2"><button onclick="closeManualModal()"
+                class="text-gray-500">Batal</button><button onclick="submitManualStatus()"
+                class="bg-blue-600 text-white px-4 py-2 rounded">Simpan</button></div>
         </div>
     </div>
+    <div id="modal-edit-employee"
+        class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center opacity-0 transition-opacity">
+        <div id="modal-edit-content" class="bg-white p-6 rounded-xl w-96">
+            <h3 class="font-bold mb-4">Edit Pegawai</h3><input type="hidden" id="edit-id"><input type="text"
+                id="edit-id-display" disabled class="w-full border p-2 rounded mb-2 bg-gray-100"><input type="text"
+                id="edit-nama" class="w-full border p-2 rounded mb-2" placeholder="Nama"><input type="text"
+                id="edit-jabatan" class="w-full border p-2 rounded mb-4" placeholder="Jabatan">
+            
+            <!-- [NEW] Upload Foto Manual -->
+            <div class="mb-4 bg-blue-50 p-3 rounded border border-blue-100">
+                <label class="block text-xs font-bold text-blue-800 uppercase mb-1">Ganti Foto Profil (Opsional)</label>
+                <input type="file" id="edit-foto-input" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white file:text-blue-700 hover:file:bg-blue-50 cursor-pointer"/>
+                <p class="text-[10px] text-blue-400 mt-1">*Hanya mengganti tampilan foto, tidak mengubah data scan wajah.</p>
+            </div>
 
-    <!-- MODAL: INPUT MANUAL (DINAS LUAR / IZIN) -->
-    <div id="modal-manual-status" class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeManualModal()"></div>
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div id="modal-manual-content"
-                class="bg-white rounded-2xl shadow-2xl w-full max-w-md relative transform scale-95 transition-transform duration-300 p-8 border border-slate-100 max-h-[90vh] overflow-y-auto">
-                <h3
-                    class="text-xl font-bold text-slate-800 mb-6 border-b border-slate-100 pb-4 sticky top-0 bg-white z-10 -mt-8 -mx-8 px-8 pt-8">
-                    Input Status Manual</h3>
-                
-                <div class="space-y-5">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Nama Pegawai</label>
-                        <select id="manual-emp-select" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
-                            <option value="">-- Pilih Pegawai --</option>
-                            <!-- Populated by JS -->
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Jenis Status</label>
-                        <select id="manual-type" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
-                            <option value="DL">Dinas Luar (DL)</option>
-                            <option value="IZIN">Izin</option>
-                            <option value="SAKIT">Sakit</option>
-                            <option value="CUTI">Cuti</option>
-                            <option value="HADIR_MANUAL">Masuk Normal (Manual)</option>
-                        </select>
-                    </div>
-                    <!-- Container Input Waktu (Hidden by default) -->
-                    <div id="manual-time-container" class="hidden grid grid-cols-2 gap-4 p-3 bg-slate-50 rounded border border-slate-200">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">Jam Masuk</label>
-                            <input type="time" id="manual-jam-masuk" class="w-full p-2 border border-slate-300 rounded text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">Jam Pulang</label>
-                            <input type="time" id="manual-jam-keluar" class="w-full p-2 border border-slate-300 rounded text-sm">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Keterangan</label>
-                        <textarea id="manual-desc" rows="3" placeholder="Contoh: Rapat di Dinas Kesehatan..." class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Tanggal</label>
-                        <input type="date" id="manual-date" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
-                    <button onclick="closeManualModal()" class="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Batal</button>
-                    <button onclick="submitManualStatus()" class="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-md shadow-indigo-500/20">Simpan Data</button>
-                </div>
+            <!-- [NEW] Tombol Reset Biometrik -->
+            <div class="mb-4 pt-4 border-t border-gray-100">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Data Biometrik</label>
+                <button onclick="resetBiometricData()"
+                    class="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 p-2 rounded text-sm font-bold transition-colors">
+                    <i class="fa-solid fa-trash-can"></i> Hapus Foto & Sampel Wajah
+                </button>
+                <p class="text-[10px] text-gray-400 mt-1 text-center">Pegawai harus merekam ulang wajah setelah ini.</p>
+            </div>
+<div class="flex justify-end gap-2"><button onclick="closeEditModal()" class="text-gray-500">Batal</button><button
+        onclick="updateEmployee()" class="bg-blue-600 text-white px-4 py-2 rounded">Update</button></div>
+</div>
+    </div>
+<!-- AREA CETAK (Hidden on Screen) -->
+<div id="print-area" class="hidden print:block font-serif text-black w-full">
+    <!-- KOP SURAT RESMI -->
+    <div class="flex items-center justify-between border-b-4 border-double border-black pb-4 mb-8">
+        <!-- Logo Kiri (Kabupaten) -->
+        <div class="w-24 h-24 flex items-center justify-center">
+            <img src="Lambang_kabupaten_lampung_timur.png" class="w-full h-full object-contain" alt="Logo Kab"
+                onerror="this.style.display='none'">
+            </div>
+            <!-- Teks Tengah -->
+            <div class="text-center flex-1 px-4 text-black">
+                <h3 class="text-lg font-bold uppercase leading-tight font-serif">PEMERINTAH KABUPATEN LAMPUNG TIMUR</h3>
+                <h3 class="text-lg font-bold uppercase leading-tight font-serif">DINAS KESEHATAN</h3>
+                <h1 class="text-3xl font-black uppercase leading-tight font-serif tracking-wider mt-1">UPTD PUSKESMAS WANA</h1>
+                <p class="text-sm font-serif italic mt-1">Jl. Pengiran Iro Kusumo Wana Kecamatan Melinting</p>
+            </div>
+<!-- Logo Kanan (Puskesmas) -->
+<div class="w-24 h-24 flex items-center justify-center">
+    <img src="logo.jpg" class="w-full h-full object-contain" alt="Logo PKM">
             </div>
         </div>
+<div class="text-center mb-6">
+    <h2 class="text-xl font-bold uppercase underline decoration-2 underline-offset-4 text-black">Laporan Absensi Pegawai
+    </h2>
+    <p id="print-period" class="mt-2 font-bold text-black">Periode: -</p>
+        </div>
+
+        <!-- CONTAINER TABEL CETAK (Diisi via JS) -->
+        <div id="print-table-container" class="mb-8 w-full"></div>
+
+        <div class="mt-16 flex justify-between text-center">
+            <div>
+                <p>Mengetahui,</p>
+                <p>Kepala Puskesmas</p>
+                <div class="h-20"></div>
+                <p id="print-kepala-nama" class="font-bold underline">( ........................... )</p>
+                <p id="print-kepala-nip">NIP. ...........................</p>
+                </div>
+                <div>
+                <p id="print-date-now">Jakarta, 1 Januari 2024</p>
+                <p>Petugas Absensi</p>
+                <div class="h-20"></div>
+                <p id="print-petugas-nama" class="font-bold underline">( ........................... )</p>
+                <p id="print-petugas-nip">NIP. ...........................</p>
+                </div>
+                </div>
+        <!-- Footer Cetak Tetap (Muncul di setiap halaman karena position:fixed) -->
+        <div
+            class="fixed bottom-0 left-0 w-full text-center text-[10px] text-black border-t border-black pt-2 font-serif italic bg-white">
+            Dicetak pada: <span id="print-timestamp"></span> | Sistem Informasi Manajemen Puskesmas Wana
+        </div>
+        </div>
+<!-- LOADING SPINNER OVERLAY -->
+<div id="loading-spinner"
+    class="fixed inset-0 bg-white/80 dark:bg-slate-900/80 z-[60] hidden flex flex-col items-center justify-center backdrop-blur-sm transition-opacity duration-300 print:hidden">
+    <div class="relative w-16 h-16">
+        <div class="absolute top-0 left-0 w-full h-full border-4 border-slate-200 dark:border-slate-700 rounded-full">
+        </div>
+        <div
+            class="absolute top-0 left-0 w-full h-full border-4 border-blue-600 dark:border-blue-500 rounded-full animate-spin border-t-transparent">
+        </div>
+        </div>
+        <div class="mt-4 text-slate-600 dark:text-slate-300 font-bold text-sm tracking-widest animate-pulse">MEMUAT DATA...
+        </div>
     </div>
 
-    <!-- TOAST NOTIFICATION CONTAINER -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-3"></div>
-
+    <!-- Load Logic -->
     <script src="dashboard.js"></script>
 </body>
-
 </html>
