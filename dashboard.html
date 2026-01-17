@@ -44,17 +44,18 @@
         /* Card Styling: Border Radius 12px & Shadow Halus */
         .card-academic {
             background: white;
-            border-radius: 8px; /* Sudut lebih tegas (Professional) */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Depth */
-            border: 1px solid var(--border-color);
+          border-radius: 6px; /* Sudut lebih kecil (Enterprise Standard) */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Minimalist Shadow */
+            border: 1px solid #e2e8f0;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         /* Sidebar Active State */
         .nav-item.active {
-            background-color: rgba(52, 152, 219, 0.1);
-            color: var(--accent-color);
-            border-right: 3px solid var(--accent-color);
+            background-color: #334155; /* Slate 700 */
+            color: #ffffff;
+            border-left: 4px solid #3b82f6; /* Blue 500 border kiri */
+            border-right: none;
         }
 
         /* Header Typography */
@@ -135,46 +136,46 @@
 
     <!-- SIDEBAR -->
     <aside
-        class="w-64 bg-white border-r border-slate-200 flex flex-col z-20 transition-all duration-300 shadow-lg print:hidden">
-        <div class="h-16 flex items-center px-6 border-b border-slate-200 bg-slate-50">
-            <i class="fa-solid fa-building-columns text-2xl text-slate-800 mr-3"></i>
-            <span class="text-lg font-extrabold text-slate-800 tracking-tight">SIMPUS<span
-                    class="text-blue-600">WANA</span></span>
+        class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20 transition-all duration-300 shadow-xl print:hidden text-slate-300">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-900">
+            <img src="logo.jpg" alt="Logo" class="h-10 w-auto mr-3 object-contain">
+            <span class="text-lg font-extrabold text-white tracking-tight">PUSKESMAS <span
+                    class="text-blue-500">WANA</span></span>
         </div>
 
         <nav class="flex-1 overflow-y-auto py-4">
             <ul class="space-y-1 px-3">
                 <li><button id="nav-overview" onclick="switchTab('overview')"
-                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors active"><i
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-400 rounded-md hover:bg-slate-800 hover:text-white transition-colors active"><i
                             class="fa-solid fa-chart-pie w-5"></i> Overview</button></li>
                 <li><button id="nav-daily" onclick="switchTab('daily')"
-                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"><i
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-400 rounded-md hover:bg-slate-800 hover:text-white transition-colors"><i
                             class="fa-solid fa-calendar-day w-5"></i> Laporan Harian</button></li>
                 <li><button id="nav-monthly" onclick="switchTab('monthly')"
-                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"><i
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-400 rounded-md hover:bg-slate-800 hover:text-white transition-colors"><i
                             class="fa-solid fa-table w-5"></i> Rekap Bulanan</button></li>
                 <li><button id="nav-performance" onclick="switchTab('performance')"
-                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"><i
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-400 rounded-md hover:bg-slate-800 hover:text-white transition-colors"><i
                             class="fa-solid fa-chart-line w-5"></i> Kinerja Pegawai</button></li>
                 <li><button id="nav-employees" onclick="switchTab('employees')"
-                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"><i
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-400 rounded-md hover:bg-slate-800 hover:text-white transition-colors"><i
                             class="fa-solid fa-users w-5"></i> Data Pegawai</button></li>
-                <li class="pt-4 mt-4 border-t border-gray-100"><button id="nav-settings" onclick="switchTab('settings')"
-                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"><i
+                <li class="pt-4 mt-4 border-t border-slate-700"><button id="nav-settings" onclick="switchTab('settings')"
+                        class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-400 rounded-md hover:bg-slate-800 hover:text-white transition-colors"><i
                             class="fa-solid fa-sliders w-5"></i> Pengaturan</button></li>
             </ul>
         </nav>
 
-        <div class="p-4 border-t border-slate-200 text-[10px] text-center text-slate-400 font-mono uppercase tracking-wider">
+        <div class="p-4 border-t border-slate-800 text-[10px] text-center text-slate-500 font-mono uppercase tracking-wider">
             Sistem Informasi Manajemen Puskesmas<br>Ver 4.5.2 (Stable)
         </div>
         </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-50 print:hidden">
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-[#f1f5f9] print:hidden">
         <!-- HEADER -->
         <header
-            class="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-6 z-10 sticky top-0">
+            class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 sticky top-0 shadow-sm">
             <div class="flex items-center">
                 <h1 id="page-title" class="page-header text-slate-800">Dashboard Overview</h1>
             </div>
@@ -356,7 +357,7 @@
                         </div>
 
                 <div class="card-academic overflow-hidden">
-                    <div class="overflow-x-auto max-h-[75vh]">
+                    <div class="overflow-auto max-h-[75vh]">
                         <table id="table-rekap" class="w-full text-left border-collapse">
                             <!-- Header Injected by JS with Academic Blue Theme -->
                             <tbody id="table-rekap-body"></tbody>
