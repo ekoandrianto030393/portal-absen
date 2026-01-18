@@ -68,6 +68,8 @@ let isStealthMode = false; // Default: Suara Aktif
 let confidenceHistory = []; // Untuk grafik live
 let recognition; // Variabel untuk Voice Recognition
 let faceParticles = []; // NEW: Global particle array
+let eyeParticles = []; // NEW: Partikel mata saat berkedip
+let isBlinking = false; // Status kedipan
 
 // --- STABILIZER VARS (ANTI-ACAK) ---
 let recognitionHistory = []; // Menyimpan hasil deteksi beberapa frame terakhir
@@ -980,6 +982,94 @@ function drawARDataPoints(ctx, box, color) {
     ctx.restore();
 }
 
+// --- FITUR BARU: FACE SHAPE CONNECTOR (Membentuk Wajah) ---
+function drawFaceShape(ctx, landmarks, color, isPulsing = false) {
+    const points = landmarks.positions;
+    ctx.save();
+    ctx.strokeStyle = color;
+    
+    if (isPulsing) {
+        const pulse = Math.abs(Math.sin(Date.now() / 150));
+        ctx.lineWidth = 1.5 + (pulse * 2.5); // Berdenyut tebal tipis
+        ctx.shadowBlur = 5 + (pulse * 15);
+        ctx.globalAlpha = 0.8 + (pulse * 0.2);
+    } else {
+        ctx.lineWidth = 1.5;
+        ctx.shadowBlur = 5;
+    }
+
+    ctx.shadowColor = color;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    // Helper untuk menggambar path dari array index
+    const drawPath = (indices, close = false) => {
+        ctx.beginPath();
+        ctx.moveTo(points[indices[0]].x, points[indices[0]].y);
+        for (let i = 1; i < indices.length; i++) {
+            const p = points[indices[i]];
+            ctx.lineTo(p.x, p.y);
+        }
+        if (close) ctx.closePath();
+        ctx.stroke();
+    };
+
+    // 1. Kontur Wajah (Jawline)
+    drawPath([...Array(17).keys()]); // 0-16
+
+    // 2. Alis
+    drawPath([17, 18, 19, 20, 21]); // Kiri
+    drawPath([22, 23, 24, 25, 26]); // Kanan
+
+    // 3. Hidung
+    drawPath([27, 28, 29, 30]); // Batang hidung
+    drawPath([31, 32, 33, 34, 35]); // Cuping hidung
+
+    // 4. Mata
+    drawPath([36, 37, 38, 39, 40, 41], true); // Kiri
+    drawPath([42, 43, 44, 45, 46, 47], true); // Kanan
+
+    // 5. Mulut
+    drawPath([...Array(12).keys()].map(i => i + 48), true); // Bibir Luar
+    drawPath([...Array(8).keys()].map(i => i + 60), true);  // Bibir Dalam
+
+    // 6. Titik-titik Landmark (Nodes)
+    ctx.fillStyle = color;
+    points.forEach((pt, i) => { if(i%2===0) { ctx.beginPath(); ctx.arc(pt.x, pt.y, 1, 0, Math.PI*2); ctx.fill(); } });
+
+    ctx.restore();
+}
+
+// --- FITUR BARU: EYE BLINK PARTICLES (Partikel Digital Mata) ---
+function getEAR(eye) {
+    const v1 = Math.hypot(eye[1].x - eye[5].x, eye[1].y - eye[5].y);
+    const v2 = Math.hypot(eye[2].x - eye[4].x, eye[2].y - eye[4].y);
+    const h = Math.hypot(eye[0].x - eye[3].x, eye[0].y - eye[3].y);
+    return (v1 + v2) / (2.0 * h);
+}
+
+function drawEyeParticles(ctx) {
+    for (let i = eyeParticles.length - 1; i >= 0; i--) {
+        let p = eyeParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.05;
+
+        if (p.life <= 0) {
+            eyeParticles.splice(i, 1);
+        } else {
+            ctx.save();
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.font = '12px "Courier New", monospace';
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 5;
+            ctx.fillText(p.char, p.x, p.y);
+            ctx.restore();
+        }
+    }
+}
+
 // --- FITUR BARU: LIVE CONFIDENCE GRAPH ---
 function drawLiveGraph(ctx, x, y, width, height, data, color) {
     if (data.length < 2) return;
@@ -1533,6 +1623,7 @@ function animateTitle() {
                     <img src="pkm.jpg" alt="Banner" style="width: 100%; height: 100%; object-fit: cover; object-position: center; animation: holo-flicker 5s infinite;">
                     <!-- Scanline Overlay -->
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.1) 3px); pointer-events: none;"></div>
+                    <img src="pkm.jpg" alt="Banner" style="width: 100%; height: 100%; object-fit: cover; object-position: center; image-rendering: auto;">
                 </div>
 
                 <!-- RIGHT DATA BLOCK -->
@@ -1646,6 +1737,8 @@ function animateTitle() {
             // Style dasar span
             span.style.color = '#00FFFF'; 
             span.style.textShadow = '0 0 10px rgba(0, 255, 255, 0.5)';
+            span.style.color = '#FFD700'; 
+            span.style.textShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
             span.style.transition = 'transform 0.1s, color 0.1s, text-shadow 0.1s';
             span.style.transformStyle = 'preserve-3d';
             
@@ -1674,8 +1767,10 @@ function animateTitle() {
             if (original === ' ') continue;
 
             let char = original;
-            let color = '#00FFFF'; // Base: Cyan Neon
+            let  = '#00FFFF'; // Base: Cyan Neon
             let textShadow = '0 0 8px rgba(0, 255, 255, 0.6)';
+            let color = '#FFD700'; // Base: Gold (Mencolok)
+          '0 0 10px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 69, 0, 0.6)';
             let transform = 'scale(1) translateZ(0px)';
             let opacity = 0.8 + (Math.sin(time * 3 + i) * 0.1); // Breathing effect
 
@@ -1686,11 +1781,14 @@ function animateTitle() {
             if (dist < 1.5) {
                 color = '#FFFFFF'; // White Hot
                 textShadow = '0 0 20px #FFFFFF, 0 0 40px #00FFFF, 0 0 60px #0088FF';
+                textShadow = '0 0 20px #FFFFFF, 0 0 40px #FFD700, 0 0 60px #FF4500';
                 transform = 'scale(1.2) translateZ(20px)';
                 opacity = '1';
             } else if (dist < 3) {
                 color = '#0088FF'; // Blue Trail
                 textShadow = '0 0 15px #0088FF';
+                color = '#FFA500'; // Orange Trail
+                textShadow = '0 0 15px #FFA500';
                 transform = 'scale(1.1) translateZ(10px)';
             }
 
@@ -2378,6 +2476,15 @@ async function detectFace() {
             if (!lastKnownMatch || lastKnownMatch.id !== recognizedId) {
                 if (userPhotoDisplay) userPhotoDisplay.src = `data:image/jpeg;base64,${employee.foto}`;
                 videoContainer.classList.remove('scanning-border-error'); // Reset ke Cyan (Normal) jika dikenali
+                
+                // [NEW] Update Ambulance Status to DISPATCHED (Green)
+                const ambStatus = document.getElementById('amb-status');
+                if (ambStatus) {
+                    ambStatus.textContent = 'DISPATCHED';
+                    ambStatus.style.color = '#00FF7F';
+                    ambStatus.style.textShadow = '0 0 10px #00FF00';
+                }
+
                 if (userIdDisplay) animateText(userIdDisplay, employee.nama);
                 if (userJabatanDisplay) animateText(userJabatanDisplay, employee.jabatan || 'N/A');
                 
@@ -2426,6 +2533,15 @@ async function detectFace() {
             
             // [FIX] Cek apakah sedang dalam mode instruksi (Wajah terdeteksi tapi belum pas)
             // Jika faceLabel sudah berisi instruksi (misal "TAHAN POSISI"), jangan ditimpa jadi "UNKNOWN"
+            
+            // [NEW] Revert Ambulance Status
+            const ambStatus = document.getElementById('amb-status');
+            if (ambStatus && ambStatus.textContent !== 'EMERGENCY UNIT') {
+                ambStatus.textContent = 'EMERGENCY UNIT';
+                ambStatus.style.color = '#FF3333';
+                ambStatus.style.textShadow = '0 0 10px #FF0000';
+            }
+
             const isInstruction = ["DEKATKAN WAJAH", "POSISIKAN DI TENGAH", "LIHAT LURUS", "KEPALA TEGAK", "TAHAN POSISI"].includes(faceLabel);
 
             if (isInstruction) {
@@ -2469,6 +2585,36 @@ async function detectFace() {
         // Gunakan Smart HUD baru
         drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion, gender, age);
         
+        // [NEW] Draw Face Shape (Visualisasi Wajah)
+        const isVerifying = faceLabel.includes('VERIFYING') || (userStatusDisplay && userStatusDisplay.textContent.includes('VERIFYING'));
+        drawFaceShape(context, landmarks, faceColor, isVerifying);
+
+        // --- DETEKSI KEDIPAN & PARTIKEL DIGITAL ---
+        const leftEyePts = landmarks.getLeftEye();
+        const rightEyePts = landmarks.getRightEye();
+        const avgEAR = (getEAR(leftEyePts) + getEAR(rightEyePts)) / 2;
+
+        if (avgEAR < 0.22) { // Threshold kedipan (mata tertutup)
+            if (!isBlinking) {
+                isBlinking = true;
+                // Emit Digital Particles (Burst)
+                const emitParticles = (points) => {
+                    let cx=0, cy=0;
+                    points.forEach(p=>{cx+=p.x; cy+=p.y});
+                    cx/=points.length; cy/=points.length;
+                    
+                    for(let i=0; i<8; i++) {
+                        eyeParticles.push({ x: cx, y: cy, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 1) * 6 - 2, life: 1.0, color: '#00FFFF', char: Math.random() > 0.5 ? '1' : '0' });
+                    }
+                };
+                emitParticles(leftEyePts);
+                emitParticles(rightEyePts);
+            }
+        } else {
+            isBlinking = false;
+        }
+        drawEyeParticles(context);
+        
         // [NEW] Gambar Siku-Siku Layar yang Bergerak (Dynamic Corners)
         // drawDynamicScreenCorners(context, canvas.width, canvas.height, box, faceColor);
 
@@ -2492,6 +2638,15 @@ async function detectFace() {
         // Tidak ada deteksi wajah
         if(window.LivenessCheck) window.LivenessCheck.reset();
         resetTargetData();
+        
+        // [NEW] Revert Ambulance Status (No Face)
+        const ambStatus = document.getElementById('amb-status');
+        if (ambStatus && ambStatus.textContent !== 'EMERGENCY UNIT') {
+            ambStatus.textContent = 'EMERGENCY UNIT';
+            ambStatus.style.color = '#FF3333';
+            ambStatus.style.textShadow = '0 0 10px #FF0000';
+        }
+
         isTargetLocked = false; // Reset status lock
         updateSystemDiagnostics(0);
         // [UPDATE] Jangan langsung kosongkan history agar Grace Period bekerja
@@ -2761,7 +2916,7 @@ async function processAttendance(karyawanId) {
              // Gunakan background gelap transparan agar ID Card menonjol
              successOverlay.style.background = 'rgba(0, 0, 0, 0.85)';
              successOverlay.innerHTML = `
-                <div class="holo-card" style="border-color: ${finalStatusColor}; box-shadow: 0 0 100px ${finalStatusColor}40; position: relative;">
+                <div class="holo-card" style="border-color: ${finalStatusColor}; box-shadow: 0 0 100px ${finalStatusColor}40; position: relative; overflow: hidden;">
                     <!-- 1. HUD Corners -->
                     <div class="holo-card-corner hc-tl" style="color: ${finalStatusColor}; z-index: 20;"></div>
                     <div class="holo-card-corner hc-tr" style="color: ${finalStatusColor}; z-index: 20;"></div>
@@ -2773,7 +2928,15 @@ async function processAttendance(karyawanId) {
 
                     <!-- 3. Animated Circuit Background -->
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.08; background-image: linear-gradient(${finalStatusColor} 1px, transparent 1px), linear-gradient(90deg, ${finalStatusColor} 1px, transparent 1px); background-size: 40px 40px; animation: gridMove 4s linear infinite; pointer-events: none; z-index: 1;"></div>
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.1; background-image: radial-gradient(${finalStatusColor} 1px, transparent 1px); background-size: 30px 30px; animation: gridMove 10s linear infinite; pointer-events: none; z-index: 1;"></div>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 150%; height: 150%; border: 1px dashed ${finalStatusColor}; border-radius: 50%; opacity: 0.1; animation: spinSlow 20s linear infinite; pointer-events: none; z-index: 0;"></div>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 120%; height: 120%; border: 2px solid ${finalStatusColor}; border-radius: 50%; opacity: 0.05; border-left-color: transparent; border-right-color: transparent; animation: spinReverse 15s linear infinite; pointer-events: none; z-index: 0;"></div>
                     
+                    <style>
+                        @keyframes spinSlow { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+                        @keyframes spinReverse { 0% { transform: translate(-50%, -50%) rotate(360deg); } 100% { transform: translate(-50%, -50%) rotate(0deg); } }
+                    </style>
+
                     <!-- Digital Stamp -->
                     <div class="digital-stamp" style="color: ${finalStatusColor}; border-color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor}; z-index: 15;">
                         <div class="stamp-inner">
@@ -2796,11 +2959,11 @@ async function processAttendance(karyawanId) {
 
                     <div class="holo-content" style="position: relative; z-index: 10;">
                         <!-- Left: ID CARD REPLACEMENT -->
-                        <div class="holo-avatar-container" style="justify-content: center; display: flex; transform: translateY(-50px);">
+                        <div class="holo-avatar-container" style="justify-content: center; display: flex; transform: translateY(-20px);">
                             <!-- ID CARD HTML START -->
-                            <div class="relative group perspective-[1000px] w-full max-w-[420px]">
+                            <div class="relative group perspective-[1200px] w-full max-w-[420px]">
                                  <!-- ID Card Content -->
-                                 <div class="bg-gradient-to-br from-slate-900 to-black text-white p-0 rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.8)] w-full border border-white/20 relative overflow-hidden font-sans transform transition-all duration-500 hover:scale-[1.02] hover:rotate-y-6 z-10">
+                                 <div class="bg-gradient-to-br from-slate-900 to-black text-white p-0 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] w-full border border-white/20 relative overflow-hidden font-sans transform transition-all duration-500 hover:scale-[1.05] hover:rotate-y-6 z-10" style="box-shadow: 0 0 30px ${finalStatusColor}30;">
                                     
                                     <!-- CHIP EMAS -->
                                     <div class="absolute top-28 right-6 w-12 h-9 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-md border border-yellow-300/50 shadow-md z-20 overflow-hidden opacity-90">
@@ -2874,14 +3037,14 @@ async function processAttendance(karyawanId) {
                         </div>
                         
                         <!-- Right: Info & Status -->
-                        <div class="holo-info" style="background: rgba(0, 0, 0, 0.3); padding: 20px; border-radius: 12px; border: 1px solid ${finalStatusColor}20; backdrop-filter: blur(4px);">
+                        <div class="holo-info" style="background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 100%); padding: 25px; border-radius: 16px; border: 1px solid ${finalStatusColor}40; backdrop-filter: blur(10px); box-shadow: inset 0 0 20px ${finalStatusColor}10;">
                             <div class="holo-status-box status-box-animated flex items-center justify-start" style="display: flex; ${statusBoxStyle} padding: 15px 25px; border-radius: 6px; margin-bottom: 25px; width: 100%;">
                                 ${statusIconSVG}
                                 <span style="font-size: 2.2rem; font-weight: 900; letter-spacing: 3px; color: ${finalStatusColor}; text-shadow: 0 0 15px ${finalStatusColor}; text-transform: uppercase; line-height: 1;">${finalStatusText}</span>
                             </div>
 
-                            <h2 class="holo-name" style="color: ${finalNameColor}; text-shadow: 0 0 30px ${finalNameColor}; font-size: 3.5rem; margin-bottom: 5px;">${display_name}</h2>
-                            <p class="holo-role text-cyan-300">${display_jabatan}</p>
+                            <h2 class="holo-name" style="color: ${finalNameColor}; text-shadow: 0 0 30px ${finalNameColor}; font-size: 3.5rem; margin-bottom: 5px; font-family: 'Rajdhani', sans-serif; font-weight: 700;">${display_name}</h2>
+                            <p class="holo-role text-cyan-300" style="font-size: 1.5rem; letter-spacing: 2px; border-bottom: 1px solid ${finalStatusColor}50; padding-bottom: 10px; display: inline-block;">${display_jabatan}</p>
 
                             <div class="holo-message" style="font-size: 1.1em; line-height: 1.5; margin-top: 20px;">
                                 ${finalMessageHTML}
@@ -3395,6 +3558,126 @@ function initBackground3D() {
     window.addEventListener("resize", () => engine.resize());
 }
 
+// --- FITUR BARU: INJECT AMBULANCE DISPLAY (REQUESTED) ---
+function injectAmbulanceDisplay() {
+    const photoContainer = document.getElementById('photoContainer');
+    // Cek jika elemen ada dan belum di-inject
+    if (photoContainer && !document.getElementById('ambulance-unit-display')) {
+        const wrapper = document.createElement('div');
+        wrapper.id = 'ambulance-unit-display';
+        // Styling futuristik agar senada dengan UI
+        wrapper.style.marginBottom = '20px'; // Geser Target Data ke bawah
+        wrapper.style.border = '1px solid #00FFFF';
+        wrapper.style.borderRadius = '6px';
+        wrapper.style.overflow = 'hidden';
+        wrapper.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.2)';
+        wrapper.style.position = 'relative';
+        wrapper.style.background = 'rgba(0, 20, 30, 0.6)';
+
+        wrapper.innerHTML = `
+            <div style="position: relative;">
+                <img src="ambulance.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
+                
+                <!-- UNDERGLOW (Neon Bawah Mobil) -->
+                <div style="position: absolute; bottom: 2%; left: 10%; width: 80%; height: 20%; background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.6) 0%, transparent 70%); filter: blur(20px); opacity: 0.6; animation: underglow-pulse 3s infinite; z-index: 0;"></div>
+
+                <!-- ROAD REFLECTIONS (Pantulan Strobo) -->
+                <div style="position: absolute; bottom: 5%; left: 20%; width: 25%; height: 10%; background: radial-gradient(ellipse at center, rgba(0, 0, 255, 0.6) 0%, transparent 80%); filter: blur(15px); mix-blend-mode: screen; animation: strobe-blue 0.6s infinite; z-index: 1;"></div>
+                <div style="position: absolute; bottom: 5%; left: 37.5%; width: 25%; height: 10%; background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.6) 0%, transparent 80%); filter: blur(15px); mix-blend-mode: screen; animation: strobe-yellow 0.6s infinite; z-index: 1;"></div>
+                <div style="position: absolute; bottom: 5%; right: 20%; width: 25%; height: 10%; background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0.6) 0%, transparent 80%); filter: blur(15px); mix-blend-mode: screen; animation: strobe-red 0.6s infinite; z-index: 1;"></div>
+                <div style="position: absolute; bottom: 4%; left: 35%; width: 30%; height: 8%; background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, transparent 80%); filter: blur(10px); mix-blend-mode: screen; animation: grill-flash 0.15s infinite; z-index: 1;"></div>
+
+                <!-- SIREN LIGHTS (Strobo: Biru-Kuning-Merah Bergantian) -->
+                <div style="position: absolute; top: 14%; left: 28%; width: 14%; height: 14%; border-radius: 50%; filter: blur(15px); mix-blend-mode: screen; background: rgba(0, 0, 255, 0.9); box-shadow: 0 0 50px rgba(0, 0, 255, 1); animation: strobe-blue 0.6s infinite;"></div>
+                <div style="position: absolute; top: 12%; left: 43%; width: 14%; height: 14%; border-radius: 50%; filter: blur(15px); mix-blend-mode: screen; background: rgba(255, 215, 0, 0.9); box-shadow: 0 0 50px rgba(255, 215, 0, 1); animation: strobe-yellow 0.6s infinite;"></div>
+                <div style="position: absolute; top: 14%; right: 28%; width: 14%; height: 14%; border-radius: 50%; filter: blur(15px); mix-blend-mode: screen; background: rgba(255, 0, 0, 0.9); box-shadow: 0 0 50px rgba(255, 0, 0, 1); animation: strobe-red 0.6s infinite;"></div>
+
+                <!-- HEADLIGHTS (Wig-Wag Putih) -->
+                <div style="position: absolute; top: 52%; left: 12%; width: 18%; height: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,1) 20%, rgba(255,255,255,0) 70%); mix-blend-mode: screen; filter: blur(5px); opacity: 0; animation: headlight-wigwag-left 0.6s infinite;"></div>
+                <div style="position: absolute; top: 52%; right: 12%; width: 18%; height: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,1) 20%, rgba(255,255,255,0) 70%); mix-blend-mode: screen; filter: blur(5px); opacity: 0; animation: headlight-wigwag-right 0.6s infinite;"></div>
+
+                <!-- GRILL STROBES (Lampu Kompoi Depan) -->
+                <div style="position: absolute; top: 45%; left: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite;"></div>
+                <div style="position: absolute; top: 47%; right: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite 0.07s;"></div>
+                <div style="position: absolute; top: 47%; left: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite;"></div>
+                <div style="position: absolute; top: 47%; right: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite 0.07s;"></div>
+
+                <!-- HUD TELEMETRY (Data Teknis) -->
+                <div style="position: absolute; top: 5%; right: 5%; text-align: right; z-index: 10;">
+                    <div style="color: #00FFFF; font-size: 9px; font-family: 'Courier New'; font-weight: bold; text-shadow: 0 0 5px #00FFFF; margin-bottom: 2px;">ENGINE: <span style="color: #00FF7F; animation: blink 2s infinite;">IDLE</span></div>
+                    <div style="color: #00FFFF; font-size: 9px; font-family: 'Courier New'; font-weight: bold; text-shadow: 0 0 5px #00FFFF; margin-bottom: 2px;">GPS: <span style="color: #00FF7F;">LOCKED</span></div>
+                    <div style="color: #00FFFF; font-size: 9px; font-family: 'Courier New'; font-weight: bold; text-shadow: 0 0 5px #00FFFF;">FUEL: <span style="color: #00FF7F;">98%</span></div>
+                </div>
+
+                <!-- WINDSHIELD REFLECTION (Kilatan Kaca) -->
+                <div style="position: absolute; top: 15%; left: 20%; width: 60%; height: 30%; background: linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%); background-size: 200% 100%; animation: glass-shine 4s infinite linear; pointer-events: none;"></div>
+
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, transparent 70%, rgba(0,0,0,0.8));"></div>
+                <div style="position: absolute; bottom: 8px; left: 0; width: 100%; text-align: center;">
+                    <span id="amb-status" style="color: #FF3333; font-family: 'Courier New'; font-size: 22px; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 10px #FF0000; animation: glitch-text 0.2s infinite;">EMERGENCY UNIT</span>
+                    <style>
+                        @keyframes glitch-text {
+                            0% { transform: translate(0); text-shadow: 2px 2px 0px #00FFFF, -2px -2px 0px #FF0055; }
+                            25% { transform: translate(-2px, 2px); text-shadow: -2px 2px 0px #00FFFF, 2px -2px 0px #FF0055; }
+                            50% { transform: translate(2px, -2px); text-shadow: 2px -2px 0px #00FFFF, -2px 2px 0px #FF0055; }
+                            75% { transform: translate(-2px, -2px); text-shadow: -2px -2px 0px #00FFFF, 2px 2px 0px #FF0055; }
+                            100% { transform: translate(0); text-shadow: 2px 2px 0px #00FFFF, -2px -2px 0px #FF0055; }
+                        }
+                        @keyframes strobe-blue {
+                            0%, 30% { opacity: 1; transform: scale(1.1); }
+                            33%, 100% { opacity: 0.1; transform: scale(0.9); }
+                        }
+                        @keyframes strobe-yellow {
+                            0%, 30% { opacity: 0.1; transform: scale(0.9); }
+                            33%, 63% { opacity: 1; transform: scale(1.1); }
+                            66%, 100% { opacity: 0.1; transform: scale(0.9); }
+                        }
+                        @keyframes strobe-red {
+                            0%, 63% { opacity: 0.1; transform: scale(0.9); }
+                            66%, 96% { opacity: 1; transform: scale(1.1); }
+                            100% { opacity: 0.1; transform: scale(0.9); }
+                        }
+                        @keyframes headlight-wigwag-left {
+                            0%, 49% { opacity: 0; }
+                            50%, 60% { opacity: 1; transform: scale(1.1); }
+                            100% { opacity: 0; }
+                        }
+                        @keyframes headlight-wigwag-right {
+                            0%, 10% { opacity: 1; transform: scale(1.1); }
+                            40%, 100% { opacity: 0; }
+                        }
+                        @keyframes grill-flash {
+                            0%, 50% { opacity: 0; }
+                            51%, 100% { opacity: 1; transform: scale(1.2); }
+                        }
+                        @keyframes underglow-pulse {
+                            0%, 100% { opacity: 0.4; transform: scaleX(0.9); }
+                            50% { opacity: 0.8; transform: scaleX(1.05); }
+                        }
+                        @keyframes glass-shine {
+                            0% { background-position: 200% 0; }
+                            100% { background-position: -200% 0; }
+                        }
+                        @keyframes vehicle-scan-loop {
+                            0% { top: -5%; opacity: 0; }
+                            10% { opacity: 1; }
+                            90% { opacity: 1; }
+                            100% { top: 105%; opacity: 0; }
+                        }
+                    </style>
+                </div>
+                <!-- Scanline effect -->
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.1) 3px); pointer-events: none;"></div>
+                <!-- Active Scanner Line -->
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 255, 0.8); box-shadow: 0 0 15px #00FFFF; animation: vehicle-scan-loop 3s ease-in-out infinite;"></div>
+            </div>
+        `;
+
+        // Insert sebelum photoContainer (Target Data)
+        photoContainer.parentNode.insertBefore(wrapper, photoContainer);
+    }
+}
+
 // --- START APP (setelah semua HTML siap) ---
 document.addEventListener('DOMContentLoaded', () => {
     initBackground3D(); // Inisialisasi Background 3D
@@ -3405,6 +3688,7 @@ document.addEventListener('DOMContentLoaded', () => {
     animateTitle();
     updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih
     initAudioVisualizer(); // Start Visualizer Loop
+    injectAmbulanceDisplay(); // Inject Ambulance Image di atas Target Data
 
     // CSS ADJUSTMENT: Geser area scan (Video Container) sedikit ke atas
     if (videoContainer) {
