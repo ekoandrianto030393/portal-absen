@@ -58,7 +58,7 @@ let videoDevices = [];
 // turunkan jadi 80, namun jangan dibawah itu
 const DETECTION_INTERVAL_MS = 100; // Interval scan dalam milidetik
 const DEFAULT_PHOTO = ''; // Path ke foto default/placeholder jika diperlukan
-const SUCCESS_COOLDOWN_MS = 15000; // Jeda 15 detik setelah berhasil scan (Mencegah spam)
+const SUCCESS_COOLDOWN_MS = 4000; // Jeda 4 detik setelah berhasil scan (Mencegah spam)
 
 // VARS UNTUK EFEK DECRYPT TEXT
 let targetLabel = '';
@@ -73,7 +73,7 @@ let isBlinking = false; // Status kedipan
 
 // --- STABILIZER VARS (ANTI-ACAK) ---
 let recognitionHistory = []; // Menyimpan hasil deteksi beberapa frame terakhir
-const HISTORY_LIMIT = 5;     // [UPDATE] Turunkan ke 5 agar nama lebih CEPAT muncul (Responsif)
+const HISTORY_LIMIT = 4;     // [UPDATE] Turunkan ke 5 agar nama lebih CEPAT muncul (Responsif)
 const MIN_CONSENSUS = 3;     // [UPDATE] Minimal 3 frame konsisten agar hasil AKURAT (Stabil)
 let lockGraceCounter = 0;    // [NEW] Counter untuk menahan hasil lama (Anti-Flicker)
 let lastStableResult = null; // [NEW] Menyimpan hasil valid terakhir
@@ -298,7 +298,7 @@ if (stealthToggle) {
     });
 }
 
-let FACE_MATCHING_THRESHOLD = 0.45; // [UPDATE] Diperketat ke 0.40 untuk Akurasi Tinggi (Anti-Acak)
+let FACE_MATCHING_THRESHOLD = 0.47; // [UPDATE] Diperketat ke 0.40 untuk Akurasi Tinggi (Anti-Acak)
 // --- DEFINISI WARNA (Futuristik) ---
 const PROFESSIONAL_STATUS_COLOR = '#00FF7F'; 
 const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
@@ -2261,7 +2261,7 @@ async function detectFace() {
     const displaySize = { width: canvas.width, height: canvas.height };
 
     // LOW LIGHT OPTIMIZATION: scoreThreshold diturunkan (0.50 -> 0.30) agar wajah gelap/samar tetap terdeteksi
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 })) // [UPDATE] Turunkan threshold deteksi agar wajah lebih mudah tertangkap, filter dilakukan saat matching
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 })) // [UPDATE] Turunkan threshold deteksi agar wajah lebih mudah tertangkap, filter dilakukan saat matching
 	.withFaceLandmarks()
     .withFaceExpressions() // NEW: Detect Expressions
     .withAgeAndGender() // [NEW] Detect Age & Gender
@@ -3100,7 +3100,7 @@ async function processAttendance(karyawanId) {
 
                     <div class="holo-footer" style="position: relative; z-index: 10;">
                         <span class="text-xl">SYSTEM: BIOMETRIC_MATCH_v4.5 [STABLE]</span>
-                        <span id="cooldownTimer" class="font-bold text-xl" style="color: ${finalStatusColor}">NEXT SCAN: 15.0s</span>
+                        <span id="cooldownTimer" class="font-bold text-xl" style="color: ${finalStatusColor}">NEXT SCAN: 4.0s</span>
                     </div>
                 </div>
             `;
@@ -3560,13 +3560,17 @@ function initBackground3D() {
 
 // --- FITUR BARU: INJECT AMBULANCE DISPLAY (REQUESTED) ---
 function injectAmbulanceDisplay() {
-    const photoContainer = document.getElementById('photoContainer');
-    // Cek jika elemen ada dan belum di-inject
-    if (photoContainer && !document.getElementById('ambulance-unit-display')) {
+    // MODIFIKASI: Target Panel Device Select (Media Device) agar posisi di kiri atas
+    const cameraSelect = document.getElementById('cameraSelect');
+    const targetPanel = cameraSelect ? cameraSelect.closest('.widget-panel') : null;
+
+    // Cek jika panel ada dan belum di-inject
+    if (targetPanel && !document.getElementById('ambulance-unit-display')) {
         const wrapper = document.createElement('div');
         wrapper.id = 'ambulance-unit-display';
         // Styling futuristik agar senada dengan UI
-        wrapper.style.marginBottom = '20px'; // Geser Target Data ke bawah
+        wrapper.style.marginTop = '10px'; 
+        wrapper.style.marginBottom = '15px';
         wrapper.style.border = '1px solid #00FFFF';
         wrapper.style.borderRadius = '6px';
         wrapper.style.overflow = 'hidden';
@@ -3673,8 +3677,13 @@ function injectAmbulanceDisplay() {
             </div>
         `;
 
-        // Insert sebelum photoContainer (Target Data)
-        photoContainer.parentNode.insertBefore(wrapper, photoContainer);
+        // Insert di dalam panel Device Select (di bawah judul, di atas select camera)
+        const title = targetPanel.querySelector('.widget-title');
+        if (title && title.nextSibling) {
+            targetPanel.insertBefore(wrapper, title.nextSibling);
+        } else {
+            targetPanel.appendChild(wrapper);
+        }
     }
 }
 
