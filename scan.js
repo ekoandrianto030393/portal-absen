@@ -2556,7 +2556,7 @@ async function detectFace() {
                 videoContainer.classList.add('scanning-border-error'); // Ubah border jadi Merah
                 if (labeledDescriptors && labeledDescriptors.length > 0) {
                     // Unknown Face
-                    setStatusVisual('WAJAH TIDAK DIKENAL', 'text-red-500');
+                    setStatusVisual('SCANNING..', 'text-red-500');
                     userStatusDisplay.textContent = 'ACCESS DENIED';
                     faceLabel = 'UNKNOWN';
                     faceColor = '#FF0055';

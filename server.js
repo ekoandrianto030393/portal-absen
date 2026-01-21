@@ -48,8 +48,15 @@ app.use(express.static(path.join(__dirname, '.')));
 
 // Middleware CORS Manual (Agar tidak error saat diakses dari Live Server/Port berbeda)
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+
+    // Tangani preflight request untuk PUT/DELETE
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     next();
 });
 
@@ -890,6 +897,51 @@ app.delete('/api/absensi/:id', (req, res) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Data absensi tidak ditemukan' });
         res.json({ success: true, message: 'Data absensi berhasil dihapus.' });
+    });
+});
+
+// Endpoint: Update Absensi (Edit Manual dari Dashboard)
+app.put('/api/absensi/:id', (req, res) => {
+    const id = req.params.id;
+    const { tanggal, jam_masuk, jam_keluar, status, keterangan } = req.body;
+
+    // Helper: Hitung Telat & PSW ulang jika jam berubah
+    let telatMenit = 0;
+    let pswMenit = 0;
+    
+    const timeToSeconds = (t) => {
+        if (!t) return 0;
+        const parts = t.split(':').map(Number);
+        return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+    };
+
+    if (jam_masuk && jam_masuk > BATAS_TELAT) {
+        const masukSec = timeToSeconds(jam_masuk);
+        const startSec = timeToSeconds(BATAS_TELAT);
+        telatMenit = Math.floor((masukSec - startSec) / 60);
+    }
+
+    // Cek hari untuk jam pulang (Jumat/Sabtu/Default)
+    const dateObj = new Date(tanggal);
+    const dayIndex = dateObj.getDay();
+    let jamPulangEfektif = JAM_PULANG_START;
+    if (dayIndex === 5) jamPulangEfektif = JAM_PULANG_JUMAT;
+    else if (dayIndex === 6) jamPulangEfektif = JAM_PULANG_SABTU;
+
+    if (jam_keluar && jam_keluar < jamPulangEfektif) {
+        const pulangSec = timeToSeconds(jam_keluar);
+        const batasPulangSec = timeToSeconds(jamPulangEfektif);
+        pswMenit = Math.floor((batasPulangSec - pulangSec) / 60);
+    }
+
+    const sql = `UPDATE absensi SET tanggal = ?, jam_masuk = ?, jam_keluar = ?, status = ?, keterangan = ?, telat_menit = ?, psw_menit = ? WHERE id_absensi = ?`;
+    const finalMasuk = jam_masuk || null;
+    const finalKeluar = jam_keluar || null;
+
+    pool.query(sql, [tanggal, finalMasuk, finalKeluar, status, keterangan, telatMenit, pswMenit, id], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+        res.json({ success: true, message: 'Data absensi berhasil diperbarui.' });
     });
 });
 

@@ -108,7 +108,7 @@ async function loadSystemConfig() {
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
     // Hide all views
-    ['overview', 'daily', 'monthly', 'performance', 'employees', 'settings'].forEach(id => {
+    ['overview', 'daily', 'monthly', 'performance', 'employees', 'view-db', 'settings'].forEach(id => {
         document.getElementById(`view-${id}`).classList.add('hidden');
         document.getElementById(`nav-${id}`).classList.remove('active');
     });
@@ -124,6 +124,7 @@ function switchTab(tabName) {
         'monthly': 'Rekapitulasi Bulanan',
         'performance': 'Monitoring Kinerja Pegawai',
         'employees': 'Direktori Data Pegawai',
+        'view-db': 'Data View Absensi Harian',
         'settings': 'Pengaturan Sistem'
     };
     document.getElementById('page-title').textContent = titles[tabName];
@@ -134,6 +135,7 @@ function switchTab(tabName) {
     if (tabName === 'monthly') loadMonthlyRecap();
     if (tabName === 'performance') loadPerformanceData();
     if (tabName === 'employees') loadEmployees();
+    if (tabName === 'view-db') loadViewDbData();
 }
 
 // --- JAM DIGITAL ---
@@ -371,6 +373,115 @@ async function loadDailyData(silent = false) {
         tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
     } finally {
         if (!silent) hideSpinner();
+    }
+}
+
+// --- DATA LOADER: VIEW DB (RAW ABSENSI HARIAN) ---
+async function loadViewDbData() {
+    const dateInput = document.getElementById('filter-view-db-date');
+    // Default ke hari ini jika kosong
+    const dateVal = dateInput.value || new Date().toISOString().split('T')[0];
+    if (!dateInput.value) dateInput.value = dateVal;
+
+    const tbody = document.getElementById('table-view-db-body');
+    tbody.innerHTML = '<tr><td colspan="11" class="p-4 text-center">Memuat data...</td></tr>';
+
+    try {
+        const response = await fetch(`${API_BASE}/absensi/harian?tanggal=${dateVal}&_t=${Date.now()}`);
+        const result = await response.json();
+        
+        tbody.innerHTML = '';
+        if (result.data && result.data.length > 0) {
+            result.data.forEach(row => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-2 font-mono">${row.id_absensi}</td>
+                        <td class="px-4 py-2 font-mono">${row.id_karyawan}</td>
+                        <td class="px-4 py-2 font-bold">${row.nama_karyawan}</td>
+                        <td class="px-4 py-2">${row.jabatan || '-'}</td>
+                        <td class="px-4 py-2 font-mono">${row.tanggal}</td>
+                        <td class="px-4 py-2 font-mono text-emerald-600 font-bold">${row.jam_masuk || '-'}</td>
+                        <td class="px-4 py-2 font-mono text-blue-600 font-bold">${row.jam_keluar || '-'}</td>
+                        <td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 border border-gray-200">${row.status}</span></td>
+                        <td class="px-4 py-2 text-center ${row.telat_menit > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}">${row.telat_menit}</td>
+                        <td class="px-4 py-2 text-center ${row.psw_menit > 0 ? 'text-amber-600 font-bold' : 'text-slate-400'}">${row.psw_menit}</td>
+                        <td class="px-4 py-2 text-xs text-slate-500 italic">${row.keterangan || '-'}</td>
+                        <td class="px-4 py-2 text-center">
+                            <button onclick="openEditAbsensiModal('${row.id_absensi}', '${escapeHtml(row.nama_karyawan)}', '${row.tanggal}', '${row.jam_masuk || ''}', '${row.jam_keluar || ''}', '${row.status}', '${escapeHtml(row.keterangan || '')}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit Data">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="11" class="p-4 text-center text-slate-500">Tidak ada data untuk tanggal ini.</td></tr>';
+        }
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
+    }
+}
+
+// --- FITUR: EDIT ABSENSI (MODAL) ---
+function openEditAbsensiModal(id, nama, tanggal, masuk, keluar, status, ket) {
+    document.getElementById('edit-absensi-id').value = id;
+    document.getElementById('edit-absensi-nama').value = nama;
+    // Format tanggal YYYY-MM-DD sudah sesuai untuk input type="date"
+    document.getElementById('edit-absensi-tanggal').value = tanggal.split('T')[0]; 
+    document.getElementById('edit-absensi-masuk').value = masuk;
+    document.getElementById('edit-absensi-keluar').value = keluar;
+    document.getElementById('edit-absensi-status').value = status;
+    document.getElementById('edit-absensi-ket').value = ket;
+
+    const modal = document.getElementById('modal-edit-absensi');
+    const content = document.getElementById('modal-edit-absensi-content');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    }, 10);
+}
+
+function closeEditAbsensiModal() {
+    const modal = document.getElementById('modal-edit-absensi');
+    const content = document.getElementById('modal-edit-absensi-content');
+    modal.classList.add('opacity-0');
+    content.classList.remove('scale-100');
+    content.classList.add('scale-95');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+}
+
+async function saveAbsensiChanges() {
+    const id = document.getElementById('edit-absensi-id').value;
+    const body = {
+        tanggal: document.getElementById('edit-absensi-tanggal').value,
+        jam_masuk: document.getElementById('edit-absensi-masuk').value,
+        jam_keluar: document.getElementById('edit-absensi-keluar').value,
+        status: document.getElementById('edit-absensi-status').value,
+        keterangan: document.getElementById('edit-absensi-ket').value
+    };
+
+    try {
+        const response = await fetch(`${API_BASE}/absensi/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const result = await response.json();
+        
+        if(result.success) {
+            showToast('Data absensi berhasil diperbarui', 'success');
+            closeEditAbsensiModal();
+            loadViewDbData(); // Refresh tabel
+            // Refresh overview juga jika tanggal yang diedit adalah hari ini
+            const today = new Date().toISOString().split('T')[0];
+            if (body.tanggal === today) loadOverviewData(true);
+        } else {
+            showToast(`Gagal update: ${result.message}`, 'error');
+        }
+    } catch(e) {
+        showToast(`Error: ${e.message}`, 'error');
     }
 }
 
@@ -1716,7 +1827,13 @@ function loadSignatureConfig() {
     } else {
         // [FIX] Jika tidak ada data tersimpan (habis reset), paksa kosongkan input
         // Ini mencegah browser mengembalikan nilai lama dari cache saat refresh
-        const fields = ['conf-kepala-nama', 'conf-kepala-nip', 'conf-petugas-nama', 'conf-petugas-nip'];
+        const fields = [
+            'conf-kepala-nama', 'conf-kepala-nip', 'conf-petugas-nama', 'conf-petugas-nip',
+            'conf-gaji-pokok', 'conf-tunjangan-jabatan', 'conf-uang-makan', 'conf-uang-transport',
+            'conf-bpjs', 'conf-pajak', 'conf-denda-telat', 'conf-denda-alpa', 
+            'conf-denda-psw', 'conf-denda-lupa', 'conf-gaji-jabatan',
+            'conf-jam-pulang-jumat', 'conf-jam-pulang-sabtu'
+        ];
         fields.forEach(id => {
             const el = document.getElementById(id);
             if(el) el.value = '';
@@ -1736,36 +1853,25 @@ function applySignatureToPrint() {
 }
 
 // --- FITUR: RESET CONFIGURATION ---
-function resetSignatureConfig() {
-    if (!confirm('Apakah Anda yakin ingin mereset semua pengaturan ke default? Data konfigurasi lokal akan dihapus.')) return;
+async function resetSignatureConfig() {
+    if (!confirm('Apakah Anda yakin ingin mereset semua pengaturan ke default?\n\nPERINGATAN: Semua data konfigurasi lokal dan cache browser akan dihapus total.')) return;
 
-    // Hapus dari Local Storage
-    localStorage.removeItem('signatureConfig');
+    // 1. Bersihkan Local Storage & Session Storage (Total Wipe)
+    localStorage.clear();
+    sessionStorage.clear();
 
-    // Daftar ID input yang perlu dikosongkan
-    const fields = [
-        'conf-kepala-nama', 'conf-kepala-nip', 'conf-petugas-nama', 'conf-petugas-nip',
-        'conf-gaji-pokok', 'conf-tunjangan-jabatan', 'conf-uang-makan', 'conf-uang-transport',
-        'conf-bpjs', 'conf-pajak', 'conf-denda-telat', 'conf-denda-alpa', 
-        'conf-denda-psw', 'conf-denda-lupa', 'conf-gaji-jabatan',
-        'conf-jam-pulang-jumat', 'conf-jam-pulang-sabtu'
-    ];
+    // 2. Bersihkan Cache API (Service Worker Caches) - Tunggu sampai selesai
+    if ('caches' in window) {
+        try {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(key => caches.delete(key)));
+        } catch (e) {
+            console.error("Cache clear error:", e);
+        }
+    }
 
-    fields.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
-
-    // Reset tampilan tanda tangan di laporan secara manual (karena localStorage sudah kosong)
-    if(document.getElementById('print-kepala-nama')) document.getElementById('print-kepala-nama').textContent = '( ....................................................... )';
-    if(document.getElementById('print-kepala-nip')) document.getElementById('print-kepala-nip').textContent = 'NIP. ...........................................';
-    if(document.getElementById('print-petugas-nama')) document.getElementById('print-petugas-nama').textContent = '( ....................................................... )';
-    if(document.getElementById('print-petugas-nip')) document.getElementById('print-petugas-nip').textContent = 'NIP. ...........................................';
-
-    // Muat ulang konfigurasi sistem dari server (untuk mengisi kembali default jam pulang jika ada)
-    loadSystemConfig();
-
-    showToast('Pengaturan berhasil direset ke default.', 'success');
+    // 3. Reload Halaman dengan Cache Busting (Timestamp)
+    window.location.href = window.location.pathname + '?t=' + new Date().getTime();
 }
 
 // Apply theme on load
