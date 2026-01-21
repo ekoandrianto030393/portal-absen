@@ -402,6 +402,7 @@ async function loadMonthlyRecap(silent = false) {
                 <th class="px-6 py-3 text-center">Tanpa Absen Pulang</th>
                 <th class="px-6 py-3 text-center">Potongan</th>
                 <th class="px-6 py-3 text-center">Total Jam Kerja</th>
+                <th class="px-6 py-3 text-center print:hidden">Aksi</th>
             </tr>
         </thead>
         <tbody id="table-rekap-body" class="text-slate-800 divide-y divide-slate-200 text-sm bg-white">
@@ -510,6 +511,11 @@ async function loadMonthlyRecap(silent = false) {
                         <td class="px-6 py-3 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-black' : 'text-slate-300'}">${row.tanpa_absen_pulang}</td>
                         <td class="px-6 py-3 text-center text-red-600">${row.potongan_jam} Jam</td>
                         <td class="px-6 py-3 text-center font-mono text-emerald-600 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
+                        <td class="px-6 py-3 text-center print:hidden">
+                            <button onclick="event.stopPropagation(); deleteEmployee('${row.id_karyawan}', '${escapeHtml(row.nama)}')" class="w-8 h-8 rounded flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Hapus Pegawai">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
                     </tr>
                 `;
             });
@@ -532,13 +538,14 @@ async function loadMonthlyRecap(silent = false) {
                     <td class="px-6 py-3 text-center">${tNoOut}</td>
                     <td class="px-6 py-3 text-center">${tPot}</td>
                     <td class="px-6 py-3"></td>
+                    <td class="px-6 py-3 print:hidden"></td>
                 </tr>
                 <!-- [NEW] Baris Total Pengeluaran Gaji -->
                 <tr class="bg-emerald-50 font-bold border-t border-emerald-200 text-emerald-900 print:bg-white print:border-black break-inside-avoid">
                     <td colspan="15" class="px-6 py-4 text-right uppercase text-sm tracking-wider">
                         Total Estimasi Pengeluaran Gaji (Bulan Ini):
                     </td>
-                    <td colspan="4" class="px-6 py-4 text-right text-xl font-black text-emerald-800 border-l border-emerald-200">
+                    <td colspan="5" class="px-6 py-4 text-right text-xl font-black text-emerald-800 border-l border-emerald-200">
                         ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totalGaji)}
                     </td>
                 </tr>
@@ -841,6 +848,10 @@ async function deleteEmployee(id, nama) {
             // Refresh data
             loadEmployees();
             loadOverviewData(); // Update statistik total pegawai
+            // [NEW] Refresh Monthly Recap if active
+            if (document.getElementById('view-monthly') && !document.getElementById('view-monthly').classList.contains('hidden')) {
+                loadMonthlyRecap(true);
+            }
             showToast('Pegawai berhasil dihapus', 'success');
         } else {
             showToast(`Gagal menghapus: ${result.message}`, 'error');

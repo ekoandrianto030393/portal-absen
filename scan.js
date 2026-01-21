@@ -56,9 +56,9 @@ let employeeMap = {};
 let currentStream = null; // Variabel untuk stream kamera aktif
 let videoDevices = []; 
 // turunkan jadi 80, namun jangan dibawah itu
-const DETECTION_INTERVAL_MS = 100; // Interval scan dalam milidetik
+const DETECTION_INTERVAL_MS = 80; // Interval scan dalam milidetik
 const DEFAULT_PHOTO = ''; // Path ke foto default/placeholder jika diperlukan
-const SUCCESS_COOLDOWN_MS = 4000; // Jeda 4 detik setelah berhasil scan (Mencegah spam)
+const SUCCESS_COOLDOWN_MS = 6000; // Jeda 4 detik setelah berhasil scan (Mencegah spam)
 
 // VARS UNTUK EFEK DECRYPT TEXT
 let targetLabel = '';
@@ -2261,7 +2261,7 @@ async function detectFace() {
     const displaySize = { width: canvas.width, height: canvas.height };
 
     // LOW LIGHT OPTIMIZATION: scoreThreshold diturunkan (0.50 -> 0.30) agar wajah gelap/samar tetap terdeteksi
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 })) // [UPDATE] Turunkan threshold deteksi agar wajah lebih mudah tertangkap, filter dilakukan saat matching
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 256, scoreThreshold: 0.3 })) // [UPDATE] Turunkan threshold deteksi agar wajah lebih mudah tertangkap, filter dilakukan saat matching
 	.withFaceLandmarks()
     .withFaceExpressions() // NEW: Detect Expressions
     .withAgeAndGender() // [NEW] Detect Age & Gender
@@ -2341,7 +2341,7 @@ async function detectFace() {
 
         // --- FILTER AKURASI TINGGI (STRICT MODE) ---
         // 1. Filter Ukuran: Wajah harus cukup besar (> 130px) agar detail terlihat jelas
-        const isQualityFace = box.width > 130;
+        const isQualityFace = box.width > 110;
         
         // 2. Filter Posisi: Wajah harus di tengah (Toleransi 25% dari pusat)
         const centerX = box.x + box.width / 2;
@@ -2778,10 +2778,19 @@ async function processAttendance(karyawanId) {
             // Gunakan result_code untuk logika lebih bersih (jika ada dari server)
             switch (result.result_code) {
                 case 'CHECK_IN_SUCCESS':
-                    finalStatusText = 'ABSEN MASUK BERHASIL';
-                    finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br>Selamat Bekerja.`;
-                    finalBackground = ABSEN_NORMAL_BG;
-                    finalStatusColor = NAME_HIGHLIGHT_COLOR;
+                    // [UPDATE] Logika Tepat Waktu vs Terlambat
+                    if (result.telat_menit > 0) {
+                        finalStatusText = `TERLAMBAT`;
+                        finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br><span style="color:#FFD700; font-weight:900; font-size: 2.5rem; line-height: 1.2; display:block; margin-top:10px; text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);">+ ${result.telat_menit} MENIT</span>`;
+                        finalStatusColor = '#FFD700'; // Kuning Emas
+                        finalBackground = `radial-gradient(circle, rgba(200, 150, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
+                    } else {
+                        finalStatusText = 'TEPAT WAKTU';
+                        finalStatusText = 'ABSEN MASUK BERHASIL';
+                        finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br><span style="color:#00FF7F; font-weight:bold; font-size: 1.8rem; display:block; margin-top:10px;">SELAMAT BEKERJA</span>`;
+                        finalBackground = ABSEN_NORMAL_BG;
+                        finalStatusColor = '#00FF7F'; // Hijau Spring
+                    }
                     logAttendance(display_name, serverTimestamp); // Log ke panel kanan
                     break;
                 case 'CHECK_OUT_SUCCESS':
@@ -3726,17 +3735,46 @@ function injectScanningStyles() {
         0% { background-position: 0 0, 100% 100%, 0 100%, 100% 0; }
         100% { background-position: 40px 0, -40px 100%, 0 -40px, 100% 40px; }
     }
+    @keyframes strobe-pulse {
+        0% {
+            box-shadow: 0 0 15px #ff0000, inset 0 0 10px #ff0000;
+            border-color: #ff0000;
+        }
+        15% {
+            box-shadow: 0 0 30px #ff00ff, inset 0 0 20px #ff00ff;
+            border-color: #ff00ff;
+        }
+        30% {
+            box-shadow: 0 0 15px #0000ff, inset 0 0 10px #0000ff;
+            border-color: #0000ff;
+        }
+        45% {
+            box-shadow: 0 0 30px #00ffff, inset 0 0 20px #00ffff;
+            border-color: #00ffff;
+        }
+        60% {
+            box-shadow: 0 0 15px #00ff00, inset 0 0 10px #00ff00;
+            border-color: #00ff00;
+        }
+        75% {
+            box-shadow: 0 0 30px #ffff00, inset 0 0 20px #ffff00;
+            border-color: #ffff00;
+        }
+        100% {
+            box-shadow: 0 0 15px #ff0000, inset 0 0 10px #ff0000;
+            border-color: #ff0000;
+        }
+    }
     .scanning-border {
         background-image: 
-            linear-gradient(90deg, #00FFFF 50%, transparent 50%), 
-            linear-gradient(90deg, #00FFFF 50%, transparent 50%), 
-            linear-gradient(0deg, #00FFFF 50%, transparent 50%), 
-            linear-gradient(0deg, #00FFFF 50%, transparent 50%);
+            linear-gradient(90deg, rgba(255,255,255,0.8) 50%, transparent 50%), 
+            linear-gradient(90deg, rgba(255,255,255,0.8) 50%, transparent 50%), 
+            linear-gradient(0deg, rgba(255,255,255,0.8) 50%, transparent 50%), 
+            linear-gradient(0deg, rgba(255,255,255,0.8) 50%, transparent 50%);
         background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
-        background-size: 30px 2px, 30px 2px, 2px 30px, 2px 30px;
-        animation: border-march 1s infinite linear;
-        box-shadow: 0 0 25px rgba(0, 255, 255, 0.6), inset 0 0 15px rgba(0, 255, 255, 0.3) !important;
-        border: 1px solid rgba(0, 255, 255, 0.1) !important;
+        background-size: 30px 3px, 30px 3px, 3px 30px, 3px 30px;
+        animation: border-march 1s infinite linear, strobe-pulse 0.8s infinite linear;
+        border: 3px solid transparent !important;
         transition: all 0.3s ease;
     }
     .scanning-border-error {

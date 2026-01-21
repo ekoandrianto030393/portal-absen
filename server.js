@@ -705,13 +705,17 @@ app.post('/api/absensi', (req, res) => {
                 pool.query(insertSql, [id_karyawan, today, currentTime, 'HADIR', telatMenit], (err) => {
                     if (err) return res.status(500).json({ success: false, message: err.message });
                     
+                    // [UPDATE] Tentukan warna status (Kuning jika telat)
+                    const responseColor = telatMenit > 0 ? 'yellow' : 'green';
+
                     res.json({
                         success: true,
                         message: `Selamat Pagi, Absensi Masuk Berhasil.`,
                         nama: k.nama,
                         jabatan: k.jabatan,
                         result_code: 'CHECK_IN_SUCCESS',
-                        statusColor: 'green'
+                        statusColor: responseColor,
+                        telat_menit: telatMenit // Kirim data telat ke frontend
                     });
                 });
             } else {
