@@ -256,6 +256,16 @@ async function loadDailyData(silent = false) {
         
         tbody.innerHTML = '';
         if (result.data && result.data.length > 0) {
+            // [FIX] Sort Client-side: Pastikan data tanpa jam (DL/Izin) muncul di atas
+            result.data.sort((a, b) => {
+                const aNull = !a.jam_masuk;
+                const bNull = !b.jam_masuk;
+                if (aNull && !bNull) return -1;
+                if (!aNull && bNull) return 1;
+                // Jika sama-sama ada jam atau tidak ada, urutkan DESC (Terbaru di atas)
+                return (b.jam_masuk || '').localeCompare(a.jam_masuk || '');
+            });
+
             result.data.forEach(row => {
                 // --- LOGIKA SINKRONISASI DENGAN SQL ---
                 // SQL: TIMESTAMPDIFF(MINUTE, '08:00:00', jam_masuk) jika > 08:10:00
@@ -474,6 +484,7 @@ async function saveAbsensiChanges() {
             showToast('Data absensi berhasil diperbarui', 'success');
             closeEditAbsensiModal();
             loadViewDbData(); // Refresh tabel
+            loadDailyData(true); // [FIX] Refresh tabel harian juga agar sinkron
             // Refresh overview juga jika tanggal yang diedit adalah hari ini
             const today = new Date().toISOString().split('T')[0];
             if (body.tanggal === today) loadOverviewData(true);

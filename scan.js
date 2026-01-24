@@ -80,6 +80,7 @@ let lastStableResult = null; // [NEW] Menyimpan hasil valid terakhir
 let isLastFaceCentered = false; // [NEW] Status posisi wajah frame sebelumnya (untuk warna target)
 let lastNosePosition = null; // [NEW] Untuk deteksi kestabilan gerakan
 let stabilityCounter = 0;    // [NEW] Counter frame stabil
+let userScanCounters = {};   // [NEW] Counter scan per user session
 
 // --- LIVENESS DETECTION ENGINE (ANTI-SPOOFING) ---
 class LivenessDetector {
@@ -2064,11 +2065,11 @@ async function getCameraDevices() {
         });
 
         // Tampilkan/sembunyikan select berdasarkan jumlah kamera
-        const cameraWidget = cameraSelect.closest('.widget-panel');
-        if (videoDevices.length > 1 && cameraWidget) { 
-            cameraWidget.style.display = 'flex'; 
-        } else if (cameraWidget) {
-             cameraWidget.style.display = 'none';
+        // [FIX] Jangan sembunyikan panel induk karena ada Ambulance Display & Kontrol Lain
+        if (videoDevices.length > 1) { 
+            cameraSelect.style.display = 'block'; 
+        } else {
+             cameraSelect.style.display = 'none'; // Hanya sembunyikan dropdown jika cuma 1 kamera
         }
 
         if (!cameraSelect.dataset.listenerAttached) {
@@ -2716,6 +2717,28 @@ async function processAttendance(karyawanId) {
 
     try {
         const result = await api.postAttendance(karyawanId);
+        
+        // [NEW] LOGIKA COUNTER SCAN (UX TWEAK)
+        if (!userScanCounters[karyawanId]) userScanCounters[karyawanId] = 0;
+        
+        // Jika Check-In Berhasil, reset counter jadi 1. Jika tidak (termasuk warning), increment.
+        if (result.result_code === 'CHECK_IN_SUCCESS') {
+            userScanCounters[karyawanId] = 1;
+        } else {
+            userScanCounters[karyawanId]++;
+        }
+
+        // [NEW] INTERCEPT: UBAH WARNING JADI KONFIRMASI (SCAN KE-2)
+        // Jika scan ke-2 dan server menolak karena "Sudah Masuk/Belum Jam Pulang", ubah jadi Konfirmasi Hijau.
+        if (!result.success && (result.result_code === 'TOO_EARLY_OUT' || result.result_code === 'ALREADY_CHECKED_IN')) {
+            if (userScanCounters[karyawanId] <= 2) {
+                result.success = true;
+                result.result_code = 'ALREADY_IN_CONFIRMATION';
+                result.statusColor = 'green';
+                result.message = 'Absensi Masuk Sudah Terkonfirmasi.';
+            }
+        }
+
         const serverTimestamp = new Date().toLocaleTimeString('id-ID');
 
         const statusColor = result.statusColor || 'red';
@@ -2807,6 +2830,12 @@ async function processAttendance(karyawanId) {
                         finalStatusColor = '#00FF7F'; // Hijau Normal
                         finalBackground = ABSEN_NORMAL_BG;
                     }
+                    break;
+                case 'ALREADY_IN_CONFIRMATION':
+                    finalStatusText = 'SUDAH ABSEN MASUK';
+                    finalMessageHTML = `<span style="color:#00FF7F; font-weight:bold; font-size: 1.5rem;">DATA TERKONFIRMASI</span><br>Anda sudah melakukan absen masuk.`;
+                    finalBackground = ABSEN_NORMAL_BG;
+                    finalStatusColor = '#00FF7F';
                     break;
                 case 'STATUS_CONFIRMED':
                 default: // Fallback untuk kasus sukses lainnya

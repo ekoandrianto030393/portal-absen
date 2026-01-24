@@ -198,7 +198,7 @@ pool.getConnection((err, connection) => {
                 a.psw_menit
             FROM absensi a
             JOIN karyawan k ON a.id_karyawan = k.id_karyawan
-            ORDER BY a.tanggal DESC, a.jam_masuk DESC;
+            ORDER BY a.tanggal DESC, (a.jam_masuk IS NULL) DESC, a.jam_masuk DESC;
         `;
         
         // Eksekusi Berurutan (Chained)
@@ -545,7 +545,7 @@ app.get('/api/absensi/harian', (req, res) => {
         sql += " WHERE tanggal = CURDATE()";
     }
     
-    sql += " ORDER BY jam_masuk DESC"; // Hapus LIMIT agar semua data tampil
+    sql += " ORDER BY (jam_masuk IS NULL) DESC, jam_masuk DESC"; // [FIX] Prioritaskan data tanpa jam (DL/Izin) di atas
 
     pool.query(sql, params, (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
@@ -599,6 +599,19 @@ app.get('/api/karyawan/descriptors', (req, res) => {
 
         // UPDATE: Bungkus dengan { success: true, descriptors: [...] } sesuai format scan.js
         res.json({ success: true, descriptors: faces });
+    });
+});
+
+// [FIX] Endpoint: Get Detail Karyawan (Single) - Diperlukan untuk Modal Dashboard
+app.get('/api/karyawan/:id', (req, res) => {
+    const id = req.params.id;
+    pool.query('SELECT id_karyawan, nama, jabatan, foto FROM karyawan WHERE id_karyawan = ?', [id], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        if (results.length === 0) return res.status(404).json({ success: false, message: 'ID tidak ditemukan' });
+        
+        const data = results[0];
+        if (data.foto) data.foto = data.foto.toString('base64');
+        res.json({ success: true, data });
     });
 });
 
@@ -905,6 +918,11 @@ app.put('/api/absensi/:id', (req, res) => {
     const id = req.params.id;
     const { tanggal, jam_masuk, jam_keluar, status, keterangan } = req.body;
 
+    // [FIX] Validasi Tanggal
+    if (!tanggal) {
+        return res.status(400).json({ success: false, message: 'Tanggal harus diisi.' });
+    }
+
     // Helper: Hitung Telat & PSW ulang jika jam berubah
     let telatMenit = 0;
     let pswMenit = 0;
@@ -930,7 +948,7 @@ app.put('/api/absensi/:id', (req, res) => {
 
     if (jam_keluar && jam_keluar < jamPulangEfektif) {
         const pulangSec = timeToSeconds(jam_keluar);
-        const batasPulangSec = timeToSeconds(jamPulangEfektif);
+        const batasPulangSec = timeToSeconds(jamPulangEfektif); // [FIX] Gunakan jamPulangEfektif
         pswMenit = Math.floor((batasPulangSec - pulangSec) / 60);
     }
 
@@ -939,7 +957,13 @@ app.put('/api/absensi/:id', (req, res) => {
     const finalKeluar = jam_keluar || null;
 
     pool.query(sql, [tanggal, finalMasuk, finalKeluar, status, keterangan, telatMenit, pswMenit, id], (err, result) => {
-        if (err) return res.status(500).json({ success: false, message: err.message });
+        if (err) {
+            // [FIX] Handle Duplicate Entry Error specifically
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.status(400).json({ success: false, message: 'Data absensi untuk karyawan ini pada tanggal tersebut sudah ada.' });
+            }
+            return res.status(500).json({ success: false, message: err.message });
+        }
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
         res.json({ success: true, message: 'Data absensi berhasil diperbarui.' });
     });
