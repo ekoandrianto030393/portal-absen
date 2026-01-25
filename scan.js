@@ -1842,49 +1842,62 @@ function animateTitle() {
 // --- NEW: PERSONNEL ROSTER ---
 let rosterScrollInterval = null; // Variabel kontrol animasi scroll
 
-function populatePersonnelRoster() {
-    if (!personnelRoster || Object.keys(employeeMap).length === 0) {
-        if(personnelRoster) personnelRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">No personnel data found in database.</div>';
-        return;
+async function updatePersonnelRoster() {
+    if (!personnelRoster) return;
+    
+    try {
+        // Ambil data absensi hari ini dari server
+        const data = await api.getTodayAttendance();
+        
+        personnelRoster.innerHTML = '';
+        personnelRoster.style.overflow = 'auto';
+        
+        if (!data || data.length === 0) {
+            personnelRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Belum ada data kehadiran hari ini.</div>';
+            return;
+        }
+
+        const contentWrapper = document.createElement('div');
+        contentWrapper.style.width = '100%';
+
+        data.forEach(row => {
+            // Ambil foto dari cache employeeMap jika ada, atau gunakan placeholder
+            const empData = employeeMap[row.id_karyawan] || {};
+            const photoSrc = empData.foto ? `data:image/jpeg;base64,${empData.foto}` : 'logo.jpg';
+            
+            // Tentukan status (Masuk/Pulang)
+            const isOut = !!row.jam_keluar;
+            const timeDisplay = isOut ? `OUT: ${row.jam_keluar.substring(0,5)}` : `IN: ${row.jam_masuk.substring(0,5)}`;
+            const statusColor = isOut ? 'bg-amber-500 shadow-[0_0_5px_#F59E0B]' : 'bg-green-500 shadow-[0_0_5px_#00FF00]';
+            const statusText = isOut ? 'SUDAH PULANG' : 'HADIR';
+            const borderColor = isOut ? 'border-amber-500/50' : 'border-green-500/50';
+            const bgHover = isOut ? 'hover:bg-amber-900/20' : 'hover:bg-green-900/20';
+
+            const item = document.createElement('div');
+            item.className = `flex items-center gap-3 p-2.5 border-b border-cyan-900/30 ${bgHover} transition-colors duration-200 animate-[fadeIn_0.5s_ease-out]`;
+            
+            item.innerHTML = `
+                <div class="relative w-12 h-12 flex-shrink-0">
+                    <img src="${photoSrc}" class="w-full h-full rounded-md object-cover border ${borderColor} bg-gray-800">
+                    <div class="absolute -bottom-1 -right-1 w-3 h-3 ${statusColor} rounded-full border border-black animate-pulse" title="${statusText}"></div>
+                </div>
+                <div class="flex-grow min-w-0">
+                    <p class="font-bold text-xs text-white truncate leading-tight">${row.nama}</p>
+                    <p class="text-[10px] text-cyan-300 truncate opacity-80">${row.jabatan || '-'}</p>
+                    <div class="flex justify-between items-center mt-1">
+                        <p class="text-[10px] text-gray-400 font-mono bg-black/30 px-1 rounded">${timeDisplay}</p>
+                        ${isOut ? '<span class="text-[9px] text-amber-500 font-bold">PULANG</span>' : '<span class="text-[9px] text-green-500 font-bold">AKTIF</span>'}
+                    </div>
+                </div>
+            `;
+            contentWrapper.appendChild(item);
+        });
+        
+        personnelRoster.appendChild(contentWrapper);
+
+    } catch (e) {
+        console.error("Roster update failed", e);
     }
-
-    // Reset & Stop animasi lama
-    if (rosterScrollInterval) cancelAnimationFrame(rosterScrollInterval);
-    personnelRoster.innerHTML = ''; 
-    personnelRoster.style.overflow = 'auto'; // Aktifkan scrollbar manual
-    personnelRoster.style.position = 'relative';
-
-    // Wrapper untuk konten
-    const contentWrapper = document.createElement('div');
-    contentWrapper.style.width = '100%';
-
-    // Ambil data dari employeeMap, urutkan berdasarkan nama
-    const sortedEmployees = Object.values(employeeMap).sort((a, b) => a.nama.localeCompare(b.nama));
-
-    // Helper buat baris
-    const createRow = (emp) => {
-        const item = document.createElement('div');
-        item.className = 'flex items-center gap-4 p-2.5 border-b border-cyan-500/30 hover:bg-cyan-500/20 transition-colors duration-200 cursor-pointer';
-        item.dataset.name = emp.nama.toLowerCase(); // Simpan nama untuk search
-
-        // Indikator Status: Hijau (Siap) atau Abu-abu (Belum Rekam Wajah)
-        const statusColor = emp.hasFace ? 'bg-green-500 shadow-[0_0_5px_#00FF00] animate-pulse' : 'bg-gray-500';
-        const statusTitle = emp.hasFace ? 'Biometric Ready' : 'No Face Data';
-
-        item.innerHTML = `
-            <img src="data:image/jpeg;base64,${emp.foto}" class="w-16 h-16 rounded-md object-cover border-2 border-cyan-400/80 shadow-[0_0_8px_rgba(0,255,255,0.5)] flex-shrink-0 bg-gray-800 hover:scale-105 transition-transform duration-200" style="image-rendering: auto;">
-            <div class="flex-grow overflow-hidden">
-                <p class="font-bold text-sm text-white tracking-wide truncate drop-shadow-md leading-tight" title="${emp.nama}">${emp.nama}</p>
-                <p class="text-[11px] text-cyan-200/80 truncate font-mono mt-0.5" title="${emp.jabatan}">${emp.jabatan}</p>
-            </div>
-            <div class="w-2 h-2 ${statusColor} rounded-full flex-shrink-0" title="${statusTitle}"></div>
-        `;
-        return item;
-    };
-
-    // 1. Masukkan data asli
-    sortedEmployees.forEach(emp => contentWrapper.appendChild(createRow(emp)));
-    personnelRoster.appendChild(contentWrapper);
 }
 
 
@@ -2010,7 +2023,7 @@ async function loadLabeledImages() {
 
         
         // --- PANGGIL FUNGSI BARU SETELAH employeeMap SIAP ---
-        populatePersonnelRoster();
+        updatePersonnelRoster();
 
         setStatusVisual(`${descriptors.length} ID Karyawan dimuat. SYSTEM READY.`, 'text-green-500');
         if(dbStatus) {
@@ -2145,6 +2158,8 @@ async function loadTodayAttendance() {
                 }
                 logAttendance(nama, jam);
             });
+            // Update Roster Visual juga saat load awal
+            updatePersonnelRoster();
         }
     } catch (e) {
         console.error("Error loading today attendance:", e);
@@ -2815,6 +2830,7 @@ async function processAttendance(karyawanId) {
                         finalStatusColor = '#00FF7F'; // Hijau Spring
                     }
                     logAttendance(display_name, serverTimestamp); // Log ke panel kanan
+                    updatePersonnelRoster(); // Refresh Roster Visual
                     break;
                 case 'CHECK_OUT_SUCCESS':
                     // LOGIKA BARU: Cek apakah PSW (Status Yellow)
@@ -2830,6 +2846,7 @@ async function processAttendance(karyawanId) {
                         finalStatusColor = '#00FF7F'; // Hijau Normal
                         finalBackground = ABSEN_NORMAL_BG;
                     }
+                    updatePersonnelRoster(); // Refresh Roster Visual
                     break;
                 case 'ALREADY_IN_CONFIRMATION':
                     finalStatusText = 'SUDAH ABSEN MASUK';

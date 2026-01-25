@@ -555,7 +555,7 @@ app.get('/api/absensi/harian', (req, res) => {
 
 // Endpoint: Data Absensi Hari Ini (Khusus Scan Page Diagnostic)
 app.get('/api/absensi/today', (req, res) => {
-    const sql = "SELECT nama_karyawan AS nama, jam_masuk AS jam FROM view_absensi_harian WHERE tanggal = CURDATE() ORDER BY jam_masuk ASC";
+    const sql = "SELECT id_karyawan, nama_karyawan AS nama, jabatan, jam_masuk, jam_keluar FROM view_absensi_harian WHERE tanggal = CURDATE() ORDER BY jam_masuk DESC";
     pool.query(sql, (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json(results);
