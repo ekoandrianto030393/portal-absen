@@ -1840,7 +1840,7 @@ function animateTitle() {
 }
 
 // --- NEW: PERSONNEL ROSTER ---
-let rosterScrollInterval = null; // Variabel kontrol animasi scroll
+let rosterScrollInterval = null;
 
 async function updatePersonnelRoster() {
     if (!personnelRoster) return;
@@ -1990,7 +1990,7 @@ async function loadLabeledImages() {
 
         const descriptors = [];
         
-        descriptorsData.forEach(item => {
+        descriptorsData.forEach(item =>{
             // 1. Masukkan SEMUA pegawai ke Map (untuk Roster)
             employeeMap[item.id_karyawan] = {
                 nama: item.nama,
