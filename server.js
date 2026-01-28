@@ -867,8 +867,9 @@ app.post('/api/absensi/manual', (req, res) => {
     };
 
     if (status === 'DL') {
-        finalJamMasuk = JAM_KERJA_MULAI;  // Isi jam masuk default (misal 08:00)
-        finalJamKeluar = JAM_PULANG_START; // Isi jam pulang default (misal 16:00)
+        // [UPDATE] Gunakan jam inputan user jika ada agar jam kerja akurat. Jika kosong, baru pakai default.
+        finalJamMasuk = jam_masuk ? (jam_masuk.length === 5 ? jam_masuk + ':00' : jam_masuk) : JAM_KERJA_MULAI;
+        finalJamKeluar = jam_keluar ? (jam_keluar.length === 5 ? jam_keluar + ':00' : jam_keluar) : JAM_PULANG_START;
     } else if (status === 'HADIR_MANUAL') {
         // Pastikan format waktu lengkap HH:MM:SS
         finalJamMasuk = jam_masuk ? (jam_masuk.length === 5 ? jam_masuk + ':00' : jam_masuk) : null;

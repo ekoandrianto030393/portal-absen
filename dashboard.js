@@ -606,7 +606,9 @@ async function loadMonthlyRecap(silent = false) {
 
                 // Hitung Persentase Kehadiran
                 const totalHariKerja = parseInt(row.total_hari_kerja) || 20; // Default 20 jika null
-                const persentase = Math.round(((parseInt(row.total_masuk) + parseInt(row.total_dl)) / totalHariKerja) * 100);
+                // [FIX] Logika ini salah karena `total_masuk` dari view sudah mencakup DL.
+                // const persentase = Math.round(((parseInt(row.total_masuk) + parseInt(row.total_dl)) / totalHariKerja) * 100);
+                const persentase = totalHariKerja > 0 ? Math.round(((parseInt(row.total_masuk) || 0) / totalHariKerja) * 100) : 0; // [FIXED] Cukup hitung dari total_masuk.
 
                 tbody.innerHTML += `
                     <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-slate-50 border-b border-slate-200 last:border-0 group">
@@ -1152,7 +1154,8 @@ async function openManualModal() {
     
     if (typeSelect && timeContainer) {
         typeSelect.onchange = function() {
-            if (this.value === 'HADIR_MANUAL') {
+            // [UPDATE] Tampilkan input waktu untuk HADIR_MANUAL dan DL agar bisa set jam kerja custom
+            if (this.value === 'HADIR_MANUAL' || this.value === 'DL') {
                 timeContainer.classList.remove('hidden');
             } else {
                 timeContainer.classList.add('hidden');
@@ -1938,12 +1941,27 @@ function showToast(message, type = 'info') {
 // --- HELPER: TABLE SORTING ---
 function sortTable(tableBodyId, colIndex) {
     const tbody = document.getElementById(tableBodyId);
-    const rows = Array.from(tbody.rows);
+    if (!tbody) return; // Guard against missing element
+
+    const allRows = Array.from(tbody.rows);
+
+    // Separate data rows from footer/summary rows. Data rows have an 'onclick' handler.
+    const dataRows = allRows.filter(row => row.hasAttribute('onclick'));
+    const footerRows = allRows.filter(row => !row.hasAttribute('onclick'));
+
     const isAsc = tbody.getAttribute('data-order') === 'asc';
     
-    rows.sort((a, b) => {
-        let aVal = a.cells[colIndex].innerText.trim();
-        let bVal = b.cells[colIndex].innerText.trim();
+    dataRows.sort((a, b) => {
+        const aCell = a.cells[colIndex];
+        const bCell = b.cells[colIndex];
+
+        // This should not happen for data rows, but it's a good safety check.
+        if (!aCell || !bCell) {
+            return 0;
+        }
+        
+        let aVal = aCell.innerText.trim();
+        let bVal = bCell.innerText.trim();
         
         // [UPDATE] Cek jika kolom berisi angka (hapus simbol non-digit seperti % atau Rp)
         const aNum = parseFloat(aVal.replace(/[^0-9.-]+/g,""));
@@ -1957,8 +1975,11 @@ function sortTable(tableBodyId, colIndex) {
     });
 
     tbody.setAttribute('data-order', isAsc ? 'desc' : 'asc');
+
+    // Rebuild the table body, keeping footer rows at the bottom
     tbody.innerHTML = '';
-    rows.forEach(row => tbody.appendChild(row));
+    dataRows.forEach(row => tbody.appendChild(row));
+    footerRows.forEach(row => tbody.appendChild(row));
 }
 
 // --- HELPER: TABLE FILTERING ---
