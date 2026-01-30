@@ -3635,7 +3635,7 @@ function injectAmbulanceDisplay() {
 
         wrapper.innerHTML = `
             <div style="position: relative;">
-                <img src="ambulance.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
+                <img src="AMBULAN.jpeg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
                 
                 <!-- UNDERGLOW (Neon Bawah Mobil) -->
                 <div style="position: absolute; bottom: 2%; left: 10%; width: 80%; height: 20%; background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.6) 0%, transparent 70%); filter: blur(20px); opacity: 0.6; animation: underglow-pulse 3s infinite; z-index: 0;"></div>

@@ -134,6 +134,7 @@ pool.getConnection((err, connection) => {
         const createViewRekapSql = `
             CREATE OR REPLACE VIEW view_rekap_bulanan AS
             SELECT 
+                k.no_urut,
                 k.id_karyawan,
                 k.nama,
                 k.jabatan,
@@ -215,6 +216,7 @@ pool.getConnection((err, connection) => {
                                 const addColumnSql = "ALTER TABLE absensi ADD COLUMN keterangan VARCHAR(255)";
                                 const addTelatSql = "ALTER TABLE absensi ADD COLUMN telat_menit INT DEFAULT 0";
                                 const addPswSql = "ALTER TABLE absensi ADD COLUMN psw_menit INT DEFAULT 0";
+                                const addNoUrutSql = "ALTER TABLE karyawan ADD COLUMN no_urut INT DEFAULT 9999";
 
                                 connection.query(addColumnSql, (err) => {
                                     // Error 1060 = Duplicate column name (artinya kolom sudah ada, abaikan)
@@ -226,6 +228,9 @@ pool.getConnection((err, connection) => {
                                         connection.query(addPswSql, (err) => {
                                             if (err && err.errno !== 1060) console.error('⚠️ Info Kolom PSW:', err.message);
 
+                                        connection.query(addNoUrutSql, (err) => {
+                                            if (err && err.errno !== 1060) console.error('⚠️ Info Kolom No Urut:', err.message);
+
                                             connection.query(createViewRekapSql, (err) => {
                                                 if (err) console.error('⚠️ Init View Rekap:', err.message);
                                                 else {
@@ -234,6 +239,7 @@ pool.getConnection((err, connection) => {
                                                         else console.log('✅ Database Sinkron: View Harian & Rekap Bulanan (SYNC VERIFIED).');
                                                     });
                                                 }
+                                            });
                                             });
                                         });
                                     });
@@ -565,7 +571,7 @@ app.get('/api/absensi/today', (req, res) => {
 // Endpoint: Ambil Descriptors untuk Absensi (Scan Wajah)
 app.get('/api/karyawan/descriptors', (req, res) => {
     // UPDATE: Ambil data lengkap (id, jabatan, foto) agar scan.js bisa menampilkan profil
-    const sql = "SELECT id_karyawan, nama, jabatan, foto, face_descriptor FROM karyawan";
+    const sql = "SELECT id_karyawan, nama, jabatan, foto, face_descriptor, no_urut FROM karyawan ORDER BY no_urut ASC, nama ASC";
 
     pool.query(sql, (err, results) => {
         if (err) {
@@ -589,7 +595,8 @@ app.get('/api/karyawan/descriptors', (req, res) => {
                         nama: row.nama,
                         jabatan: row.jabatan,
                         foto: fotoBase64,
-                        face_descriptor: parsedDescriptor
+                        face_descriptor: parsedDescriptor,
+                        no_urut: row.no_urut || 9999
                     };
                 } catch (e) {
                     return null;
@@ -618,14 +625,14 @@ app.get('/api/karyawan/:id', (req, res) => {
 // Endpoint: Update Data Karyawan (Edit Nama/Jabatan)
 app.put('/api/karyawan/:id', (req, res) => {
     const id = req.params.id;
-    const { nama, jabatan } = req.body;
+    const { nama, jabatan, no_urut } = req.body;
 
     if (!nama || !jabatan) {
         return res.status(400).json({ success: false, message: 'Nama dan Jabatan harus diisi.' });
     }
 
-    const sql = 'UPDATE karyawan SET nama = ?, jabatan = ? WHERE id_karyawan = ?';
-    pool.query(sql, [nama, jabatan, id], (err, result) => {
+    const sql = 'UPDATE karyawan SET nama = ?, jabatan = ?, no_urut = ? WHERE id_karyawan = ?';
+    pool.query(sql, [nama, jabatan, no_urut || 9999, id], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'ID tidak ditemukan' });
         res.json({ success: true, message: 'Data karyawan berhasil diperbarui.' });

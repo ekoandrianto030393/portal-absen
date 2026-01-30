@@ -22,6 +22,17 @@ function escapeHtml(text) {
         .replace(/'/g, "&#039;");
 }
 
+// --- HELPER: FORMAT WAKTU ---
+function formatPelanggaranToHHMMSS(totalMinutes) {
+    if (isNaN(totalMinutes) || totalMinutes <= 0) {
+        return '00:00:00';
+    }
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    // Detik tidak ada di data sumber, jadi kita set 00
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+}
+
 // --- INISIALISASI ---
 document.addEventListener('DOMContentLoaded', () => {
     updateClock();
@@ -413,13 +424,18 @@ async function loadViewDbData() {
                         <td class="px-4 py-2 font-mono text-emerald-600 font-bold">${row.jam_masuk || '-'}</td>
                         <td class="px-4 py-2 font-mono text-blue-600 font-bold">${row.jam_keluar || '-'}</td>
                         <td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 border border-gray-200">${row.status}</span></td>
-                        <td class="px-4 py-2 text-center ${row.telat_menit > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}">${row.telat_menit}</td>
-                        <td class="px-4 py-2 text-center ${row.psw_menit > 0 ? 'text-amber-600 font-bold' : 'text-slate-400'}">${row.psw_menit}</td>
+                        <td class="px-4 py-2 text-center ${row.telat_menit > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}">${formatPelanggaranToHHMMSS(row.telat_menit)}</td>
+                        <td class="px-4 py-2 text-center ${row.psw_menit > 0 ? 'text-amber-600 font-bold' : 'text-slate-400'}">${formatPelanggaranToHHMMSS(row.psw_menit)}</td>
                         <td class="px-4 py-2 text-xs text-slate-500 italic">${row.keterangan || '-'}</td>
                         <td class="px-4 py-2 text-center">
-                            <button onclick="openEditAbsensiModal('${row.id_absensi}', '${escapeHtml(row.nama_karyawan)}', '${row.tanggal}', '${row.jam_masuk || ''}', '${row.jam_keluar || ''}', '${row.status}', '${escapeHtml(row.keterangan || '')}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit Data">
-                                <i class="fa-solid fa-pen-to-square"></i>
-                            </button>
+                            <div class="flex items-center justify-center gap-1">
+                                <button onclick="openEditAbsensiModal('${row.id_absensi}', '${escapeHtml(row.nama_karyawan)}', '${row.tanggal}', '${row.jam_masuk || ''}', '${row.jam_keluar || ''}', '${row.status}', '${escapeHtml(row.keterangan || '')}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit Data">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="deleteAbsensiDb('${row.id_absensi}', '${escapeHtml(row.nama_karyawan)}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Hapus Data">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -503,26 +519,26 @@ async function loadMonthlyRecap(silent = false) {
     
     // Header Table
     table.innerHTML = `
-        <thead class="uppercase text-xs font-bold tracking-wider border-b border-slate-700 bg-slate-800 text-white print:bg-white print:text-black">
+        <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider border-b border-slate-700 bg-slate-800 text-white print:bg-white print:text-black">
             <tr>
-                <th class="md:sticky md:left-0 md:z-20 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 text-center w-16 md:border-r border-slate-700 print:border-black">No.</th>
-                <th onclick="sortTable('table-rekap-body', 1)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-16 md:z-20 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 w-24 md:border-r border-slate-700 print:border-black text-center">ID <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th onclick="sortTable('table-rekap-body', 2)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-40 md:z-20 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 w-64 md:border-r border-slate-700 print:border-black md:shadow-sm text-left">Nama Pegawai <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="md:sticky md:left-0 md:z-40 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 text-center w-16 md:border-r border-slate-700 print:border-black">No.</th>
+                <th onclick="sortTable('table-rekap-body', 1)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-16 md:z-40 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 w-24 md:border-r border-slate-700 print:border-black text-center">ID <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 2)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-40 md:z-40 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 w-64 md:border-r border-slate-700 print:border-black md:shadow-sm text-left">Nama Pegawai <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
                 <th onclick="sortTable('table-rekap-body', 3)" class="cursor-pointer hover:bg-slate-700 transition-colors pl-16 pr-6 py-3 text-left">Jabatan <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
                 <th onclick="sortTable('table-rekap-body', 4)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
                 <th class="px-6 py-3 text-center">DL</th>
+                <th onclick="sortTable('table-rekap-body', 6)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Alpa <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 7)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300">% Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="px-6 py-3 text-center">Telat (x)</th>
+                <th class="px-6 py-3 text-center">Telat Waktu</th>
+                <th class="px-6 py-3 text-center">PSW (x)</th>
+                <th class="px-6 py-3 text-center">PSW Waktu</th>
+                <th onclick="sortTable('table-rekap-body', 12)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300 border-l border-slate-700 print:text-black">Pelanggaran (Jam) <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="px-6 py-3 text-center">Tanpa Absen Pulang</th>
+                <th class="px-6 py-3 text-center">Potongan</th>
                 <th class="px-6 py-3 text-center bg-rose-50 text-rose-800 border-l border-r border-slate-200">S</th>
                 <th class="px-6 py-3 text-center bg-purple-50 text-purple-800 border-r border-slate-200">I</th>
                 <th class="px-6 py-3 text-center bg-orange-50 text-orange-800 border-r border-slate-200">C</th>
-                <th onclick="sortTable('table-rekap-body', 9)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Alpa <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th onclick="sortTable('table-rekap-body', 10)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300">% Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th class="px-6 py-3 text-center">Telat (x)</th>
-                <th class="px-6 py-3 text-center">Telat (Min)</th>
-                <th class="px-6 py-3 text-center">PSW (x)</th>
-                <th class="px-6 py-3 text-center">PSW (Min)</th>
-                <th onclick="sortTable('table-rekap-body', 15)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300 border-l border-slate-700 print:text-black">Total Pelanggaran <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th class="px-6 py-3 text-center">Tanpa Absen Pulang</th>
-                <th class="px-6 py-3 text-center">Potongan</th>
                 <th class="px-6 py-3 text-center">Total Jam Kerja</th>
                 <th class="px-6 py-3 text-center print:hidden">Aksi</th>
             </tr>
@@ -536,6 +552,17 @@ async function loadMonthlyRecap(silent = false) {
         const response = await fetch(`${API_BASE}/rekap?periode=${month}&_t=${Date.now()}`);
         const result = await response.json();
         
+        // [UPDATE] Urutkan data berdasarkan Nama Pegawai (A-Z) secara default
+        // Menggunakan numeric: true agar "1. Nama" muncul sebelum "10. Nama" (Support penomoran manual)
+        if (result.data && Array.isArray(result.data)) {
+            result.data.sort((a, b) => {
+                const orderA = parseInt(a.no_urut) || 9999;
+                const orderB = parseInt(b.no_urut) || 9999;
+                if (orderA !== orderB) return orderA - orderB; // Urutkan berdasarkan No Urut dulu
+                return (a.nama || '').localeCompare(b.nama || '', undefined, { numeric: true, sensitivity: 'base' }); // Lalu Nama
+            });
+        }
+
         // Update global data agar modal detail bisa dibuka saat baris diklik
         globalPerformanceData = result.data || [];
 
@@ -573,7 +600,10 @@ async function loadMonthlyRecap(silent = false) {
                 tTelatMin += parseInt(row.telat_menit) || 0;
                 tPsw += parseInt(row.psw_kali) || 0;
                 tPswMin += parseInt(row.psw_menit) || 0;
-                tPelanggaranMin += parseInt(row.total_pelanggaran_menit) || 0;
+                
+                // [MODIFIED] Hitung total pelanggaran baru (telat + psw + potongan jam)
+                const totalMenitPelanggaranBaru = (parseInt(row.total_pelanggaran_menit) || 0) + ((parseInt(row.potongan_jam) || 0) * 60);
+                tPelanggaranMin += totalMenitPelanggaranBaru;
                 tNoOut += parseInt(row.tanpa_absen_pulang) || 0;
                 tPot += parseFloat(row.potongan_jam) || 0;
 
@@ -622,18 +652,18 @@ async function loadMonthlyRecap(silent = false) {
                         <td class="px-6 py-3 text-center">
                             <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold text-xs border border-blue-200">${row.total_dl || 0}</span>
                         </td>
-                        <td class="px-6 py-3 text-center bg-rose-50/50 text-rose-700 font-bold border-l border-r border-slate-200">${row.total_sakit || 0}</td>
-                        <td class="px-6 py-3 text-center bg-purple-50/50 text-purple-700 font-bold border-r border-slate-200">${row.total_izin || 0}</td>
-                        <td class="px-6 py-3 text-center bg-orange-50/50 text-orange-700 font-bold border-r border-slate-200">${row.total_cuti || 0}</td>
                         <td class="px-6 py-3 text-center ${row.alpa > 0 ? 'text-red-600 font-black' : 'text-slate-300'}">${row.alpa}</td>
                         <td class="px-6 py-3 text-center font-bold ${persentase >= 95 ? 'text-emerald-600' : (persentase >= 80 ? 'text-blue-600' : 'text-red-600')}">${persentase}%</td>
                         <td class="px-6 py-3 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-black' : 'text-slate-300'}">${row.telat_kali}</td>
-                        <td class="px-6 py-3 text-center text-slate-500">${row.telat_menit}</td>
+                        <td class="px-6 py-3 text-center text-slate-500">${formatPelanggaranToHHMMSS(row.telat_menit)}</td>
                         <td class="px-6 py-3 text-center ${row.psw_kali > 0 ? 'text-amber-600 font-black' : 'text-slate-300'}">${row.psw_kali || 0}</td>
-                        <td class="px-6 py-3 text-center ${row.psw_menit > 0 ? 'text-amber-600' : 'text-slate-300'}">${row.psw_menit || 0}</td>
-                        <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-200">${row.total_pelanggaran_menit || 0}</td>
+                        <td class="px-6 py-3 text-center ${row.psw_menit > 0 ? 'text-amber-600' : 'text-slate-300'}">${formatPelanggaranToHHMMSS(row.psw_menit || 0)}</td>
+                        <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-200">${formatPelanggaranToHHMMSS(totalMenitPelanggaranBaru)}</td>
                         <td class="px-6 py-3 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-black' : 'text-slate-300'}">${row.tanpa_absen_pulang}</td>
                         <td class="px-6 py-3 text-center text-red-600">${row.potongan_jam} Jam</td>
+                        <td class="px-6 py-3 text-center bg-rose-50/50 text-rose-700 font-bold border-l border-r border-slate-200">${row.total_sakit || 0}</td>
+                        <td class="px-6 py-3 text-center bg-purple-50/50 text-purple-700 font-bold border-r border-slate-200">${row.total_izin || 0}</td>
+                        <td class="px-6 py-3 text-center bg-orange-50/50 text-orange-700 font-bold border-r border-slate-200">${row.total_cuti || 0}</td>
                         <td class="px-6 py-3 text-center font-mono text-emerald-600 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
                         <td class="px-6 py-3 text-center print:hidden">
                             <button onclick="event.stopPropagation(); deleteEmployee('${row.id_karyawan}', '${escapeHtml(row.nama)}')" class="w-8 h-8 rounded flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Hapus Pegawai">
@@ -649,18 +679,18 @@ async function loadMonthlyRecap(silent = false) {
                     <td colspan="4" class="px-6 py-3 text-right uppercase text-xs tracking-wider">Total Ringkasan:</td>
                     <td class="px-6 py-3 text-center">${tHadir}</td>
                     <td class="px-6 py-3 text-center">${tDL}</td>
-                    <td class="px-6 py-3 text-center text-rose-800 bg-rose-100">${tSakit}</td>
-                    <td class="px-6 py-3 text-center text-purple-800 bg-purple-100">${tIzin}</td>
-                    <td class="px-6 py-3 text-center text-orange-800 bg-orange-100">${tCuti}</td>
                     <td class="px-6 py-3 text-center">${tAlpa}</td>
                     <td class="px-6 py-3 text-center">-</td>
                     <td class="px-6 py-3 text-center">${tTelat}</td>
-                    <td class="px-6 py-3 text-center text-slate-500 text-xs">${tTelatMin}</td>
+                    <td class="px-6 py-3 text-center text-slate-500 text-xs">${formatPelanggaranToHHMMSS(tTelatMin)}</td>
                     <td class="px-6 py-3 text-center">${tPsw}</td>
-                    <td class="px-6 py-3 text-center text-slate-500 text-xs">${tPswMin}</td>
-                    <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-300">${tPelanggaranMin}</td>
+                    <td class="px-6 py-3 text-center text-slate-500 text-xs">${formatPelanggaranToHHMMSS(tPswMin)}</td>
+                    <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-300">${formatPelanggaranToHHMMSS(tPelanggaranMin)}</td>
                     <td class="px-6 py-3 text-center">${tNoOut}</td>
                     <td class="px-6 py-3 text-center">${tPot}</td>
+                    <td class="px-6 py-3 text-center text-rose-800 bg-rose-100">${tSakit}</td>
+                    <td class="px-6 py-3 text-center text-purple-800 bg-purple-100">${tIzin}</td>
+                    <td class="px-6 py-3 text-center text-orange-800 bg-orange-100">${tCuti}</td>
                     <td class="px-6 py-3"></td>
                     <td class="px-6 py-3 print:hidden"></td>
                 </tr>
@@ -1032,13 +1062,15 @@ async function deleteAllCorruptData() {
 
 // --- FITUR: EDIT EMPLOYEE ---
 function openEditModal(id) {
-    const emp = globalEmployees.find(e => e.id_karyawan === id);
+    let emp = globalEmployees.find(e => e.id_karyawan === id);
+    if (!emp) emp = globalPerformanceData.find(e => e.id_karyawan === id); // Fallback cari di data rekap
     if (!emp) return;
 
     document.getElementById('edit-id').value = emp.id_karyawan;
     document.getElementById('edit-id-display').value = emp.id_karyawan;
     document.getElementById('edit-nama').value = emp.nama;
     document.getElementById('edit-jabatan').value = emp.jabatan || '';
+    document.getElementById('edit-no-urut').value = (emp.no_urut && emp.no_urut !== 9999) ? emp.no_urut : '';
 
     const modal = document.getElementById('modal-edit-employee');
     const content = document.getElementById('modal-edit-content');
@@ -1073,6 +1105,7 @@ async function updateEmployee() {
     const id = document.getElementById('edit-id').value;
     const nama = document.getElementById('edit-nama').value;
     const jabatan = document.getElementById('edit-jabatan').value;
+    const no_urut = document.getElementById('edit-no-urut').value;
     const fileInput = document.getElementById('edit-foto-input');
 
     try {
@@ -1080,7 +1113,7 @@ async function updateEmployee() {
         const response = await fetch(`${API_BASE}/karyawan/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nama, jabatan })
+            body: JSON.stringify({ nama, jabatan, no_urut })
         });
         const result = await response.json();
 
@@ -1106,6 +1139,11 @@ async function updateEmployee() {
         closeEditModal();
         loadEmployees(); // Refresh list
         loadOverviewData();
+        
+        // [NEW] Refresh Monthly Recap if active (Agar urutan nama langsung berubah)
+        if (document.getElementById('view-monthly') && !document.getElementById('view-monthly').classList.contains('hidden')) {
+            loadMonthlyRecap(true);
+        }
         
         // Reset input file
         if(fileInput) fileInput.value = '';
@@ -1249,6 +1287,25 @@ async function submitManualStatus() {
         }
     } catch (e) {
         showToast("Error koneksi: " + e.message, 'error');
+    }
+}
+
+// --- FITUR: DELETE ABSENSI (VIEW DB) ---
+async function deleteAbsensiDb(id, nama) {
+    if (!confirm(`PERINGATAN: Apakah Anda yakin ingin menghapus data absensi (ID: ${id}) untuk "${nama}"?\n\nData yang dihapus tidak dapat dikembalikan.`)) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/absensi/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+
+        if (result.success) {
+            showToast('Data absensi berhasil dihapus', 'success');
+            loadViewDbData(); // Refresh tabel database
+        } else {
+            showToast(`Gagal menghapus: ${result.message}`, 'error');
+        }
+    } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
     }
 }
 
@@ -1642,6 +1699,9 @@ async function openModal(idKaryawan) {
     }
 
     btnContainer.innerHTML = `
+        <button onclick="closeModal(); openEditModal('${emp.id_karyawan}')" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg font-bold text-sm transition-all shadow-sm hover:shadow-md mr-3">
+            <i class="fa-solid fa-pen-to-square"></i> Edit Nama
+        </button>
         <button onclick="printSalarySlip('${emp.id_karyawan}')" class="flex items-center gap-2 px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold text-sm transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
             <i class="fa-solid fa-print"></i> Cetak Slip Gaji
         </button>

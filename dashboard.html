@@ -1,3 +1,4 @@
+js
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -311,7 +312,7 @@
                             <thead class="bg-slate-800 text-white text-xs uppercase font-bold tracking-wider">
                                 <tr>
                                     <th class="px-6 py-4 border-b border-slate-600">Jam Masuk</th>
-                                    <th class="px-6 py-4 border-b border-slate-600">Nama Pegawai</th>
+                                    <th onclick="sortTable('table-daily-body', 1)" class="px-6 py-4 border-b border-slate-600 cursor-pointer hover:bg-slate-700 transition-colors">Nama Pegawai <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
                                     <th class="px-6 py-4 border-b border-slate-600">Jabatan</th>
                                     <th class="px-6 py-4 border-b border-slate-600">Status</th>
                                     <th class="px-6 py-4 border-b border-slate-600">Keterangan Waktu</th>
@@ -423,8 +424,8 @@
                                     <th class="px-4 py-3">Masuk</th>
                                     <th class="px-4 py-3">Keluar</th>
                                     <th class="px-4 py-3">Status</th>
-                                    <th class="px-4 py-3">Telat (m)</th>
-                                    <th class="px-4 py-3">PSW (m)</th>
+                                    <th class="px-4 py-3">Telat Waktu</th>
+                                    <th class="px-4 py-3">PSW Waktu</th>
                                     <th class="px-4 py-3">Keterangan</th>
                                     <th class="px-4 py-3 text-center">Aksi</th>
                                 </tr>
@@ -629,6 +630,10 @@
                 id="edit-id-display" disabled class="w-full border p-2 rounded mb-2 bg-gray-100"><input type="text"
                 id="edit-nama" class="w-full border p-2 rounded mb-2" placeholder="Nama"><input type="text"
                 id="edit-jabatan" class="w-full border p-2 rounded mb-4" placeholder="Jabatan">
+            
+            <!-- [NEW] Input Nomor Urut -->
+            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Urutan Tampilan (1 = Paling Atas)</label>
+            <input type="number" id="edit-no-urut" class="w-full border p-2 rounded mb-4" placeholder="Contoh: 1">
             
             <!-- [NEW] Upload Foto Manual -->
             <div class="mb-4 bg-blue-50 p-3 rounded border border-blue-100">
