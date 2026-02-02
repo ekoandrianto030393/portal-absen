@@ -1568,6 +1568,12 @@ function printReport() {
             thead.className = 'bg-gray-100 text-black font-bold border-b-2 border-black';
             const ths = thead.querySelectorAll('th');
             ths.forEach(th => {
+                // [FIX] Hapus kolom Aksi agar tidak terpotong saat dicetak
+                if (th.classList.contains('print:hidden') || th.innerText.trim() === 'Aksi') {
+                    th.remove();
+                    return;
+                }
+
                 th.className = 'border border-black px-1 py-1 text-center align-middle uppercase';
                 th.style.position = 'static'; // Hapus sticky
                 // Hapus ikon sort
@@ -1587,6 +1593,12 @@ function printReport() {
                 
                 const cells = row.querySelectorAll('td');
                 cells.forEach(cell => {
+                    // [FIX] Hapus sel kolom Aksi agar tidak terpotong saat dicetak
+                    if (cell.classList.contains('print:hidden')) {
+                        cell.remove();
+                        return;
+                    }
+
                     cell.className = 'border border-black px-1 py-1 align-middle text-black';
                     cell.style.backgroundColor = 'transparent';
                     cell.style.color = 'black';

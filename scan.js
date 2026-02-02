@@ -58,7 +58,7 @@ let videoDevices = [];
 // turunkan jadi 80, namun jangan dibawah itu
 const DETECTION_INTERVAL_MS = 80; // Interval scan dalam milidetik
 const DEFAULT_PHOTO = ''; // Path ke foto default/placeholder jika diperlukan
-const SUCCESS_COOLDOWN_MS = 6000; // Jeda 4 detik setelah berhasil scan (Mencegah spam)
+const SUCCESS_COOLDOWN_MS = 10000; // Jeda 10 detik setelah berhasil scan (Mencegah spam)
 
 // VARS UNTUK EFEK DECRYPT TEXT
 let targetLabel = '';
@@ -207,12 +207,12 @@ const SoundFX = {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.0; // Sedikit lebih lambat untuk kejelasan
-            utterance.pitch = 0.6; // Jauh lebih rendah untuk suara robotik/AI
+            utterance.pitch = 1.1; // [UPDATE] Pitch lebih tinggi untuk suara perempuan
             utterance.volume = 0.9;
             
-            // Coba cari suara bahasa Inggris yang bagus (Google US English biasanya ada)
+            // [UPDATE] Cari suara Bahasa Indonesia (id-ID)
             const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices.find(v => v.lang === 'en-US');
+            const preferredVoice = voices.find(v => v.lang === 'id-ID' && (v.name.includes('Google') || v.name.includes('Female'))) || voices.find(v => v.lang === 'id-ID');
             if (preferredVoice) utterance.voice = preferredVoice;
             // Beri jeda sedikit agar suara "bip" selesai
             setTimeout(() => {
@@ -377,7 +377,7 @@ function initVoiceCommands() {
         if (command.includes('thermal')) setVisionMode('thermal');
         else if (command.includes('night') || command.includes('vision')) setVisionMode('night');
         else if (command.includes('optical') || command.includes('normal') || command.includes('reset')) setVisionMode('normal');
-        else if (command.includes('status') || command.includes('report')) SoundFX.speak('System Nominal. Database Online.');
+        else if (command.includes('status') || command.includes('report')) SoundFX.speak('Sistem Normal. Basis Data Terhubung.');
         else if (command.includes('admin') || command.includes('override')) toggleAdminPanel();
         else if (command.includes('stealth') || command.includes('silent')) document.getElementById('stealthToggle').click();
     };
@@ -1318,7 +1318,7 @@ async function runBootSequence() {
     ];
     
     // Voice Greeting
-    setTimeout(() => SoundFX.speak("System Online. Optical Sensors Calibrated."), 1000);
+    setTimeout(() => SoundFX.speak("Sistem Online. Sensor Optik Dikalibrasi."), 1000);
 
     for (const line of lines) {
         const p = document.createElement('div');
@@ -1768,10 +1768,8 @@ function animateTitle() {
             if (original === ' ') continue;
 
             let char = original;
-            let  = '#00FFFF'; // Base: Cyan Neon
+            let color = '#00FFFF'; // Base: Cyan Neon
             let textShadow = '0 0 8px rgba(0, 255, 255, 0.6)';
-            let color = '#FFD700'; // Base: Gold (Mencolok)
-          '0 0 10px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 69, 0, 0.6)';
             let transform = 'scale(1) translateZ(0px)';
             let opacity = 0.8 + (Math.sin(time * 3 + i) * 0.1); // Breathing effect
 
@@ -2716,10 +2714,10 @@ async function processAttendance(karyawanId) {
         successOverlay.innerHTML = `
             <div class="holo-card" style="border-color: ${HEADER_COLOR}; text-align: center; justify-content: center;">
                 <div class="holo-header" style="justify-content: center;">
-                    <span class="text-cyan-400 font-mono tracking-[0.5em] text-2xl animate-pulse">ESTABLISHING UPLINK...</span>
+                    <span class="text-cyan-400 font-mono tracking-[0.5em] text-2xl animate-pulse">MENGHUBUNGKAN SERVER...</span>
                 </div>
                 <div class="p-20 flex flex-col items-center justify-center h-full">
-                    <h1 class="text-6xl font-black text-white mb-8 tracking-widest glitch-text">PROCESSING BIOMETRICS</h1>
+                    <h1 class="text-6xl font-black text-white mb-8 tracking-widest glitch-text">MEMPROSES BIOMETRIK</h1>
                     <div class="w-full bg-gray-800 h-1 mt-4 rounded overflow-hidden">
                         <div class="h-full bg-cyan-400 animate-[loading_1s_infinite]"></div>
                     </div>
@@ -2762,7 +2760,7 @@ async function processAttendance(karyawanId) {
         const cleanMessage = result.message.replace(/\*\*|✅\s*/g, '');
 
         // --- PERBAIKAN UTAMA: Ambil data langsung dari respons server ---
- 	    const employeeData = employeeMap[karyawanId] || {};
+        const employeeData = employeeMap[karyawanId] || {};
         const display_name = result.nama || employeeData.nama || karyawanId;
         const display_jabatan = result.jabatan || employeeData.jabatan || 'N/A';
         
@@ -2792,12 +2790,38 @@ async function processAttendance(karyawanId) {
         let finalMessageHTML = '';
         let finalBackground = ABSEN_NORMAL_BG;
         let finalStatusColor = PROFESSIONAL_STATUS_COLOR;
+        let welcomeMessage = ''; // Variabel baru untuk pesan selamat datang
         
         // LOGIKA SUKSES/GAGAL
         if (result.success) {
             // AUDIO & VISUAL SUCCESS
             SoundFX.play('success');
-            SoundFX.speak(`Welcome, ${display_name}`);
+            
+            // [NEW] Sapaan Waktu Otomatis
+            const hour = new Date().getHours();
+            let timeGreeting = 'Pagi';
+            if (hour >= 11 && hour < 15) timeGreeting = 'Siang';
+            else if (hour >= 15 && hour < 19) timeGreeting = 'Sore';
+            else if (hour >= 19 || hour < 4) timeGreeting = 'Malam';
+            
+            // [NEW] Pesan Motivasi Acak
+            const quotes = [
+                "Semoga harimu menyenangkan.",
+                "Tetap semangat melayani masyarakat.",
+                "Jaga kesehatan dan tetap fokus.",
+                "Mari berikan pelayanan terbaik.",
+                "Jangan lupa senyum sapa salam.",
+                "Kerja ikhlas adalah ibadah.",
+                "Semangat mengabdi untuk negeri."
+            ];
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            
+            // [UPDATE] Logika Pesan Suara Berbeda untuk Masuk vs Pulang
+            if (result.result_code === 'CHECK_OUT_SUCCESS') {
+                SoundFX.speak(`Sampai Jumpa ${display_name}. Hati-hati di jalan.`);
+            } else {
+                SoundFX.speak(`Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
+            }
             
             setSystemTheme('SUCCESS'); // Theme Green
             if(window.setWarpMode) window.setWarpMode(true); // Trigger 3D Warp
@@ -2829,6 +2853,8 @@ async function processAttendance(karyawanId) {
                         finalBackground = ABSEN_NORMAL_BG;
                         finalStatusColor = '#00FF7F'; // Hijau Spring
                     }
+                    // Tambahkan pesan selamat datang setelah warna ditentukan
+                    welcomeMessage = `<div id="welcomeMessageTarget" class="text-lg font-semibold tracking-wider mb-1" style="color: ${finalStatusColor}CC; text-shadow: 0 0 5px ${finalStatusColor}; min-height: 28px;"></div>`;
                     logAttendance(display_name, serverTimestamp); // Log ke panel kanan
                     updatePersonnelRoster(); // Refresh Roster Visual
                     break;
@@ -2914,7 +2940,7 @@ async function processAttendance(karyawanId) {
 
             // VISUAL UPDATES (Dipindahkan ke sini agar override isWarning di switch berlaku)
             SoundFX.play('error');
-            SoundFX.speak(isWarning ? `Notice, ${display_name}` : `Access Denied, ${display_name}`);
+            SoundFX.speak(isWarning ? `Peringatan, ${display_name}` : `Akses Ditolak, ${display_name}`);
             setSystemTheme('ERROR'); 
 
             setStatusVisual(`${display_name}: ${cleanMessage}`, isWarning ? 'text-amber-500' : 'text-red-500');
@@ -2968,6 +2994,25 @@ async function processAttendance(karyawanId) {
 
         // FINAL OVERLAY RENDER (Profesional & Pesan Sambutan)
         if (successOverlay) {
+             const refNo = `445/${Math.floor(Math.random() * 899) + 100}/PKM-W/${new Date().getFullYear()}`;
+             
+             // [FIX] Encode SVG Content to prevent quote leakage in HTML attributes
+             const securityPatternSvg = `<svg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><path d='M0 20L20 0M-5 5L5 -5M15 25L25 15' stroke='${finalStatusColor}' stroke-width='0.5' opacity='0.15'/></svg>`;
+             const securityPattern = `url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(securityPatternSvg)}')`;
+             
+             const randomTilt = (Math.random() * 2 - 1).toFixed(2); // Rotasi acak dari -1 sampai +1 derajat
+             
+             const noiseSvgContent = `<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='noiseFilter'><feTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(#noiseFilter)'/></svg>`;
+             const noiseSvg = `url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(noiseSvgContent)}')`;
+             
+             const grungeSvgContent = `<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='grunge'><feTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='matrix' values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -9' result='alpha'/></filter><rect width='100%' height='100%' filter='url(#grunge)' opacity='0.4'/></svg>`;
+             const grungeSvg = `url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(grungeSvgContent)}')`;
+
+             // Signature SVG (Encoded)
+             const signatureColor = '#1a53ff'; // Warna Biru Tinta (Royal Blue Terang)
+             const signatureSvgContent = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 100'><path d='M20,55 C25,25 55,25 45,55 C40,70 30,65 35,50 C45,20 80,20 70,55 C65,65 90,45 100,50 C110,55 115,45 125,50 C135,55 140,45 150,50 C160,55 170,35 180,45 C190,55 200,40 210,50' stroke='${signatureColor}' fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' /><path d='M25,75 Q120,65 215,70' stroke='${signatureColor}' stroke-width='2' opacity='0.8' stroke-linecap='round' /></svg>`;
+             const signatureUrl = `url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(signatureSvgContent)}')`;
+
              // Gunakan background gelap transparan agar ID Card menonjol
              successOverlay.style.background = 'rgba(0, 0, 0, 0.85)';
              successOverlay.innerHTML = `
@@ -2992,14 +3037,131 @@ async function processAttendance(karyawanId) {
                         @keyframes spinReverse { 0% { transform: translate(-50%, -50%) rotate(360deg); } 100% { transform: translate(-50%, -50%) rotate(0deg); } }
                     </style>
 
-                    <!-- Digital Stamp -->
-                    <div class="digital-stamp" style="color: ${finalStatusColor}; border-color: ${finalStatusColor}; text-shadow: 0 0 20px ${finalStatusColor}; z-index: 15;">
-                        <div class="stamp-inner">
-                            <span class="stamp-label">PUSKESMAS WANA</span>
-                            <span>${result.success ? 'DITERIMA' : 'DITOLAK'}</span>
+                    <!-- Digital Stamp with Handle & Delay -->
+                    <div class="digital-stamp-container" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; pointer-events: none;">
+                        <!-- Floor Shadow Effect -->
+                        <div style="
+                            position: absolute; top: 50%; left: 50%;
+                            width: 300px; height: 40px;
+                            background: radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, transparent 70%);
+                            transform: translate(-50%, 180px) scale(0);
+                            opacity: 0;
+                            z-index: 0;
+                            filter: blur(4px);
+                            animation: stampShadow 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+                            animation-delay: 1.2s;
+                        "></div>
+                        <!-- Digital Splash Effect -->
+                        <div style="
+                            position: absolute; top: 50%; left: 50%;
+                            width: 120px; height: 40px;
+                            border: 4px solid ${finalStatusColor};
+                            border-radius: 50%;
+                            transform: translate(-50%, 180px) scale(0);
+                            opacity: 0;
+                            z-index: 0;
+                            box-shadow: 0 0 30px ${finalStatusColor}, inset 0 0 20px ${finalStatusColor};
+                            filter: blur(1px);
+                            animation: digitalSplash 0.8s ease-out forwards;
+                            animation-delay: 1.45s;
+                        "></div>
+                        <div style="
+                            position: absolute; top: 50%; left: 50%;
+                            width: 100px; height: 30px;
+                            border: 2px solid ${finalStatusColor};
+                            border-radius: 50%;
+                            transform: translate(-50%, 180px) scale(0);
+                            opacity: 0;
+                            z-index: 0;
+                            animation: digitalSplash 0.6s ease-out forwards;
+                            animation-delay: 1.55s;
+                        "></div>
+                        <div class="stamp-anim-target" style="display: flex; flex-direction: column; align-items: center; opacity: 0; animation: stampDescend 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards; animation-delay: 1.2s;">
+                            <!-- 3D Handle Container (Three.js) -->
+                            <div id="stampHandleContainer" style="position: absolute; bottom: 100px; right: -20px; transform: rotate(${randomTilt}deg); width: 160px; height: 160px; z-index: 5; pointer-events: none;"></div>
+                            <!-- Stamp Ink Body (Redesigned: High-Tech Official Seal) -->
+                            <div class="digital-stamp" style="
+                                color: ${finalStatusColor}; 
+                                border-radius: 4px;
+                                padding: 0;
+                                /* Shadow baru untuk efek tepi tinta yang tidak sempurna */
+                                box-shadow: 0 0 1px 2px ${finalStatusColor}80, 0 0 8px 3px ${finalStatusColor}40, inset 0 0 20px ${finalStatusColor}10;
+                                background: rgba(10, 15, 20, 0.95); 
+                                margin-top: 0px; position: relative; z-index: 1;
+                                transform-origin: center top;
+                                transform: rotate(${randomTilt}deg); /* Rotasi acak */
+                                min-width: 280px;
+                                clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+                                backdrop-filter: blur(10px);
+                                filter: contrast(1.1);
+                            ">
+                                <!-- Lapisan Tekstur Tinta -->
+                                <div style="position: absolute; top:0; left:0; width:100%; height:100%; background-image: ${noiseSvg}; mix-blend-mode: soft-light; opacity: 0.1; pointer-events: none; z-index: 1;"></div>
+
+                                <!-- [NEW] Lapisan Grunge (Erosi Tinta) -->
+                                <div style="position: absolute; top:0; left:0; width:100%; height:100%; background-image: ${grungeSvg}; mix-blend-mode: multiply; opacity: 0.7; pointer-events: none; z-index: 2;"></div>
+                                
+                                <!-- [NEW] Lapisan Tekanan Tidak Rata (Pressure Gradient) -->
+                                <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle at ${Math.random()*80+10}% ${Math.random()*80+10}%, transparent 50%, rgba(0,0,0,0.4) 100%); pointer-events: none; z-index: 2;"></div>
+
+                                <!-- [NEW] Lapisan Pola Keamanan (Guilloche Pattern) -->
+                                <div style="position: absolute; top:0; left:0; width:100%; height:100%; background-image: ${securityPattern};"></div>
+
+                                <!-- Inner Container with Cut Corners -->
+                                <div style="border: 1px solid ${finalStatusColor}40; margin: 4px; padding: 10px 20px; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); position: relative; z-index: 2; filter: blur(0.3px);">
+                                    
+                                    <!-- Header: Logo & Title -->
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid ${finalStatusColor}40; padding-bottom: 8px;">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                                        </svg>
+                                        <div style="display: flex; flex-direction: column; line-height: 1; text-align: left;">
+                                            <span style="font-size: 14px; letter-spacing: 2px; opacity: 0.8; font-family: 'Rajdhani', sans-serif;">VERIFIKASI RESMI</span>
+                                            <span style="font-size: 24px; font-weight: 800; letter-spacing: 1px; font-family: 'Rajdhani', sans-serif;">PUSKESMAS WANA</span>
+                                            <span style="font-size: 8px; font-family: 'Courier New'; opacity: 0.7; margin-top: 2px;">JL. PENGIRAN IRO KUSUMO WANA</span>
+                                            <span style="font-size: 9px; font-family: 'Courier New'; font-weight: bold; margin-top: 2px; border-top: 1px solid ${finalStatusColor}40; padding-top: 2px;">NO. REG: ${refNo}</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Main Status -->
+                                    <div style="text-align: center; margin: 8px 0;">
+                                        <span style="font-size: 3.5rem; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 0 1px rgba(0,0,0,0.9), 0 0 20px ${finalStatusColor}; display: block; font-family: 'Rajdhani', sans-serif; line-height: 0.9; animation: blinkText 2s infinite ease-in-out;">
+                                            ${result.success ? 'DITERIMA' : 'DITOLAK'}
+                                        </span>
+                                        <span style="font-size: 14px; font-family: 'Courier New'; letter-spacing: 3px; background: ${finalStatusColor}20; padding: 2px 8px; border-radius: 2px; font-weight: bold;">
+                                            AKSES GATEWAY AMAN
+                                        </span>
+                                    </div>
+
+                                    <!-- Footer: Signature & Date -->
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 15px; font-family: 'Courier New'; font-size: 14px;">
+                                        <div style="display: flex; flex-direction: column; gap: 4px; text-align: left; font-weight: bold; color: #FFFFFF; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                                            <div style="width: 40px; height: 40px; background: repeating-linear-gradient(45deg, ${finalStatusColor} 0, ${finalStatusColor} 2px, transparent 2px, transparent 4px); border: 2px solid ${finalStatusColor}; margin-bottom: 5px; opacity: 0.8; display: flex; align-items: center; justify-content: center;"><span style="font-size: 8px; color: ${finalStatusColor}; font-weight: bold;">QR</span></div>
+                                            <span style="background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 3px; border-left: 3px solid ${finalStatusColor};">${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()}</span>
+                                            <span style="background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 3px; border-left: 3px solid ${finalStatusColor};">PUKUL: ${new Date().toLocaleTimeString('id-ID')} WIB</span>
+                                        </div>
+                                        <div style="text-align: center; position: relative; min-width: 140px;">
+                                            <div style="font-size: 9px; letter-spacing: 1px; margin-bottom: -15px; opacity: 0.8; font-family: 'Rajdhani', sans-serif;">MENGETAHUI,</div>
+                                            <div style="height: 70px; width: 140px; background: ${signatureUrl} no-repeat center; background-size: contain; filter: drop-shadow(0 0 1px ${signatureColor});"></div>
+                                            <div style="font-size: 11px; font-weight: bold; border-top: 1px solid ${finalStatusColor}; padding-top: 2px; font-family: 'Rajdhani', sans-serif;">KEPALA PUSKESMAS</div>
+                                            <div style="font-size: 8px; font-family: 'Courier New'; margin-top: 1px; opacity: 0.8;">NIP. 19750101 200012 1 001</div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                                
+                                <!-- Tech Accents (Decorations) -->
+                                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden;">
+                                    <div style="position: absolute; top: 50%; left: -2px; width: 4px; height: 20px; background: ${finalStatusColor}; transform: translateY(-50%); box-shadow: 0 0 10px ${finalStatusColor};"></div>
+                                    <div style="position: absolute; top: 50%; right: -2px; width: 4px; height: 20px; background: ${finalStatusColor}; transform: translateY(-50%); box-shadow: 0 0 10px ${finalStatusColor};"></div>
+                                    <div style="position: absolute; bottom: 5px; right: 5px; width: 10px; height: 10px; border-right: 2px solid ${finalStatusColor}; border-bottom: 2px solid ${finalStatusColor};"></div>
+                                    <div style="position: absolute; top: 5px; left: 5px; width: 10px; height: 10px; border-left: 2px solid ${finalStatusColor}; border-top: 2px solid ${finalStatusColor};"></div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 5px; font-family: 'Courier New'; font-size: 8px; color: ${finalStatusColor}; opacity: 0.6; letter-spacing: 2px;">HASH: ${Math.random().toString(36).substring(2, 15).toUpperCase()} // SECURE</div>
                         </div>
                     </div>
-                    <div class="impact-dust" style="background: radial-gradient(ellipse at center, ${finalStatusColor} 0%, transparent 70%);"></div>
+                    <div class="impact-dust" style="background: radial-gradient(ellipse at center, ${finalStatusColor} 0%, transparent 70%); animation-delay: 1.6s;"></div>
 
                     <!-- Cooldown Bar -->
                     <div class="cooldown-track" style="z-index: 20;"><div id="cooldownBar" class="cooldown-progress" style="background: ${finalStatusColor}; box-shadow: 0 0 20px ${finalStatusColor};"></div></div>
@@ -3083,8 +3245,8 @@ async function processAttendance(karyawanId) {
                                     
                                     <!-- Footer Strip -->
                                     <div class="h-3 bg-slate-900 border-t border-white/10 flex items-center justify-between px-4">
-                                        <span class="text-[6px] text-slate-500 tracking-widest">GOVERNMENT HEALTH SERVICE // OFFICIAL ID</span>
-                                        <span class="text-[6px] text-slate-500 tracking-widest">SECURE DOC</span>
+                                        <span class="text-[6px] text-slate-500 tracking-widest">LAYANAN KESEHATAN PEMERINTAH // ID RESMI</span>
+                                        <span class="text-[6px] text-slate-500 tracking-widest">DOKUMEN AMAN</span>
                                     </div>
                                  </div>
                             </div>
@@ -3154,8 +3316,8 @@ async function processAttendance(karyawanId) {
                     </div>
 
                     <div class="holo-footer" style="position: relative; z-index: 10;">
-                        <span class="text-xl">SYSTEM: BIOMETRIC_MATCH_v4.5 [STABLE]</span>
-                        <span id="cooldownTimer" class="font-bold text-xl" style="color: ${finalStatusColor}">NEXT SCAN: 4.0s</span>
+                        <span class="text-xl">SISTEM: PENCOCOKAN_BIOMETRIK_v4.5 [STABIL]</span>
+                        <span id="cooldownTimer" class="font-bold text-xl" style="color: ${finalStatusColor}">COOLDOWN: 10.0s</span>
                     </div>
                 </div>
             `;
@@ -3164,12 +3326,22 @@ async function processAttendance(karyawanId) {
             const rect = successOverlay.getBoundingClientRect();
             createParticleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, finalStatusColor);
 
+            // Initialize 3D Handle (Three.js)
+            setTimeout(() => { if(window.initStampHandleThreeJS) window.initStampHandleThreeJS(); }, 100);
+
             // Trigger Screen Shake on Stamp Impact (Sync with CSS animation delay 1.2s + duration 0.4s)
             setTimeout(() => {
                 triggerScreenFlash(finalStatusColor); // Flash dipindah ke saat Impact (Stempel Menghantam)
                 document.body.classList.add('screen-shake');
                 setTimeout(() => document.body.classList.remove('screen-shake'), 500);
             }, 1600);
+
+            // --- ANIMASI KETIK SELAMAT DATANG (NEW) ---
+            const welcomeEl = document.getElementById('welcomeMessageTarget');
+            if (welcomeEl) {
+                // Delay sedikit agar sinkron dengan munculnya overlay
+                setTimeout(() => animateText(welcomeEl, "SELAMAT DATANG DI PUSKESMAS WANA", 40), 200);
+            }
 
             // --- ANIMASI DECRYPT BIOMETRIC ID (NEW) ---
             const bioIdEl = document.getElementById('bioIdValue');
@@ -3232,10 +3404,10 @@ async function processAttendance(karyawanId) {
              successOverlay.innerHTML = `
                 <div class="holo-card" style="border-color: #FF0055; box-shadow: 0 0 100px #FF0055;">
                     <div class="holo-header">
-                        <span class="text-red-500 font-bold tracking-[0.3em] text-2xl">SYSTEM ALERT</span>
+                        <span class="text-red-500 font-bold tracking-[0.3em] text-2xl">PERINGATAN SISTEM</span>
                     </div>
                     <div class="p-20 text-center flex flex-col items-center justify-center h-full">
-                        <h1 class="text-6xl font-black text-red-500 mb-8 glitch-text">TRANSMISSION FAILED</h1>
+                        <h1 class="text-6xl font-black text-red-500 mb-8 glitch-text">TRANSMISI GAGAL</h1>
                         <p class="text-white text-2xl mb-8">Gagal terhubung ke server database.</p>
                         <div class="bg-red-900/30 p-8 border border-red-500/50 rounded text-red-300 font-mono text-xl">
                             ERROR: ${error.message}
@@ -3307,7 +3479,7 @@ function toggleAdminPanel() {
     
     if (adminOverlay.classList.contains('hidden')) {
         // BUKA PANEL
-        console.log("Opening Admin Panel...");
+        console.log('Opening Admin Panel...');
         adminOverlay.classList.remove('hidden');
         SoundFX.play('scan'); // Efek suara
         // Set nilai saat ini ke input
@@ -3777,6 +3949,23 @@ window.cekKoneksi = async () => {
 // --- INJECT CSS ANIMASI BORDER (SCANNING EFFECT) ---
 function injectScanningStyles() {
     const css = `
+    @keyframes stampDescend {
+        0% { transform: translateY(-600px) scale(2) rotateX(45deg); opacity: 0; }
+        60% { transform: translateY(20px) scale(0.9) rotateX(0deg); opacity: 1; }
+        80% { transform: translateY(-10px) scale(1.05); }
+        100% { transform: translateY(0) scale(0.85) rotate(-5deg); opacity: 1; }
+    }
+    @keyframes stampShadow {
+        0% { transform: translate(-50%, 180px) scale(0); opacity: 0; }
+        60% { transform: translate(-50%, 180px) scale(1.2); opacity: 0.8; }
+        80% { transform: translate(-50%, 180px) scale(0.9); opacity: 0.6; }
+        100% { transform: translate(-50%, 180px) scale(1); opacity: 0.4; }
+    }
+    @keyframes digitalSplash {
+        0% { transform: translate(-50%, 180px) scale(0.1); opacity: 0; border-width: 10px; }
+        20% { opacity: 1; }
+        100% { transform: translate(-50%, 180px) scale(3); opacity: 0; border-width: 0px; }
+    }
     @keyframes border-march {
         0% { background-position: 0 0, 100% 100%, 0 100%, 100% 0; }
         100% { background-position: 40px 0, -40px 100%, 0 -40px, 100% 40px; }
@@ -3811,6 +4000,10 @@ function injectScanningStyles() {
             border-color: #ff0000;
         }
     }
+    @keyframes blinkText {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
     .scanning-border {
         background-image: 
             linear-gradient(90deg, rgba(255,255,255,0.8) 50%, transparent 50%), 
@@ -3839,3 +4032,211 @@ function injectScanningStyles() {
     document.head.appendChild(style);
 }
 injectScanningStyles();
+
+// --- THREE.JS STAMP HANDLE GENERATOR ---
+window.initStampHandleThreeJS = function() {
+    if (typeof THREE === 'undefined') return;
+    const container = document.getElementById('stampHandleContainer');
+    if (!container) return;
+
+    // 1. Setup Scene
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000); 
+    camera.position.set(0, 10, 35); // Mundur (z=35) agar terlihat utuh dan jelas
+    camera.lookAt(0, 0, 0); // Fokus ke tengah (0,0,0)
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.innerHTML = ''; // Clear previous
+    container.appendChild(renderer.domElement);
+
+    // 2. Lighting (Warm for wood)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+    dirLight.position.set(5, 10, 7); // Posisi awal cahaya
+    scene.add(dirLight);
+    const backLight = new THREE.DirectionalLight(0x00ffff, 0.3); // Cyan rim light
+    backLight.position.set(-10, 5, -10);
+    scene.add(backLight);
+
+    // 3. Procedural Wood Texture (High-Res Realistic Mahogany)
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024; canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+    
+    // Base Gradient (Deep Mahogany)
+    const gradient = ctx.createLinearGradient(0, 0, 1024, 0);
+    gradient.addColorStop(0, '#3E1010');
+    gradient.addColorStop(0.5, '#5D1A1A');
+    gradient.addColorStop(1, '#3E1010');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0,0,1024,1024);
+
+    // Wood Grain (Serat Kayu Alami)
+    ctx.globalCompositeOperation = 'multiply';
+    for(let i=0; i<300; i++) {
+        ctx.beginPath();
+        ctx.lineWidth = Math.random() * 2 + 0.5;
+        ctx.strokeStyle = 'rgba(20, 5, 5, 0.3)';
+        const x = Math.random() * 1024;
+        ctx.moveTo(x, 0);
+        ctx.bezierCurveTo(x + (Math.random()-0.5)*200, 300, x + (Math.random()-0.5)*200, 700, x + (Math.random()-0.5)*200, 1024);
+        ctx.stroke();
+    }
+    
+    // Wood Pores (Detail Tekstur Pori-pori)
+    ctx.globalCompositeOperation = 'source-over';
+    for(let i=0; i<40000; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.05)';
+        ctx.fillRect(Math.random()*1024, Math.random()*1024, 1, 1);
+    }
+
+    // [NEW] Tambahan Ukiran "PUSKESMAS WANA" pada tekstur kayu
+    ctx.save();
+    ctx.translate(512, 512);
+    ctx.font = 'bold 100px "Times New Roman", serif';
+    
+    // [UPDATE] Efek Emboss/Engrave (Normal Map Simulation)
+    // 1. Highlight Edge (Putih tipis) untuk efek bibir ukiran
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillText("PUSKESMAS WANA", 2, 2);
+
+    // 2. Deep Text (Hitam Pekat) & Blur untuk gradasi kedalaman (Slope)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'; 
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 4;
+    
+    ctx.fillText("PUSKESMAS WANA", 0, 0);
+    ctx.restore();
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.anisotropy = 16; // Sharper texture at angles
+
+    // Shared Wood Material (Varnished/Pernis Mengkilap)
+    const woodMat = new THREE.MeshPhysicalMaterial({ 
+        map: texture, 
+        color: 0xFFFFFF, 
+        roughness: 0.4, 
+        metalness: 0.0,
+        clearcoat: 1.0, // Efek Pernis Tebal
+        clearcoatRoughness: 0.1,
+        bumpMap: texture, // Tekstur serat terasa
+        bumpScale: 0.15 // [UPDATE] Scale diperbesar agar ukiran terlihat dalam
+    });
+
+    // 4. Stamp Group (Container)
+    const stampGroup = new THREE.Group();
+    scene.add(stampGroup);
+
+    // 5. Tatakan (Base) - Realistic Varnished Box
+    const baseGeo = new THREE.BoxGeometry(12, 1.5, 7); 
+    const baseMesh = new THREE.Mesh(baseGeo, woodMat);
+    baseMesh.position.y = 0.75; // Offset half height
+    stampGroup.add(baseMesh);
+
+    // 5.2. Casing Body (Metal Connector - Ferrule)
+    const casingGeo = new THREE.CylinderGeometry(1.6, 3.8, 0.8, 32);
+    const casingMat = new THREE.MeshPhysicalMaterial({ 
+        color: 0xD4AF37, // Gold/Brass
+        roughness: 0.2, 
+        metalness: 1.0,
+        clearcoat: 0.5
+    });
+    const casingMesh = new THREE.Mesh(casingGeo, casingMat);
+    casingMesh.position.y = 1.9; // Position above base
+    stampGroup.add(casingMesh);
+
+    // 5.5. Karet Runaflek (Rubber Plate) - Wet Ink Effect
+    const rubberGeo = new THREE.BoxGeometry(12, 0.25, 7); 
+    const rubberMat = new THREE.MeshPhysicalMaterial({ 
+        color: 0xBF360C, // Deep Orange/Red
+        roughness: 0.2, // Licin (Basah)
+        metalness: 0.0,
+        clearcoat: 1.0, // Lapisan Tinta Mengkilap
+        clearcoatRoughness: 0.1
+    });
+    const rubberMesh = new THREE.Mesh(rubberGeo, rubberMat);
+    rubberMesh.position.y = -0.125; // Position below base
+    stampGroup.add(rubberMesh);
+
+    // 5.8. Pin Penanda (Brass Tack) - Penanda Arah Depan
+    const pinGeo = new THREE.SphereGeometry(0.4, 16, 16);
+    const pinMat = new THREE.MeshStandardMaterial({ color: 0xD4AF37, metalness: 1.0, roughness: 0.2 });
+    const pinMesh = new THREE.Mesh(pinGeo, pinMat);
+    pinMesh.position.set(0, 0.75, 3.5); // Di sisi depan balok kayu (z = 3.5)
+    pinMesh.scale.z = 0.5; // Pipih seperti paku payung
+    stampGroup.add(pinMesh);
+
+    // 6. Handle Grip (Lathe) - Ergonomic Shape
+    const points = [];
+    points.push(new THREE.Vector2(0, 2.3));   // Start above casing
+    points.push(new THREE.Vector2(1.6, 2.3)); // Neck connection
+    points.push(new THREE.Vector2(1.4, 5.3)); // Neck thin
+    points.push(new THREE.Vector2(4.8, 7.3)); // Grip bottom bulb
+    points.push(new THREE.Vector2(5.0, 9.3)); // Grip widest
+    points.push(new THREE.Vector2(2.5, 10.8)); // Top curve
+    points.push(new THREE.Vector2(0, 11.3));   // Top center
+    
+    const gripGeo = new THREE.LatheGeometry(points, 32);
+    const gripMesh = new THREE.Mesh(gripGeo, woodMat); // Use shared wood material
+    stampGroup.add(gripMesh);
+
+    // 6.5. Cincin Emas (Gold Ring Detail) - Aksen Mewah
+    const ringGeo = new THREE.TorusGeometry(1.5, 0.1, 16, 100);
+    const ringMat = new THREE.MeshStandardMaterial({ 
+        color: 0xFFD700, metalness: 1.0, roughness: 0.1 
+    });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.position.y = 5.3; // Posisi di leher gagang
+    ringMesh.rotation.x = Math.PI / 2;
+    stampGroup.add(ringMesh);
+
+    // 6.6. Emblem Puncak (Top Cap) - Detail Emas di Atas Gagang
+    const capGeo = new THREE.CylinderGeometry(1.0, 1.0, 0.1, 32);
+    const capMat = new THREE.MeshPhysicalMaterial({ 
+        color: 0xFFD700, metalness: 1.0, roughness: 0.2, clearcoat: 1.0 
+    });
+    const capMesh = new THREE.Mesh(capGeo, capMat);
+    capMesh.position.y = 11.35; // Tepat di ujung atas
+    stampGroup.add(capMesh);
+
+    // 6.7. Sekrup Penguat (Rivets) pada Casing Logam
+    const rivetGeo = new THREE.SphereGeometry(0.2, 8, 8);
+    const rivetMat = new THREE.MeshStandardMaterial({ color: 0xAAAAAA, metalness: 0.8, roughness: 0.4 });
+    
+    for(let i=0; i<8; i++) {
+        const rivet = new THREE.Mesh(rivetGeo, rivetMat);
+        const angle = (i / 8) * Math.PI * 2;
+        // Radius casing di tengah (y=1.9) kira-kira 2.7
+        rivet.position.set(Math.cos(angle) * 2.7, 1.9, Math.sin(angle) * 2.7);
+        stampGroup.add(rivet);
+    }
+
+    stampGroup.position.y = -5.5; // Posisi stempel ditengah (Center Y)
+    stampGroup.scale.set(1.25, 1.25, 1.25); // [NEW] Perbesar ukuran stempel
+
+    // 7. Render Loop
+    let time = 0;
+    function animate() {
+        if(!document.getElementById('stampHandleContainer')) {
+            renderer.dispose(); return;
+        }
+        requestAnimationFrame(animate);
+        time += 0.02;
+        
+        stampGroup.rotation.y += 0.008; // Rotate entire stamp
+        
+        // Dynamic Light (Kilau Emas Bergerak) - Membuat efek 'Shimmer'
+        dirLight.position.x = Math.sin(time) * 10;
+        dirLight.position.z = Math.cos(time) * 10;
+        
+        renderer.render(scene, camera);
+    }
+    animate();
+};

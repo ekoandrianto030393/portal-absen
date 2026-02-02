@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Biometric Gateway - Interstellar Ops</title>
+    <title>Gerbang Biometrik Canggih - Operasi Antarbintang</title>
 
     <!-- RESOURCE HINTS FOR PRODUCTION -->
     <link rel="preconnect" href="https://cdn.babylonjs.com">
@@ -17,6 +17,7 @@
     <!-- Hapus duplikat -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- FONT SCI-FI: Rajdhani -->
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
@@ -1101,7 +1102,7 @@
             position: absolute;
             right: 10%;
             bottom: 25%;
-            min-width: 320px;
+            min-width: 280px;
             padding: 15px;
             display: flex;
             flex-direction: column;
@@ -1121,9 +1122,6 @@
             background: rgba(0,0,0,0.4);
             box-shadow: 0 0 50px currentColor, inset 0 0 20px currentColor;
             backdrop-filter: blur(4px);
-            /* Efek Grunge Digital menggunakan Masking */
-            -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><filter id='noise'><feTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23noise)' opacity='0.6'/><rect width='100%' height='100%' fill='white'/></svg>");
-            mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><filter id='noise'><feTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23noise)' opacity='0.6'/><rect width='100%' height='100%' fill='white'/></svg>");
         }
 
         .stamp-inner {
@@ -1136,7 +1134,7 @@
         }
         
         .stamp-label {
-            font-size: 1rem;
+            font-size: 1.4rem;
             font-weight: normal;
             letter-spacing: 8px;
             margin-bottom: 0;
@@ -1146,7 +1144,7 @@
         @keyframes stampFall {
             0% { transform: translateY(-120vh) scale(2) rotate(-25deg); opacity: 0; }
             70% { opacity: 1; }
-            100% { transform: translateY(0) scale(1) rotate(-15deg); opacity: 1; }
+            100% { transform: translateY(0) scale(0.85) rotate(-15deg); opacity: 1; }
         }
 
         /* --- 17. NEW STATUS BOX ANIMATION --- */
@@ -1289,7 +1287,7 @@
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
                 <div class="widget-panel">
-                    <h2 class="widget-title">:: DEVICE SELECT ::</h2>
+                    <h2 class="widget-title">:: PILIH PERANGKAT ::</h2>
                     
                     <!-- AMBULANCE DISPLAY (STATIC) -->
                     <div id="ambulance-unit-display" style="margin-top: 10px; margin-bottom: 15px; border: 1px solid #00FFFF; border-radius: 6px; overflow: hidden; box-shadow: 0 0 10px rgba(0, 255, 255, 0.2); position: relative; background: rgba(0, 20, 30, 0.6);">
@@ -1373,7 +1371,7 @@
                         <div class="flex items-center gap-2">
                             <div id="stealthIcon"
                                 class="w-2 h-2 rounded-full bg-gray-600 transition-colors duration-300"></div>
-                            <span class="text-xs font-mono text-cyan-400 tracking-wider">STEALTH MODE</span>
+                            <span class="text-xs font-mono text-cyan-400 tracking-wider">MODE SENYAP</span>
                         </div>
                         <button id="stealthToggle"
                             class="bg-transparent border border-cyan-500/50 text-cyan-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all duration-300">
@@ -1383,7 +1381,7 @@
                 
                 <!-- SENSOR MODE SELECTOR -->
                 <div class="mt-3 pt-2 border-t border-cyan-500/30">
-                    <h3 class="text-[10px] font-mono text-cyan-600 mb-1 tracking-widest">:: SENSOR OPTICS ::</h3>
+                    <h3 class="text-[10px] font-mono text-cyan-600 mb-1 tracking-widest">:: OPTIK SENSOR ::</h3>
                     <div class="grid grid-cols-3 gap-1">
                         <button onclick="setVisionMode('normal')"
                             class="bg-cyan-900/30 border border-cyan-500/50 text-[9px] py-1 text-cyan-300 hover:bg-cyan-500/20 transition-all">OPTICAL</button>
@@ -1399,12 +1397,12 @@
                         <button id="btnSecretAdmin"
                             class="w-full bg-red-900/20 border border-red-500/50 text-red-400 text-[10px] py-1.5 font-mono hover:bg-red-900/40 hover:text-white transition-all tracking-wider flex items-center justify-center gap-2">
                             <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-                            :: OPEN ADMIN MENU ::
+                            :: BUKA MENU ADMIN ::
                         </button>
                     </div>
                 </div>
                 <div class="widget-panel">
-                    <h2 class="widget-title">:: TARGET DATA ::</h2>
+                    <h2 class="widget-title">:: DATA TARGET ::</h2>
                     <div class="space-y-3 text-center">
 
                         <!-- FOTO KARYAWAN -->
@@ -1420,26 +1418,26 @@
                         </div>
 
                         <div>
-                            <p class="text-xs text-gray-400">IDENTITY</p>
-                            <p id="userIdDisplay" class="text-xl font-bold text-cyan-400 truncate">SCANNING...</p>
+                            <p class="text-xs text-gray-400">IDENTITAS</p>
+                            <p id="userIdDisplay" class="text-xl font-bold text-cyan-400 truncate">MEMINDAI...</p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400">AUTH LEVEL</p>
-                            <p id="userStatusDisplay" class="text-lg font-bold text-red-500">LOCKED</p>
+                            <p class="text-xs text-gray-400">LEVEL OTORISASI</p>
+                            <p id="userStatusDisplay" class="text-lg font-bold text-red-500">TERKUNCI</p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400">PSYCHE STATE</p>
-                            <p id="userEmotionDisplay" class="text-md font-mono text-cyan-300 animate-pulse">CALIBRATING...</p>
+                            <p class="text-xs text-gray-400">KONDISI PSIKIS</p>
+                            <p id="userEmotionDisplay" class="text-md font-mono text-cyan-300 animate-pulse">KALIBRASI...</p>
                             </div>
                             <div>
-                            <p class="text-xs text-gray-400">LAST LOG</p>
+                            <p class="text-xs text-gray-400">LOG TERAKHIR</p>
                             <p id="lastActionDisplay" class="text-md font-mono text-amber-400">--:--:--</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="widget-panel flex-grow h-32 lg:h-auto">
-                    <h2 class="widget-title">:: KERNEL LOG ::</h2>
+                    <h2 class="widget-title">:: LOG KERNEL ::</h2>
                     <div id="systemLog" class="text-xs h-full overflow-y-auto font-mono space-y-1">
                         <p class="text-green-500">> System Init: OK</p>
                     </div>
@@ -1451,7 +1449,7 @@
                     <img id="mainLogo" src="logo.jpg" class="hidden" alt="Logo Instansi">
                     <h1 id="mainTitle" class="text-4xl lg:text-5xl font-extrabold tracking-widest text-center">AETHER
                     </h1>
-                    <p class="text-xs text-cyan-700 mt-1 font-mono">SECURE ACCESS POINT: A-9 // [CONNECTED]</p>
+                    <p class="text-xs text-cyan-700 mt-1 font-mono">TITIK AKSES AMAN: A-9 // [TERHUBUNG]</p>
                 </div>
 
                 <div id="videoContainer" class="video-container max-w-full">
@@ -1463,7 +1461,7 @@
                 <div class="w-full bg-gray-900/80 border border-cyan-500/30 p-3 rounded text-center backdrop-blur-sm">
                     <p id="statusMessage"
                         class="text-xl lg:text-2xl font-bold text-gray-300 transition-colors duration-300">
-                        INITIALIZING SENSORS...
+                        MENGINISIALISASI SENSOR...
                     </p>
                 </div>
 <!-- NEW: A.I. VOICE VISUALIZER -->
@@ -1482,7 +1480,7 @@
                 </div>
 
                 <div class="widget-panel h-64 flex-shrink-0">
-                    <h2 class="widget-title">:: ATTENDANCE LOG ::</h2>
+                    <h2 class="widget-title">:: LOG KEHADIRAN ::</h2>
                     <div id="attendanceLog" class="h-full overflow-y-auto font-mono text-xs opacity-90 space-y-1">
                         <p class="text-gray-600 italic">> Waiting for check-in...</p>
                     </div>
