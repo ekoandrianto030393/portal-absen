@@ -3074,7 +3074,12 @@ async function processAttendance(karyawanId) {
             if (result.result_code === 'CHECK_OUT_SUCCESS') {
                 SoundFX.speak(`Sampai Jumpa ${display_name}. Hati-hati di jalan.`);
             } else {
-                SoundFX.speak(`Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
+                // [MODIFIKASI] Pesan Khusus untuk ID H87
+                if (karyawanId === 'H87') {
+                    SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet. Selamat ${timeGreeting}. ${randomQuote}`);
+                } else {
+                    SoundFX.speak(`Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
+                }
             }
             
             setSystemTheme('SUCCESS'); // Theme Green
@@ -3678,15 +3683,23 @@ async function processAttendance(karyawanId) {
 
                     .shutter-data {
                         position: absolute; top: 50%; width: 100%; transform: translateY(-50%);
-                        font-family: 'Rajdhani', sans-serif; font-size: 65px; 
+                        font-family: 'Rajdhani', sans-serif; font-size: 80px; 
                         font-weight: 900;
                         text-align: center; pointer-events: none; user-select: none;
                         white-space: nowrap; overflow: hidden;
                         letter-spacing: 0.15em;
-                        /* Gold Inlay Effect (Kesan Barang Berharga) */
-                        background: linear-gradient(to bottom, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C);
+                        /* Realistic 3D Gold Emboss Effect */
+                        background: linear-gradient(180deg, #FFFFE0 0%, #BF953F 30%, #B38728 50%, #FBF5B7 80%, #AA771C 100%);
                         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-                        filter: drop-shadow(0 2px 5px rgba(0,0,0,0.8)); opacity: 0.9;
+                        filter: 
+                            drop-shadow(0 1px 0 #3e2b0e)
+                            drop-shadow(0 2px 0 #3e2b0e)
+                            drop-shadow(0 3px 0 #3e2b0e)
+                            drop-shadow(0 4px 0 #3e2b0e)
+                            drop-shadow(0 5px 0 #3e2b0e)
+                            drop-shadow(0 10px 20px rgba(0,0,0,0.8));
+                        opacity: 1;
+                        z-index: 20;
                     }
 
                     /* SPLIT LOCK MECHANISM (Gembok Terbelah) */
@@ -3973,7 +3986,7 @@ async function processAttendance(karyawanId) {
                         shutter.classList.add('shutter-open');
                     }, 1200);
                 }
-            }, 200);
+            }, 1500); // [MODIFIED] Jeda awal diperlama agar teks terbaca
 
             // Animate hash
             animateHash('validation-hash');
