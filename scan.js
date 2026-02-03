@@ -1041,6 +1041,64 @@ function drawFaceShape(ctx, landmarks, color, isPulsing = false) {
     ctx.restore();
 }
 
+// --- [GOD-LEVEL] HOLOGRAPHIC FACE RECONSTRUCTION ENGINE ---
+function drawHolographicMesh(ctx, landmarks) {
+    const points = landmarks.positions;
+    const time = Date.now() / 1000;
+    
+    // --- EFEK BARU: PROGRESSIVE SCANNING (WAJAH DIGAMBAR) ---
+    // Hitung batas atas dan bawah wajah
+    const ys = points.map(p => p.y);
+    const minY = Math.min(...ys) - 10;
+    const maxY = Math.max(...ys) + 10;
+    const height = maxY - minY;
+    
+    // Garis scan bergerak dari atas ke bawah setiap 1.5 detik
+    const scanPhase = (time % 1.5) / 1.5; 
+    const scanY = minY + (scanPhase * height);
+    
+    ctx.save();
+    
+    // 1. TRIANGULATION MESH (Low Poly Cyber Look)
+    // Logic: Hanya gambar jika titik berada di atas garis scan
+    const tri = (i, j, k) => {
+        const py = (points[i].y + points[j].y + points[k].y) / 3;
+        
+        // Jika di bawah garis scan, jangan gambar (belum ter-scan)
+        if (py > scanY) return;
+
+        ctx.beginPath();
+        ctx.moveTo(points[i].x, points[i].y);
+        ctx.lineTo(points[j].x, points[j].y);
+        ctx.lineTo(points[k].x, points[k].y);
+        ctx.closePath();
+        
+        // EFEK "HOT EDGE": Segitiga yang baru saja di-scan menyala putih terang
+        const dist = Math.abs(py - scanY);
+        if (dist < 25) {
+            // Putih terang memudar ke Cyan
+            const intensity = 1 - (dist / 25);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${intensity})`; 
+            ctx.fillStyle = `rgba(0, 255, 255, ${intensity * 0.6})`;
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+        } else {
+            // Sudah stabil (Cyan redup)
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.02)'; 
+            ctx.lineWidth = 0.5;
+        }
+        ctx.stroke();
+    };
+
+    // Manual Triangulation for key areas (Nose, Eyes, Cheeks, Chin)
+    tri(27, 31, 28); tri(28, 31, 35); tri(28, 35, 29); tri(29, 35, 30); // Nose
+    tri(21, 22, 27); tri(17, 36, 21); tri(22, 42, 26); // Forehead/Eyes
+    tri(31, 2, 48); tri(35, 14, 54); // Cheeks
+    tri(48, 57, 54); tri(57, 8, 54); tri(57, 48, 8); // Chin
+    ctx.restore();
+}
+
 // --- FITUR BARU: EYE BLINK PARTICLES (Partikel Digital Mata) ---
 function getEAR(eye) {
     const v1 = Math.hypot(eye[1].x - eye[5].x, eye[1].y - eye[5].y);
@@ -1298,6 +1356,37 @@ function animateText(element, text, speed = 30) {
     }, speed);
     
     element.dataset.typingInterval = interval;
+}
+
+// [NEW] HELPER: HASH ANIMATION
+function animateHash(elementId, length = 64) {
+    const target = document.getElementById(elementId);
+    if (!target) return;
+
+    const chars = '0123456789ABCDEF';
+    let frame = 0;
+    const totalFrames = 30; // Animation duration
+    
+    const interval = setInterval(() => {
+        frame++;
+        let output = '';
+        for (let i = 0; i < length; i++) {
+            // Animate character by character based on progress
+            if (frame > totalFrames * (i / length)) {
+                output += chars[Math.floor(Math.random() * chars.length)];
+            } else {
+                // Use a placeholder for characters not yet "decrypted"
+                output += '-';
+            }
+        }
+        target.textContent = output;
+
+        if (frame >= totalFrames) {
+            clearInterval(interval);
+            // Generate a final "locked" hash
+            target.textContent = Array.from({length}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        }
+    }, 50);
 }
 
 // --- HELPER: BOOT SEQUENCE ---
@@ -2597,8 +2686,8 @@ async function detectFace() {
         // drawTacticalHUD(context, box, faceColor);
         
         // Gunakan Smart HUD baru
-        drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion, gender, age);
-        
+        // drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion, gender, age);
+        drawHolographicMesh(context, landmarks);
         // [NEW] Draw Face Shape (Visualisasi Wajah)
         const isVerifying = faceLabel.includes('VERIFYING') || (userStatusDisplay && userStatusDisplay.textContent.includes('VERIFYING'));
         drawFaceShape(context, landmarks, faceColor, isVerifying);
@@ -2810,7 +2899,7 @@ async function processAttendance(karyawanId) {
                 "Tetap semangat melayani masyarakat.",
                 "Jaga kesehatan dan tetap fokus.",
                 "Mari berikan pelayanan terbaik.",
-                "Jangan lupa senyum sapa salam.",
+                "Jangan lupa senyum, sapa, salam, sopan, dan santun.",
                 "Kerja ikhlas adalah ibadah.",
                 "Semangat mengabdi untuk negeri."
             ];
@@ -2869,7 +2958,7 @@ async function processAttendance(karyawanId) {
                     } else {
                         finalStatusText = 'CHECK-OUT BERHASIL';
                         finalMessageHTML = `Absensi PULANG Terkonfirmasi.<br>Terima kasih, Hati-hati di jalan.`;
-                        finalStatusColor = '#00FF7F'; // Hijau Normal
+                        finalStatusColor = '#FFD700'; // [MODIFIED] Ubah ke Emas untuk Check-Out Normal
                         finalBackground = ABSEN_NORMAL_BG;
                     }
                     updatePersonnelRoster(); // Refresh Roster Visual
@@ -2994,340 +3083,466 @@ async function processAttendance(karyawanId) {
 
         // FINAL OVERLAY RENDER (Profesional & Pesan Sambutan)
         if (successOverlay) {
-             const refNo = `445/${Math.floor(Math.random() * 899) + 100}/PKM-W/${new Date().getFullYear()}`;
-             
-             // [FIX] Encode SVG Content to prevent quote leakage in HTML attributes
-             const securityPatternSvg = `<svg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><path d='M0 20L20 0M-5 5L5 -5M15 25L25 15' stroke='${finalStatusColor}' stroke-width='0.5' opacity='0.15'/></svg>`;
-             const securityPattern = `url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(securityPatternSvg)}')`;
-             
-             const randomTilt = (Math.random() * 2 - 1).toFixed(2); // Rotasi acak dari -1 sampai +1 derajat
-             
-             const noiseSvgContent = `<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='noiseFilter'><feTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(#noiseFilter)'/></svg>`;
-             const noiseSvg = `url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(noiseSvgContent)}')`;
-             
-             const grungeSvgContent = `<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='grunge'><feTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='matrix' values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -9' result='alpha'/></filter><rect width='100%' height='100%' filter='url(#grunge)' opacity='0.4'/></svg>`;
-             const grungeSvg = `url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(grungeSvgContent)}')`;
+            // --- [NEW] Academic & Advanced Stamp SVGs ---
+            const guillocheSvg = `<svg width='100' height='100' xmlns='http://www.w3.org/2000/svg'><path d='M 0,50 C 25,0 75,100 100,50 M 0,50 C 25,100 75,0 100,50' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/><path d='M 50,0 C 0,25 100,75 50,100 M 50,0 C 100,25 0,75 50,100' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/></svg>`;
+            const watermarkSvg = `<svg width='300' height='300' xmlns='http://www.w3.org/2000/svg'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='"Times New Roman", serif' font-size='30' font-weight='bold' fill='${finalStatusColor}' opacity='0.06' transform='rotate(-45 150 150)'>PUSKESMAS WANA</text></svg>`;
 
-             // Signature SVG (Encoded)
-             const signatureColor = '#1a53ff'; // Warna Biru Tinta (Royal Blue Terang)
-             const signatureSvgContent = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 100'><path d='M20,55 C25,25 55,25 45,55 C40,70 30,65 35,50 C45,20 80,20 70,55 C65,65 90,45 100,50 C110,55 115,45 125,50 C135,55 140,45 150,50 C160,55 170,35 180,45 C190,55 200,40 210,50' stroke='${signatureColor}' fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' /><path d='M25,75 Q120,65 215,70' stroke='${signatureColor}' stroke-width='2' opacity='0.8' stroke-linecap='round' /></svg>`;
-             const signatureUrl = `url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(signatureSvgContent)}')`;
+            // [NEW] Advanced High-Tech Background SVGs
+            const circuitSvg = `<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="circuit" patternUnits="userSpaceOnUse" width="50" height="50"><path d="M0 25h25M25 0v25" stroke="${finalStatusColor}" stroke-width="0.3" opacity="0.1"/><path d="M25 25h25M25 50v-25" stroke="${finalStatusColor}" stroke-width="0.3" opacity="0.1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23circuit)"/></svg>`;
+            const hexGridSvg = `<svg width="100" height="115.47" xmlns="http://www.w3.org/2000/svg"><polygon points="50,0 100,28.87 100,86.6 50,115.47 0,86.6 0,28.87" fill="none" stroke="${finalStatusColor}" stroke-width="0.5" opacity="0.1"/></svg>`;
 
-             // Gunakan background gelap transparan agar ID Card menonjol
-             successOverlay.style.background = 'rgba(0, 0, 0, 0.85)';
-             successOverlay.innerHTML = `
-                <div class="holo-card" style="border-color: ${finalStatusColor}; box-shadow: 0 0 100px ${finalStatusColor}40; position: relative; overflow: hidden;">
-                    <!-- 1. HUD Corners -->
-                    <div class="holo-card-corner hc-tl" style="color: ${finalStatusColor}; z-index: 20;"></div>
-                    <div class="holo-card-corner hc-tr" style="color: ${finalStatusColor}; z-index: 20;"></div>
-                    <div class="holo-card-corner hc-bl" style="color: ${finalStatusColor}; z-index: 20;"></div>
-                    <div class="holo-card-corner hc-br" style="color: ${finalStatusColor}; z-index: 20;"></div>
+            // [NEW] GOD-LEVEL BACKGROUND ASSETS
+            // 1. Rotating HUD Ring (SVG)
+            const hudRingSvg = `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" style="position:absolute; top:0; left:0; animation: spin-slow 60s linear infinite; pointer-events:none;">
+                <circle cx="500" cy="500" r="350" fill="none" stroke="${finalStatusColor}" stroke-width="1" stroke-dasharray="20 40" opacity="0.1"/>
+                <circle cx="500" cy="500" r="400" fill="none" stroke="${finalStatusColor}" stroke-width="1" stroke-dasharray="100 100" opacity="0.08"/>
+                <circle cx="500" cy="500" r="450" fill="none" stroke="${finalStatusColor}" stroke-width="2" stroke-dasharray="2 10" opacity="0.05"/>
+                <path d="M500 50 L500 950 M50 500 L950 500" stroke="${finalStatusColor}" stroke-width="0.5" opacity="0.1"/>
+            </svg>`;
 
-                    <!-- 2. Scanning Beam -->
-                    <div class="holo-overlay-beam" style="color: ${finalStatusColor}; z-index: 5;"></div>
+            // 1.b [NEW] Holographic Projector Base (SVG)
+            const projectorSvg = `<svg width="100%" height="100px" viewBox="0 0 800 100" preserveAspectRatio="none" style="overflow: visible;">
+                <defs>
+                    <linearGradient id="beamGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+                        <stop offset="0%" stop-color="${finalStatusColor}" stop-opacity="0.5" />
+                        <stop offset="100%" stop-color="${finalStatusColor}" stop-opacity="0" />
+                    </linearGradient>
+                </defs>
+                <path d="M0 100 L350 100 L400 80 L450 100 L800 100" fill="none" stroke="${finalStatusColor}" stroke-width="2" vector-effect="non-scaling-stroke" filter="drop-shadow(0 0 5px ${finalStatusColor})"/>
+                <path d="M350 100 L0 0 M450 100 L800 0" fill="url(#beamGrad)" opacity="0.1" />
+            </svg>`;
 
-                    <!-- 3. Animated Circuit Background -->
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.08; background-image: linear-gradient(${finalStatusColor} 1px, transparent 1px), linear-gradient(90deg, ${finalStatusColor} 1px, transparent 1px); background-size: 40px 40px; animation: gridMove 4s linear infinite; pointer-events: none; z-index: 1;"></div>
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.1; background-image: radial-gradient(${finalStatusColor} 1px, transparent 1px); background-size: 30px 30px; animation: gridMove 10s linear infinite; pointer-events: none; z-index: 1;"></div>
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 150%; height: 150%; border: 1px dashed ${finalStatusColor}; border-radius: 50%; opacity: 0.1; animation: spinSlow 20s linear infinite; pointer-events: none; z-index: 0;"></div>
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 120%; height: 120%; border: 2px solid ${finalStatusColor}; border-radius: 50%; opacity: 0.05; border-left-color: transparent; border-right-color: transparent; animation: spinReverse 15s linear infinite; pointer-events: none; z-index: 0;"></div>
-                    
-                    <style>
-                        @keyframes spinSlow { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
-                        @keyframes spinReverse { 0% { transform: translate(-50%, -50%) rotate(360deg); } 100% { transform: translate(-50%, -50%) rotate(0deg); } }
-                    </style>
+            // 2. Floating Math Particles (Generated HTML)
+            const mathParticles = Array.from({length: 40}, () => {
+                const formulas = ['∫f(x)dx', 'e^iπ+1=0', 'E=mc²', '∇×F', '∂²u/∂t²', 'sin²θ+cos²θ=1', 'lim(x→∞)', '∑n=1', 'P(A|B)', 'H(X)', 'Φ(z)', 'λmax'];
+                const content = formulas[Math.floor(Math.random() * formulas.length)];
+                const left = Math.random() * 100;
+                const top = Math.random() * 100;
+                const dur = 15 + Math.random() * 20;
+                const delay = Math.random() * -20;
+                const scale = 0.5 + Math.random() * 0.8;
+                return `<div style="position:absolute; left:${left}%; top:${top}%; font-family:'Times New Roman', serif; font-style:italic; animation: floatMath ${dur}s linear infinite; animation-delay: ${delay}s; opacity: 0; transform: scale(${scale}); color:${finalStatusColor}; text-shadow: 0 0 5px ${finalStatusColor}; pointer-events:none;">${content}</div>`;
+            }).join('');
 
-                    <!-- Digital Stamp with Handle & Delay -->
-                    <div class="digital-stamp-container" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; pointer-events: none;">
-                        <!-- Floor Shadow Effect -->
-                        <div style="
-                            position: absolute; top: 50%; left: 50%;
-                            width: 300px; height: 40px;
-                            background: radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, transparent 70%);
-                            transform: translate(-50%, 180px) scale(0);
-                            opacity: 0;
-                            z-index: 0;
-                            filter: blur(4px);
-                            animation: stampShadow 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-                            animation-delay: 1.2s;
-                        "></div>
-                        <!-- Digital Splash Effect -->
-                        <div style="
-                            position: absolute; top: 50%; left: 50%;
-                            width: 120px; height: 40px;
-                            border: 4px solid ${finalStatusColor};
-                            border-radius: 50%;
-                            transform: translate(-50%, 180px) scale(0);
-                            opacity: 0;
-                            z-index: 0;
-                            box-shadow: 0 0 30px ${finalStatusColor}, inset 0 0 20px ${finalStatusColor};
-                            filter: blur(1px);
-                            animation: digitalSplash 0.8s ease-out forwards;
-                            animation-delay: 1.45s;
-                        "></div>
-                        <div style="
-                            position: absolute; top: 50%; left: 50%;
-                            width: 100px; height: 30px;
-                            border: 2px solid ${finalStatusColor};
-                            border-radius: 50%;
-                            transform: translate(-50%, 180px) scale(0);
-                            opacity: 0;
-                            z-index: 0;
-                            animation: digitalSplash 0.6s ease-out forwards;
-                            animation-delay: 1.55s;
-                        "></div>
-                        <div class="stamp-anim-target" style="display: flex; flex-direction: column; align-items: center; opacity: 0; animation: stampDescend 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards; animation-delay: 1.2s;">
-                            <!-- 3D Handle Container (Three.js) -->
-                            <div id="stampHandleContainer" style="position: absolute; bottom: 100px; right: -20px; transform: rotate(${randomTilt}deg); width: 160px; height: 160px; z-index: 5; pointer-events: none;"></div>
-                            <!-- Stamp Ink Body (Redesigned: High-Tech Official Seal) -->
-                            <div class="digital-stamp" style="
-                                color: ${finalStatusColor}; 
-                                border-radius: 4px;
-                                padding: 0;
-                                /* Shadow baru untuk efek tepi tinta yang tidak sempurna */
-                                box-shadow: 0 0 1px 2px ${finalStatusColor}80, 0 0 8px 3px ${finalStatusColor}40, inset 0 0 20px ${finalStatusColor}10;
-                                background: rgba(10, 15, 20, 0.95); 
-                                margin-top: 0px; position: relative; z-index: 1;
-                                transform-origin: center top;
-                                transform: rotate(${randomTilt}deg); /* Rotasi acak */
-                                min-width: 280px;
-                                clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
-                                backdrop-filter: blur(10px);
-                                filter: contrast(1.1);
-                            ">
-                                <!-- Lapisan Tekstur Tinta -->
-                                <div style="position: absolute; top:0; left:0; width:100%; height:100%; background-image: ${noiseSvg}; mix-blend-mode: soft-light; opacity: 0.1; pointer-events: none; z-index: 1;"></div>
+            // 3. Binary Data Rain (Generated HTML)
+            const binaryRain = Array.from({length: 25}, () => {
+                const left = Math.random() * 100;
+                const dur = 3 + Math.random() * 5;
+                const delay = Math.random() * -5;
+                const content = Array.from({length: 15}, () => Math.random() > 0.5 ? '1' : '0').join('<br>');
+                return `<div style="position:absolute; left:${left}%; top:-20%; font-family:'Courier New', monospace; font-size:10px; line-height:10px; animation: matrixFall ${dur}s linear infinite; animation-delay: ${delay}s; opacity: 0.08; color:${finalStatusColor}; pointer-events:none;">${content}</div>`;
+            }).join('');
 
-                                <!-- [NEW] Lapisan Grunge (Erosi Tinta) -->
-                                <div style="position: absolute; top:0; left:0; width:100%; height:100%; background-image: ${grungeSvg}; mix-blend-mode: multiply; opacity: 0.7; pointer-events: none; z-index: 2;"></div>
-                                
-                                <!-- [NEW] Lapisan Tekanan Tidak Rata (Pressure Gradient) -->
-                                <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle at ${Math.random()*80+10}% ${Math.random()*80+10}%, transparent 50%, rgba(0,0,0,0.4) 100%); pointer-events: none; z-index: 2;"></div>
+            // 4. [NEW] Data Stream Columns (Generated HTML)
+            const generateDataStream = (count) => Array.from({length: count}, () => 
+                `<div class="data-row">
+                    <span style="color:#FFF; opacity:0.8;">0x${Math.random().toString(16).substr(2,4).toUpperCase()}</span> 
+                    <span style="opacity:0.5">${Math.random().toString(2).substr(2,8)}</span>
+                    <span style="color:${finalStatusColor}; opacity:0.7;">[${Math.random() > 0.5 ? 'OK' : 'VR'}]</span>
+                </div>`
+            ).join('');
+            const leftDataStream = generateDataStream(40);
+            const rightDataStream = generateDataStream(40);
 
-                                <!-- [NEW] Lapisan Pola Keamanan (Guilloche Pattern) -->
-                                <div style="position: absolute; top:0; left:0; width:100%; height:100%; background-image: ${securityPattern};"></div>
-
-                                <!-- Inner Container with Cut Corners -->
-                                <div style="border: 1px solid ${finalStatusColor}40; margin: 4px; padding: 10px 20px; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); position: relative; z-index: 2; filter: blur(0.3px);">
-                                    
-                                    <!-- Header: Logo & Title -->
-                                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid ${finalStatusColor}40; padding-bottom: 8px;">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                                        </svg>
-                                        <div style="display: flex; flex-direction: column; line-height: 1; text-align: left;">
-                                            <span style="font-size: 14px; letter-spacing: 2px; opacity: 0.8; font-family: 'Rajdhani', sans-serif;">VERIFIKASI RESMI</span>
-                                            <span style="font-size: 24px; font-weight: 800; letter-spacing: 1px; font-family: 'Rajdhani', sans-serif;">PUSKESMAS WANA</span>
-                                            <span style="font-size: 8px; font-family: 'Courier New'; opacity: 0.7; margin-top: 2px;">JL. PENGIRAN IRO KUSUMO WANA</span>
-                                            <span style="font-size: 9px; font-family: 'Courier New'; font-weight: bold; margin-top: 2px; border-top: 1px solid ${finalStatusColor}40; padding-top: 2px;">NO. REG: ${refNo}</span>
-                                        </div>
-                                    </div>
-
-                                    <!-- Main Status -->
-                                    <div style="text-align: center; margin: 8px 0;">
-                                        <span style="font-size: 3.5rem; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 0 1px rgba(0,0,0,0.9), 0 0 20px ${finalStatusColor}; display: block; font-family: 'Rajdhani', sans-serif; line-height: 0.9; animation: blinkText 2s infinite ease-in-out;">
-                                            ${result.success ? 'DITERIMA' : 'DITOLAK'}
-                                        </span>
-                                        <span style="font-size: 14px; font-family: 'Courier New'; letter-spacing: 3px; background: ${finalStatusColor}20; padding: 2px 8px; border-radius: 2px; font-weight: bold;">
-                                            AKSES GATEWAY AMAN
-                                        </span>
-                                    </div>
-
-                                    <!-- Footer: Signature & Date -->
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 15px; font-family: 'Courier New'; font-size: 14px;">
-                                        <div style="display: flex; flex-direction: column; gap: 4px; text-align: left; font-weight: bold; color: #FFFFFF; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
-                                            <div style="width: 40px; height: 40px; background: repeating-linear-gradient(45deg, ${finalStatusColor} 0, ${finalStatusColor} 2px, transparent 2px, transparent 4px); border: 2px solid ${finalStatusColor}; margin-bottom: 5px; opacity: 0.8; display: flex; align-items: center; justify-content: center;"><span style="font-size: 8px; color: ${finalStatusColor}; font-weight: bold;">QR</span></div>
-                                            <span style="background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 3px; border-left: 3px solid ${finalStatusColor};">${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()}</span>
-                                            <span style="background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 3px; border-left: 3px solid ${finalStatusColor};">PUKUL: ${new Date().toLocaleTimeString('id-ID')} WIB</span>
-                                        </div>
-                                        <div style="text-align: center; position: relative; min-width: 140px;">
-                                            <div style="font-size: 9px; letter-spacing: 1px; margin-bottom: -15px; opacity: 0.8; font-family: 'Rajdhani', sans-serif;">MENGETAHUI,</div>
-                                            <div style="height: 70px; width: 140px; background: ${signatureUrl} no-repeat center; background-size: contain; filter: drop-shadow(0 0 1px ${signatureColor});"></div>
-                                            <div style="font-size: 11px; font-weight: bold; border-top: 1px solid ${finalStatusColor}; padding-top: 2px; font-family: 'Rajdhani', sans-serif;">KEPALA PUSKESMAS</div>
-                                            <div style="font-size: 8px; font-family: 'Courier New'; margin-top: 1px; opacity: 0.8;">NIP. 19750101 200012 1 001</div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                                
-                                <!-- Tech Accents (Decorations) -->
-                                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden;">
-                                    <div style="position: absolute; top: 50%; left: -2px; width: 4px; height: 20px; background: ${finalStatusColor}; transform: translateY(-50%); box-shadow: 0 0 10px ${finalStatusColor};"></div>
-                                    <div style="position: absolute; top: 50%; right: -2px; width: 4px; height: 20px; background: ${finalStatusColor}; transform: translateY(-50%); box-shadow: 0 0 10px ${finalStatusColor};"></div>
-                                    <div style="position: absolute; bottom: 5px; right: 5px; width: 10px; height: 10px; border-right: 2px solid ${finalStatusColor}; border-bottom: 2px solid ${finalStatusColor};"></div>
-                                    <div style="position: absolute; top: 5px; left: 5px; width: 10px; height: 10px; border-left: 2px solid ${finalStatusColor}; border-top: 2px solid ${finalStatusColor};"></div>
-                                </div>
-                            </div>
-                            <div style="margin-top: 5px; font-family: 'Courier New'; font-size: 8px; color: ${finalStatusColor}; opacity: 0.6; letter-spacing: 2px;">HASH: ${Math.random().toString(36).substring(2, 15).toUpperCase()} // SECURE</div>
-                        </div>
+            // 5. [NEW] 3D DNA Helix Generator (HTML String)
+            const dnaHelixHTML = `
+            <div class="dna-iso" style="position: absolute; right: 8%; top: 50%; transform: translateY(-50%); width: 60px; height: 60vh; perspective: 500px; opacity: 0.5; z-index: 0; pointer-events: none;">
+                ${Array.from({length: 40}, (_, i) => `
+                    <div class="dna-base" style="top: ${i * 15}px; animation-delay: -${i * 0.1}s;">
+                        <div class="dot left" style="background: ${finalStatusColor}; box-shadow: 0 0 5px ${finalStatusColor};"></div>
+                        <div class="line" style="background: ${finalStatusColor};"></div>
+                        <div class="dot right" style="background: ${finalStatusColor}; box-shadow: 0 0 5px ${finalStatusColor};"></div>
                     </div>
-                    <div class="impact-dust" style="background: radial-gradient(ellipse at center, ${finalStatusColor} 0%, transparent 70%); animation-delay: 1.6s;"></div>
+                `).join('')}
+            </div>
+            `;
 
-                    <!-- Cooldown Bar -->
-                    <div class="cooldown-track" style="z-index: 20;"><div id="cooldownBar" class="cooldown-progress" style="background: ${finalStatusColor}; box-shadow: 0 0 20px ${finalStatusColor};"></div></div>
-                    
-                    <div class="holo-header" style="position: relative; z-index: 10;">
-                        <div class="flex items-center gap-4">
-                            <div class="w-4 h-4 rounded-full animate-pulse" style="background: ${finalStatusColor}"></div>
-                            <span class="font-bold tracking-[0.3em] text-xl" style="color: ${finalStatusColor}">PUSKESMAS WANA // GATEWAY</span>
-                        </div>
-                        <div class="text-lg font-mono opacity-80">${serverTimestamp}</div>
+            // 6. [NEW] Giant Targeting Reticle (SVG)
+            const reticleSvg = `
+            <svg viewBox="0 0 500 500" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 130vh; height: 130vh; pointer-events: none; z-index: 1; opacity: 0.15;">
+                <circle cx="250" cy="250" r="200" fill="none" stroke="${finalStatusColor}" stroke-width="0.5" stroke-dasharray="10 20">
+                    <animateTransform attributeName="transform" type="rotate" from="0 250 250" to="360 250 250" dur="60s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="250" cy="250" r="150" fill="none" stroke="${finalStatusColor}" stroke-width="0.5" stroke-dasharray="2 10">
+                    <animateTransform attributeName="transform" type="rotate" from="360 250 250" to="0 250 250" dur="40s" repeatCount="indefinite"/>
+                </circle>
+                <path d="M250 20 L250 50 M250 480 L250 450 M20 250 L50 250 M480 250 L450 250" stroke="${finalStatusColor}" stroke-width="2" />
+            </svg>
+            `;
+
+            // [NEW] ID Card HTML Block
+            const idCardHTML = `
+                <div class="id-card-container" style="transform-style: preserve-3d; animation: idCardEntry 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.2s; opacity:0;">
+                    <div class="id-card-glare"></div>
+                    <div class="id-card-bg-layers">
+                        <div class="id-card-bg-layer" style="background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(circuitSvg)}'); opacity: 0.5;"></div>
+                        <div class="id-card-bg-layer" style="background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(hexGridSvg)}'); animation: hex-pan 20s linear infinite;"></div>
                     </div>
-
-                    <div class="holo-content" style="position: relative; z-index: 10;">
-                        <!-- Left: ID CARD REPLACEMENT -->
-                        <div class="holo-avatar-container" style="justify-content: center; display: flex; transform: translateY(-20px);">
-                            <!-- ID CARD HTML START -->
-                            <div class="relative group perspective-[1200px] w-full max-w-[420px]">
-                                 <!-- ID Card Content -->
-                                 <div class="bg-gradient-to-br from-slate-900 to-black text-white p-0 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] w-full border border-white/20 relative overflow-hidden font-sans transform transition-all duration-500 hover:scale-[1.05] hover:rotate-y-6 z-10" style="box-shadow: 0 0 30px ${finalStatusColor}30;">
-                                    
-                                    <!-- CHIP EMAS -->
-                                    <div class="absolute top-28 right-6 w-12 h-9 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-md border border-yellow-300/50 shadow-md z-20 overflow-hidden opacity-90">
-                                        <div class="absolute top-1/2 left-0 w-full h-[1px] bg-black/20"></div>
-                                        <div class="absolute left-1/3 top-0 w-[1px] h-full bg-black/20"></div>
-                                        <div class="absolute left-2/3 top-0 w-[1px] h-full bg-black/20"></div>
-                                        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 border border-black/10 rounded-sm"></div>
-                                    </div>
-
-                                    <!-- Header ID Card -->
-                                    <div class="relative h-24 bg-gradient-to-r from-blue-900 to-indigo-900 flex items-center px-6 overflow-hidden">
-                                        <div class="absolute inset-0 opacity-20" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjIiIGZpbGw9IiNmZmZmZmYiLz48L3N2Zz4=');"></div>
-                                        <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/30 mr-4 shadow-lg backdrop-blur-sm overflow-hidden">
-                                            <img src="logo.jpg" class="w-full h-full object-cover">
-                                        </div>
-                                        <div class="z-10">
-                                            <h2 class="text-xl font-black text-white tracking-widest uppercase leading-none drop-shadow-md">PUSKESMAS WANA</h2>
-                                            <p class="text-[10px] text-blue-100 tracking-[0.3em] mt-1 uppercase font-semibold">Kartu Identitas Pegawai</p>
-                                        </div>
-                                        <!-- Decorative Line -->
-                                        <div class="absolute bottom-0 left-0 w-full h-1 bg-yellow-500"></div>
-                                    </div>
-
-                                    <!-- Body -->
-                                    <div class="p-6 flex gap-5 items-start bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48ZyBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0wIDQwaDQwVjBIMHY0MHptMjAgMjBoMjBWMjBIMHYyMHpNNDAgNDBWMjBIMHYyMGg0MHoiIGZpbGw9IiMzMzMiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvZz48L3N2Zz4=')]">
-                                        <!-- Photo -->
-                                        <div class="relative w-28 h-36 flex-shrink-0">
-                                            <div class="w-full h-full rounded-lg overflow-hidden border-2 border-white/20 shadow-xl bg-slate-800">
-                                                <img src="${employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : ''}" class="w-full h-full object-cover" onerror="this.style.display='none'">
-                                            </div>
-                                            <!-- Hologram Sticker Effect -->
-                                            <div class="absolute -bottom-3 -right-3 w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-200 border-2 border-white shadow-lg flex items-center justify-center opacity-90">
-                                                <span class="text-[6px] font-bold text-yellow-900 text-center leading-tight">RESMI<br>VALID</span>
-                                            </div>
-                                        </div>
-
-                                        <!-- Info -->
-                                        <div class="flex-1 flex flex-col justify-between h-36 py-1">
-                                            <div>
-                                                <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">Nama Lengkap</p>
-                                                <h1 class="text-xl font-bold text-white leading-tight mb-3 drop-shadow-sm">${display_name}</h1>
-                                                
-                                                <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">Jabatan</p>
-                                                <p class="text-sm font-semibold text-emerald-400 mb-3">${display_jabatan}</p>
-                                            </div>
-                                            
-                                            <div class="flex justify-between items-end border-t border-white/10 pt-2">
-                                                <div>
-                                                    <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">ID Pegawai</p>
-                                                    <p class="text-sm font-mono text-slate-200 tracking-wide">${karyawanId}</p>
-                                                </div>
-                                                <!-- Barcode Real-time -->
-                                                <div class="flex flex-col items-end gap-1 opacity-90">
-                                                    <div class="bg-white px-2 py-1 rounded-sm relative overflow-hidden">
-                                                        <p class="text-black leading-none select-none" style="font-family: 'Libre Barcode 128', cursive; font-size: 34px; transform: scaleY(1.2);">${karyawanId}</p>
-                                                        <div class="absolute top-0 left-0 w-[1px] h-full bg-red-500/80 shadow-[0_0_4px_rgba(255,0,0,0.8)]" style="animation: barcodeScan 2s linear infinite;"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Footer Strip -->
-                                    <div class="h-3 bg-slate-900 border-t border-white/10 flex items-center justify-between px-4">
-                                        <span class="text-[6px] text-slate-500 tracking-widest">LAYANAN KESEHATAN PEMERINTAH // ID RESMI</span>
-                                        <span class="text-[6px] text-slate-500 tracking-widest">DOKUMEN AMAN</span>
-                                    </div>
-                                 </div>
-                            </div>
-                            <!-- ID CARD HTML END -->
+                    <div class="id-card-content">
+                        <div class="absolute top-28 right-6 w-12 h-9 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-md border border-yellow-300/50 shadow-md z-20 overflow-hidden opacity-90">
+                            <div class="absolute top-1/2 left-0 w-full h-[1px] bg-black/20"></div>
+                            <div class="absolute left-1/3 top-0 w-[1px] h-full bg-black/20"></div>
+                            <div class="absolute left-2/3 top-0 w-[1px] h-full bg-black/20"></div>
+                            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 border border-black/10 rounded-sm"></div>
                         </div>
-                        
-                        <!-- Right: Info & Status -->
-                        <div class="holo-info" style="background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 100%); padding: 25px; border-radius: 16px; border: 1px solid ${finalStatusColor}40; backdrop-filter: blur(10px); box-shadow: inset 0 0 20px ${finalStatusColor}10;">
-                            <div class="holo-status-box status-box-animated flex items-center justify-start" style="display: flex; ${statusBoxStyle} padding: 15px 25px; border-radius: 6px; margin-bottom: 25px; width: 100%;">
-                                ${statusIconSVG}
-                                <span style="font-size: 2.2rem; font-weight: 900; letter-spacing: 3px; color: ${finalStatusColor}; text-shadow: 0 0 15px ${finalStatusColor}; text-transform: uppercase; line-height: 1;">${finalStatusText}</span>
+                        <div class="relative h-24 bg-gradient-to-r from-blue-900 to-indigo-900 flex items-center px-6 overflow-hidden">
+                            <div class="absolute inset-0 opacity-20" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjIiIGZpbGw9IiNmZmZmZmYiLz48L3N2Zz4=');"></div>
+                            <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/30 mr-4 shadow-lg backdrop-blur-sm overflow-hidden">
+                                <img src="logo.jpg" class="w-full h-full object-cover">
                             </div>
-
-                            <h2 class="holo-name" style="color: ${finalNameColor}; text-shadow: 0 0 30px ${finalNameColor}; font-size: 3.5rem; margin-bottom: 5px; font-family: 'Rajdhani', sans-serif; font-weight: 700;">${display_name}</h2>
-                            <p class="holo-role text-cyan-300" style="font-size: 1.5rem; letter-spacing: 2px; border-bottom: 1px solid ${finalStatusColor}50; padding-bottom: 10px; display: inline-block;">${display_jabatan}</p>
-
-                            <div class="holo-message" style="font-size: 1.1em; line-height: 1.5; margin-top: 20px;">
-                                ${finalMessageHTML}
+                            <div class="z-10">
+                                <h2 class="text-xl font-black text-white tracking-widest uppercase leading-none drop-shadow-md">PUSKESMAS WANA</h2>
+                                <p class="text-[10px] text-blue-100 tracking-[0.3em] mt-1 uppercase font-semibold">Kartu Identitas Pegawai</p>
                             </div>
+                            <div class="absolute bottom-0 left-0 w-full h-1 bg-yellow-500"></div>
                         </div>
-
-                        <!-- Right: Biometrics -->
-                        <div class="holo-biometrics">
-                            <!-- Fingerprint Row -->
-                            <div class="bio-row">
-                                <div class="fingerprint-box" style="color: ${finalStatusColor}">
-                                    <div class="fingerprint-pattern"></div>
-                                    <div class="fingerprint-scan"></div>
+                        <div class="p-6 flex gap-5 items-start bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48ZyBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0wIDQwaDQwVjBIMHY0MHptMjAgMjBoMjBWMjBIMHYyMHpNNDAgNDBWMjBIMHYyMGg0MHoiIGZpbGw9IiMzMzMiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvZz48L3N2Zz4=')]">
+                            <div class="relative w-28 h-36 flex-shrink-0">
+                                <div class="w-full h-full rounded-lg overflow-hidden border-2 border-white/20 shadow-xl bg-slate-800">
+                                    <img src="${employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : ''}" class="w-full h-full object-cover" onerror="this.style.display='none'">
                                 </div>
-                                <div>
-                                    <div class="bio-label">BIOMETRIC ID</div>
-                                    <div class="bio-value" id="bioIdValue" style="font-size: 1rem;">000000</div>
+                                <div class="absolute -bottom-3 -right-3 w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-200 border-2 border-white shadow-lg flex items-center justify-center opacity-90">
+                                    <span class="text-[6px] font-bold text-yellow-900 text-center leading-tight">RESMI<br>VALID</span>
                                 </div>
                             </div>
-                            
-                            <!-- Vitals Row -->
-                            <div class="bio-row">
-                                <div class="bio-icon-box" style="padding: 5px;">
-                                    <svg viewBox="0 0 100 40" class="w-full h-full">
-                                        <path id="ecgPath" d="M 0 20 L 10 20 L 15 10 L 25 30 L 35 15 L 40 20 L 50 20 L 55 25 L 60 20 L 100 20" stroke="${finalStatusColor}" stroke-width="2" fill="none"
-                                            stroke-dasharray="280" stroke-dashoffset="280" style="animation: ecgPulse 1.5s linear infinite;"/>
-                                    </svg>
-                                </div>
+                            <div class="flex-1 flex flex-col justify-between h-36 py-1">
                                 <div>
-                                    <div class="bio-label">VITALS</div>
-                                    <div class="bio-value" style="color: ${finalStatusColor};">STABLE</div>
+                                    <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">Nama Lengkap</p>
+                                    <h1 class="text-xl font-bold text-white leading-tight mb-3 drop-shadow-sm">${display_name}</h1>
+                                    <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">Jabatan</p>
+                                    <p class="text-sm font-semibold text-emerald-400 mb-3">${display_jabatan}</p>
                                 </div>
-                            </div>
-
-                            <!-- DNA Row -->
-                            <div class="bio-row">
-                                <div class="bio-cube-container" style="color: ${finalStatusColor}">
-                                    <div class="bio-cube">
-                                        <div class="front"></div><div class="back"></div>
-                                        <div class="right"></div><div class="left"></div>
-                                        <div class="top"></div><div class="bottom"></div>
+                                <div class="flex justify-between items-end border-t border-white/10 pt-2">
+                                    <div>
+                                        <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">ID Pegawai</p>
+                                        <p class="text-sm font-mono text-slate-200 tracking-wide">${karyawanId}</p>
                                     </div>
-                                </div>
-                                <div>
-                                    <div class="bio-label">GENETIC SEQ</div>
-                                    <div class="dna-wrapper">
-                                        ${Array(6).fill(0).map((_,i) => `<div class="dna-bar" style="background:${finalStatusColor}; animation-delay:${i*0.1}s"></div>`).join('')}
+                                    <div class="flex flex-col items-end gap-1 opacity-90">
+                                        <div class="bg-white px-2 py-1 rounded-sm relative overflow-hidden">
+                                            <p class="text-black leading-none select-none" style="font-family: 'Libre Barcode 128', cursive; font-size: 34px; transform: scaleY(1.2);">${karyawanId}</p>
+                                            <div class="absolute top-0 left-0 w-[1px] h-full bg-red-500/80 shadow-[0_0_4px_rgba(255,0,0,0.8)]" style="animation: barcodeScan 2s linear infinite;"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="holo-footer" style="position: relative; z-index: 10;">
-                        <span class="text-xl">SISTEM: PENCOCOKAN_BIOMETRIK_v4.5 [STABIL]</span>
-                        <span id="cooldownTimer" class="font-bold text-xl" style="color: ${finalStatusColor}">COOLDOWN: 10.0s</span>
+                        <div class="h-3 bg-slate-900 border-t border-white/10 flex items-center justify-between px-4">
+                            <span class="text-[6px] text-slate-500 tracking-widest">LAYANAN KESEHATAN PEMERINTAH // ID RESMI</span>
+                            <span class="text-[6px] text-slate-500 tracking-widest">DOKUMEN AMAN</span>
+                        </div>
                     </div>
                 </div>
             `;
-            
-            // Trigger Particle Burst di tengah layar
-            const rect = successOverlay.getBoundingClientRect();
-            createParticleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, finalStatusColor);
 
-            // Initialize 3D Handle (Three.js)
-            setTimeout(() => { if(window.initStampHandleThreeJS) window.initStampHandleThreeJS(); }, 100);
+            successOverlay.style.background = 'radial-gradient(circle at center, rgba(5, 10, 20, 0.98) 0%, #000000 100%)';
+            successOverlay.innerHTML = `
+                <style>
+                    .spotlight {
+                        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                        width: 100vw; height: 100vh;
+                        background: radial-gradient(ellipse at center, ${finalStatusColor}15 0%, transparent 60%);
+                        z-index: 0;
+                        pointer-events: none;
+                        animation: pulse-spotlight 4s infinite alternate;
+                    }
+                    @keyframes pulse-spotlight {
+                        0% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
+                        100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); }
+                    }
+                    
+                    /* GOD-LEVEL ANIMATIONS */
+                    @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    @keyframes floatMath { 
+                        0% { transform: translateY(0) rotate(0deg); opacity: 0; } 
+                        20% { opacity: 0.4; }
+                        80% { opacity: 0.4; }
+                        100% { transform: translateY(-100px) rotate(20deg); opacity: 0; } 
+                    }
+                    @keyframes matrixFall { 0% { transform: translateY(0); } 100% { transform: translateY(120vh); } }
+                    .perspective-grid {
+                        position: absolute; width: 200%; height: 200%; left: -50%; top: -50%;
+                        background-image: 
+                            linear-gradient(${finalStatusColor}20 1px, transparent 1px),
+                            linear-gradient(90deg, ${finalStatusColor}20 1px, transparent 1px);
+                        background-size: 60px 60px;
+                        transform: perspective(500px) rotateX(60deg);
+                        animation: grid-move 20s linear infinite;
+                        opacity: 0.3;
+                    }
+                    @keyframes grid-move { 0% { transform: perspective(500px) rotateX(60deg) translateY(0); } 100% { transform: perspective(500px) rotateX(60deg) translateY(60px); } }
+
+                    /* NEW GOD-LEVEL STYLES */
+                    .data-stream-container {
+                        position: absolute; top: 0; bottom: 0; width: 180px;
+                        display: flex; flex-direction: column; justify-content: center;
+                        font-family: 'Share Tech Mono', monospace; font-size: 9px; 
+                        color: ${finalStatusColor}; opacity: 0.6; pointer-events: none;
+                        overflow: hidden;
+                        mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+                        z-index: 5;
+                    }
+                    .data-stream-left { left: 30px; text-align: left; border-right: 1px solid ${finalStatusColor}33; padding-right: 10px; }
+                    .data-stream-right { right: 30px; text-align: right; border-left: 1px solid ${finalStatusColor}33; padding-left: 10px; }
+                    .data-row { animation: dataScroll 30s linear infinite; white-space: nowrap; margin-bottom: 2px; }
+                    
+                    @keyframes dataScroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+                    
+                    .holo-projector {
+                        position: absolute; bottom: 0; left: 0; width: 100%; height: 150px;
+                        z-index: 5; opacity: 0.8; pointer-events: none;
+                    }
+                    
+                    .analysis-panel {
+                        position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+                        width: 600px; height: 60px;
+                        display: flex; justify-content: space-between; align-items: center;
+                        border-bottom: 1px solid ${finalStatusColor}44;
+                        color: ${finalStatusColor}; font-family: 'Rajdhani', sans-serif;
+                        z-index: 20;
+                        background: linear-gradient(90deg, transparent, ${finalStatusColor}11, transparent);
+                    }
+                    .stat-block { text-align: center; position: relative; }
+                    .stat-block::after { content:''; position:absolute; bottom:-5px; left:50%; transform:translateX(-50%); width:40%; height:2px; background:${finalStatusColor}; }
+                    .stat-val { font-size: 24px; font-weight: 900; text-shadow: 0 0 10px ${finalStatusColor}; }
+                    .stat-label { font-size: 10px; letter-spacing: 3px; opacity: 0.7; margin-top: 2px; }
+
+                    /* DNA HELIX STYLES */
+                    .dna-base {
+                        position: absolute; width: 100%; height: 2px;
+                        transform-style: preserve-3d;
+                        animation: dna-spin 4s linear infinite;
+                    }
+                    .dna-base .dot { position: absolute; width: 4px; height: 4px; border-radius: 50%; top: -1px; }
+                    .dna-base .dot.left { left: 0; }
+                    .dna-base .dot.right { right: 0; }
+                    .dna-base .line { position: absolute; left: 2px; right: 2px; height: 1px; opacity: 0.3; }
+                    @keyframes dna-spin {
+                        0% { transform: rotateY(0deg); opacity: 0.3; }
+                        50% { opacity: 1; }
+                        100% { transform: rotateY(360deg); opacity: 0.3; }
+                    }
+
+                    /* --- HIGH-TECH STAMP & CARD STYLES --- */
+                    .academic-stamp {
+                        position: relative;
+                        width: 450px;
+                        padding: 20px;
+                        border: 1px solid ${finalStatusColor}80;
+                        font-family: 'Times New Roman', serif;
+                        color: #FFF;
+                        box-shadow: 0 0 30px ${finalStatusColor}40, inset 0 0 10px ${finalStatusColor}20;
+                        overflow: hidden;
+                        transform: translateY(-600px) scale(2);
+                        opacity: 0;
+                        animation: stampDescend 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards 1.2s;
+                        background: linear-gradient(145deg, rgba(10, 15, 25, 0.95), rgba(5, 8, 12, 0.98));
+                    }
+                    .guilloche-bg {
+                        position: absolute; inset: 0;
+                        background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(guillocheSvg)}');
+                        background-size: 100px 100px;
+                        z-index: 1;
+                    }
+                    .watermark-bg {
+                        position: absolute; inset: 0;
+                        background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(watermarkSvg)}');
+                        background-position: center;
+                        animation: watermark-glitch 8s infinite step-end;
+                        background-repeat: no-repeat;
+                        z-index: 2;
+                    }
+                    .stamp-content {
+                        position: relative;
+                        z-index: 3;
+                        border: 8px double ${finalStatusColor}CC;
+                        padding: 15px;
+                        text-align: center;
+                    }
+                    .stamp-header {
+                        display: flex; align-items: center; justify-content: center;
+                        gap: 15px; padding-bottom: 10px;
+                        border-bottom: 1px solid ${finalStatusColor}80;
+                    }
+                    .emblem {
+                        width: 60px; height: 60px; border-radius: 50%;
+                        border: 2px solid ${finalStatusColor}; padding: 4px; background: #000;
+                    }
+                    .emblem img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+                    .emblem-text { text-align: left; }
+                    .emblem-text span { display: block; text-transform: uppercase; font-weight: bold; }
+                    .emblem-text span:first-child { font-size: 18px; letter-spacing: 1px; }
+                    .emblem-text span:last-child { font-size: 12px; color: #CCC; }
+                    .stamp-status {
+                        font-size: 3rem; font-weight: 900; letter-spacing: 2px;
+                        text-transform: uppercase; color: ${finalStatusColor};
+                        text-shadow: 0 0 15px ${finalStatusColor}; margin: 15px 0; line-height: 1;
+                    }
+                    .stamp-details {
+                        font-size: 12px; color: #DDD;
+                        border-top: 1px solid ${finalStatusColor}80;
+                        border-bottom: 1px solid ${finalStatusColor}80;
+                        padding: 10px 0; margin-bottom: 15px;
+                    }
+                    .stamp-details > div { display: flex; justify-content: space-between; padding: 2px 5px; }
+                    .stamp-details > div span:first-child { font-weight: bold; opacity: 0.8; }
+                    .stamp-footer {
+                        font-family: 'Courier New', monospace; font-size: 10px;
+                        background: #000; padding: 5px; border: 1px solid ${finalStatusColor}50;
+                        word-break: break-all; color: ${finalStatusColor};
+                    }
+                    
+                    /* --- ID CARD STYLES --- */
+                    .id-card-container {
+                        width: 420px;
+                        position: relative;
+                        perspective: 1500px;
+                    }
+                    .id-card-content {
+                        background: linear-gradient(135deg, rgba(15, 25, 40, 0.9), rgba(5, 10, 20, 0.95));
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        border-radius: 12px;
+                        box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+                        backdrop-filter: blur(15px);
+                        transform-style: preserve-3d;
+                        font-family: 'Rajdhani', sans-serif;
+                        overflow: hidden;
+                    }
+                    .id-card-bg-layers {
+                        position: absolute; inset: 0; border-radius: 12px; overflow: hidden;
+                    }
+                    .id-card-bg-layer {
+                        position: absolute; inset: 0;
+                        background-size: cover;
+                    }
+                    .id-card-glare {
+                        position: absolute; inset: 0; border-radius: 12px;
+                        background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%);
+                        background-size: 300% 100%;
+                        animation: card-glare 5s linear infinite;
+                        z-index: 15;
+                    }
+
+                    /* --- ANIMATIONS --- */
+                    @keyframes idCardEntry {
+                        0% { opacity: 0; transform: translateX(-150px) rotateY(-360deg) scale(0.5); }
+                        100% { opacity: 1; transform: translateX(0) rotateY(0deg) scale(1); }
+                    }
+                    @keyframes stampDescend {
+                        from { opacity: 0; transform: translateY(-100px) rotateX(-30deg) scale(0.9); }
+                        to { opacity: 1; transform: translateY(0) rotateX(0deg) scale(1); }
+                    }
+                    @keyframes barcodeScan {
+                        0% { left: 0%; opacity: 0; }
+                        10% { opacity: 1; }
+                        90% { opacity: 1; }
+                        100% { left: 100%; opacity: 0; }
+                    }
+                    @keyframes hex-pan {
+                        from { transform: translateY(0) rotate(0deg); }
+                        to { transform: translateY(-57.735px) rotate(60deg); }
+                    }
+                    @keyframes card-glare {
+                        from { background-position: 200% 0; }
+                        to { background-position: -200% 0; }
+                    }
+                    @keyframes watermark-glitch {
+                        0%, 100% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
+                        49% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
+                        50% { opacity: 0.02; transform: rotate(-45deg) translate(2px, -2px); }
+                        51% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
+                    }
+                </style>
+
+                <!-- GOD-LEVEL BACKGROUND LAYERS -->
+                <div style="position: absolute; inset: 0; overflow: hidden; pointer-events: none;">
+                    <div class="perspective-grid"></div>
+                    ${hudRingSvg}
+                    ${mathParticles}
+                    ${binaryRain}
+                    ${reticleSvg}
+                    ${dnaHelixHTML}
+                    
+                    <!-- NEW: Data Streams -->
+                    <div class="data-stream-container data-stream-left">
+                        <div style="margin-bottom:10px; font-weight:bold; border-bottom:1px solid ${finalStatusColor};">MEMORY_DUMP_SEG_01</div>
+                        ${leftDataStream}
+                        ${leftDataStream} <!-- Duplicate for loop -->
+                    </div>
+                    <div class="data-stream-container data-stream-right">
+                        <div style="margin-bottom:10px; font-weight:bold; border-bottom:1px solid ${finalStatusColor};">NET_PACKET_TRACE</div>
+                        ${rightDataStream}
+                        ${rightDataStream} <!-- Duplicate for loop -->
+                    </div>
+                    
+                    <!-- NEW: Projector Base -->
+                    <div class="holo-projector">${projectorSvg}</div>
+                    
+                    <div class="spotlight"></div>
+                </div>
+
+                <!-- NEW: Top Analysis Panel -->
+                <div class="analysis-panel">
+                    <div class="stat-block"><div class="stat-val">99.9%</div><div class="stat-label">MATCH ACCURACY</div></div>
+                    <div class="stat-block"><div class="stat-val">${Math.floor(Math.random()*50+20)}ms</div><div class="stat-label">LATENCY</div></div>
+                    <div class="stat-block"><div class="stat-val">SECURE</div><div class="stat-label">CONNECTION</div></div>
+                </div>
+
+                <div class="holographic-container" style="perspective: 2000px; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; z-index: 10;">
+                <div style="display: flex; justify-content: center; align-items: center; gap: 100px; width: 100%; transform-style: preserve-3d;">
+                    <!-- Kolom Kiri: ID Card -->
+                    <div style="transform: translateZ(20px);">
+                        ${idCardHTML}
+                    </div>
+
+                    <!-- Kolom Kanan: Stempel Akademik -->
+                    <div class="academic-stamp" style="transform: translateZ(60px);">
+                        <div class="guilloche-bg"></div>
+                        <div class="watermark-bg"></div>
+                        <div class="stamp-content">
+                            <div class="stamp-header">
+                                <div class="emblem">
+                                    <img src="logo.jpg" alt="Logo" onerror="this.style.display='none'">
+                                </div>
+                                <div class="emblem-text">
+                                    <span>UPTD Puskesmas Wana</span>
+                                </div>
+                            </div>
+                            <div class="stamp-status">
+                                ${!result.success ? 'AKSES DITOLAK' : (result.telat_menit > 0 ? `TERLAMBAT<div style='font-size: 1rem; letter-spacing: 4px; margin-top: 5px;'>+${result.telat_menit} MENIT</div>` : 'AKSES DITERIMA')}
+                            </div>
+                            <div class="stamp-details">
+                                <div><span>Nama Pegawai</span><span>${display_name}</span></div>
+                                <div><span>Tanggal Verifikasi</span><span>${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
+                                <div><span>Waktu Verifikasi</span><span>${serverTimestamp}</span></div>
+                                <div><span>Petugas Sistem</span><span>AETHER BIOMETRIC v4.5</span></div>
+                            </div>
+                            <div class="stamp-footer">
+                                <div style="font-size: 8px; opacity: 0.7; margin-bottom: 2px;">Kunci Validasi Digital (SHA-256)</div>
+                                <div id="validation-hash">GENERATING...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cooldown Bar (Keep this for UX) -->
+                <div class="cooldown-track" style="position: fixed; bottom: 0; left: 0; z-index: 100;"><div id="cooldownBar" class="cooldown-progress" style="background: ${finalStatusColor}; box-shadow: 0 0 20px ${finalStatusColor};"></div></div>
+            `;
+
+            // [NEW] Parallax Mouse Move Effect
+            const container = successOverlay.querySelector('.holographic-container > div');
+            if (container) {
+                successOverlay.onmousemove = (e) => {
+                    const rect = container.getBoundingClientRect();
+                    const x = e.clientX - rect.left - rect.width / 2;
+                    const y = e.clientY - rect.top - rect.height / 2;
+                    const rotateY = -x / 40; // Sensitivitas
+                    const rotateX = y / 40;
+                    container.style.transform = `rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
+                };
+            }
+
+            // Animate hash
+            animateHash('validation-hash');
 
             // Trigger Screen Shake on Stamp Impact (Sync with CSS animation delay 1.2s + duration 0.4s)
             setTimeout(() => {
@@ -3335,13 +3550,6 @@ async function processAttendance(karyawanId) {
                 document.body.classList.add('screen-shake');
                 setTimeout(() => document.body.classList.remove('screen-shake'), 500);
             }, 1600);
-
-            // --- ANIMASI KETIK SELAMAT DATANG (NEW) ---
-            const welcomeEl = document.getElementById('welcomeMessageTarget');
-            if (welcomeEl) {
-                // Delay sedikit agar sinkron dengan munculnya overlay
-                setTimeout(() => animateText(welcomeEl, "SELAMAT DATANG DI PUSKESMAS WANA", 40), 200);
-            }
 
             // --- ANIMASI DECRYPT BIOMETRIC ID (NEW) ---
             const bioIdEl = document.getElementById('bioIdValue');
@@ -4032,211 +4240,3 @@ function injectScanningStyles() {
     document.head.appendChild(style);
 }
 injectScanningStyles();
-
-// --- THREE.JS STAMP HANDLE GENERATOR ---
-window.initStampHandleThreeJS = function() {
-    if (typeof THREE === 'undefined') return;
-    const container = document.getElementById('stampHandleContainer');
-    if (!container) return;
-
-    // 1. Setup Scene
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000); 
-    camera.position.set(0, 10, 35); // Mundur (z=35) agar terlihat utuh dan jelas
-    camera.lookAt(0, 0, 0); // Fokus ke tengah (0,0,0)
-
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    container.innerHTML = ''; // Clear previous
-    container.appendChild(renderer.domElement);
-
-    // 2. Lighting (Warm for wood)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffeedd, 1.2);
-    dirLight.position.set(5, 10, 7); // Posisi awal cahaya
-    scene.add(dirLight);
-    const backLight = new THREE.DirectionalLight(0x00ffff, 0.3); // Cyan rim light
-    backLight.position.set(-10, 5, -10);
-    scene.add(backLight);
-
-    // 3. Procedural Wood Texture (High-Res Realistic Mahogany)
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024; canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-    
-    // Base Gradient (Deep Mahogany)
-    const gradient = ctx.createLinearGradient(0, 0, 1024, 0);
-    gradient.addColorStop(0, '#3E1010');
-    gradient.addColorStop(0.5, '#5D1A1A');
-    gradient.addColorStop(1, '#3E1010');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0,0,1024,1024);
-
-    // Wood Grain (Serat Kayu Alami)
-    ctx.globalCompositeOperation = 'multiply';
-    for(let i=0; i<300; i++) {
-        ctx.beginPath();
-        ctx.lineWidth = Math.random() * 2 + 0.5;
-        ctx.strokeStyle = 'rgba(20, 5, 5, 0.3)';
-        const x = Math.random() * 1024;
-        ctx.moveTo(x, 0);
-        ctx.bezierCurveTo(x + (Math.random()-0.5)*200, 300, x + (Math.random()-0.5)*200, 700, x + (Math.random()-0.5)*200, 1024);
-        ctx.stroke();
-    }
-    
-    // Wood Pores (Detail Tekstur Pori-pori)
-    ctx.globalCompositeOperation = 'source-over';
-    for(let i=0; i<40000; i++) {
-        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.05)';
-        ctx.fillRect(Math.random()*1024, Math.random()*1024, 1, 1);
-    }
-
-    // [NEW] Tambahan Ukiran "PUSKESMAS WANA" pada tekstur kayu
-    ctx.save();
-    ctx.translate(512, 512);
-    ctx.font = 'bold 100px "Times New Roman", serif';
-    
-    // [UPDATE] Efek Emboss/Engrave (Normal Map Simulation)
-    // 1. Highlight Edge (Putih tipis) untuk efek bibir ukiran
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.fillText("PUSKESMAS WANA", 2, 2);
-
-    // 2. Deep Text (Hitam Pekat) & Blur untuk gradasi kedalaman (Slope)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'; 
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = 4;
-    
-    ctx.fillText("PUSKESMAS WANA", 0, 0);
-    ctx.restore();
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.anisotropy = 16; // Sharper texture at angles
-
-    // Shared Wood Material (Varnished/Pernis Mengkilap)
-    const woodMat = new THREE.MeshPhysicalMaterial({ 
-        map: texture, 
-        color: 0xFFFFFF, 
-        roughness: 0.4, 
-        metalness: 0.0,
-        clearcoat: 1.0, // Efek Pernis Tebal
-        clearcoatRoughness: 0.1,
-        bumpMap: texture, // Tekstur serat terasa
-        bumpScale: 0.15 // [UPDATE] Scale diperbesar agar ukiran terlihat dalam
-    });
-
-    // 4. Stamp Group (Container)
-    const stampGroup = new THREE.Group();
-    scene.add(stampGroup);
-
-    // 5. Tatakan (Base) - Realistic Varnished Box
-    const baseGeo = new THREE.BoxGeometry(12, 1.5, 7); 
-    const baseMesh = new THREE.Mesh(baseGeo, woodMat);
-    baseMesh.position.y = 0.75; // Offset half height
-    stampGroup.add(baseMesh);
-
-    // 5.2. Casing Body (Metal Connector - Ferrule)
-    const casingGeo = new THREE.CylinderGeometry(1.6, 3.8, 0.8, 32);
-    const casingMat = new THREE.MeshPhysicalMaterial({ 
-        color: 0xD4AF37, // Gold/Brass
-        roughness: 0.2, 
-        metalness: 1.0,
-        clearcoat: 0.5
-    });
-    const casingMesh = new THREE.Mesh(casingGeo, casingMat);
-    casingMesh.position.y = 1.9; // Position above base
-    stampGroup.add(casingMesh);
-
-    // 5.5. Karet Runaflek (Rubber Plate) - Wet Ink Effect
-    const rubberGeo = new THREE.BoxGeometry(12, 0.25, 7); 
-    const rubberMat = new THREE.MeshPhysicalMaterial({ 
-        color: 0xBF360C, // Deep Orange/Red
-        roughness: 0.2, // Licin (Basah)
-        metalness: 0.0,
-        clearcoat: 1.0, // Lapisan Tinta Mengkilap
-        clearcoatRoughness: 0.1
-    });
-    const rubberMesh = new THREE.Mesh(rubberGeo, rubberMat);
-    rubberMesh.position.y = -0.125; // Position below base
-    stampGroup.add(rubberMesh);
-
-    // 5.8. Pin Penanda (Brass Tack) - Penanda Arah Depan
-    const pinGeo = new THREE.SphereGeometry(0.4, 16, 16);
-    const pinMat = new THREE.MeshStandardMaterial({ color: 0xD4AF37, metalness: 1.0, roughness: 0.2 });
-    const pinMesh = new THREE.Mesh(pinGeo, pinMat);
-    pinMesh.position.set(0, 0.75, 3.5); // Di sisi depan balok kayu (z = 3.5)
-    pinMesh.scale.z = 0.5; // Pipih seperti paku payung
-    stampGroup.add(pinMesh);
-
-    // 6. Handle Grip (Lathe) - Ergonomic Shape
-    const points = [];
-    points.push(new THREE.Vector2(0, 2.3));   // Start above casing
-    points.push(new THREE.Vector2(1.6, 2.3)); // Neck connection
-    points.push(new THREE.Vector2(1.4, 5.3)); // Neck thin
-    points.push(new THREE.Vector2(4.8, 7.3)); // Grip bottom bulb
-    points.push(new THREE.Vector2(5.0, 9.3)); // Grip widest
-    points.push(new THREE.Vector2(2.5, 10.8)); // Top curve
-    points.push(new THREE.Vector2(0, 11.3));   // Top center
-    
-    const gripGeo = new THREE.LatheGeometry(points, 32);
-    const gripMesh = new THREE.Mesh(gripGeo, woodMat); // Use shared wood material
-    stampGroup.add(gripMesh);
-
-    // 6.5. Cincin Emas (Gold Ring Detail) - Aksen Mewah
-    const ringGeo = new THREE.TorusGeometry(1.5, 0.1, 16, 100);
-    const ringMat = new THREE.MeshStandardMaterial({ 
-        color: 0xFFD700, metalness: 1.0, roughness: 0.1 
-    });
-    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-    ringMesh.position.y = 5.3; // Posisi di leher gagang
-    ringMesh.rotation.x = Math.PI / 2;
-    stampGroup.add(ringMesh);
-
-    // 6.6. Emblem Puncak (Top Cap) - Detail Emas di Atas Gagang
-    const capGeo = new THREE.CylinderGeometry(1.0, 1.0, 0.1, 32);
-    const capMat = new THREE.MeshPhysicalMaterial({ 
-        color: 0xFFD700, metalness: 1.0, roughness: 0.2, clearcoat: 1.0 
-    });
-    const capMesh = new THREE.Mesh(capGeo, capMat);
-    capMesh.position.y = 11.35; // Tepat di ujung atas
-    stampGroup.add(capMesh);
-
-    // 6.7. Sekrup Penguat (Rivets) pada Casing Logam
-    const rivetGeo = new THREE.SphereGeometry(0.2, 8, 8);
-    const rivetMat = new THREE.MeshStandardMaterial({ color: 0xAAAAAA, metalness: 0.8, roughness: 0.4 });
-    
-    for(let i=0; i<8; i++) {
-        const rivet = new THREE.Mesh(rivetGeo, rivetMat);
-        const angle = (i / 8) * Math.PI * 2;
-        // Radius casing di tengah (y=1.9) kira-kira 2.7
-        rivet.position.set(Math.cos(angle) * 2.7, 1.9, Math.sin(angle) * 2.7);
-        stampGroup.add(rivet);
-    }
-
-    stampGroup.position.y = -5.5; // Posisi stempel ditengah (Center Y)
-    stampGroup.scale.set(1.25, 1.25, 1.25); // [NEW] Perbesar ukuran stempel
-
-    // 7. Render Loop
-    let time = 0;
-    function animate() {
-        if(!document.getElementById('stampHandleContainer')) {
-            renderer.dispose(); return;
-        }
-        requestAnimationFrame(animate);
-        time += 0.02;
-        
-        stampGroup.rotation.y += 0.008; // Rotate entire stamp
-        
-        // Dynamic Light (Kilau Emas Bergerak) - Membuat efek 'Shimmer'
-        dirLight.position.x = Math.sin(time) * 10;
-        dirLight.position.z = Math.cos(time) * 10;
-        
-        renderer.render(scene, camera);
-    }
-    animate();
-};
