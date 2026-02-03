@@ -2932,13 +2932,13 @@ async function processAttendance(karyawanId) {
                     // [UPDATE] Logika Tepat Waktu vs Terlambat
                     if (result.telat_menit > 0) {
                         finalStatusText = `TERLAMBAT`;
-                        finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br><span style="color:#FFD700; font-weight:900; font-size: 2.5rem; line-height: 1.2; display:block; margin-top:10px; text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);">+ ${result.telat_menit} MENIT</span>`;
+                        finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br><span style="color:#FFD700; font-weight:900; font-size: 2.5rem; line-height: 1.2; display:block; margin-top:10px; text-shadow: 0 0 15px #FFD700, 0 0 30px #FFD700;">+ ${result.telat_menit} MENIT</span>`;
                         finalStatusColor = '#FFD700'; // Kuning Emas
-                        finalBackground = `radial-gradient(circle, rgba(200, 150, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
+                        finalBackground = `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
                     } else {
                         finalStatusText = 'TEPAT WAKTU';
                         finalStatusText = 'ABSEN MASUK BERHASIL';
-                        finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br><span style="color:#00FF7F; font-weight:bold; font-size: 1.8rem; display:block; margin-top:10px;">SELAMAT BEKERJA</span>`;
+                        finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br><span style="color:#00FF7F; font-weight:bold; font-size: 1.8rem; display:block; margin-top:10px; text-shadow: 0 0 15px #00FF7F, 0 0 30px #00FF7F;">SELAMAT BEKERJA</span>`;
                         finalBackground = ABSEN_NORMAL_BG;
                         finalStatusColor = '#00FF7F'; // Hijau Spring
                     }
@@ -2952,12 +2952,12 @@ async function processAttendance(karyawanId) {
                     if (statusColor === 'yellow') {
                         finalStatusText = 'PULANG CEPAT (PSW)';
                         // Gunakan pesan dari server yang berisi detail menit PSW
-                        finalMessageHTML = `<span style="color:#FFD700; font-weight:bold;">${cleanMessage}</span>`;
+                        finalMessageHTML = `<span style="color:#FFD700; font-weight:bold; text-shadow: 0 0 15px #FFD700;">${cleanMessage}</span>`;
                         finalStatusColor = '#FFD700'; // Kuning Emas
-                        finalBackground = `radial-gradient(circle, rgba(200, 150, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
+                        finalBackground = `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
                     } else {
                         finalStatusText = 'CHECK-OUT BERHASIL';
-                        finalMessageHTML = `Absensi PULANG Terkonfirmasi.<br>Terima kasih, Hati-hati di jalan.`;
+                        finalMessageHTML = `Absensi PULANG Terkonfirmasi.<br><span style="text-shadow: 0 0 10px #FFD700;">Terima kasih, Hati-hati di jalan.</span>`;
                         finalStatusColor = '#FFD700'; // [MODIFIED] Ubah ke Emas untuk Check-Out Normal
                         finalBackground = ABSEN_NORMAL_BG;
                     }
@@ -3024,7 +3024,7 @@ async function processAttendance(karyawanId) {
                     break;
                 default:
                     finalStatusText = isWarning ? 'PERINGATAN' : 'AKSES DITOLAK';
-                    finalMessageHTML = `<span style="color:${isWarning ? '#FFD700' : '#FF0055'};">${cleanMessage}</span>`;
+                    finalMessageHTML = `<span style="color:${isWarning ? '#FFD700' : '#FF0055'}; font-weight:bold; font-size: 1.5rem; display:block; margin-top:10px; text-shadow: 0 0 15px ${isWarning ? '#FFD700' : '#FF0055'}, 0 0 30px ${isWarning ? '#FFD700' : '#FF0055'};">${cleanMessage}</span>`;
             }
 
             // VISUAL UPDATES (Dipindahkan ke sini agar override isWarning di switch berlaku)
@@ -3038,8 +3038,8 @@ async function processAttendance(karyawanId) {
 
             // Background: Kuning untuk Warning (Waktu), Merah untuk Error (Wajah Tidak Dikenal)
             finalBackground = isWarning 
-                ? `radial-gradient(circle, rgba(200, 150, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`
-                : `radial-gradient(circle, rgba(255,0,85,0.7) 0%, rgba(153,0,0,0.9) 100%)`;
+                ? `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`
+                : `radial-gradient(circle, rgba(255, 0, 85, 0.8) 0%, rgba(100, 0, 0, 0.95) 100%)`;
             
             finalStatusColor = isWarning ? '#FFD700' : '#FF0055';
         }
@@ -3328,7 +3328,7 @@ async function processAttendance(karyawanId) {
                         width: 450px;
                         padding: 20px;
                         border: 1px solid ${finalStatusColor}80;
-                        font-family: 'Times New Roman', serif;
+                        font-family: 'Georgia', serif;
                         color: #FFF;
                         box-shadow: 0 0 30px ${finalStatusColor}40, inset 0 0 10px ${finalStatusColor}20;
                         overflow: hidden;
@@ -3369,13 +3369,12 @@ async function processAttendance(karyawanId) {
                     }
                     .emblem img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
                     .emblem-text { text-align: left; }
-                    .emblem-text span { display: block; text-transform: uppercase; font-weight: bold; }
-                    .emblem-text span:first-child { font-size: 18px; letter-spacing: 1px; }
-                    .emblem-text span:last-child { font-size: 12px; color: #CCC; }
+                    .emblem-text span { display: block; text-transform: uppercase; font-weight: 900; background: linear-gradient(to bottom, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.9)); border-bottom: 4px double ${finalStatusColor}; padding-bottom: 2px; }
+                    .emblem-text span { font-size: 24px; letter-spacing: 1px; }
                     .stamp-status {
                         font-size: 3rem; font-weight: 900; letter-spacing: 2px;
                         text-transform: uppercase; color: ${finalStatusColor};
-                        text-shadow: 0 0 15px ${finalStatusColor}; margin: 15px 0; line-height: 1;
+                        text-shadow: 0 0 10px ${finalStatusColor}, 0 0 20px ${finalStatusColor}, 0 0 40px ${finalStatusColor}; margin: 15px 0; line-height: 1;
                     }
                     .stamp-details {
                         font-size: 12px; color: #DDD;
