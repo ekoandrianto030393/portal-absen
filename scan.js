@@ -3688,9 +3688,13 @@ async function processAttendance(karyawanId) {
                         text-align: center; pointer-events: none; user-select: none;
                         white-space: nowrap; overflow: hidden;
                         letter-spacing: 0.15em;
-                        /* Realistic 3D Gold Emboss Effect */
-                        background: linear-gradient(180deg, #FFFFE0 0%, #BF953F 30%, #B38728 50%, #FBF5B7 80%, #AA771C 100%);
+                        /* Realistic 3D Gold Emboss Effect with Shine Sweep */
+                        background: 
+                            linear-gradient(120deg, transparent 0%, transparent 35%, rgba(255, 255, 255, 0.9) 50%, transparent 65%, transparent 100%),
+                            linear-gradient(180deg, #FFFFE0 0%, #BF953F 30%, #B38728 50%, #FBF5B7 80%, #AA771C 100%);
+                        background-size: 200% 100%, 100% 100%;
                         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                        animation: text-shine 1.5s ease-in-out infinite;
                         filter: 
                             drop-shadow(0 1px 0 #3e2b0e)
                             drop-shadow(0 2px 0 #3e2b0e)
@@ -3805,6 +3809,11 @@ async function processAttendance(karyawanId) {
                         0% { opacity: 0; width: 2px; }
                         50% { opacity: 1; width: 100px; }
                         100% { opacity: 0; width: 200vw; }
+                    }
+                    
+                    @keyframes text-shine {
+                        0% { background-position: -200% 0, 0 0; }
+                        100% { background-position: 200% 0, 0 0; }
                     }
 
                     /* ELECTRIC SPARKS (Percikan Listrik) */
