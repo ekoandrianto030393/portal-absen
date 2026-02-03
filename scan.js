@@ -3451,7 +3451,94 @@ async function processAttendance(karyawanId) {
                         50% { opacity: 0.02; transform: rotate(-45deg) translate(2px, -2px); }
                         51% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
                     }
+
+                    /* --- 3D SHUTTER CURTAIN STYLES --- */
+                    .shutter-layer {
+                        position: absolute; inset: 0; z-index: 9999;
+                        display: flex; pointer-events: none;
+                        perspective: 1500px; overflow: hidden;
+                    }
+                    .shutter-panel {
+                        flex: 1; background: #050a10;
+                        position: relative;
+                        transition: all 0.5s cubic-bezier(0.6, 0.05, 0.01, 0.99);
+                        border: 1px solid rgba(0, 255, 255, 0.1);
+                        display: flex; flex-direction: column; justify-content: center;
+                        box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+                    }
+                    .shutter-left { transform-origin: left center; border-right: 2px solid ${finalStatusColor}; }
+                    .shutter-right { transform-origin: right center; border-left: 2px solid ${finalStatusColor}; }
+                    .shutter-grid {
+                        position: absolute; inset: 0;
+                        background-image: linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+                                          linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+                        background-size: 40px 40px; opacity: 0.3;
+                    }
+                    .shutter-text {
+                        font-family: 'Share Tech Mono', monospace; color: ${finalStatusColor};
+                        font-size: 12px; padding: 20px; opacity: 0.7; letter-spacing: 2px;
+                    }
+                    .shutter-lock {
+                        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                        width: 120px; height: 120px; background: #000; border: 2px solid ${finalStatusColor}; border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center; z-index: 10000;
+                        box-shadow: 0 0 30px ${finalStatusColor}66; transition: all 0.8s ease-in;
+                    }
+                    .lock-ring {
+                        position: absolute; inset: -10px; border: 2px dashed ${finalStatusColor}; border-radius: 50%;
+                        animation: spin-slow 4s linear infinite;
+                    }
+                    .lock-icon { font-size: 40px; color: ${finalStatusColor}; animation: pulse-lock 1s infinite; }
+                    @keyframes pulse-lock { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+                    
+                    /* STEAM EFFECT (Uap Keluar dari Celah) */
+                    .steam-layer {
+                        position: absolute; inset: 0; pointer-events: none; z-index: 9998;
+                        display: flex; justify-content: center; align-items: center;
+                        opacity: 0; transition: opacity 0.2s;
+                    }
+                    .shutter-crack .steam-layer { opacity: 1; }
+                    .shutter-open .steam-layer { opacity: 0; }
+                    .steam-puff {
+                        position: absolute; width: 80px; height: 80px;
+                        background: radial-gradient(circle, ${finalStatusColor} 0%, transparent 60%);
+                        border-radius: 50%; filter: blur(15px); opacity: 0;
+                    }
+                    .shutter-crack .steam-puff { animation: steam-jet 0.8s ease-out infinite; }
+                    @keyframes steam-jet { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 15% { opacity: 0.6; } 100% { transform: translateY(-150px) scale(2); opacity: 0; } }
+
+                    /* TEASE STATE (Sedikit Terbuka) */
+                    .shutter-crack .shutter-left { transform: translateX(-30px); transition: transform 2s cubic-bezier(0.25, 1, 0.5, 1); }
+                    .shutter-crack .shutter-right { transform: translateX(30px); transition: transform 2s cubic-bezier(0.25, 1, 0.5, 1); }
+
+                    /* OPEN STATE ANIMATION */
+                    .shutter-open .shutter-left { transform: translateX(-100%) skewX(-15deg); opacity: 0; transition: all 0.4s ease-in; }
+                    .shutter-open .shutter-right { transform: translateX(100%) skewX(15deg); opacity: 0; transition: all 0.4s ease-in; }
+                    .shutter-open .shutter-lock { transform: translate(-50%, -50%) scale(0) rotate(180deg); opacity: 0; }
                 </style>
+
+                <!-- 3D SHUTTER CURTAIN (Overlay on top) -->
+                <div id="cyber-shutter" class="shutter-layer">
+                    <div class="steam-layer">
+                        <div class="steam-puff" style="animation-delay: 0s; top: 50%;"></div>
+                        <div class="steam-puff" style="animation-delay: 0.1s; top: 55%;"></div>
+                        <div class="steam-puff" style="animation-delay: 0.2s; top: 45%;"></div>
+                        <div class="steam-puff" style="animation-delay: 0.3s; top: 60%;"></div>
+                        <div class="steam-puff" style="animation-delay: 0.4s; top: 40%;"></div>
+                    </div>
+                    <div class="shutter-panel shutter-left">
+                        <div class="shutter-grid"></div>
+                        <div class="shutter-text">BIOMETRIC VAULT</div>
+                    </div>
+                    <div class="shutter-panel shutter-right">
+                        <div class="shutter-grid"></div>
+                        <div class="shutter-text" style="text-align:right;">DECRYPTING...</div>
+                    </div>
+                    <div class="shutter-lock">
+                        <div class="lock-ring"></div>
+                        <div class="lock-icon">🔒</div>
+                    </div>
+                </div>
 
                 <!-- GOD-LEVEL BACKGROUND LAYERS -->
                 <div style="position: absolute; inset: 0; overflow: hidden; pointer-events: none;">
@@ -3540,6 +3627,18 @@ async function processAttendance(karyawanId) {
                     container.style.transform = `rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
                 };
             }
+
+            // Trigger Shutter Open Animation (Sequence: Tease -> Surprise)
+            setTimeout(() => {
+                const shutter = document.getElementById('cyber-shutter');
+                if(shutter) {
+                    // Fase 1: Membuka sedikit (Bikin Penasaran)
+                    shutter.classList.add('shutter-crack');
+                    
+                    // Fase 2: Membuka Cepat (Surprise!)
+                    setTimeout(() => shutter.classList.add('shutter-open'), 1200);
+                }
+            }, 200);
 
             // Animate hash
             animateHash('validation-hash');
