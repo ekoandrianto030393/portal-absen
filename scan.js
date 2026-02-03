@@ -3192,7 +3192,7 @@ async function processAttendance(karyawanId) {
                             </div>
                             <div class="z-10">
                                 <h2 class="text-xl font-black text-white tracking-widest uppercase leading-none drop-shadow-md">PUSKESMAS WANA</h2>
-                                <p class="text-[10px] text-blue-100 tracking-[0.3em] mt-1 uppercase font-semibold">Kartu Identitas Pegawai</p>
+                                <p class="text-xs text-white tracking-[0.2em] mt-1 uppercase font-bold drop-shadow-md">Kartu Identitas Pegawai</p>
                             </div>
                             <div class="absolute bottom-0 left-0 w-full h-1 bg-yellow-500"></div>
                         </div>
@@ -3207,10 +3207,10 @@ async function processAttendance(karyawanId) {
                             </div>
                             <div class="flex-1 flex flex-col justify-between h-36 py-1">
                                 <div>
-                                    <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">Nama Lengkap</p>
-                                    <h1 class="text-xl font-bold text-white leading-tight mb-3 drop-shadow-sm">${display_name}</h1>
-                                    <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">Jabatan</p>
-                                    <p class="text-sm font-semibold text-emerald-400 mb-3">${display_jabatan}</p>
+                                    <p class="text-xs text-white uppercase tracking-widest font-black drop-shadow-md mb-1" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Nama Lengkap</p>
+                                    <h1 class="text-2xl font-black text-white leading-none mb-2 drop-shadow-md tracking-tight" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${display_name}</h1>
+                                    <p class="text-xs text-white uppercase tracking-widest font-black drop-shadow-md mb-1" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Jabatan</p>
+                                    <p class="text-lg font-bold text-emerald-300 mb-3 drop-shadow-md tracking-wide" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">${display_jabatan}</p>
                                 </div>
                                 <div class="flex justify-between items-end border-t border-white/10 pt-2">
                                     <div>
@@ -3463,7 +3463,7 @@ async function processAttendance(karyawanId) {
                             linear-gradient(to bottom, #020406, #091018),
                             repeating-linear-gradient(45deg, transparent 0, transparent 2px, rgba(0, 255, 255, 0.03) 2px, rgba(0, 255, 255, 0.03) 4px);
                         position: relative;
-                        transition: all 0.6s cubic-bezier(0.7, -0.4, 0.4, 1.4); /* Elastic Recoil Effect */
+                        transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1); /* Smooth Sliding Door */
                         border: 1px solid ${finalStatusColor}33;
                         display: flex; flex-direction: column; justify-content: center;
                         box-shadow: inset 0 0 100px #000;
@@ -3575,16 +3575,30 @@ async function processAttendance(karyawanId) {
 
                     /* OPEN STATE ANIMATION */
                     .shutter-open .shutter-left { 
-                        transform: translateX(-120%) skewX(-10deg) scale(0.9); 
-                        opacity: 0; filter: blur(10px);
+                        transform: translateX(-100%);
                     }
                     .shutter-open .shutter-right { 
-                        transform: translateX(120%) skewX(10deg) scale(0.9); 
-                        opacity: 0; filter: blur(10px);
+                        transform: translateX(100%);
                     }
                     .shutter-open .shutter-lock { 
                         transform: translate(-50%, -50%) scale(3); 
                         opacity: 0; filter: blur(20px);
+                    }
+
+                    /* DOOR STATUS INDICATOR LIGHTS */
+                    .shutter-indicator {
+                        position: absolute; top: 50%; transform: translateY(-50%);
+                        width: 8px; height: 60px;
+                        background: #FF0055; /* Merah (Locked) */
+                        box-shadow: 0 0 15px #FF0055;
+                        z-index: 20; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                    .shutter-left .shutter-indicator { right: 0; border-radius: 3px 0 0 3px; }
+                    .shutter-right .shutter-indicator { left: 0; border-radius: 0 3px 3px 0; }
+                    
+                    .shutter-open .shutter-indicator {
+                        background: #00FF7F; /* Hijau (Unlocked/Open) */
+                        box-shadow: 0 0 30px #00FF7F, 0 0 10px #FFFFFF;
                     }
                 </style>
 
@@ -3607,6 +3621,7 @@ async function processAttendance(karyawanId) {
                             STATUS: SECURE
                         </div>
                         <div class="hazard-strip hazard-bottom"></div>
+                        <div class="shutter-indicator"></div>
                     </div>
                     
                     <div class="shutter-panel shutter-right">
@@ -3618,6 +3633,7 @@ async function processAttendance(karyawanId) {
                             WAITING...
                         </div>
                         <div class="hazard-strip hazard-bottom"></div>
+                        <div class="shutter-indicator"></div>
                     </div>
                     
                     <div class="shutter-lock">
