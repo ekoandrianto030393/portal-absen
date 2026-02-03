@@ -1382,6 +1382,108 @@ function createParticleBurst(x, y, color) {
     setTimeout(() => container.remove(), 2000);
 }
 
+// --- VISUAL FX: FIREWORKS (KEMBANG API) ---
+function triggerFireworks() {
+    const canvas = document.createElement('canvas');
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '99999'; // Di atas segalanya
+    document.body.appendChild(canvas);
+
+    const ctx = canvas.getContext('2d');
+    let w = canvas.width = window.innerWidth;
+    let h = canvas.height = window.innerHeight;
+    
+    const particles = [];
+    
+    function createExplosion(x, y) {
+        const hue = Math.random() * 360;
+        // [UPDATE] Lebih banyak partikel untuk kepadatan
+        const particleCount = 80 + Math.random() * 50; 
+        
+        for (let i = 0; i < particleCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            // [UPDATE] Kecepatan ledakan lebih variatif (Realistis)
+            const velocity = Math.random() * 15 + 2; 
+            const friction = 0.95 + Math.random() * 0.03; // Hambatan udara
+
+            particles.push({
+                x: x, y: y,
+                vx: Math.cos(angle) * velocity,
+                vy: Math.sin(angle) * velocity,
+                alpha: 1,
+                // [UPDATE] Warna HSL cerah dengan variasi hue sedikit
+                color: `hsl(${hue + Math.random() * 40 - 20}, 100%, ${60 + Math.random() * 20}%)`,
+                decay: Math.random() * 0.02 + 0.015, // [MODIFIED] Sangat cepat (Total durasi ~3 detik)
+                gravity: 0.15, // Gravitasi sedikit lebih kuat
+                friction: friction,
+                size: Math.random() * 3 + 1,
+                shimmer: Math.random() < 0.2 // 20% partikel berkedip
+            });
+        }
+    }
+
+    let frame = 0;
+    function loop() {
+        frame++;
+        
+        // [UPDATE] Efek Trail (Ekor) pada canvas transparan
+        // Menggunakan destination-out untuk menghapus perlahan (membuat jejak)
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; // Semakin kecil alpha, semakin panjang ekornya
+        ctx.fillRect(0, 0, w, h);
+        
+        // Kembali ke mode gambar normal (tapi lighter untuk efek glowing)
+        ctx.globalCompositeOperation = 'lighter';
+
+        // Spawn fireworks randomly for ~1.5 seconds (approx 90 frames)
+        if (frame < 90 && Math.random() < 0.05) {
+            createExplosion(Math.random() * w, Math.random() * h * 0.6);
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            
+            // Physics Update
+            p.vx *= p.friction;
+            p.vy *= p.friction;
+            p.vy += p.gravity;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= p.decay;
+            
+            if (p.alpha <= 0) {
+                particles.splice(i, 1);
+            } else {
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // [UPDATE] Efek Shimmer (Berkedip Putih)
+                if (p.shimmer && Math.random() < 0.3) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        if (particles.length > 0 || frame < 90) {
+            requestAnimationFrame(loop);
+        } else {
+            canvas.remove();
+        }
+    }
+    loop();
+}
+
 // --- HELPER: TEXT DECRYPTION EFFECT ---
 function resolveText(target, frame, totalFrames) {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&";
@@ -3020,9 +3122,10 @@ async function processAttendance(karyawanId) {
                         finalBackground = `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
                     } else {
                         finalStatusText = 'CHECK-OUT BERHASIL';
-                        finalMessageHTML = `Absensi PULANG Terkonfirmasi.<br><span style="text-shadow: 0 0 10px #FFD700;">Terima kasih, Hati-hati di jalan.</span>`;
-                        finalStatusColor = '#FFD700'; // [MODIFIED] Ubah ke Emas untuk Check-Out Normal
+                        finalMessageHTML = `Absensi PULANG Terkonfirmasi.<br><span style="color:#00FF7F; text-shadow: 0 0 10px #00FF7F;">Terima kasih, Hati-hati di jalan.</span>`;
+                        finalStatusColor = '#00FF7F'; // Hijau Spring (Sama seperti Check-In)
                         finalBackground = ABSEN_NORMAL_BG;
+                        triggerFireworks(); // [NEW] Trigger Fireworks
                     }
                     updatePersonnelRoster(); // Refresh Roster Visual
                     break;
@@ -3523,9 +3626,9 @@ async function processAttendance(karyawanId) {
                     .shutter-panel {
                         flex: 1; 
                         background: 
-                            radial-gradient(circle at 30% 30%, rgba(255,255,255,0.05) 0%, transparent 20%), /* Specular highlight */
-                            repeating-linear-gradient(90deg, #1a1a1a 0, #1a1a1a 2px, #111 2px, #111 4px), /* Brushed Metal Texture */
-                            linear-gradient(to bottom, #2c3e50 0%, #000 100%); /* Base Gradient */
+                            radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0%, transparent 40%),
+                            repeating-linear-gradient(90deg, #111 0, #111 2px, #0a0a0a 2px, #0a0a0a 4px), /* Darker Industrial Texture */
+                            linear-gradient(to bottom, #1a2530 0%, #000 100%); 
                         position: relative;
                         transition: transform 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045); /* Mechanical Retract */
                         border-top: 1px solid ${finalStatusColor}33;
@@ -3537,13 +3640,13 @@ async function processAttendance(karyawanId) {
                     }
                     .shutter-left { 
                         transform-origin: left center; 
-                        border-right: 4px solid #000; 
+                        border-right: 2px solid #333; 
                         box-shadow: inset -10px 0 20px rgba(0,0,0,0.8), 5px 0 15px rgba(0,0,0,0.5);
                         z-index: 2;
                     }
                     .shutter-right { 
                         transform-origin: right center; 
-                        border-left: 4px solid #000; 
+                        border-left: 2px solid #333; 
                         box-shadow: inset 10px 0 20px rgba(0,0,0,0.8), -5px 0 15px rgba(0,0,0,0.5);
                         z-index: 2;
                     }
@@ -3586,93 +3689,76 @@ async function processAttendance(karyawanId) {
                         filter: drop-shadow(0 2px 5px rgba(0,0,0,0.8)); opacity: 0.9;
                     }
 
-                    /* GOD-TIER LOCK MECHANISM */
-                    .shutter-lock {
+                    /* SPLIT LOCK MECHANISM (Gembok Terbelah) */
+                    .lock-half {
+                        position: absolute; top: 50%; width: 140px; height: 280px;
+                        transform: translateY(-50%); z-index: 10;
+                        overflow: hidden; pointer-events: none;
+                    }
+                    .shutter-left .lock-half { 
+                        right: -140px; /* Menempel keluar dari pintu kiri */
+                        border-radius: 0 140px 140px 0; /* Setengah lingkaran kanan */
+                        /* Tapi kita butuh setengah lingkaran KIRI untuk pintu KIRI agar bertemu di tengah? 
+                           TIDAK. Pintu Kiri ada di Kiri layar. Gemboknya ada di sisi KANAN pintu kiri.
+                           Jadi bentuknya harus setengah lingkaran KIRI. */
+                        right: -70px; width: 70px;
+                        border-radius: 140px 0 0 140px;
+                        background: linear-gradient(to right, #111, #222);
+                        border: 2px solid ${finalStatusColor}; border-right: none;
+                        box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+                    }
+                    .shutter-right .lock-half { 
+                        left: -70px; width: 70px;
+                        border-radius: 0 140px 140px 0;
+                        background: linear-gradient(to left, #111, #222);
+                        border: 2px solid ${finalStatusColor}; border-left: none;
+                        box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+                    }
+                    
+                    /* INNER GEARS (Hiasan Mekanik Dalam Gembok) */
+                    .gear-part {
+                        position: absolute; top: 50%; width: 120px; height: 120px;
+                        border: 5px dashed ${finalStatusColor}44; border-radius: 50%;
+                        transform: translateY(-50%);
+                    }
+                    .shutter-left .gear-part { right: -60px; border-right-color: transparent; animation: spin-left 10s linear infinite; }
+                    .shutter-right .gear-part { left: -60px; border-left-color: transparent; animation: spin-right 10s linear infinite; }
+
+                    @keyframes spin-left { from { transform: translateY(-50%) rotate(0deg); } to { transform: translateY(-50%) rotate(360deg); } }
+                    @keyframes spin-right { from { transform: translateY(-50%) rotate(360deg); } to { transform: translateY(-50%) rotate(0deg); } }
+
+                    /* HOLOGRAPHIC SEAL (Segel Tengah) */
+                    .holo-seal {
                         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                        width: 280px; height: 280px; 
-                        display: flex; align-items: center; justify-content: center; z-index: 10000;
-                        perspective: 1000px;
-                        transition: all 0.5s cubic-bezier(0.6, -0.28, 0.735, 0.045);
-                    }
-                    
-                    /* KINETIC RINGS (Cincin Berputar) */
-                    .lock-ring {
-                        position: absolute; border-radius: 50%;
-                        box-shadow: 0 0 15px ${finalStatusColor}22;
-                    }
-                    .ring-1 { /* Outer Dashed */
-                        width: 100%; height: 100%;
-                        border: 2px dashed ${finalStatusColor}66;
-                        animation: spin-slow 20s linear infinite;
-                    }
-                    .ring-2 { /* Middle Tech */
-                        width: 82%; height: 82%;
-                        border: 1px solid ${finalStatusColor}44;
-                        border-top: 4px solid ${finalStatusColor};
-                        border-bottom: 4px solid ${finalStatusColor};
-                        animation: spin-reverse 8s linear infinite;
-                    }
-                    .ring-3 { /* Inner Fast */
-                        width: 65%; height: 65%;
-                        border: 2px solid transparent;
-                        border-left: 4px solid ${finalStatusColor};
-                        border-right: 4px solid ${finalStatusColor};
-                        animation: spin-fast 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-                    }
-                    .ring-4 { /* Particle Field */
-                        width: 120%; height: 120%; border: none; box-shadow: none;
-                        background: conic-gradient(from 0deg, transparent 0%, ${finalStatusColor}11 5%, transparent 10%);
-                        mask-image: radial-gradient(transparent 60%, black 70%);
-                        animation: spin-slow 10s linear infinite reverse;
-                    }
-
-                    /* CORE (Inti Gembok) */
-                    .lock-core {
-                        width: 130px; height: 130px; background: radial-gradient(circle at 30% 30%, #2a2a2a, #000);
-                        border: 2px solid ${finalStatusColor};
-                        border-radius: 50%;
+                        width: 160px; height: 160px; border-radius: 50%;
+                        border: 1px solid ${finalStatusColor};
+                        box-shadow: 0 0 20px ${finalStatusColor}, inset 0 0 20px ${finalStatusColor};
+                        background: rgba(0, 255, 255, 0.05);
+                        z-index: 10001; pointer-events: none;
                         display: flex; align-items: center; justify-content: center;
-                        box-shadow: 0 0 60px ${finalStatusColor}66, inset 0 0 40px #000;
-                        position: relative; z-index: 2;
-                        overflow: hidden;
+                        transition: all 0.3s ease-out;
                     }
-                    .core-glare {
-                        position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-                        background: linear-gradient(45deg, transparent 45%, rgba(255,255,255,0.1) 50%, transparent 55%);
-                        animation: glare-pass 3s infinite;
-                    }
-                    .lock-scan-line {
-                        position: absolute; width: 100%; height: 2px; background: ${finalStatusColor};
-                        box-shadow: 0 0 10px ${finalStatusColor};
-                        animation: scan-lock 2s ease-in-out infinite; opacity: 0.8;
+                    .holo-seal::after {
+                        content: 'LOCKED'; font-family: 'Share Tech Mono'; color: ${finalStatusColor};
+                        font-size: 20px; letter-spacing: 2px; animation: blink 1s infinite;
                     }
                     
-                    /* UNLOCK ANIMATION */
-                    .shutter-crack .shutter-lock {
-                        transform: translate(-50%, -50%) scale(1.8) rotate(90deg);
-                        opacity: 0; filter: blur(30px);
+                    /* UNLOCK STATE */
+                    .shutter-crack .holo-seal {
+                        transform: translate(-50%, -50%) scale(1.5);
+                        opacity: 0; filter: blur(10px); /* Segel hologram pecah */
                     }
-                    .shutter-crack .lock-core {
-                        background: ${finalStatusColor};
-                        box-shadow: 0 0 150px ${finalStatusColor}, inset 0 0 50px #fff;
-                    }
-                    .shutter-crack .lock-icon-svg { 
-                        stroke: #000; fill: #000; transform: scale(0.8); 
-                    }
-                    
-                    .lock-icon-svg { 
-                        width: 60px; height: 60px; 
-                        fill: none; stroke: ${finalStatusColor}; stroke-width: 2;
-                        stroke-linecap: round; stroke-linejoin: round;
-                        filter: drop-shadow(0 0 10px ${finalStatusColor});
-                        transition: all 0.3s;
+                    .shutter-crack .lock-half {
+                        box-shadow: 0 0 30px ${finalStatusColor}; /* Gembok menyala saat terbuka */
+                        background: #222;
                     }
 
-                    @keyframes spin-fast { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                    @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                    @keyframes spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
-                    @keyframes glare-pass { 0% { transform: translate(-20%, -20%) rotate(45deg); } 100% { transform: translate(20%, 20%) rotate(45deg); } }
-                    @keyframes scan-lock { 0%, 100% { top: 10%; opacity: 0; } 50% { top: 90%; opacity: 1; } }
+                    /* OPEN STATE - Pintu & Gembok Geser Bersama */
+                    .shutter-open .shutter-panel {
+                        transition: transform 2.5s cubic-bezier(0.2, 0.6, 0.3, 1);
+                    }
+                    /* Tidak perlu animasi khusus untuk lock-half di sini karena dia anak dari shutter-panel, 
+                       jadi dia otomatis ikut bergeser keluar layar */
                     
                     /* TEASE STATE (Sedikit Terbuka - Mengintip) */
                     .shutter-crack .shutter-left { transform: translateX(-40px); }
@@ -3707,38 +3793,84 @@ async function processAttendance(karyawanId) {
                         50% { opacity: 1; width: 100px; }
                         100% { opacity: 0; width: 200vw; }
                     }
+
+                    /* ELECTRIC SPARKS (Percikan Listrik) */
+                    .spark-gap {
+                        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                        width: 60px; height: 100px; z-index: 10005; pointer-events: none;
+                    }
+                    .spark {
+                        position: absolute; left: 50%; top: 50%; width: 4px; height: 4px;
+                        background: #fff; border-radius: 50%;
+                        box-shadow: 0 0 10px #fff, 0 0 20px #00FFFF;
+                        opacity: 0;
+                    }
+                    .shutter-crack .spark { animation: spark-fly 0.4s ease-out forwards; }
+                    
+                    .shutter-crack .spark:nth-child(2) { --tx: -50px; --ty: -80px; animation-delay: 0s; }
+                    .shutter-crack .spark:nth-child(3) { --tx: 60px; --ty: -60px; animation-delay: 0.05s; }
+                    .shutter-crack .spark:nth-child(4) { --tx: -40px; --ty: 70px; animation-delay: 0.1s; }
+                    .shutter-crack .spark:nth-child(5) { --tx: 50px; --ty: 90px; animation-delay: 0.02s; }
+                    .shutter-crack .spark:nth-child(6) { --tx: -70px; --ty: -20px; animation-delay: 0.08s; }
+
+                    @keyframes spark-fly {
+                        0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                        100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+                    }
+
+                    /* Electric Arc Line (Kilatan Tengah) */
+                    .arc-line {
+                        position: absolute; top: 10%; bottom: 10%; left: 50%; width: 2px;
+                        background: linear-gradient(to bottom, transparent, #00FFFF, #FFF, #00FFFF, transparent);
+                        opacity: 0; transform: translateX(-50%);
+                        filter: blur(1px);
+                    }
+                    .shutter-crack .arc-line {
+                        animation: arc-flash 0.3s steps(5) forwards;
+                    }
+                    @keyframes arc-flash {
+                        0% { opacity: 0; height: 0; top: 50%; }
+                        50% { opacity: 1; height: 80%; top: 10%; width: 4px; }
+                        100% { opacity: 0; height: 100%; width: 1px; }
+                    }
                 </style>
 
                 <!-- 3D SHUTTER CURTAIN (Overlay on top) -->
                 <div id="cyber-shutter" class="shutter-layer">
                     <div class="energy-flash"></div>
                     
+                    <!-- Electric Sparks Container -->
+                    <div class="spark-gap">
+                        <div class="arc-line"></div>
+                        <div class="spark"></div>
+                        <div class="spark"></div>
+                        <div class="spark"></div>
+                        <div class="spark"></div>
+                        <div class="spark"></div>
+                    </div>
+                    
                     <div class="shutter-panel shutter-left">
                         <div class="mech-bolt bolt-top"></div>
                         <div class="mech-bolt bolt-bottom"></div>
+                        <!-- Split Lock Left -->
+                        <div class="lock-half">
+                            <div class="gear-part"></div>
+                        </div>
                         <div class="shutter-data">PUSKESMAS</div>
                     </div>
                     
                     <div class="shutter-panel shutter-right">
                         <div class="mech-bolt bolt-top"></div>
                         <div class="mech-bolt bolt-bottom"></div>
+                        <!-- Split Lock Right -->
+                        <div class="lock-half">
+                            <div class="gear-part"></div>
+                        </div>
                         <div class="shutter-data">WANA</div>
                     </div>
                     
-                    <div class="shutter-lock">
-                        <div class="lock-ring ring-4"></div>
-                        <div class="lock-ring ring-1"></div>
-                        <div class="lock-ring ring-2"></div>
-                        <div class="lock-ring ring-3"></div>
-                        <div class="lock-core">
-                            <div class="core-glare"></div>
-                            <div class="lock-scan-line"></div>
-                            <svg class="lock-icon-svg" viewBox="0 0 24 24">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                            </svg>
-                        </div>
-                    </div>
+                    <!-- Holographic Seal (Pecah saat terbuka) -->
+                    <div class="holo-seal"></div>
                 </div>
 
                 <!-- GOD-LEVEL BACKGROUND LAYERS -->
@@ -3833,14 +3965,12 @@ async function processAttendance(karyawanId) {
             setTimeout(() => {
                 const shutter = document.getElementById('cyber-shutter');
                 if(shutter) {
-                    // Fase 1: Membuka sedikit (Bikin Penasaran)
+                    // Fase 1: Animasi pintu sedikit terbuka (selalu berjalan)
                     shutter.classList.add('shutter-crack');
-                    SoundFX.play('shutter_crack'); // [NEW] Trigger Suara Kunci
                     
-                    // Fase 2: Membuka Cepat (Surprise!)
+                    // Fase 2: Animasi pintu terbuka penuh
                     setTimeout(() => {
                         shutter.classList.add('shutter-open');
-                        SoundFX.play('shutter_open'); // [NEW] Trigger Suara Geser
                     }, 1200);
                 }
             }, 200);
