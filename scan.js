@@ -3451,44 +3451,106 @@ async function processAttendance(karyawanId) {
                         51% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
                     }
 
-                    /* --- 3D SHUTTER CURTAIN STYLES --- */
+                    /* --- 3D HYPER-TECH SHUTTER STYLES (GOD TIER) --- */
                     .shutter-layer {
                         position: absolute; inset: 0; z-index: 9999;
                         display: flex; pointer-events: none;
-                        perspective: 1500px; overflow: hidden;
+                        perspective: 2000px; overflow: hidden;
                     }
                     .shutter-panel {
-                        flex: 1; background: #050a10;
+                        flex: 1; 
+                        background: 
+                            linear-gradient(to bottom, #020406, #091018),
+                            repeating-linear-gradient(45deg, transparent 0, transparent 2px, rgba(0, 255, 255, 0.03) 2px, rgba(0, 255, 255, 0.03) 4px);
                         position: relative;
-                        transition: all 0.5s cubic-bezier(0.6, 0.05, 0.01, 0.99);
-                        border: 1px solid rgba(0, 255, 255, 0.1);
+                        transition: all 0.6s cubic-bezier(0.7, -0.4, 0.4, 1.4); /* Elastic Recoil Effect */
+                        border: 1px solid ${finalStatusColor}33;
                         display: flex; flex-direction: column; justify-content: center;
-                        box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+                        box-shadow: inset 0 0 100px #000;
+                        overflow: hidden;
                     }
-                    .shutter-left { transform-origin: left center; border-right: 2px solid ${finalStatusColor}; }
-                    .shutter-right { transform-origin: right center; border-left: 2px solid ${finalStatusColor}; }
+                    .shutter-left { 
+                        transform-origin: left center; 
+                        border-right: 4px solid ${finalStatusColor}; 
+                        clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+                        z-index: 2;
+                    }
+                    .shutter-right { 
+                        transform-origin: right center; 
+                        border-left: 4px solid ${finalStatusColor}; 
+                        clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+                        z-index: 2;
+                    }
+                    
+                    /* Industrial Hazard Stripes */
+                    .hazard-strip {
+                        position: absolute; left: 0; right: 0; height: 15px;
+                        background: repeating-linear-gradient(
+                            -45deg, 
+                            #000, 
+                            #000 10px, 
+                            ${finalStatusColor}44 10px, 
+                            ${finalStatusColor}44 20px
+                        );
+                        z-index: 3;
+                    }
+                    .hazard-top { top: 0; border-bottom: 1px solid ${finalStatusColor}; }
+                    .hazard-bottom { bottom: 0; border-top: 1px solid ${finalStatusColor}; }
+
                     .shutter-grid {
                         position: absolute; inset: 0;
-                        background-image: linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
-                                          linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
-                        background-size: 40px 40px; opacity: 0.3;
+                        background-image: 
+                            linear-gradient(${finalStatusColor}11 1px, transparent 1px),
+                            linear-gradient(90deg, ${finalStatusColor}11 1px, transparent 1px);
+                        background-size: 50px 50px;
+                        mask-image: radial-gradient(circle, black 40%, transparent 100%);
                     }
-                    .shutter-text {
-                        font-family: 'Share Tech Mono', monospace; color: ${finalStatusColor};
-                        font-size: 12px; padding: 20px; opacity: 0.7; letter-spacing: 2px;
+                    .shutter-data {
+                        position: absolute; top: 20%; width: 100%;
+                        font-family: 'Share Tech Mono', monospace; 
+                        font-size: 10px; color: ${finalStatusColor}; opacity: 0.4;
+                        text-align: center; line-height: 1.5;
+                        white-space: pre;
+                        text-shadow: 0 0 5px ${finalStatusColor};
                     }
+
+                    /* Complex Lock Mechanism */
                     .shutter-lock {
                         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                        width: 120px; height: 120px; background: #000; border: 2px solid ${finalStatusColor}; border-radius: 50%;
+                        width: 160px; height: 160px; 
+                        background: radial-gradient(circle at 30% 30%, #2a3b4c, #000);
+                        border: 2px solid ${finalStatusColor}; border-radius: 50%;
                         display: flex; align-items: center; justify-content: center; z-index: 10000;
-                        box-shadow: 0 0 30px ${finalStatusColor}66; transition: all 0.8s ease-in;
+                        box-shadow: 0 0 50px ${finalStatusColor}66, inset 0 0 20px #000;
+                        transition: all 0.5s ease-in;
                     }
-                    .lock-ring {
+                    .lock-core {
+                        width: 80px; height: 80px; background: #000; border-radius: 50%;
+                        border: 1px solid ${finalStatusColor};
+                        display: flex; align-items: center; justify-content: center;
+                        box-shadow: 0 0 15px ${finalStatusColor};
+                        position: relative; z-index: 2;
+                    }
+                    .lock-ring-1 {
                         position: absolute; inset: -10px; border: 2px dashed ${finalStatusColor}; border-radius: 50%;
-                        animation: spin-slow 4s linear infinite;
+                        animation: spin-slow 8s linear infinite; opacity: 0.6;
                     }
-                    .lock-icon { font-size: 40px; color: ${finalStatusColor}; animation: pulse-lock 1s infinite; }
-                    @keyframes pulse-lock { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+                    .lock-ring-2 {
+                        position: absolute; inset: -25px; border: 4px solid transparent; 
+                        border-top: 4px solid ${finalStatusColor}; border-bottom: 4px solid ${finalStatusColor};
+                        border-radius: 50%;
+                        animation: spin-fast 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+                    }
+                    .lock-ring-3 {
+                        position: absolute; inset: -40px; border: 1px solid ${finalStatusColor}33; border-radius: 50%;
+                        background: conic-gradient(from 0deg, transparent 0%, ${finalStatusColor}22 20%, transparent 40%);
+                        animation: spin-slow 4s linear infinite reverse;
+                    }
+                    
+                    .lock-icon { font-size: 30px; color: ${finalStatusColor}; animation: pulse-lock 0.5s infinite alternate; }
+                    @keyframes spin-fast { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    @keyframes pulse-lock { 0% { opacity: 0.6; text-shadow: 0 0 0 ${finalStatusColor}; } 100% { opacity: 1; text-shadow: 0 0 20px ${finalStatusColor}; } }
                     
                     /* STEAM EFFECT (Uap Keluar dari Celah) */
                     .steam-layer {
@@ -3507,13 +3569,23 @@ async function processAttendance(karyawanId) {
                     @keyframes steam-jet { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 15% { opacity: 0.6; } 100% { transform: translateY(-150px) scale(2); opacity: 0; } }
 
                     /* TEASE STATE (Sedikit Terbuka) */
-                    .shutter-crack .shutter-left { transform: translateX(-30px); transition: transform 2s cubic-bezier(0.25, 1, 0.5, 1); }
-                    .shutter-crack .shutter-right { transform: translateX(30px); transition: transform 2s cubic-bezier(0.25, 1, 0.5, 1); }
+                    .shutter-crack .shutter-left { transform: translateX(-40px); }
+                    .shutter-crack .shutter-right { transform: translateX(40px); }
+                    .shutter-crack .shutter-lock { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 100px ${finalStatusColor}; }
 
                     /* OPEN STATE ANIMATION */
-                    .shutter-open .shutter-left { transform: translateX(-100%) skewX(-15deg); opacity: 0; transition: all 0.4s ease-in; }
-                    .shutter-open .shutter-right { transform: translateX(100%) skewX(15deg); opacity: 0; transition: all 0.4s ease-in; }
-                    .shutter-open .shutter-lock { transform: translate(-50%, -50%) scale(0) rotate(180deg); opacity: 0; }
+                    .shutter-open .shutter-left { 
+                        transform: translateX(-120%) skewX(-10deg) scale(0.9); 
+                        opacity: 0; filter: blur(10px);
+                    }
+                    .shutter-open .shutter-right { 
+                        transform: translateX(120%) skewX(10deg) scale(0.9); 
+                        opacity: 0; filter: blur(10px);
+                    }
+                    .shutter-open .shutter-lock { 
+                        transform: translate(-50%, -50%) scale(3); 
+                        opacity: 0; filter: blur(20px);
+                    }
                 </style>
 
                 <!-- 3D SHUTTER CURTAIN (Overlay on top) -->
@@ -3525,17 +3597,36 @@ async function processAttendance(karyawanId) {
                         <div class="steam-puff" style="animation-delay: 0.3s; top: 60%;"></div>
                         <div class="steam-puff" style="animation-delay: 0.4s; top: 40%;"></div>
                     </div>
+                    
                     <div class="shutter-panel shutter-left">
+                        <div class="hazard-strip hazard-top"></div>
                         <div class="shutter-grid"></div>
-                        <div class="shutter-text">BIOMETRIC VAULT</div>
+                        <div class="shutter-data">
+                            SYSTEM_LOCKED<br>
+                            ENCRYPTION: AES-256<br>
+                            STATUS: SECURE
+                        </div>
+                        <div class="hazard-strip hazard-bottom"></div>
                     </div>
+                    
                     <div class="shutter-panel shutter-right">
+                        <div class="hazard-strip hazard-top"></div>
                         <div class="shutter-grid"></div>
-                        <div class="shutter-text" style="text-align:right;">DECRYPTING...</div>
+                        <div class="shutter-data">
+                            ACCESS_REQ<br>
+                            VERIFYING_BIO<br>
+                            WAITING...
+                        </div>
+                        <div class="hazard-strip hazard-bottom"></div>
                     </div>
+                    
                     <div class="shutter-lock">
-                        <div class="lock-ring"></div>
-                        <div class="lock-icon">🔒</div>
+                        <div class="lock-ring-3"></div>
+                        <div class="lock-ring-2"></div>
+                        <div class="lock-ring-1"></div>
+                        <div class="lock-core">
+                            <div class="lock-icon">🔒</div>
+                        </div>
                     </div>
                 </div>
 
