@@ -3706,68 +3706,123 @@ async function processAttendance(karyawanId) {
                         z-index: 20;
                     }
 
-                    /* SPLIT LOCK MECHANISM (Gembok Terbelah) */
+                    /* GOD-TIER LOCK MECHANISM (Mekanisme Kunci Tingkat Dewa) */
                     .lock-half {
-                        position: absolute; top: 50%; width: 140px; height: 280px;
-                        transform: translateY(-50%); z-index: 10;
-                        overflow: hidden; pointer-events: none;
+                        position: absolute; top: 50%; width: 180px; height: 360px;
+                        transform: translateY(-50%); z-index: 15;
+                        pointer-events: none;
+                        display: flex; align-items: center;
+                        filter: drop-shadow(0 0 20px rgba(0,0,0,0.9));
                     }
-                    .shutter-left .lock-half { 
-                        right: -140px; /* Menempel keluar dari pintu kiri */
-                        border-radius: 0 140px 140px 0; /* Setengah lingkaran kanan */
-                        /* Tapi kita butuh setengah lingkaran KIRI untuk pintu KIRI agar bertemu di tengah? 
-                           TIDAK. Pintu Kiri ada di Kiri layar. Gemboknya ada di sisi KANAN pintu kiri.
-                           Jadi bentuknya harus setengah lingkaran KIRI. */
-                        right: -70px; width: 70px;
-                        border-radius: 140px 0 0 140px;
-                        background: linear-gradient(to right, #111, #222);
-                        border: 2px solid ${finalStatusColor}; border-right: none;
-                        box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+
+                    .shutter-left .lock-half { right: -90px; justify-content: flex-end; }
+                    .shutter-right .lock-half { left: -90px; justify-content: flex-start; }
+
+                    .lock-casing {
+                        width: 100%; height: 100%;
+                        background: 
+                            linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%),
+                            repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.02) 10px, rgba(255,255,255,0.02) 20px);
+                        position: relative;
+                        overflow: hidden;
+                        border: 1px solid rgba(255,255,255,0.1);
+                        box-shadow: inset 0 0 30px #000;
                     }
-                    .shutter-right .lock-half { 
-                        left: -70px; width: 70px;
-                        border-radius: 0 140px 140px 0;
-                        background: linear-gradient(to left, #111, #222);
-                        border: 2px solid ${finalStatusColor}; border-left: none;
-                        box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+
+                    .shutter-left .lock-casing {
+                        border-radius: 30px 0 0 30px;
+                        border-right: 2px solid ${finalStatusColor};
+                        clip-path: polygon(0 10%, 20% 0, 100% 0, 100% 100%, 20% 100%, 0 90%);
                     }
-                    
-                    /* INNER GEARS (Hiasan Mekanik Dalam Gembok) */
-                    .gear-part {
-                        position: absolute; top: 50%; width: 120px; height: 120px;
-                        border: 5px dashed ${finalStatusColor}44; border-radius: 50%;
+                    .shutter-right .lock-casing {
+                        border-radius: 0 30px 30px 0;
+                        border-left: 2px solid ${finalStatusColor};
+                        clip-path: polygon(0 0, 80% 0, 100% 10%, 100% 90%, 80% 100%, 0 100%);
+                    }
+
+                    /* Rotating Reactor Rings */
+                    .mag-ring {
+                        position: absolute; top: 50%; width: 280px; height: 280px;
+                        border-radius: 50%;
                         transform: translateY(-50%);
+                        border: 2px solid transparent;
                     }
-                    .shutter-left .gear-part { right: -60px; border-right-color: transparent; animation: spin-left 10s linear infinite; }
-                    .shutter-right .gear-part { left: -60px; border-left-color: transparent; animation: spin-right 10s linear infinite; }
+                    .mag-ring::before {
+                        content: ''; position: absolute; inset: 0; border-radius: 50%;
+                        border: 10px dashed ${finalStatusColor}33;
+                        mask-image: linear-gradient(to bottom, transparent, black);
+                    }
 
-                    @keyframes spin-left { from { transform: translateY(-50%) rotate(0deg); } to { transform: translateY(-50%) rotate(360deg); } }
-                    @keyframes spin-right { from { transform: translateY(-50%) rotate(360deg); } to { transform: translateY(-50%) rotate(0deg); } }
+                    .shutter-left .mag-ring { right: -140px; animation: spin-cw 10s linear infinite; }
+                    .shutter-right .mag-ring { left: -140px; animation: spin-ccw 10s linear infinite; }
 
-                    /* HOLOGRAPHIC SEAL (Segel Tengah) */
+                    .plasma-core {
+                        position: absolute; top: 50%; width: 140px; height: 140px;
+                        border-radius: 50%;
+                        background: radial-gradient(circle, ${finalStatusColor} 0%, transparent 70%);
+                        opacity: 0.3;
+                        transform: translateY(-50%);
+                        filter: blur(10px);
+                        animation: pulse-core 2s ease-in-out infinite;
+                    }
+                    .shutter-left .plasma-core { right: -70px; }
+                    .shutter-right .plasma-core { left: -70px; }
+
+                    /* Locking Pins */
+                    .lock-pin {
+                        position: absolute; width: 40px; height: 10px;
+                        background: #fff;
+                        box-shadow: 0 0 10px ${finalStatusColor};
+                        top: 50%; transform: translateY(-50%);
+                        z-index: 20;
+                        transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+                    }
+                    .shutter-left .lock-pin { right: -5px; border-radius: 4px 0 0 4px; }
+                    .shutter-right .lock-pin { left: -5px; border-radius: 0 4px 4px 0; }
+
+                    /* Tech Details */
+                    .vent-slots {
+                        position: absolute; width: 60%; height: 60px;
+                        background: repeating-linear-gradient(90deg, #000, #000 5px, #333 5px, #333 6px);
+                        opacity: 0.5;
+                    }
+                    .shutter-left .vent-slots { left: 10px; top: 20px; transform: skewX(-20deg); }
+                    .shutter-right .vent-slots { right: 10px; bottom: 20px; transform: skewX(-20deg); }
+
+                    /* Animations */
+                    @keyframes spin-cw { from { transform: translateY(-50%) rotate(0deg); } to { transform: translateY(-50%) rotate(360deg); } }
+                    @keyframes spin-ccw { from { transform: translateY(-50%) rotate(360deg); } to { transform: translateY(-50%) rotate(0deg); } }
+                    @keyframes pulse-core { 0%, 100% { opacity: 0.3; transform: translateY(-50%) scale(1); } 50% { opacity: 0.6; transform: translateY(-50%) scale(1.2); } }
+
+                    /* HOLOGRAPHIC SEAL (Segel Tengah - Updated) */
                     .holo-seal {
                         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                        width: 160px; height: 160px; border-radius: 50%;
-                        border: 1px solid ${finalStatusColor};
-                        box-shadow: 0 0 20px ${finalStatusColor}, inset 0 0 20px ${finalStatusColor};
-                        background: rgba(0, 255, 255, 0.05);
+                        width: 180px; height: 180px; border-radius: 50%;
+                        border: 2px solid ${finalStatusColor};
+                        box-shadow: 0 0 30px ${finalStatusColor}, inset 0 0 30px ${finalStatusColor};
+                        background: rgba(0, 0, 0, 0.3);
                         z-index: 10001; pointer-events: none;
                         display: flex; align-items: center; justify-content: center;
                         transition: all 0.3s ease-out;
+                        backdrop-filter: blur(5px);
                     }
                     .holo-seal::after {
-                        content: 'LOCKED'; font-family: 'Share Tech Mono'; color: ${finalStatusColor};
-                        font-size: 20px; letter-spacing: 2px; animation: blink 1s infinite;
+                        content: 'SECURE'; font-family: 'Share Tech Mono'; color: ${finalStatusColor};
+                        font-size: 24px; letter-spacing: 4px; font-weight: bold; animation: blink 0.5s infinite;
+                        text-shadow: 0 0 10px ${finalStatusColor};
                     }
                     
                     /* UNLOCK STATE */
                     .shutter-crack .holo-seal {
-                        transform: translate(-50%, -50%) scale(1.5);
-                        opacity: 0; filter: blur(10px); /* Segel hologram pecah */
+                        transform: translate(-50%, -50%) scale(2);
+                        opacity: 0; filter: blur(20px); /* Segel hologram pecah */
                     }
-                    .shutter-crack .lock-half {
-                        box-shadow: 0 0 30px ${finalStatusColor}; /* Gembok menyala saat terbuka */
-                        background: #222;
+                    .shutter-crack .lock-pin { width: 0; opacity: 0; }
+                    .shutter-crack .mag-ring { border-color: #fff; box-shadow: 0 0 80px #fff; animation-duration: 0.5s; }
+                    .shutter-crack .plasma-core { background: radial-gradient(circle, #fff 0%, ${finalStatusColor} 50%, transparent 80%); opacity: 1; filter: blur(2px); transform: translateY(-50%) scale(1.5); }
+                    .shutter-crack .lock-casing {
+                        box-shadow: inset 0 0 50px ${finalStatusColor};
+                        border-color: #fff;
                     }
 
                     /* OPEN STATE - Pintu & Gembok Geser Bersama */
@@ -3784,14 +3839,13 @@ async function processAttendance(karyawanId) {
                     /* OPEN STATE ANIMATION (Heavy Slide) */
                     .shutter-open .shutter-panel {
                         transition: transform 2.5s cubic-bezier(0.2, 0.6, 0.3, 1); /* Heavy Industrial Slide */
+                        opacity: 1 !important; /* Force opacity agar tidak memudar */
                     }
                     .shutter-open .shutter-left { 
                         transform: translateX(-105%); /* Slide fully off-screen left */
-                        box-shadow: none;
                     }
                     .shutter-open .shutter-right { 
                         transform: translateX(105%); /* Slide fully off-screen right */
-                        box-shadow: none;
                     }
 
                     /* ENERGY FLASH ON OPEN */
@@ -3874,9 +3928,14 @@ async function processAttendance(karyawanId) {
                     <div class="shutter-panel shutter-left">
                         <div class="mech-bolt bolt-top"></div>
                         <div class="mech-bolt bolt-bottom"></div>
-                        <!-- Split Lock Left -->
+                        <!-- God Tier Lock Left -->
                         <div class="lock-half">
-                            <div class="gear-part"></div>
+                            <div class="lock-casing">
+                                <div class="vent-slots"></div>
+                            </div>
+                            <div class="mag-ring"></div>
+                            <div class="plasma-core"></div>
+                            <div class="lock-pin"></div>
                         </div>
                         <div class="shutter-data">PUSKESMAS</div>
                     </div>
@@ -3884,9 +3943,14 @@ async function processAttendance(karyawanId) {
                     <div class="shutter-panel shutter-right">
                         <div class="mech-bolt bolt-top"></div>
                         <div class="mech-bolt bolt-bottom"></div>
-                        <!-- Split Lock Right -->
+                        <!-- God Tier Lock Right -->
                         <div class="lock-half">
-                            <div class="gear-part"></div>
+                            <div class="lock-casing">
+                                <div class="vent-slots"></div>
+                            </div>
+                            <div class="mag-ring"></div>
+                            <div class="plasma-core"></div>
+                            <div class="lock-pin"></div>
                         </div>
                         <div class="shutter-data">WANA</div>
                     </div>
