@@ -197,6 +197,69 @@ const SoundFX = {
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
             osc.start(now);
             osc.stop(now + 0.03);
+        } else if (type === 'shutter_crack') {
+            // [NEW] Heavy Mechanical Latch Unlock (Suara Buka Kunci Berat)
+            const t = audioCtx.currentTime;
+            
+            // 1. Low Thud (Hentakan Besi)
+            const osc1 = audioCtx.createOscillator();
+            const g1 = audioCtx.createGain();
+            osc1.connect(g1); g1.connect(audioAnalyser);
+            osc1.type = 'square';
+            osc1.frequency.setValueAtTime(100, t);
+            osc1.frequency.exponentialRampToValueAtTime(20, t + 0.2);
+            g1.gain.setValueAtTime(0.8, t);
+            g1.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+            osc1.start(t); osc1.stop(t + 0.2);
+
+            // 2. Metallic Clank (Denting Logam)
+            const osc2 = audioCtx.createOscillator();
+            const g2 = audioCtx.createGain();
+            osc2.connect(g2); g2.connect(audioAnalyser);
+            osc2.type = 'sawtooth';
+            osc2.frequency.setValueAtTime(1200, t);
+            osc2.frequency.exponentialRampToValueAtTime(100, t + 0.15);
+            g2.gain.setValueAtTime(0.2, t);
+            g2.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+            osc2.start(t); osc2.stop(t + 0.15);
+
+        } else if (type === 'shutter_open') {
+            // [NEW] Hydraulic Hiss & Heavy Slide (Suara Pintu Geser Hidrolik)
+            const t = audioCtx.currentTime;
+            const duration = 3.5; // Diperpanjang untuk efek berat
+
+            // 1. White Noise (Steam/Hydraulics) - Procedural Noise Buffer
+            const bufferSize = audioCtx.sampleRate * duration;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.setValueAtTime(800, t);
+            noiseFilter.frequency.linearRampToValueAtTime(2000, t + 2.0); // Filter opens up slower
+            
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.6, t);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, t + duration);
+
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(audioAnalyser);
+            noise.start(t);
+
+            // 2. Low Rumble (Heavy Door Moving)
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.connect(g); g.connect(audioAnalyser);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(60, t);
+            osc.frequency.linearRampToValueAtTime(30, t + duration);
+            g.gain.setValueAtTime(0.4, t);
+            g.gain.linearRampToValueAtTime(0, t + duration);
+            osc.start(t); osc.stop(t + duration);
         }
     },
     speak: (text) => {
@@ -3455,193 +3518,225 @@ async function processAttendance(karyawanId) {
                     .shutter-layer {
                         position: absolute; inset: 0; z-index: 9999;
                         display: flex; pointer-events: none;
-                        perspective: 2000px; overflow: hidden;
+                        perspective: 1500px; overflow: hidden;
                     }
                     .shutter-panel {
                         flex: 1; 
                         background: 
-                            linear-gradient(to bottom, #020406, #091018),
-                            repeating-linear-gradient(45deg, transparent 0, transparent 2px, rgba(0, 255, 255, 0.03) 2px, rgba(0, 255, 255, 0.03) 4px);
+                            radial-gradient(circle at 30% 30%, rgba(255,255,255,0.05) 0%, transparent 20%), /* Specular highlight */
+                            repeating-linear-gradient(90deg, #1a1a1a 0, #1a1a1a 2px, #111 2px, #111 4px), /* Brushed Metal Texture */
+                            linear-gradient(to bottom, #2c3e50 0%, #000 100%); /* Base Gradient */
                         position: relative;
-                        transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1); /* Smooth Sliding Door */
-                        border: 1px solid ${finalStatusColor}33;
+                        transition: transform 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045); /* Mechanical Retract */
+                        border-top: 1px solid ${finalStatusColor}33;
+                        border-bottom: 1px solid ${finalStatusColor}33;
                         display: flex; flex-direction: column; justify-content: center;
-                        box-shadow: inset 0 0 100px #000;
+                        box-shadow: inset 0 0 150px #000;
                         overflow: hidden;
+                        will-change: transform;
                     }
                     .shutter-left { 
                         transform-origin: left center; 
-                        border-right: 4px solid ${finalStatusColor}; 
-                        clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+                        border-right: 4px solid #000; 
+                        box-shadow: inset -10px 0 20px rgba(0,0,0,0.8), 5px 0 15px rgba(0,0,0,0.5);
                         z-index: 2;
                     }
                     .shutter-right { 
                         transform-origin: right center; 
-                        border-left: 4px solid ${finalStatusColor}; 
-                        clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+                        border-left: 4px solid #000; 
+                        box-shadow: inset 10px 0 20px rgba(0,0,0,0.8), -5px 0 15px rgba(0,0,0,0.5);
                         z-index: 2;
                     }
                     
-                    /* Industrial Hazard Stripes */
-                    .hazard-strip {
-                        position: absolute; left: 0; right: 0; height: 15px;
-                        background: repeating-linear-gradient(
-                            -45deg, 
-                            #000, 
-                            #000 10px, 
-                            ${finalStatusColor}44 10px, 
-                            ${finalStatusColor}44 20px
-                        );
-                        z-index: 3;
+                    /* HYPER-MECHANICAL BOLTS (Kunci Pintu) */
+                    .mech-bolt {
+                        position: absolute; width: 120px; height: 40px;
+                        background: linear-gradient(to bottom, #333, #777, #333); /* Metallic Cylinder */
+                        border: 1px solid ${finalStatusColor}66;
+                        box-shadow: 0 0 5px #000, inset 0 1px 0 rgba(255,255,255,0.3);
+                        z-index: 20;
+                        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Springy retract */
+                        display: flex; align-items: center; justify-content: center;
                     }
-                    .hazard-top { top: 0; border-bottom: 1px solid ${finalStatusColor}; }
-                    .hazard-bottom { bottom: 0; border-top: 1px solid ${finalStatusColor}; }
+                    .mech-bolt::after {
+                        content: ''; width: 80%; height: 4px; background: ${finalStatusColor};
+                        box-shadow: 0 0 10px ${finalStatusColor}; border-radius: 2px;
+                    }
+                    
+                    .shutter-left .mech-bolt { right: -20px; border-radius: 4px 0 0 4px; border-right: none; }
+                    .shutter-right .mech-bolt { left: -20px; border-radius: 0 4px 4px 0; border-left: none; }
+                    
+                    .bolt-top { top: 30%; }
+                    .bolt-bottom { bottom: 30%; }
 
-                    .shutter-grid {
-                        position: absolute; inset: 0;
-                        background-image: 
-                            linear-gradient(${finalStatusColor}11 1px, transparent 1px),
-                            linear-gradient(90deg, ${finalStatusColor}11 1px, transparent 1px);
-                        background-size: 50px 50px;
-                        mask-image: radial-gradient(circle, black 40%, transparent 100%);
-                    }
+                    /* RETRACT ANIMATION FOR BOLTS */
+                    .shutter-crack .shutter-left .mech-bolt { transform: translateX(-110px); }
+                    .shutter-crack .shutter-right .mech-bolt { transform: translateX(110px); }
+
                     .shutter-data {
-                        position: absolute; top: 20%; width: 100%;
-                        font-family: 'Share Tech Mono', monospace; 
-                        font-size: 10px; color: ${finalStatusColor}; opacity: 0.4;
-                        text-align: center; line-height: 1.5;
-                        white-space: pre;
-                        text-shadow: 0 0 5px ${finalStatusColor};
+                        position: absolute; top: 50%; width: 100%; transform: translateY(-50%);
+                        font-family: 'Rajdhani', sans-serif; font-size: 65px; 
+                        font-weight: 900;
+                        text-align: center; pointer-events: none; user-select: none;
+                        white-space: nowrap; overflow: hidden;
+                        letter-spacing: 0.15em;
+                        /* Gold Inlay Effect (Kesan Barang Berharga) */
+                        background: linear-gradient(to bottom, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C);
+                        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                        filter: drop-shadow(0 2px 5px rgba(0,0,0,0.8)); opacity: 0.9;
                     }
 
-                    /* Complex Lock Mechanism */
+                    /* GOD-TIER LOCK MECHANISM */
                     .shutter-lock {
                         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                        width: 160px; height: 160px; 
-                        background: radial-gradient(circle at 30% 30%, #2a3b4c, #000);
-                        border: 2px solid ${finalStatusColor}; border-radius: 50%;
+                        width: 280px; height: 280px; 
                         display: flex; align-items: center; justify-content: center; z-index: 10000;
-                        box-shadow: 0 0 50px ${finalStatusColor}66, inset 0 0 20px #000;
-                        transition: all 0.5s ease-in;
+                        perspective: 1000px;
+                        transition: all 0.5s cubic-bezier(0.6, -0.28, 0.735, 0.045);
                     }
-                    .lock-core {
-                        width: 80px; height: 80px; background: #000; border-radius: 50%;
-                        border: 1px solid ${finalStatusColor};
-                        display: flex; align-items: center; justify-content: center;
-                        box-shadow: 0 0 15px ${finalStatusColor};
-                        position: relative; z-index: 2;
+                    
+                    /* KINETIC RINGS (Cincin Berputar) */
+                    .lock-ring {
+                        position: absolute; border-radius: 50%;
+                        box-shadow: 0 0 15px ${finalStatusColor}22;
                     }
-                    .lock-ring-1 {
-                        position: absolute; inset: -10px; border: 2px dashed ${finalStatusColor}; border-radius: 50%;
-                        animation: spin-slow 8s linear infinite; opacity: 0.6;
+                    .ring-1 { /* Outer Dashed */
+                        width: 100%; height: 100%;
+                        border: 2px dashed ${finalStatusColor}66;
+                        animation: spin-slow 20s linear infinite;
                     }
-                    .lock-ring-2 {
-                        position: absolute; inset: -25px; border: 4px solid transparent; 
-                        border-top: 4px solid ${finalStatusColor}; border-bottom: 4px solid ${finalStatusColor};
-                        border-radius: 50%;
+                    .ring-2 { /* Middle Tech */
+                        width: 82%; height: 82%;
+                        border: 1px solid ${finalStatusColor}44;
+                        border-top: 4px solid ${finalStatusColor};
+                        border-bottom: 4px solid ${finalStatusColor};
+                        animation: spin-reverse 8s linear infinite;
+                    }
+                    .ring-3 { /* Inner Fast */
+                        width: 65%; height: 65%;
+                        border: 2px solid transparent;
+                        border-left: 4px solid ${finalStatusColor};
+                        border-right: 4px solid ${finalStatusColor};
                         animation: spin-fast 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
                     }
-                    .lock-ring-3 {
-                        position: absolute; inset: -40px; border: 1px solid ${finalStatusColor}33; border-radius: 50%;
-                        background: conic-gradient(from 0deg, transparent 0%, ${finalStatusColor}22 20%, transparent 40%);
-                        animation: spin-slow 4s linear infinite reverse;
+                    .ring-4 { /* Particle Field */
+                        width: 120%; height: 120%; border: none; box-shadow: none;
+                        background: conic-gradient(from 0deg, transparent 0%, ${finalStatusColor}11 5%, transparent 10%);
+                        mask-image: radial-gradient(transparent 60%, black 70%);
+                        animation: spin-slow 10s linear infinite reverse;
+                    }
+
+                    /* CORE (Inti Gembok) */
+                    .lock-core {
+                        width: 130px; height: 130px; background: radial-gradient(circle at 30% 30%, #2a2a2a, #000);
+                        border: 2px solid ${finalStatusColor};
+                        border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center;
+                        box-shadow: 0 0 60px ${finalStatusColor}66, inset 0 0 40px #000;
+                        position: relative; z-index: 2;
+                        overflow: hidden;
+                    }
+                    .core-glare {
+                        position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+                        background: linear-gradient(45deg, transparent 45%, rgba(255,255,255,0.1) 50%, transparent 55%);
+                        animation: glare-pass 3s infinite;
+                    }
+                    .lock-scan-line {
+                        position: absolute; width: 100%; height: 2px; background: ${finalStatusColor};
+                        box-shadow: 0 0 10px ${finalStatusColor};
+                        animation: scan-lock 2s ease-in-out infinite; opacity: 0.8;
                     }
                     
-                    .lock-icon { font-size: 30px; color: ${finalStatusColor}; animation: pulse-lock 0.5s infinite alternate; }
+                    /* UNLOCK ANIMATION */
+                    .shutter-crack .shutter-lock {
+                        transform: translate(-50%, -50%) scale(1.8) rotate(90deg);
+                        opacity: 0; filter: blur(30px);
+                    }
+                    .shutter-crack .lock-core {
+                        background: ${finalStatusColor};
+                        box-shadow: 0 0 150px ${finalStatusColor}, inset 0 0 50px #fff;
+                    }
+                    .shutter-crack .lock-icon-svg { 
+                        stroke: #000; fill: #000; transform: scale(0.8); 
+                    }
+                    
+                    .lock-icon-svg { 
+                        width: 60px; height: 60px; 
+                        fill: none; stroke: ${finalStatusColor}; stroke-width: 2;
+                        stroke-linecap: round; stroke-linejoin: round;
+                        filter: drop-shadow(0 0 10px ${finalStatusColor});
+                        transition: all 0.3s;
+                    }
+
                     @keyframes spin-fast { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
                     @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                    @keyframes pulse-lock { 0% { opacity: 0.6; text-shadow: 0 0 0 ${finalStatusColor}; } 100% { opacity: 1; text-shadow: 0 0 20px ${finalStatusColor}; } }
+                    @keyframes spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+                    @keyframes glare-pass { 0% { transform: translate(-20%, -20%) rotate(45deg); } 100% { transform: translate(20%, 20%) rotate(45deg); } }
+                    @keyframes scan-lock { 0%, 100% { top: 10%; opacity: 0; } 50% { top: 90%; opacity: 1; } }
                     
-                    /* STEAM EFFECT (Uap Keluar dari Celah) */
-                    .steam-layer {
-                        position: absolute; inset: 0; pointer-events: none; z-index: 9998;
-                        display: flex; justify-content: center; align-items: center;
-                        opacity: 0; transition: opacity 0.2s;
-                    }
-                    .shutter-crack .steam-layer { opacity: 1; }
-                    .shutter-open .steam-layer { opacity: 0; }
-                    .steam-puff {
-                        position: absolute; width: 80px; height: 80px;
-                        background: radial-gradient(circle, ${finalStatusColor} 0%, transparent 60%);
-                        border-radius: 50%; filter: blur(15px); opacity: 0;
-                    }
-                    .shutter-crack .steam-puff { animation: steam-jet 0.8s ease-out infinite; }
-                    @keyframes steam-jet { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 15% { opacity: 0.6; } 100% { transform: translateY(-150px) scale(2); opacity: 0; } }
-
-                    /* TEASE STATE (Sedikit Terbuka) */
+                    /* TEASE STATE (Sedikit Terbuka - Mengintip) */
                     .shutter-crack .shutter-left { transform: translateX(-40px); }
                     .shutter-crack .shutter-right { transform: translateX(40px); }
-                    .shutter-crack .shutter-lock { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 100px ${finalStatusColor}; }
 
-                    /* OPEN STATE ANIMATION */
+                    /* OPEN STATE ANIMATION (Heavy Slide) */
+                    .shutter-open .shutter-panel {
+                        transition: transform 2.5s cubic-bezier(0.2, 0.6, 0.3, 1); /* Heavy Industrial Slide */
+                    }
                     .shutter-open .shutter-left { 
-                        transform: translateX(-100%);
+                        transform: translateX(-105%); /* Slide fully off-screen left */
+                        box-shadow: none;
                     }
                     .shutter-open .shutter-right { 
-                        transform: translateX(100%);
-                    }
-                    .shutter-open .shutter-lock { 
-                        transform: translate(-50%, -50%) scale(3); 
-                        opacity: 0; filter: blur(20px);
+                        transform: translateX(105%); /* Slide fully off-screen right */
+                        box-shadow: none;
                     }
 
-                    /* DOOR STATUS INDICATOR LIGHTS */
-                    .shutter-indicator {
-                        position: absolute; top: 50%; transform: translateY(-50%);
-                        width: 8px; height: 60px;
-                        background: #FF0055; /* Merah (Locked) */
-                        box-shadow: 0 0 15px #FF0055;
-                        z-index: 20; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    /* ENERGY FLASH ON OPEN */
+                    .energy-flash {
+                        position: absolute; top: 0; left: 50%; width: 2px; height: 100%;
+                        background: #fff;
+                        box-shadow: 0 0 50px #fff, 0 0 100px ${finalStatusColor};
+                        z-index: 999; opacity: 0;
+                        transform: translateX(-50%);
                     }
-                    .shutter-left .shutter-indicator { right: 0; border-radius: 3px 0 0 3px; }
-                    .shutter-right .shutter-indicator { left: 0; border-radius: 0 3px 3px 0; }
-                    
-                    .shutter-open .shutter-indicator {
-                        background: #00FF7F; /* Hijau (Unlocked/Open) */
-                        box-shadow: 0 0 30px #00FF7F, 0 0 10px #FFFFFF;
+                    .shutter-crack .energy-flash {
+                        animation: flash-burst 0.3s ease-out forwards 0.3s;
+                    }
+                    @keyframes flash-burst {
+                        0% { opacity: 0; width: 2px; }
+                        50% { opacity: 1; width: 100px; }
+                        100% { opacity: 0; width: 200vw; }
                     }
                 </style>
 
                 <!-- 3D SHUTTER CURTAIN (Overlay on top) -->
                 <div id="cyber-shutter" class="shutter-layer">
-                    <div class="steam-layer">
-                        <div class="steam-puff" style="animation-delay: 0s; top: 50%;"></div>
-                        <div class="steam-puff" style="animation-delay: 0.1s; top: 55%;"></div>
-                        <div class="steam-puff" style="animation-delay: 0.2s; top: 45%;"></div>
-                        <div class="steam-puff" style="animation-delay: 0.3s; top: 60%;"></div>
-                        <div class="steam-puff" style="animation-delay: 0.4s; top: 40%;"></div>
-                    </div>
+                    <div class="energy-flash"></div>
                     
                     <div class="shutter-panel shutter-left">
-                        <div class="hazard-strip hazard-top"></div>
-                        <div class="shutter-grid"></div>
-                        <div class="shutter-data">
-                            SYSTEM_LOCKED<br>
-                            ENCRYPTION: AES-256<br>
-                            STATUS: SECURE
-                        </div>
-                        <div class="hazard-strip hazard-bottom"></div>
-                        <div class="shutter-indicator"></div>
+                        <div class="mech-bolt bolt-top"></div>
+                        <div class="mech-bolt bolt-bottom"></div>
+                        <div class="shutter-data">PUSKESMAS</div>
                     </div>
                     
                     <div class="shutter-panel shutter-right">
-                        <div class="hazard-strip hazard-top"></div>
-                        <div class="shutter-grid"></div>
-                        <div class="shutter-data">
-                            ACCESS_REQ<br>
-                            VERIFYING_BIO<br>
-                            WAITING...
-                        </div>
-                        <div class="hazard-strip hazard-bottom"></div>
-                        <div class="shutter-indicator"></div>
+                        <div class="mech-bolt bolt-top"></div>
+                        <div class="mech-bolt bolt-bottom"></div>
+                        <div class="shutter-data">WANA</div>
                     </div>
                     
                     <div class="shutter-lock">
-                        <div class="lock-ring-3"></div>
-                        <div class="lock-ring-2"></div>
-                        <div class="lock-ring-1"></div>
+                        <div class="lock-ring ring-4"></div>
+                        <div class="lock-ring ring-1"></div>
+                        <div class="lock-ring ring-2"></div>
+                        <div class="lock-ring ring-3"></div>
                         <div class="lock-core">
-                            <div class="lock-icon">🔒</div>
+                            <div class="core-glare"></div>
+                            <div class="lock-scan-line"></div>
+                            <svg class="lock-icon-svg" viewBox="0 0 24 24">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
                         </div>
                     </div>
                 </div>
@@ -3740,9 +3835,13 @@ async function processAttendance(karyawanId) {
                 if(shutter) {
                     // Fase 1: Membuka sedikit (Bikin Penasaran)
                     shutter.classList.add('shutter-crack');
+                    SoundFX.play('shutter_crack'); // [NEW] Trigger Suara Kunci
                     
                     // Fase 2: Membuka Cepat (Surprise!)
-                    setTimeout(() => shutter.classList.add('shutter-open'), 1200);
+                    setTimeout(() => {
+                        shutter.classList.add('shutter-open');
+                        SoundFX.play('shutter_open'); // [NEW] Trigger Suara Geser
+                    }, 1200);
                 }
             }, 200);
 
