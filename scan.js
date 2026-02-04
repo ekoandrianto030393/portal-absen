@@ -3130,7 +3130,6 @@ async function processAttendance(karyawanId) {
                         finalMessageHTML = `Absensi PULANG Terkonfirmasi.<br><span style="color:#00FF7F; text-shadow: 0 0 10px #00FF7F;">Terima kasih, Hati-hati di jalan.</span>`;
                         finalStatusColor = '#00FF7F'; // Hijau Spring (Sama seperti Check-In)
                         finalBackground = ABSEN_NORMAL_BG;
-                        triggerFireworks(); // [NEW] Trigger Fireworks
                     }
                     updatePersonnelRoster(); // Refresh Roster Visual
                     break;
