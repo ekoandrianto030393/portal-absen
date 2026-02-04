@@ -1554,6 +1554,49 @@ function animateHash(elementId, length = 64) {
     }, 50);
 }
 
+// [NEW] HELPER: TOAST NOTIFICATION
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    
+    let bgColor = 'bg-slate-800/80';
+    let borderColor = 'border-cyan-500';
+    let textColor = 'text-cyan-300';
+    let icon = '<i class="fa-solid fa-circle-info"></i>';
+
+    if (type === 'success') {
+        borderColor = 'border-green-500';
+        textColor = 'text-green-300';
+        icon = '<i class="fa-solid fa-circle-check"></i>';
+    } else if (type === 'error') {
+        borderColor = 'border-red-500';
+        textColor = 'text-red-300';
+        icon = '<i class="fa-solid fa-circle-xmark"></i>';
+    } else if (type === 'warning') {
+        borderColor = 'border-amber-500';
+        textColor = 'text-amber-300';
+        icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+    }
+
+    toast.className = `flex items-center gap-4 p-4 rounded-lg shadow-2xl border ${bgColor} border-l-4 ${borderColor} transform transition-all duration-300 translate-x-full opacity-0 min-w-[350px] backdrop-blur-md`;
+    toast.innerHTML = `
+        <div class="text-xl ${textColor}">${icon}</div>
+        <div class="flex-1">
+            <p class="font-bold text-white">${message}</p>
+            <p class="text-xs text-slate-400 font-mono">${new Date().toLocaleTimeString('id-ID')}</p>
+        </div>
+    `;
+
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0'));
+    setTimeout(() => {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
 // --- HELPER: BOOT SEQUENCE ---
 async function runBootSequence() {
     const bootScreen = document.getElementById('boot-screen');
@@ -3050,6 +3093,7 @@ async function processAttendance(karyawanId) {
         if (result.success) {
             // AUDIO & VISUAL SUCCESS
             SoundFX.play('success');
+            showToast(cleanMessage, 'success'); // [NEW] Toast Notification
             
             // [NEW] Sapaan Waktu Otomatis
             const hour = new Date().getHours();
@@ -3102,7 +3146,7 @@ async function processAttendance(karyawanId) {
                     // [UPDATE] Logika Tepat Waktu vs Terlambat
                     if (result.telat_menit > 0) {
                         finalStatusText = `TERLAMBAT`;
-                        finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br><span style="color:#FFD700; font-weight:900; font-size: 2.5rem; line-height: 1.2; display:block; margin-top:10px; text-shadow: 0 0 15px #FFD700, 0 0 30px #FFD700;">+ ${result.telat_menit} MENIT</span>`;
+                        finalMessageHTML = `Absensi masuk tetap dicatat.<br><span style="color:#FFD700; font-weight:900; font-size: 2.5rem; line-height: 1.2; display:block; margin-top:10px; text-shadow: 0 0 15px #FFD700, 0 0 30px #FFD700;">+ ${result.telat_menit} MENIT</span>`;
                         finalStatusColor = '#FFD700'; // Kuning Emas
                         finalBackground = `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
                     } else {
@@ -3172,6 +3216,7 @@ async function processAttendance(karyawanId) {
         } else {
             // Gagal atau Peringatan
             let isWarning = statusColor === 'yellow';
+            showToast(cleanMessage, isWarning ? 'warning' : 'error'); // [NEW] Toast Notification
 
             // --- UPDATE: Penanganan Overlay Spesifik Berdasarkan Kode Server ---
             switch (result.result_code) {
@@ -4012,8 +4057,11 @@ async function processAttendance(karyawanId) {
                                     <span>UPTD Puskesmas Wana</span>
                                 </div>
                             </div>
-                            <div class="stamp-status">
-                                ${!result.success ? 'AKSES DITOLAK' : (result.telat_menit > 0 ? `TERLAMBAT<div style='font-size: 1rem; letter-spacing: 4px; margin-top: 5px;'>+${result.telat_menit} MENIT</div>` : 'AKSES DITERIMA')}
+                             <div class="stamp-status">
+                                ${finalStatusText}
+                            </div>
+                            <div class="text-base text-white mt-3 mb-4 text-center" style="line-height: 1.4; min-height: 50px;">
+                                ${finalMessageHTML}
                             </div>
                             <div class="stamp-details">
                                 <div><span>Nama Pegawai</span><span>${display_name}</span></div>
