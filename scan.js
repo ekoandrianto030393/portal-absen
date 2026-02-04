@@ -269,9 +269,9 @@ const SoundFX = {
             // Cancel previous speech
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0; // Sedikit lebih lambat untuk kejelasan
-            utterance.pitch = 1.1; // [UPDATE] Pitch lebih tinggi untuk suara perempuan
-            utterance.volume = 0.9;
+            utterance.rate = 0.95; // Sedikit lebih lambat agar terdengar tenang dan ramah
+            utterance.pitch = 1.2; // Pitch lebih tinggi agar terdengar lebih ceria
+            utterance.volume = 1.0;
             
             // [UPDATE] Cari suara Bahasa Indonesia (id-ID)
             const voices = window.speechSynthesis.getVoices();
@@ -362,7 +362,7 @@ if (stealthToggle) {
     });
 }
 
-let FACE_MATCHING_THRESHOLD = 0.47; // [UPDATE] Diperketat ke 0.40 untuk Akurasi Tinggi (Anti-Acak)
+let FACE_MATCHING_THRESHOLD = 0.45; // [UPDATE] Diperketat ke 0.40 untuk Akurasi Tinggi (Anti-Acak)
 // --- DEFINISI WARNA (Futuristik) ---
 const PROFESSIONAL_STATUS_COLOR = '#00FF7F'; 
 const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
@@ -3110,7 +3110,15 @@ async function processAttendance(karyawanId) {
                 "Mari berikan pelayanan terbaik.",
                 "Jangan lupa senyum, sapa, salam, sopan, dan santun.",
                 "Kerja ikhlas adalah ibadah.",
-                "Semangat mengabdi untuk negeri."
+                "Semangat mengabdi untuk negeri.",
+                "Setiap langkah kecil menuju pelayanan yang lebih baik adalah sebuah kemenangan.",
+                "Dedikasi Anda hari ini adalah harapan bagi esok hari.",
+                "Terima kasih atas kontribusi Anda dalam menjaga kesehatan bersama.",
+                "Kebaikan yang Anda tebar akan kembali dalam bentuk yang tak terduga.",
+                "Profesionalisme adalah kunci kepercayaan masyarakat.",
+                "Satu pasien sehat, satu kebahagiaan untuk kita semua.",
+                "Energi positif Anda menular, sebarkan selalu.",
+                "Hari ini adalah kesempatan baru untuk membuat perbedaan."
             ];
             const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
             
@@ -3702,10 +3710,10 @@ async function processAttendance(karyawanId) {
                     
                     /* HYPER-MECHANICAL BOLTS (Kunci Pintu) */
                     .mech-bolt {
-                        position: absolute; width: 120px; height: 40px;
-                        background: linear-gradient(to bottom, #333, #777, #333); /* Metallic Cylinder */
-                        border: 1px solid ${finalStatusColor}66;
-                        box-shadow: 0 0 5px #000, inset 0 1px 0 rgba(255,255,255,0.3);
+                        position: absolute; width: 140px; height: 60px; /* Lebih Tebal */
+                        background: linear-gradient(to bottom, #1a1a1a, #555 40%, #999 50%, #555 60%, #1a1a1a); /* Metallic Cylinder High Contrast */
+                        border: 2px solid #000;
+                        box-shadow: 0 10px 20px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.4);
                         z-index: 20;
                         transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Springy retract */
                         display: flex; align-items: center; justify-content: center;
@@ -3752,25 +3760,27 @@ async function processAttendance(karyawanId) {
 
                     /* GOD-TIER LOCK MECHANISM (Mekanisme Kunci Tingkat Dewa) */
                     .lock-half {
-                        position: absolute; top: 50%; width: 180px; height: 360px;
+                        position: absolute; top: 50%; width: 200px; height: 380px; /* Sedikit lebih besar */
                         transform: translateY(-50%); z-index: 15;
                         pointer-events: none;
                         display: flex; align-items: center;
-                        filter: drop-shadow(0 0 20px rgba(0,0,0,0.9));
+                        filter: drop-shadow(0 0 40px rgba(0,0,0,1)); /* Shadow lebih pekat */
                     }
 
-                    .shutter-left .lock-half { right: -90px; justify-content: flex-end; }
-                    .shutter-right .lock-half { left: -90px; justify-content: flex-start; }
+                    .shutter-left .lock-half { right: -100px; justify-content: flex-end; }
+                    .shutter-right .lock-half { left: -100px; justify-content: flex-start; }
 
                     .lock-casing {
                         width: 100%; height: 100%;
                         background: 
-                            linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%),
-                            repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.02) 10px, rgba(255,255,255,0.02) 20px);
+                            linear-gradient(180deg, #050505 0%, #2a2a2a 50%, #050505 100%),
+                            repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.03) 10px, rgba(255,255,255,0.03) 20px);
                         position: relative;
                         overflow: hidden;
-                        border: 1px solid rgba(255,255,255,0.1);
-                        box-shadow: inset 0 0 30px #000;
+                        border: 3px solid #333; /* Border tebal */
+                        border-top-color: #555; border-left-color: #555; /* Bevel lighting */
+                        border-bottom-color: #111; border-right-color: #111;
+                        box-shadow: inset 0 0 60px #000, 0 0 30px rgba(0,0,0,0.8); /* Deep shadow */
                     }
 
                     .shutter-left .lock-casing {
@@ -3814,15 +3824,29 @@ async function processAttendance(karyawanId) {
 
                     /* Locking Pins */
                     .lock-pin {
-                        position: absolute; width: 40px; height: 10px;
-                        background: #fff;
-                        box-shadow: 0 0 10px ${finalStatusColor};
+                        position: absolute; width: 60px; height: 20px; /* Lebih besar */
+                        background: linear-gradient(to bottom, #fff, #ccc, #fff); /* Metallic */
+                        box-shadow: 0 0 15px ${finalStatusColor}, 0 0 5px #000;
                         top: 50%; transform: translateY(-50%);
                         z-index: 20;
                         transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
                     }
                     .shutter-left .lock-pin { right: -5px; border-radius: 4px 0 0 4px; }
                     .shutter-right .lock-pin { left: -5px; border-radius: 0 4px 4px 0; }
+
+                    /* INDICATOR LIGHT (Lampu Status) */
+                    .lock-indicator {
+                        position: absolute; top: 50%; width: 16px; height: 16px;
+                        background: #ff0000; /* Locked: RED */
+                        border-radius: 50%;
+                        box-shadow: 0 0 10px #ff0000, inset 0 0 5px #000;
+                        z-index: 25;
+                        transform: translateY(-50%);
+                        border: 1px solid #333;
+                        transition: all 0.2s ease;
+                    }
+                    .shutter-left .lock-indicator { right: 35px; }
+                    .shutter-right .lock-indicator { left: 35px; }
 
                     /* Tech Details */
                     .vent-slots {
@@ -3860,6 +3884,11 @@ async function processAttendance(karyawanId) {
                     .shutter-crack .holo-seal {
                         transform: translate(-50%, -50%) scale(2);
                         opacity: 0; filter: blur(20px); /* Segel hologram pecah */
+                    }
+                    /* INDICATOR TURNS GREEN ON UNLOCK */
+                    .shutter-crack .lock-indicator {
+                        background: #00ff00; /* Unlocked: GREEN */
+                        box-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00;
                     }
                     .shutter-crack .lock-pin { width: 0; opacity: 0; }
                     .shutter-crack .mag-ring { border-color: #fff; box-shadow: 0 0 80px #fff; animation-duration: 0.5s; }
@@ -3976,6 +4005,7 @@ async function processAttendance(karyawanId) {
                         <div class="lock-half">
                             <div class="lock-casing">
                                 <div class="vent-slots"></div>
+                                <div class="lock-indicator"></div>
                             </div>
                             <div class="mag-ring"></div>
                             <div class="plasma-core"></div>
@@ -3991,6 +4021,7 @@ async function processAttendance(karyawanId) {
                         <div class="lock-half">
                             <div class="lock-casing">
                                 <div class="vent-slots"></div>
+                                <div class="lock-indicator"></div>
                             </div>
                             <div class="mag-ring"></div>
                             <div class="plasma-core"></div>
