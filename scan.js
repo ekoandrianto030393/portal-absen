@@ -3837,7 +3837,7 @@ async function processAttendance(karyawanId) {
 
                     /* OPEN STATE ANIMATION (Heavy Slide) */
                     .shutter-open .shutter-panel {
-                        transition: transform 2.5s cubic-bezier(0.2, 0.6, 0.3, 1); /* Heavy Industrial Slide */
+                        transition: transform 3.5s cubic-bezier(0.65, 0, 0.35, 1); /* Slower, heavier slide */
                         opacity: 1 !important; /* Force opacity agar tidak memudar */
                     }
                     .shutter-open .shutter-left { 
