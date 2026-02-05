@@ -3118,7 +3118,22 @@ async function processAttendance(karyawanId) {
                 "Profesionalisme adalah kunci kepercayaan masyarakat.",
                 "Satu pasien sehat, satu kebahagiaan untuk kita semua.",
                 "Energi positif Anda menular, sebarkan selalu.",
-                "Hari ini adalah kesempatan baru untuk membuat perbedaan."
+                "Hari ini adalah kesempatan baru untuk membuat perbedaan.",
+                "Kesehatan adalah investasi terbaik, mari kita jaga bersama.",
+                "Senyum Anda adalah obat bagi pasien.",
+                "Bekerjalah dengan hati, hasilnya akan sampai ke hati.",
+                "Setiap tantangan adalah peluang untuk belajar dan tumbuh.",
+                "Keikhlasan dalam bekerja akan membawa keberkahan.",
+                "Jadilah alasan seseorang tersenyum hari ini.",
+                "Pelayanan prima dimulai dari diri kita sendiri.",
+                "Bersama kita bisa mewujudkan masyarakat yang lebih sehat.",
+                "Jangan lelah berbuat baik.",
+                "Kesabaran adalah kunci dalam melayani.",
+                "Hari ini luar biasa, mari buat menjadi lebih bermakna.",
+                "Anda adalah pahlawan kesehatan bagi mereka yang membutuhkan.",
+                "Tetaplah bersinar dan memberikan yang terbaik.",
+                "Semangat pagi! Mari awali hari dengan doa dan senyuman.",
+                "Kerja keras tidak akan mengkhianati hasil."
             ];
             const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
             
@@ -3128,7 +3143,7 @@ async function processAttendance(karyawanId) {
             } else {
                 // [MODIFIKASI] Pesan Khusus untuk ID H87
                 if (karyawanId === 'H87') {
-                    SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet. Selamat ${timeGreeting}. ${randomQuote}`);
+                    SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet.`);
                 } else {
                     SoundFX.speak(`Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
                 }
@@ -3735,25 +3750,29 @@ async function processAttendance(karyawanId) {
 
                     .shutter-data {
                         position: absolute; top: 50%; width: 100%; transform: translateY(-50%);
-                        font-family: 'Rajdhani', sans-serif; font-size: 80px; 
+                        font-family: 'Rajdhani', sans-serif; font-size: 90px; /* Lebih Besar */
                         font-weight: 900;
                         text-align: center; pointer-events: none; user-select: none;
-                        white-space: nowrap; overflow: hidden;
-                        letter-spacing: 0.15em;
+                        white-space: nowrap; overflow: visible;
+                        letter-spacing: 0.1em;
                         /* Realistic 3D Gold Emboss Effect with Shine Sweep */
                         background: 
-                            linear-gradient(120deg, transparent 0%, transparent 35%, rgba(255, 255, 255, 0.9) 50%, transparent 65%, transparent 100%),
-                            linear-gradient(180deg, #FFFFE0 0%, #BF953F 30%, #B38728 50%, #FBF5B7 80%, #AA771C 100%);
+                            linear-gradient(120deg, transparent 0%, transparent 35%, rgba(255, 255, 255, 1) 50%, transparent 65%, transparent 100%),
+                            linear-gradient(180deg, #FFFFF0 0%, #FFD700 30%, #B8860B 50%, #F0E68C 80%, #8B4500 100%); /* Emas Lebih Pekat */
                         background-size: 200% 100%, 100% 100%;
                         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-                        animation: text-shine 1.5s ease-in-out infinite;
+                        animation: text-shine 2s ease-in-out infinite;
+                        /* Efek 3D Tebal & Menonjol */
                         filter: 
-                            drop-shadow(0 1px 0 #3e2b0e)
-                            drop-shadow(0 2px 0 #3e2b0e)
-                            drop-shadow(0 3px 0 #3e2b0e)
-                            drop-shadow(0 4px 0 #3e2b0e)
+                            drop-shadow(0 1px 0 #5c4015)
+                            drop-shadow(0 2px 0 #5c4015)
+                            drop-shadow(0 3px 0 #5c4015)
+                            drop-shadow(0 4px 0 #5c4015)
                             drop-shadow(0 5px 0 #3e2b0e)
-                            drop-shadow(0 10px 20px rgba(0,0,0,0.8));
+                            drop-shadow(0 6px 0 #3e2b0e)
+                            drop-shadow(0 7px 0 #3e2b0e)
+                            drop-shadow(0 8px 0 #261c09)
+                            drop-shadow(0 20px 40px rgba(0,0,0,1));
                         opacity: 1;
                         z-index: 20;
                     }
