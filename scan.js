@@ -32,6 +32,9 @@ const personnelRoster = document.getElementById('personnelRoster');
 const matchThresholdBar = document.getElementById('matchThresholdBar');
 const attendanceLog = document.getElementById('attendanceLog');
 const diagnosticList = document.getElementById('diagnosticList');
+const dlRoster = document.getElementById('dlRoster'); // [NEW]
+const dlPanel = document.getElementById('dl-panel');   // [NEW]
+let lastQuoteIndex = -1; // [NEW] Variabel global untuk mencegah pengulangan motivasi
 
 // CORNER CARD ELEMENTS
 const cornerProfileCard = document.getElementById('corner-profile-card');
@@ -270,12 +273,17 @@ const SoundFX = {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 0.95; // Sedikit lebih lambat agar terdengar tenang dan ramah
-            utterance.pitch = 1.2; // Pitch lebih tinggi agar terdengar lebih ceria
+            utterance.pitch = 1.1; // [UPDATE] Pitch disesuaikan agar lebih natural (tidak terlalu cempreng)
             utterance.volume = 1.0;
             
-            // [UPDATE] Cari suara Bahasa Indonesia (id-ID)
+            // [UPDATE] Cari suara Bahasa Indonesia (id-ID) dengan prioritas Perempuan Natural
             const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.lang === 'id-ID' && (v.name.includes('Google') || v.name.includes('Female'))) || voices.find(v => v.lang === 'id-ID');
+            const preferredVoice = voices.find(v => v.lang === 'id-ID' && v.name.includes('Google')) || 
+                                   voices.find(v => v.lang === 'id-ID' && v.name.includes('Gadis')) ||
+                                   voices.find(v => v.lang === 'id-ID' && v.name.includes('Damayanti')) ||
+                                   voices.find(v => v.lang === 'id-ID' && (v.name.includes('Female') || v.name.includes('Wanita'))) ||
+                                   voices.find(v => v.lang === 'id-ID');
+
             if (preferredVoice) utterance.voice = preferredVoice;
             // Beri jeda sedikit agar suara "bip" selesai
             setTimeout(() => {
@@ -2137,36 +2145,92 @@ function animateTitle() {
 // --- NEW: PERSONNEL ROSTER ---
 let rosterScrollInterval = null;
 
+// [NEW] Fungsi Auto Scroll Panel Kehadiran
+function startRosterAutoScroll() {
+    if (!personnelRoster) return;
+    
+    // Reset interval jika sudah ada agar tidak tumpang tindih
+    if (rosterScrollInterval) clearInterval(rosterScrollInterval);
+
+    const speed = 1; // Kecepatan scroll (pixel per tick)
+    const delay = 50; // Interval waktu (ms) - Semakin kecil semakin halus
+
+    rosterScrollInterval = setInterval(() => {
+        // 1. Pause otomatis jika mouse sedang berada di atas panel (Hover)
+        if (personnelRoster.matches(':hover')) return;
+
+        // 2. Cek apakah konten lebih panjang dari container (perlu di-scroll)
+        if (personnelRoster.scrollHeight > personnelRoster.clientHeight) {
+            personnelRoster.scrollTop += speed; // Gerakkan ke bawah
+
+            // 3. Jika sudah mentok paling bawah, kembali ke atas (Looping)
+            if (Math.ceil(personnelRoster.scrollTop + personnelRoster.clientHeight) >= personnelRoster.scrollHeight) {
+                personnelRoster.scrollTop = 0;
+            }
+        }
+    }, delay);
+}
+
 async function updatePersonnelRoster() {
     if (!personnelRoster) return;
     
+    // [FIX] Simpan posisi scroll sebelum update agar tidak reset ke atas
+    const previousScroll = personnelRoster.scrollTop;
+
     try {
         // Ambil data absensi hari ini dari server
         const data = await api.getTodayAttendance();
         
         personnelRoster.innerHTML = '';
         personnelRoster.style.overflow = 'auto';
+
+        // [NEW] Reset DL Roster
+        if (dlRoster) dlRoster.innerHTML = '';
         
         if (!data || data.length === 0) {
             personnelRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Belum ada data kehadiran hari ini.</div>';
+            if (dlPanel) dlPanel.classList.add('hidden');
             return;
         }
 
-        const contentWrapper = document.createElement('div');
-        contentWrapper.style.width = '100%';
+        const regularWrapper = document.createElement('div');
+        regularWrapper.className = 'w-full flex flex-col gap-1';
+        
+        const dlWrapper = document.createElement('div');
+        dlWrapper.className = 'w-full flex flex-col gap-1';
+
+        let hasDL = false;
 
         data.forEach(row => {
             // Ambil foto dari cache employeeMap jika ada, atau gunakan placeholder
             const empData = employeeMap[row.id_karyawan] || {};
             const photoSrc = empData.foto ? `data:image/jpeg;base64,${empData.foto}` : 'logo.jpg';
             
-            // Tentukan status (Masuk/Pulang)
+            // Tentukan status (Masuk/Pulang/DL)
+            const statusRaw = row.status ? row.status.toUpperCase().trim() : '';
+            const isDL = ['DL', 'DINAS_LUAR', 'DINAS LUAR'].includes(statusRaw);
             const isOut = !!row.jam_keluar;
-            const timeDisplay = isOut ? `OUT: ${row.jam_keluar.substring(0,5)}` : `IN: ${row.jam_masuk.substring(0,5)}`;
-            const statusColor = isOut ? 'bg-amber-500 shadow-[0_0_5px_#F59E0B]' : 'bg-green-500 shadow-[0_0_5px_#00FF00]';
-            const statusText = isOut ? 'SUDAH PULANG' : 'HADIR';
-            const borderColor = isOut ? 'border-amber-500/50' : 'border-green-500/50';
-            const bgHover = isOut ? 'hover:bg-amber-900/20' : 'hover:bg-green-900/20';
+            
+            let timeDisplay, statusColor, statusText, borderColor, bgHover, statusLabelHtml;
+
+            if (isDL) {
+                timeDisplay = 'DINAS LUAR';
+                statusColor = 'bg-blue-500 shadow-[0_0_5px_#3B82F6]';
+                statusText = 'DINAS LUAR';
+                borderColor = 'border-blue-500/50';
+                bgHover = 'hover:bg-blue-900/20';
+                statusLabelHtml = '<span class="text-[9px] text-blue-400 font-bold">DL</span>';
+            } else {
+                timeDisplay = isOut ? `OUT: ${row.jam_keluar ? row.jam_keluar.substring(0,5) : '--:--'}` : `IN: ${row.jam_masuk ? row.jam_masuk.substring(0,5) : '--:--'}`;
+                statusColor = isOut ? 'bg-amber-500 shadow-[0_0_5px_#F59E0B]' : 'bg-green-500 shadow-[0_0_5px_#00FF00]';
+                statusText = isOut ? 'SUDAH PULANG' : 'HADIR';
+                borderColor = isOut ? 'border-amber-500/50' : 'border-green-500/50';
+                bgHover = isOut ? 'hover:bg-amber-900/20' : 'hover:bg-green-900/20';
+                statusLabelHtml = isOut ? '<span class="text-[9px] text-amber-500 font-bold">PULANG</span>' : '<span class="text-[9px] text-green-500 font-bold">AKTIF</span>';
+            }
+
+            // [NEW] Icon Koper untuk DL
+            const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-blue-400 ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
 
             const item = document.createElement('div');
             item.className = `flex items-center gap-3 p-2.5 border-b border-cyan-900/30 ${bgHover} transition-colors duration-200 animate-[fadeIn_0.5s_ease-out]`;
@@ -2177,18 +2241,43 @@ async function updatePersonnelRoster() {
                     <div class="absolute -bottom-1 -right-1 w-3 h-3 ${statusColor} rounded-full border border-black animate-pulse" title="${statusText}"></div>
                 </div>
                 <div class="flex-grow min-w-0">
-                    <p class="font-bold text-xs text-white truncate leading-tight">${row.nama}</p>
+                    <div class="flex items-center">
+                        <p class="font-bold text-xs text-white truncate leading-tight">${row.nama}</p>
+                        ${dlIcon}
+                    </div>
                     <p class="text-[10px] text-cyan-300 truncate opacity-80">${row.jabatan || '-'}</p>
                     <div class="flex justify-between items-center mt-1">
                         <p class="text-[10px] text-gray-400 font-mono bg-black/30 px-1 rounded">${timeDisplay}</p>
-                        ${isOut ? '<span class="text-[9px] text-amber-500 font-bold">PULANG</span>' : '<span class="text-[9px] text-green-500 font-bold">AKTIF</span>'}
+                        ${statusLabelHtml}
                     </div>
                 </div>
             `;
-            contentWrapper.appendChild(item);
+            
+            // [NEW] Pisahkan ke panel DL jika statusnya DL
+            if (isDL && dlRoster) {
+                dlWrapper.appendChild(item);
+                hasDL = true;
+            } else {
+                regularWrapper.appendChild(item);
+            }
         });
         
-        personnelRoster.appendChild(contentWrapper);
+        personnelRoster.appendChild(regularWrapper);
+
+        // [FIX] Restore posisi scroll setelah konten diperbarui
+        if (previousScroll > 0) personnelRoster.scrollTop = previousScroll;
+
+        // [NEW] Update Panel DL
+        if (dlRoster && dlPanel) {
+            dlRoster.appendChild(dlWrapper);
+            if (hasDL) {
+                dlPanel.classList.remove('hidden');
+                dlPanel.style.display = 'flex'; // [FIX] Paksa tampil dengan inline style
+            } else {
+                dlPanel.classList.add('hidden');
+                dlPanel.style.display = 'none'; // [FIX] Paksa sembunyi dengan inline style
+            }
+        }
 
     } catch (e) {
         console.error("Roster update failed", e);
@@ -2847,8 +2936,8 @@ async function detectFace() {
             
             // [NEW] Revert Ambulance Status
             const ambStatus = document.getElementById('amb-status');
-            if (ambStatus && ambStatus.textContent !== 'EMERGENCY UNIT') {
-                ambStatus.textContent = 'EMERGENCY UNIT';
+            if (ambStatus && ambStatus.textContent !== '') {
+                ambStatus.textContent = '';
                 ambStatus.style.color = '#FF3333';
                 ambStatus.style.textShadow = '0 0 10px #FF0000';
             }
@@ -2952,8 +3041,8 @@ async function detectFace() {
         
         // [NEW] Revert Ambulance Status (No Face)
         const ambStatus = document.getElementById('amb-status');
-        if (ambStatus && ambStatus.textContent !== 'EMERGENCY UNIT') {
-            ambStatus.textContent = 'EMERGENCY UNIT';
+        if (ambStatus && ambStatus.textContent !== '') {
+            ambStatus.textContent = '';
             ambStatus.style.color = '#FF3333';
             ambStatus.style.textShadow = '0 0 10px #FF0000';
         }
@@ -3133,19 +3222,70 @@ async function processAttendance(karyawanId) {
                 "Anda adalah pahlawan kesehatan bagi mereka yang membutuhkan.",
                 "Tetaplah bersinar dan memberikan yang terbaik.",
                 "Semangat pagi! Mari awali hari dengan doa dan senyuman.",
-                "Kerja keras tidak akan mengkhianati hasil."
+                "Kerja keras tidak akan mengkhianati hasil.",
+                "Kesehatan masyarakat adalah prioritas utama kita.",
+                "Lelahmu hari ini akan menjadi berkah di masa depan.",
+                "Setiap senyumanmu meringankan beban pasien.",
+                "Bekerja dengan hati, melayani dengan empati.",
+                "Jadilah inspirasi bagi rekan kerja dan pasien.",
+                "Ketulusan adalah bahasa yang dimengerti oleh semua orang.",
+                "Hari ini adalah lembaran baru untuk menulis cerita kebaikan.",
+                "Tangan yang melayani lebih mulia dari bibir yang berdoa.",
+                "Kesehatan adalah harta yang paling berharga.",
+                "Mari ciptakan lingkungan kerja yang positif dan harmonis.",
+                "Setiap tindakan kecilmu berdampak besar bagi orang lain.",
+                "Teruslah belajar dan tingkatkan kompetensi diri.",
+                "Kebahagiaan sejati ditemukan dalam memberi.",
+                "Jaga semangat, jaga integritas.",
+                "Bersyukur atas kesempatan untuk melayani sesama.",
+                "Kesembuhan pasien adalah kebahagiaan kita.",
+                "Mari bekerja sama untuk Puskesmas yang lebih baik.",
+                "Disiplin adalah jembatan antara tujuan dan pencapaian.",
+                "Waktu adalah aset berharga, gunakan sebaik mungkin.",
+                "Tetap tenang dan hadapi setiap tantangan dengan bijak.",
+                "Kesehatan adalah anugerah, melayani adalah amanah.",
+                "Setiap detik pelayananmu sangat berarti bagi mereka.",
+                "Jadikan pekerjaanmu sebagai ladang pahala.",
+                "Senyum tulusmu adalah awal kesembuhan pasien.",
+                "Bekerja cerdas, bekerja tuntas, bekerja ikhlas.",
+                "Kualitas pelayanan cermin kualitas diri.",
+                "Bersama kita wujudkan masyarakat sehat dan sejahtera.",
+                "Ketelitian dan kesabaran adalah kunci keselamatan pasien.",
+                "Hari ini adalah kesempatan untuk menjadi lebih baik dari kemarin.",
+                "Tebarkan kebaikan melalui pelayanan kesehatan yang prima.",
+                "Semangatmu adalah energi bagi kesembuhan pasien.",
+                "Melayani dengan hati, menyentuh dengan kasih.",
+                "Jaga integritas, junjung tinggi profesionalitas.",
+                "Kesehatan pasien adalah prioritas, kepuasan mereka adalah kebanggaan.",
+                "Setiap tetes keringatmu dalam melayani bernilai ibadah.",
+                "Jadilah pelita yang menerangi harapan pasien.",
+                "Kerjasama tim yang solid menghasilkan pelayanan yang hebat.",
+                "Jangan pernah lelah untuk peduli dan berbagi.",
+                "Kepercayaan pasien adalah amanah yang harus dijaga.",
+                "Awali hari dengan niat baik, akhiri dengan rasa syukur."
             ];
-            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            
+            // [UPDATE] Randomizer Pintar: Pastikan tidak ada pengulangan kata yang sama berturut-turut
+            let quoteIndex;
+            do {
+                quoteIndex = Math.floor(Math.random() * quotes.length);
+            } while (quoteIndex === lastQuoteIndex && quotes.length > 1);
+            lastQuoteIndex = quoteIndex;
+            const randomQuote = quotes[quoteIndex];
             
             // [UPDATE] Logika Pesan Suara Berbeda untuk Masuk vs Pulang
             if (result.result_code === 'CHECK_OUT_SUCCESS') {
-                SoundFX.speak(`Sampai Jumpa ${display_name}. Hati-hati di jalan.`);
+                SoundFX.speak(`Sampai Jumpa ${display_name}. Terima kasih atas dedikasimu hari ini. Hati-hati di jalan.`);
             } else {
                 // [MODIFIKASI] Pesan Khusus untuk ID H87
                 if (karyawanId === 'H87') {
                     SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet.`);
+                } else if (result.telat_menit > 0) {
+                    // [NEW] Sapaan Khusus Terlambat
+                    SoundFX.speak(`Halo ${display_name}. Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
                 } else {
-                    SoundFX.speak(`Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
+                    // [UPDATE] Greeting lebih ramah dengan sapaan "Halo"
+                    SoundFX.speak(`Halo, Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
                 }
             }
             
@@ -3413,60 +3553,98 @@ async function processAttendance(karyawanId) {
                 <div class="id-card-container" style="transform-style: preserve-3d; animation: idCardEntry 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.2s; opacity:0;">
                     <div class="id-card-glare"></div>
                     <div class="id-card-bg-layers">
-                        <div class="id-card-bg-layer" style="background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(circuitSvg)}'); opacity: 0.5;"></div>
-                        <div class="id-card-bg-layer" style="background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(hexGridSvg)}'); animation: hex-pan 20s linear infinite;"></div>
+                        <!-- Elegant Dark Texture -->
+                        <div class="id-card-bg-layer" style="background-color: #0a0a0a; background-image: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #050505 100%); opacity: 1;"></div>
+                        <div class="id-card-bg-layer" style="background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(hexGridSvg)}'); animation: hex-pan 60s linear infinite; opacity: 0.05;"></div>
                     </div>
-                    <div class="id-card-content">
-                        <div class="absolute top-28 right-6 w-12 h-9 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-md border border-yellow-300/50 shadow-md z-20 overflow-hidden opacity-90">
-                            <div class="absolute top-1/2 left-0 w-full h-[1px] bg-black/20"></div>
-                            <div class="absolute left-1/3 top-0 w-[1px] h-full bg-black/20"></div>
-                            <div class="absolute left-2/3 top-0 w-[1px] h-full bg-black/20"></div>
-                            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 border border-black/10 rounded-sm"></div>
+                    <div class="id-card-content" style="border: 1px solid rgba(255, 215, 0, 0.2); box-shadow: 0 20px 60px rgba(0,0,0,0.8);">
+                        
+                        <!-- Luxury Gold Chip -->
+                        <div class="absolute top-32 right-6 w-12 h-9 bg-gradient-to-br from-[#B8860B] via-[#FFD700] to-[#B8860B] rounded-md border border-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.3)] z-20 overflow-hidden">
+                            <div class="absolute top-1/2 left-0 w-full h-[1px] bg-black/30"></div>
+                            <div class="absolute left-1/3 top-0 w-[1px] h-full bg-black/30"></div>
+                            <div class="absolute left-2/3 top-0 w-[1px] h-full bg-black/30"></div>
+                            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 border border-black/20 rounded-sm"></div>
                         </div>
-                        <div class="relative h-24 bg-gradient-to-r from-blue-900 to-indigo-900 flex items-center px-6 overflow-hidden">
-                            <div class="absolute inset-0 opacity-20" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjIiIGZpbGw9IiNmZmZmZmYiLz48L3N2Zz4=');"></div>
-                            <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/30 mr-4 shadow-lg backdrop-blur-sm overflow-hidden">
-                                <img src="logo.jpg" class="w-full h-full object-cover">
+
+                        <!-- Header: Elegant Black & Gold -->
+                        <div class="relative h-28 flex items-center px-6 overflow-hidden border-b border-[#FFD700]/20" style="background: linear-gradient(90deg, #000 0%, #111 100%);">
+                            <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 50%); background-size: 8px 8px;"></div>
+                            
+                            <div class="w-14 h-14 rounded-full flex items-center justify-center border border-[#FFD700]/40 mr-5 shadow-[0_0_20px_rgba(255,215,0,0.15)] bg-black relative z-10">
+                                <img src="logo.jpg" class="w-full h-full object-cover rounded-full opacity-90">
                             </div>
                             <div class="z-10">
-                                <h2 class="text-xl font-black text-white tracking-widest uppercase leading-none drop-shadow-md">PUSKESMAS WANA</h2>
-                                <p class="text-xs text-white tracking-[0.2em] mt-1 uppercase font-bold drop-shadow-md">Kartu Identitas Pegawai</p>
+                                <h2 class="text-2xl font-serif text-white tracking-widest uppercase leading-none drop-shadow-md" style="font-family: 'Times New Roman', serif;">PUSKESMAS WANA</h2>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <div class="h-[1px] w-8 bg-[#FFD700]"></div>
+                                    <p class="text-[10px] text-[#FFD700] tracking-[0.3em] uppercase font-bold">KARTU IDENTITAS PEGAWAI</p>
+                                </div>
                             </div>
-                            <div class="absolute bottom-0 left-0 w-full h-1 bg-yellow-500"></div>
                         </div>
-                        <div class="p-6 flex gap-5 items-start bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48ZyBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0wIDQwaDQwVjBIMHY0MHptMjAgMjBoMjBWMjBIMHYyMHpNNDAgNDBWMjBIMHYyMGg0MHoiIGZpbGw9IiMzMzMiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvZz48L3N2Zz4=')]">
-                            <div class="relative w-28 h-36 flex-shrink-0">
-                                <div class="w-full h-full rounded-lg overflow-hidden border-2 border-white/20 shadow-xl bg-slate-800">
-                                    <img src="${employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : ''}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+
+                        <!-- Body -->
+                        <div class="p-6 flex gap-6 items-start relative">
+                            <!-- Photo Frame -->
+                            <div class="relative w-32 h-40 flex-shrink-0">
+                                <div class="w-full h-full p-[2px] bg-gradient-to-b from-[#FFD700] to-[#B8860B] rounded-lg shadow-2xl relative">
+                                    <div class="w-full h-full rounded-md overflow-hidden bg-black relative">
+                                        <img src="${employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : ''}" class="w-full h-full object-cover filter contrast-110" onerror="this.style.display='none'">
+                                        <!-- Hologram Overlay on Photo -->
+                                        <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-[#FFD700]/10 to-transparent opacity-40"></div>
+                                    </div>
                                 </div>
-                                <div class="absolute -bottom-3 -right-3 w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-200 border-2 border-white shadow-lg flex items-center justify-center opacity-90">
-                                    <span class="text-[6px] font-bold text-yellow-900 text-center leading-tight">RESMI<br>VALID</span>
+                                <div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-black border border-[#FFD700] px-3 py-0.5 rounded-full shadow-lg z-20">
+                                    <span class="text-[8px] font-bold text-[#FFD700] tracking-widest">VERIFIED</span>
                                 </div>
                             </div>
-                            <div class="flex-1 flex flex-col justify-between h-36 py-1">
+
+                            <!-- Info -->
+                            <div class="flex-1 flex flex-col justify-between h-40 py-1">
                                 <div>
-                                    <p class="text-xs text-white uppercase tracking-widest font-black drop-shadow-md mb-1" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Nama Lengkap</p>
-                                    <h1 class="text-2xl font-black text-white leading-none mb-2 drop-shadow-md tracking-tight" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${display_name}</h1>
-                                    <p class="text-xs text-white uppercase tracking-widest font-black drop-shadow-md mb-1" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Jabatan</p>
-                                    <p class="text-lg font-bold text-emerald-300 mb-3 drop-shadow-md tracking-wide" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">${display_jabatan}</p>
+                                    <p class="text-[9px] text-gray-400 uppercase tracking-widest mb-1 font-serif">Nama Personel</p>
+                                    <h1 class="text-2xl font-bold text-white leading-tight mb-3 tracking-wide font-serif" style="text-shadow: 0 0 10px rgba(255,255,255,0.2);">${display_name}</h1>
+                                    
+                                    <p class="text-[9px] text-gray-400 uppercase tracking-widest mb-1 font-serif">Jabatan</p>
+                                    <p class="text-sm font-bold text-[#FFD700] tracking-wider border-l-2 border-[#FFD700] pl-3">${display_jabatan}</p>
                                 </div>
-                                <div class="flex justify-between items-end border-t border-white/10 pt-2">
+                                
+                                <div class="mt-auto pt-3 border-t border-white/10 flex justify-between items-end">
                                     <div>
-                                        <p class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">ID Pegawai</p>
-                                        <p class="text-sm font-mono text-slate-200 tracking-wide">${karyawanId}</p>
+                                        <p class="text-[8px] text-gray-500 uppercase tracking-wider">ID Number</p>
+                                        <p class="text-lg font-mono text-white tracking-widest">${karyawanId}</p>
                                     </div>
-                                    <div class="flex flex-col items-end gap-1 opacity-90">
-                                        <div class="bg-white px-2 py-1 rounded-sm relative overflow-hidden">
-                                            <p class="text-black leading-none select-none" style="font-family: 'Libre Barcode 128', cursive; font-size: 34px; transform: scaleY(1.2);">${karyawanId}</p>
-                                            <div class="absolute top-0 left-0 w-[1px] h-full bg-red-500/80 shadow-[0_0_4px_rgba(255,0,0,0.8)]" style="animation: barcodeScan 2s linear infinite;"></div>
+                                    <!-- Realistic Barcode -->
+                                    <div class="flex flex-col items-end opacity-90">
+                                        <div class="bg-white px-2 py-1 rounded-sm flex flex-col items-center relative overflow-hidden">
+                                            <div class="h-8 w-24" style="background: linear-gradient(90deg, 
+                                                #000 2%, transparent 2%, transparent 4%, #000 4%, #000 5%, transparent 5%, transparent 6%, #000 6%, #000 9%, transparent 9%, transparent 10%, 
+                                                #000 10%, #000 12%, transparent 12%, transparent 14%, #000 14%, #000 18%, transparent 18%, transparent 19%, #000 19%, #000 20%, transparent 20%, transparent 22%, 
+                                                #000 22%, #000 24%, transparent 24%, transparent 26%, #000 26%, #000 29%, transparent 29%, transparent 30%, #000 30%, #000 32%, transparent 32%, transparent 36%, 
+                                                #000 36%, #000 38%, transparent 38%, transparent 40%, #000 40%, #000 42%, transparent 42%, transparent 44%, #000 44%, #000 48%, transparent 48%, transparent 50%, 
+                                                #000 50%, #000 52%, transparent 52%, transparent 54%, #000 54%, #000 58%, transparent 58%, transparent 60%, #000 60%, #000 64%, transparent 64%, transparent 66%, 
+                                                #000 66%, #000 68%, transparent 68%, transparent 70%, #000 70%, #000 74%, transparent 74%, transparent 76%, #000 76%, #000 78%, transparent 78%, transparent 80%, 
+                                                #000 80%, #000 82%, transparent 82%, transparent 84%, #000 84%, #000 86%, transparent 86%, transparent 88%, #000 88%, #000 92%, transparent 92%, transparent 94%, 
+                                                #000 94%, #000 96%, transparent 96%, transparent 98%, #000 98%);"></div>
+                                            
+                                            <!-- Hologram Overlay -->
+                                            <div class="absolute inset-0" style="background: linear-gradient(115deg, transparent 30%, rgba(0,255,255,0.3) 40%, rgba(255,0,255,0.3) 50%, rgba(255,255,0,0.3) 60%, transparent 70%); background-size: 200% 100%; animation: holo-bar 3s linear infinite; mix-blend-mode: multiply;"></div>
+                                            
+                                            <p class="text-[6px] font-mono text-black tracking-[0.2em] leading-none mt-0.5 relative z-10">${karyawanId}</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="h-3 bg-slate-900 border-t border-white/10 flex items-center justify-between px-4">
-                            <span class="text-[6px] text-slate-500 tracking-widest">LAYANAN KESEHATAN PEMERINTAH // ID RESMI</span>
-                            <span class="text-[6px] text-slate-500 tracking-widest">DOKUMEN AMAN</span>
+
+                        <!-- Footer -->
+                        <div class="h-6 bg-[#050505] border-t border-[#FFD700]/20 flex items-center justify-between px-6">
+                            <span class="text-[8px] text-[#FFD700] tracking-[0.2em] opacity-70">SECURE BIOMETRIC ID</span>
+                            <div class="flex gap-1">
+                                <div class="w-1 h-1 rounded-full bg-[#FFD700]"></div>
+                                <div class="w-1 h-1 rounded-full bg-[#FFD700] opacity-50"></div>
+                                <div class="w-1 h-1 rounded-full bg-[#FFD700] opacity-25"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3564,16 +3742,23 @@ async function processAttendance(karyawanId) {
                     .academic-stamp {
                         position: relative;
                         width: 450px;
-                        padding: 20px;
-                        border: 1px solid ${finalStatusColor}80;
-                        font-family: 'Georgia', serif;
+                        padding: 30px;
+                        /* Glassmorphism Elegant */
+                        background: rgba(20, 20, 20, 0.6);
+                        backdrop-filter: blur(20px);
+                        -webkit-backdrop-filter: blur(20px);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        border-top: 1px solid rgba(255, 255, 255, 0.2);
+                        border-left: 1px solid rgba(255, 255, 255, 0.2);
+                        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+                        border-radius: 4px;
+                        
+                        font-family: 'Times New Roman', serif;
                         color: #FFF;
-                        box-shadow: 0 0 30px ${finalStatusColor}40, inset 0 0 10px ${finalStatusColor}20;
                         overflow: hidden;
                         transform: translateY(-600px) scale(2);
                         opacity: 0;
-                        animation: stampDescend 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards 1.2s;
-                        background: linear-gradient(145deg, rgba(10, 15, 25, 0.95), rgba(5, 8, 12, 0.98));
+                        animation: stampDescend 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards 1.2s;
                     }
                     .guilloche-bg {
                         position: absolute; inset: 0;
@@ -3592,14 +3777,14 @@ async function processAttendance(karyawanId) {
                     .stamp-content {
                         position: relative;
                         z-index: 3;
-                        border: 8px double ${finalStatusColor}CC;
+                        border: 4px double ${finalStatusColor}80;
                         padding: 15px;
                         text-align: center;
                     }
                     .stamp-header {
                         display: flex; align-items: center; justify-content: center;
                         gap: 15px; padding-bottom: 10px;
-                        border-bottom: 1px solid ${finalStatusColor}80;
+                        border-bottom: 1px solid ${finalStatusColor}40;
                     }
                     .emblem {
                         width: 60px; height: 60px; border-radius: 50%;
@@ -3616,16 +3801,16 @@ async function processAttendance(karyawanId) {
                     }
                     .stamp-details {
                         font-size: 12px; color: #DDD;
-                        border-top: 1px solid ${finalStatusColor}80;
-                        border-bottom: 1px solid ${finalStatusColor}80;
+                        border-top: 1px solid ${finalStatusColor}40;
+                        border-bottom: 1px solid ${finalStatusColor}40;
                         padding: 10px 0; margin-bottom: 15px;
                     }
                     .stamp-details > div { display: flex; justify-content: space-between; padding: 2px 5px; }
                     .stamp-details > div span:first-child { font-weight: bold; opacity: 0.8; }
                     .stamp-footer {
                         font-family: 'Courier New', monospace; font-size: 10px;
-                        background: #000; padding: 5px; border: 1px solid ${finalStatusColor}50;
-                        word-break: break-all; color: ${finalStatusColor};
+                        background: rgba(0,0,0,0.3); padding: 8px; border: 1px solid ${finalStatusColor}30;
+                        word-break: break-all; color: ${finalStatusColor}CC;
                     }
                     
                     /* --- ID CARD STYLES --- */
@@ -3635,13 +3820,10 @@ async function processAttendance(karyawanId) {
                         perspective: 1500px;
                     }
                     .id-card-content {
-                        background: linear-gradient(135deg, rgba(15, 25, 40, 0.9), rgba(5, 10, 20, 0.95));
-                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        background: #0a0a0a;
                         border-radius: 12px;
-                        box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-                        backdrop-filter: blur(15px);
                         transform-style: preserve-3d;
-                        font-family: 'Rajdhani', sans-serif;
+                        font-family: 'Arial', sans-serif;
                         overflow: hidden;
                     }
                     .id-card-bg-layers {
@@ -3698,13 +3880,16 @@ async function processAttendance(karyawanId) {
                     .shutter-panel {
                         flex: 1; 
                         background: 
-                            radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0%, transparent 40%),
-                            repeating-linear-gradient(90deg, #111 0, #111 2px, #0a0a0a 2px, #0a0a0a 4px), /* Darker Industrial Texture */
-                            linear-gradient(to bottom, #1a2530 0%, #000 100%); 
+                            /* LUXURY 3D MOTIF: Gold Dust + Hex Mesh + Deep Metal */
+                            radial-gradient(circle, rgba(255, 215, 0, 0.05) 1px, transparent 1px),
+                            repeating-linear-gradient(60deg, rgba(20, 20, 20, 0.5) 0, rgba(20, 20, 20, 0.5) 1px, transparent 1px, transparent 15px),
+                            repeating-linear-gradient(-60deg, rgba(20, 20, 20, 0.5) 0, rgba(20, 20, 20, 0.5) 1px, transparent 1px, transparent 15px),
+                            linear-gradient(to bottom, #1a1a1a 0%, #000 40%, #000 60%, #1a1a1a 100%);
+                        background-size: 20px 20px, 30px 52px, 30px 52px, 100% 100%;
                         position: relative;
-                        transition: transform 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045); /* Mechanical Retract */
-                        border-top: 1px solid ${finalStatusColor}33;
-                        border-bottom: 1px solid ${finalStatusColor}33;
+                        transition: transform 0.8s cubic-bezier(0.6, -0.28, 0.735, 0.045); /* Slower, heavier feel */
+                        border-top: 3px solid ${finalStatusColor};
+                        border-bottom: 3px solid ${finalStatusColor};
                         display: flex; flex-direction: column; justify-content: center;
                         box-shadow: inset 0 0 150px #000;
                         overflow: hidden;
@@ -3712,30 +3897,34 @@ async function processAttendance(karyawanId) {
                     }
                     .shutter-left { 
                         transform-origin: left center; 
-                        border-right: 2px solid #333; 
-                        box-shadow: inset -10px 0 20px rgba(0,0,0,0.8), 5px 0 15px rgba(0,0,0,0.5);
+                        border-right: 4px solid ${finalStatusColor};
+                        box-shadow: inset -20px 0 50px rgba(0,0,0,0.9), 10px 0 30px rgba(0,0,0,0.8);
                         z-index: 2;
                     }
                     .shutter-right { 
                         transform-origin: right center; 
-                        border-left: 2px solid #333; 
-                        box-shadow: inset 10px 0 20px rgba(0,0,0,0.8), -5px 0 15px rgba(0,0,0,0.5);
+                        border-left: 4px solid ${finalStatusColor};
+                        box-shadow: inset 20px 0 50px rgba(0,0,0,0.9), -10px 0 30px rgba(0,0,0,0.8);
                         z-index: 2;
                     }
                     
                     /* HYPER-MECHANICAL BOLTS (Kunci Pintu) */
                     .mech-bolt {
-                        position: absolute; width: 140px; height: 60px; /* Lebih Tebal */
-                        background: linear-gradient(to bottom, #1a1a1a, #555 40%, #999 50%, #555 60%, #1a1a1a); /* Metallic Cylinder High Contrast */
-                        border: 2px solid #000;
-                        box-shadow: 0 10px 20px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.4);
+                        position: absolute; width: 160px; height: 70px; /* Lebih Besar & Mewah */
+                        /* Gold Bullion 3D Gradient */
+                        background: linear-gradient(to bottom, #4a3c1b, #b8860b 30%, #ffd700 50%, #b8860b 70%, #4a3c1b);
+                        border: 1px solid #5c4d00;
+                        box-shadow: 
+                            0 10px 30px rgba(0,0,0,0.9), 
+                            inset 0 1px 0 rgba(255,255,255,0.6),
+                            0 0 20px ${finalStatusColor}4D; /* Status Glow */
                         z-index: 20;
                         transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Springy retract */
                         display: flex; align-items: center; justify-content: center;
                     }
                     .mech-bolt::after {
-                        content: ''; width: 80%; height: 4px; background: ${finalStatusColor};
-                        box-shadow: 0 0 10px ${finalStatusColor}; border-radius: 2px;
+                        content: ''; width: 80%; height: 2px; background: #5c4d00;
+                        box-shadow: 0 1px 0 rgba(255,255,255,0.4);
                     }
                     
                     .shutter-left .mech-bolt { right: -20px; border-radius: 4px 0 0 4px; border-right: none; }
@@ -3758,21 +3947,16 @@ async function processAttendance(karyawanId) {
                         /* Realistic 3D Gold Emboss Effect with Shine Sweep */
                         background: 
                             linear-gradient(120deg, transparent 0%, transparent 35%, rgba(255, 255, 255, 1) 50%, transparent 65%, transparent 100%),
-                            linear-gradient(180deg, #FFFFF0 0%, #FFD700 30%, #B8860B 50%, #F0E68C 80%, #8B4500 100%); /* Emas Lebih Pekat */
+                            linear-gradient(180deg, #B8860B 0%, #FFD700 30%, #FFFFF0 50%, #FFD700 70%, #B8860B 100%); /* Richer Gold */
                         background-size: 200% 100%, 100% 100%;
                         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
                         animation: text-shine 2s ease-in-out infinite;
                         /* Efek 3D Tebal & Menonjol */
                         filter: 
-                            drop-shadow(0 1px 0 #5c4015)
-                            drop-shadow(0 2px 0 #5c4015)
-                            drop-shadow(0 3px 0 #5c4015)
-                            drop-shadow(0 4px 0 #5c4015)
-                            drop-shadow(0 5px 0 #3e2b0e)
+                            drop-shadow(0 2px 0 #3e2b0e)
+                            drop-shadow(0 4px 0 #3e2b0e)
                             drop-shadow(0 6px 0 #3e2b0e)
-                            drop-shadow(0 7px 0 #3e2b0e)
-                            drop-shadow(0 8px 0 #261c09)
-                            drop-shadow(0 20px 40px rgba(0,0,0,1));
+                            drop-shadow(0 10px 20px rgba(0,0,0,0.8));
                         opacity: 1;
                         z-index: 20;
                     }
@@ -3792,25 +3976,24 @@ async function processAttendance(karyawanId) {
                     .lock-casing {
                         width: 100%; height: 100%;
                         background: 
-                            linear-gradient(180deg, #050505 0%, #2a2a2a 50%, #050505 100%),
-                            repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.03) 10px, rgba(255,255,255,0.03) 20px);
+                            /* Interlocking Mechanism Texture */
+                            repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.02) 5px, rgba(255,255,255,0.02) 10px),
+                            linear-gradient(180deg, #0a0a0a 0%, #252525 50%, #0a0a0a 100%);
                         position: relative;
                         overflow: hidden;
-                        border: 3px solid #333; /* Border tebal */
-                        border-top-color: #555; border-left-color: #555; /* Bevel lighting */
-                        border-bottom-color: #111; border-right-color: #111;
-                        box-shadow: inset 0 0 60px #000, 0 0 30px rgba(0,0,0,0.8); /* Deep shadow */
+                        border: 2px solid ${finalStatusColor};
+                        box-shadow: inset 0 0 60px #000, 0 0 40px rgba(0,0,0,0.9);
                     }
 
                     .shutter-left .lock-casing {
                         border-radius: 30px 0 0 30px;
-                        border-right: 2px solid ${finalStatusColor};
-                        clip-path: polygon(0 10%, 20% 0, 100% 0, 100% 100%, 20% 100%, 0 90%);
+                        /* Interlocking Shape (Female/Socket) */
+                        clip-path: polygon(0 10%, 20% 0, 100% 0, 100% 35%, 80% 50%, 100% 65%, 100% 100%, 20% 100%, 0 90%);
                     }
                     .shutter-right .lock-casing {
                         border-radius: 0 30px 30px 0;
-                        border-left: 2px solid ${finalStatusColor};
-                        clip-path: polygon(0 0, 80% 0, 100% 10%, 100% 90%, 80% 100%, 0 100%);
+                        /* Interlocking Shape (Male/Tooth) */
+                        clip-path: polygon(0 0, 80% 0, 100% 10%, 100% 90%, 80% 100%, 0 100%, 0 65%, 20% 50%, 0 35%);
                     }
 
                     /* Rotating Reactor Rings */
@@ -3961,6 +4144,10 @@ async function processAttendance(karyawanId) {
                         0% { background-position: -200% 0, 0 0; }
                         100% { background-position: 200% 0, 0 0; }
                     }
+                    @keyframes frame-shine {
+                        0% { transform: translateX(-100%) skewX(-20deg); }
+                        50%, 100% { transform: translateX(200%) skewX(-20deg); }
+                    }
 
                     /* ELECTRIC SPARKS (Percikan Listrik) */
                     .spark-gap {
@@ -4000,6 +4187,12 @@ async function processAttendance(karyawanId) {
                         0% { opacity: 0; height: 0; top: 50%; }
                         50% { opacity: 1; height: 80%; top: 10%; width: 4px; }
                         100% { opacity: 0; height: 100%; width: 1px; }
+                    }
+                    @keyframes holo-bar {
+                        0% { background-position: 150% 0; opacity: 0; }
+                        20% { opacity: 1; }
+                        80% { opacity: 1; }
+                        100% { background-position: -50% 0; opacity: 0; }
                     }
                 </style>
 
@@ -4632,31 +4825,10 @@ function injectAmbulanceDisplay() {
 
         wrapper.innerHTML = `
             <div style="position: relative;">
-                <img src="AMBULAN.jpeg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
+                <img src="pemandangan.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
                 
                 <!-- UNDERGLOW (Neon Bawah Mobil) -->
                 <div style="position: absolute; bottom: 2%; left: 10%; width: 80%; height: 20%; background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.6) 0%, transparent 70%); filter: blur(20px); opacity: 0.6; animation: underglow-pulse 3s infinite; z-index: 0;"></div>
-
-                <!-- ROAD REFLECTIONS (Pantulan Strobo) -->
-                <div style="position: absolute; bottom: 5%; left: 20%; width: 25%; height: 10%; background: radial-gradient(ellipse at center, rgba(0, 0, 255, 0.6) 0%, transparent 80%); filter: blur(15px); mix-blend-mode: screen; animation: strobe-blue 0.6s infinite; z-index: 1;"></div>
-                <div style="position: absolute; bottom: 5%; left: 37.5%; width: 25%; height: 10%; background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.6) 0%, transparent 80%); filter: blur(15px); mix-blend-mode: screen; animation: strobe-yellow 0.6s infinite; z-index: 1;"></div>
-                <div style="position: absolute; bottom: 5%; right: 20%; width: 25%; height: 10%; background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0.6) 0%, transparent 80%); filter: blur(15px); mix-blend-mode: screen; animation: strobe-red 0.6s infinite; z-index: 1;"></div>
-                <div style="position: absolute; bottom: 4%; left: 35%; width: 30%; height: 8%; background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, transparent 80%); filter: blur(10px); mix-blend-mode: screen; animation: grill-flash 0.15s infinite; z-index: 1;"></div>
-
-                <!-- SIREN LIGHTS (Strobo: Biru-Kuning-Merah Bergantian) -->
-                <div style="position: absolute; top: 14%; left: 28%; width: 14%; height: 14%; border-radius: 50%; filter: blur(15px); mix-blend-mode: screen; background: rgba(0, 0, 255, 0.9); box-shadow: 0 0 50px rgba(0, 0, 255, 1); animation: strobe-blue 0.6s infinite;"></div>
-                <div style="position: absolute; top: 12%; left: 43%; width: 14%; height: 14%; border-radius: 50%; filter: blur(15px); mix-blend-mode: screen; background: rgba(255, 215, 0, 0.9); box-shadow: 0 0 50px rgba(255, 215, 0, 1); animation: strobe-yellow 0.6s infinite;"></div>
-                <div style="position: absolute; top: 14%; right: 28%; width: 14%; height: 14%; border-radius: 50%; filter: blur(15px); mix-blend-mode: screen; background: rgba(255, 0, 0, 0.9); box-shadow: 0 0 50px rgba(255, 0, 0, 1); animation: strobe-red 0.6s infinite;"></div>
-
-                <!-- HEADLIGHTS (Wig-Wag Putih) -->
-                <div style="position: absolute; top: 52%; left: 12%; width: 18%; height: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,1) 20%, rgba(255,255,255,0) 70%); mix-blend-mode: screen; filter: blur(5px); opacity: 0; animation: headlight-wigwag-left 0.6s infinite;"></div>
-                <div style="position: absolute; top: 52%; right: 12%; width: 18%; height: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,1) 20%, rgba(255,255,255,0) 70%); mix-blend-mode: screen; filter: blur(5px); opacity: 0; animation: headlight-wigwag-right 0.6s infinite;"></div>
-
-                <!-- GRILL STROBES (Lampu Kompoi Depan) -->
-                <div style="position: absolute; top: 45%; left: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite;"></div>
-                <div style="position: absolute; top: 47%; right: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite 0.07s;"></div>
-                <div style="position: absolute; top: 47%; left: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite;"></div>
-                <div style="position: absolute; top: 47%; right: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite 0.07s;"></div>
 
                 <!-- HUD TELEMETRY (Data Teknis) -->
                 <div style="position: absolute; top: 5%; right: 5%; text-align: right; z-index: 10;">
@@ -4670,7 +4842,7 @@ function injectAmbulanceDisplay() {
 
                 <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, transparent 70%, rgba(0,0,0,0.8));"></div>
                 <div style="position: absolute; bottom: 8px; left: 0; width: 100%; text-align: center;">
-                    <span id="amb-status" style="color: #FF3333; font-family: 'Courier New'; font-size: 22px; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 10px #FF0000; animation: glitch-text 0.2s infinite;">EMERGENCY UNIT</span>
+                    <span id="amb-status" style="color: #FF3333; font-family: 'Courier New'; font-size: 22px; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 10px #FF0000; animation: glitch-text 0.2s infinite;"></span>
                     <style>
                         @keyframes glitch-text {
                             0% { transform: translate(0); text-shadow: 2px 2px 0px #00FFFF, -2px -2px 0px #FF0055; }
@@ -4678,33 +4850,6 @@ function injectAmbulanceDisplay() {
                             50% { transform: translate(2px, -2px); text-shadow: 2px -2px 0px #00FFFF, -2px 2px 0px #FF0055; }
                             75% { transform: translate(-2px, -2px); text-shadow: -2px -2px 0px #00FFFF, 2px 2px 0px #FF0055; }
                             100% { transform: translate(0); text-shadow: 2px 2px 0px #00FFFF, -2px -2px 0px #FF0055; }
-                        }
-                        @keyframes strobe-blue {
-                            0%, 30% { opacity: 1; transform: scale(1.1); }
-                            33%, 100% { opacity: 0.1; transform: scale(0.9); }
-                        }
-                        @keyframes strobe-yellow {
-                            0%, 30% { opacity: 0.1; transform: scale(0.9); }
-                            33%, 63% { opacity: 1; transform: scale(1.1); }
-                            66%, 100% { opacity: 0.1; transform: scale(0.9); }
-                        }
-                        @keyframes strobe-red {
-                            0%, 63% { opacity: 0.1; transform: scale(0.9); }
-                            66%, 96% { opacity: 1; transform: scale(1.1); }
-                            100% { opacity: 0.1; transform: scale(0.9); }
-                        }
-                        @keyframes headlight-wigwag-left {
-                            0%, 49% { opacity: 0; }
-                            50%, 60% { opacity: 1; transform: scale(1.1); }
-                            100% { opacity: 0; }
-                        }
-                        @keyframes headlight-wigwag-right {
-                            0%, 10% { opacity: 1; transform: scale(1.1); }
-                            40%, 100% { opacity: 0; }
-                        }
-                        @keyframes grill-flash {
-                            0%, 50% { opacity: 0; }
-                            51%, 100% { opacity: 1; transform: scale(1.2); }
                         }
                         @keyframes underglow-pulse {
                             0%, 100% { opacity: 0.4; transform: scaleX(0.9); }
@@ -4750,6 +4895,12 @@ document.addEventListener('DOMContentLoaded', () => {
     updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih
     initAudioVisualizer(); // Start Visualizer Loop
     injectAmbulanceDisplay(); // Inject Ambulance Image di atas Target Data
+
+    // [NEW] Auto-refresh roster setiap 10 detik agar status DL/Manual muncul otomatis tanpa reload
+    setInterval(updatePersonnelRoster, 10000);
+
+    // [NEW] Jalankan Auto Scroll untuk Panel Kehadiran
+    startRosterAutoScroll();
 
     // CSS ADJUSTMENT: Geser area scan (Video Container) sedikit ke atas
     if (videoContainer) {

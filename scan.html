@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerbang Biometrik Canggih - Operasi Antarbintang</title>
+    <title>Gerbang Biometrik - Operasi Antarbintang</title>
 
     <!-- RESOURCE HINTS FOR PRODUCTION -->
     <link rel="preconnect" href="https://cdn.babylonjs.com">
@@ -1291,31 +1291,10 @@
                     <!-- AMBULANCE DISPLAY (STATIC) -->
                     <div id="ambulance-unit-display" style="margin-top: 10px; margin-bottom: 15px; border: 1px solid #00FFFF; border-radius: 6px; overflow: hidden; box-shadow: 0 0 10px rgba(0, 255, 255, 0.2); position: relative; background: rgba(0, 20, 30, 0.6);">
                         <div style="position: relative;">
-                            <img src="AMBULAN.jpeg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
+                            <img src="pemandangan.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
                             
                             <!-- UNDERGLOW -->
                             <div style="position: absolute; bottom: 2%; left: 10%; width: 80%; height: 20%; background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.6) 0%, transparent 70%); filter: blur(20px); opacity: 0.6; animation: underglow-pulse 3s infinite; z-index: 0;"></div>
-
-                            <!-- ROAD REFLECTIONS -->
-                            <div style="position: absolute; bottom: 5%; left: 20%; width: 25%; height: 10%; background: radial-gradient(ellipse at center, rgba(0, 0, 255, 0.6) 0%, transparent 80%); filter: blur(15px); mix-blend-mode: screen; animation: strobe-blue 0.6s infinite; z-index: 1;"></div>
-                            <div style="position: absolute; bottom: 5%; left: 37.5%; width: 25%; height: 10%; background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.6) 0%, transparent 80%); filter: blur(15px); mix-blend-mode: screen; animation: strobe-yellow 0.6s infinite; z-index: 1;"></div>
-                            <div style="position: absolute; bottom: 5%; right: 20%; width: 25%; height: 10%; background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0.6) 0%, transparent 80%); filter: blur(15px); mix-blend-mode: screen; animation: strobe-red 0.6s infinite; z-index: 1;"></div>
-                            <div style="position: absolute; bottom: 4%; left: 35%; width: 30%; height: 8%; background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, transparent 80%); filter: blur(10px); mix-blend-mode: screen; animation: grill-flash 0.15s infinite; z-index: 1;"></div>
-
-                            <!-- SIREN LIGHTS -->
-                            <div style="position: absolute; top: 14%; left: 28%; width: 14%; height: 14%; border-radius: 50%; filter: blur(15px); mix-blend-mode: screen; background: rgba(0, 0, 255, 0.9); box-shadow: 0 0 50px rgba(0, 0, 255, 1); animation: strobe-blue 0.6s infinite;"></div>
-                            <div style="position: absolute; top: 12%; left: 43%; width: 14%; height: 14%; border-radius: 50%; filter: blur(15px); mix-blend-mode: screen; background: rgba(255, 215, 0, 0.9); box-shadow: 0 0 50px rgba(255, 215, 0, 1); animation: strobe-yellow 0.6s infinite;"></div>
-                            <div style="position: absolute; top: 14%; right: 28%; width: 14%; height: 14%; border-radius: 50%; filter: blur(15px); mix-blend-mode: screen; background: rgba(255, 0, 0, 0.9); box-shadow: 0 0 50px rgba(255, 0, 0, 1); animation: strobe-red 0.6s infinite;"></div>
-
-                            <!-- HEADLIGHTS -->
-                            <div style="position: absolute; top: 52%; left: 12%; width: 18%; height: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,1) 20%, rgba(255,255,255,0) 70%); mix-blend-mode: screen; filter: blur(5px); opacity: 0; animation: headlight-wigwag-left 0.6s infinite;"></div>
-                            <div style="position: absolute; top: 52%; right: 12%; width: 18%; height: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,1) 20%, rgba(255,255,255,0) 70%); mix-blend-mode: screen; filter: blur(5px); opacity: 0; animation: headlight-wigwag-right 0.6s infinite;"></div>
-
-                            <!-- GRILL STROBES -->
-                            <div style="position: absolute; top: 45%; left: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite;"></div>
-                            <div style="position: absolute; top: 47%; right: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite 0.07s;"></div>
-                            <div style="position: absolute; top: 47%; left: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite;"></div>
-                            <div style="position: absolute; top: 47%; right: 42%; width: 6%; height: 3%; background: rgba(255, 255, 255, 1); box-shadow: 0 0 20px rgba(255, 255, 255, 1); border-radius: 2px; animation: grill-flash 0.15s infinite 0.07s;"></div>
 
                             <!-- HUD TELEMETRY -->
                             <div style="position: absolute; top: 5%; right: 5%; text-align: right; z-index: 10;">
@@ -1329,15 +1308,9 @@
 
                             <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, transparent 70%, rgba(0,0,0,0.8));"></div>
                             <div style="position: absolute; bottom: 8px; left: 0; width: 100%; text-align: center;">
-                                <span id="amb-status" style="color: #FF3333; font-family: 'Courier New'; font-size: 22px; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 10px #FF0000; animation: glitch-text 0.2s infinite;">EMERGENCY UNIT</span>
+                                <span id="amb-status" style="color: #FF3333; font-family: 'Courier New'; font-size: 22px; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 10px #FF0000; animation: glitch-text 0.2s infinite;"></span>
                                 <style>
                                     @keyframes glitch-text { 0% { transform: translate(0); text-shadow: 2px 2px 0px #00FFFF, -2px -2px 0px #FF0055; } 25% { transform: translate(-2px, 2px); text-shadow: -2px 2px 0px #00FFFF, 2px -2px 0px #FF0055; } 50% { transform: translate(2px, -2px); text-shadow: 2px -2px 0px #00FFFF, -2px 2px 0px #FF0055; } 75% { transform: translate(-2px, -2px); text-shadow: -2px -2px 0px #00FFFF, 2px 2px 0px #FF0055; } 100% { transform: translate(0); text-shadow: 2px 2px 0px #00FFFF, -2px -2px 0px #FF0055; } }
-                                    @keyframes strobe-blue { 0%, 30% { opacity: 1; transform: scale(1.1); } 33%, 100% { opacity: 0.1; transform: scale(0.9); } }
-                                    @keyframes strobe-yellow { 0%, 30% { opacity: 0.1; transform: scale(0.9); } 33%, 63% { opacity: 1; transform: scale(1.1); } 66%, 100% { opacity: 0.1; transform: scale(0.9); } }
-                                    @keyframes strobe-red { 0%, 63% { opacity: 0.1; transform: scale(0.9); } 66%, 96% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.1; transform: scale(0.9); } }
-                                    @keyframes headlight-wigwag-left { 0%, 49% { opacity: 0; } 50%, 60% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; } }
-                                    @keyframes headlight-wigwag-right { 0%, 10% { opacity: 1; transform: scale(1.1); } 40%, 100% { opacity: 0; } }
-                                    @keyframes grill-flash { 0%, 50% { opacity: 0; } 51%, 100% { opacity: 1; transform: scale(1.2); } }
                                     @keyframes underglow-pulse { 0%, 100% { opacity: 0.4; transform: scaleX(0.9); } 50% { opacity: 0.8; transform: scaleX(1.05); } }
                                     @keyframes glass-shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
                                     @keyframes vehicle-scan-loop { 0% { top: -5%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 105%; opacity: 0; } }
@@ -1400,6 +1373,12 @@
                         </button>
                     </div>
                 </div>
+<!-- [NEW] PANEL KHUSUS DINAS LUAR (Hidden by default) -->
+<div id="dl-panel" class="widget-panel hidden border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+    <h2 class="widget-title" style="background: rgba(59, 130, 246, 0.8); color: white;">:: DINAS LUAR ::</h2>
+    <div id="dlRoster" class="max-h-60 overflow-y-auto pr-1 flex flex-col gap-1"></div>
+</div>
+
                 <div class="widget-panel">
                     <h2 class="widget-title">:: DATA TARGET ::</h2>
                     <div class="space-y-3 text-center">
