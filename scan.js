@@ -3870,8 +3870,217 @@ async function processAttendance(karyawanId) {
                         50% { opacity: 0.02; transform: rotate(-45deg) translate(2px, -2px); }
                         51% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
                     }
+                    @keyframes holo-bar {
+                        0% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
+                        100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); }
+                    }
+                    
+                    /* GOD-LEVEL ANIMATIONS */
+                    @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    @keyframes floatMath { 
+                        0% { transform: translateY(0) rotate(0deg); opacity: 0; } 
+                        20% { opacity: 0.4; }
+                        80% { opacity: 0.4; }
+                        100% { transform: translateY(-100px) rotate(20deg); opacity: 0; } 
+                    }
+                    @keyframes matrixFall { 0% { transform: translateY(0); } 100% { transform: translateY(120vh); } }
+                    .perspective-grid {
+                        position: absolute; width: 200%; height: 200%; left: -50%; top: -50%;
+                        background-image: 
+                            linear-gradient(${finalStatusColor}20 1px, transparent 1px),
+                            linear-gradient(90deg, ${finalStatusColor}20 1px, transparent 1px);
+                        background-size: 60px 60px;
+                        transform: perspective(500px) rotateX(60deg);
+                        animation: grid-move 20s linear infinite;
+                        opacity: 0.3;
+                    }
+                    @keyframes grid-move { 0% { transform: perspective(500px) rotateX(60deg) translateY(0); } 100% { transform: perspective(500px) rotateX(60deg) translateY(60px); } }
 
-                    /* --- 3D HYPER-TECH SHUTTER STYLES (GOD TIER) --- */
+                    /* NEW GOD-LEVEL STYLES */
+                    .data-stream-container {
+                        position: absolute; top: 0; bottom: 0; width: 180px;
+                        display: flex; flex-direction: column; justify-content: center;
+                        font-family: 'Share Tech Mono', monospace; font-size: 9px; 
+                        color: ${finalStatusColor}; opacity: 0.6; pointer-events: none;
+                        overflow: hidden;
+                        mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+                        z-index: 5;
+                    }
+                    .data-stream-left { left: 30px; text-align: left; border-right: 1px solid ${finalStatusColor}33; padding-right: 10px; }
+                    .data-stream-right { right: 30px; text-align: right; border-left: 1px solid ${finalStatusColor}33; padding-left: 10px; }
+                    .data-row { animation: dataScroll 30s linear infinite; white-space: nowrap; margin-bottom: 2px; }
+                    
+                    @keyframes dataScroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+                    
+                    .holo-projector {
+                        position: absolute; bottom: 0; left: 0; width: 100%; height: 150px;
+                        z-index: 5; opacity: 0.8; pointer-events: none;
+                    }
+                    
+                    .analysis-panel {
+                        position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+                        width: 600px; height: 60px;
+                        display: flex; justify-content: space-between; align-items: center;
+                        border-bottom: 1px solid ${finalStatusColor}44;
+                        color: ${finalStatusColor}; font-family: 'Rajdhani', sans-serif;
+                        z-index: 20;
+                        background: linear-gradient(90deg, transparent, ${finalStatusColor}11, transparent);
+                    }
+                    .stat-block { text-align: center; position: relative; }
+                    .stat-block::after { content:''; position:absolute; bottom:-5px; left:50%; transform:translateX(-50%); width:40%; height:2px; background:${finalStatusColor}; }
+                    .stat-val { font-size: 24px; font-weight: 900; text-shadow: 0 0 10px ${finalStatusColor}; }
+                    .stat-label { font-size: 10px; letter-spacing: 3px; opacity: 0.7; margin-top: 2px; }
+
+                    /* DNA HELIX STYLES */
+                    .dna-base {
+                        position: absolute; width: 100%; height: 2px;
+                        transform-style: preserve-3d;
+                        animation: dna-spin 4s linear infinite;
+                    }
+                    .dna-base .dot { position: absolute; width: 4px; height: 4px; border-radius: 50%; top: -1px; }
+                    .dna-base .dot.left { left: 0; }
+                    .dna-base .dot.right { right: 0; }
+                    .dna-base .line { position: absolute; left: 2px; right: 2px; height: 1px; opacity: 0.3; }
+                    @keyframes dna-spin {
+                        0% { transform: rotateY(0deg); opacity: 0.3; }
+                        50% { opacity: 1; }
+                        100% { transform: rotateY(360deg); opacity: 0.3; }
+                    }
+
+                    /* --- HIGH-TECH STAMP & CARD STYLES --- */
+                    .academic-stamp {
+                        position: relative;
+                        width: 450px;
+                        padding: 30px;
+                        /* Glassmorphism Elegant */
+                        background: rgba(20, 20, 20, 0.6);
+                        backdrop-filter: blur(20px);
+                        -webkit-backdrop-filter: blur(20px);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        border-top: 1px solid rgba(255, 255, 255, 0.2);
+                        border-left: 1px solid rgba(255, 255, 255, 0.2);
+                        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+                        border-radius: 4px;
+                        
+                        font-family: 'Times New Roman', serif;
+                        color: #FFF;
+                        overflow: hidden;
+                        transform: translateY(-600px) scale(2);
+                        opacity: 0;
+                        animation: stampDescend 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards 1.2s;
+                    }
+                    .guilloche-bg {
+                        position: absolute; inset: 0;
+                        background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(guillocheSvg)}');
+                        background-size: 100px 100px;
+                        z-index: 1;
+                    }
+                    .watermark-bg {
+                        position: absolute; inset: 0;
+                        background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(watermarkSvg)}');
+                        background-position: center;
+                        animation: watermark-glitch 8s infinite step-end;
+                        background-repeat: no-repeat;
+                        z-index: 2;
+                    }
+                    .stamp-content {
+                        position: relative;
+                        z-index: 3;
+                        border: 4px double ${finalStatusColor}80;
+                        padding: 15px;
+                        text-align: center;
+                    }
+                    .stamp-header {
+                        display: flex; align-items: center; justify-content: center;
+                        gap: 15px; padding-bottom: 10px;
+                        border-bottom: 1px solid ${finalStatusColor}40;
+                    }
+                    .emblem {
+                        width: 60px; height: 60px; border-radius: 50%;
+                        border: 2px solid ${finalStatusColor}; padding: 4px; background: #000;
+                    }
+                    .emblem img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+                    .emblem-text { text-align: left; }
+                    .emblem-text span { display: block; text-transform: uppercase; font-weight: 900; background: linear-gradient(to bottom, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.9)); border-bottom: 4px double ${finalStatusColor}; padding-bottom: 2px; }
+                    .emblem-text span { font-size: 24px; letter-spacing: 1px; }
+                    .stamp-status {
+                        font-size: 3rem; font-weight: 900; letter-spacing: 2px;
+                        text-transform: uppercase; color: ${finalStatusColor};
+                        text-shadow: 0 0 10px ${finalStatusColor}, 0 0 20px ${finalStatusColor}, 0 0 40px ${finalStatusColor}; margin: 15px 0; line-height: 1;
+                    }
+                    .stamp-details {
+                        font-size: 12px; color: #DDD;
+                        border-top: 1px solid ${finalStatusColor}40;
+                        border-bottom: 1px solid ${finalStatusColor}40;
+                        padding: 10px 0; margin-bottom: 15px;
+                    }
+                    .stamp-details > div { display: flex; justify-content: space-between; padding: 2px 5px; }
+                    .stamp-details > div span:first-child { font-weight: bold; opacity: 0.8; }
+                    .stamp-footer {
+                        font-family: 'Courier New', monospace; font-size: 10px;
+                        background: rgba(0,0,0,0.3); padding: 8px; border: 1px solid ${finalStatusColor}30;
+                        word-break: break-all; color: ${finalStatusColor}CC;
+                    }
+                    
+                    /* --- ID CARD STYLES --- */
+                    .id-card-container {
+                        width: 420px;
+                        position: relative;
+                        perspective: 1500px;
+                    }
+                    .id-card-content {
+                        background: #0a0a0a;
+                        border-radius: 12px;
+                        transform-style: preserve-3d;
+                        font-family: 'Arial', sans-serif;
+                        overflow: hidden;
+                    }
+                    .id-card-bg-layers {
+                        position: absolute; inset: 0; border-radius: 12px; overflow: hidden;
+                    }
+                    .id-card-bg-layer {
+                        position: absolute; inset: 0;
+                        background-size: cover;
+                    }
+                    .id-card-glare {
+                        position: absolute; inset: 0; border-radius: 12px;
+                        background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%);
+                        background-size: 300% 100%;
+                        animation: card-glare 5s linear infinite;
+                        z-index: 15;
+                    }
+
+                    /* --- ANIMATIONS --- */
+                    @keyframes idCardEntry {
+                        0% { opacity: 0; transform: translateX(-150px) rotateY(-360deg) scale(0.5); }
+                        100% { opacity: 1; transform: translateX(0) rotateY(0deg) scale(1); }
+                    }
+                    @keyframes stampDescend {
+                        from { opacity: 0; transform: translateY(-100px) rotateX(-30deg) scale(0.9); }
+                        to { opacity: 1; transform: translateY(0) rotateX(0deg) scale(1); }
+                    }
+                    @keyframes barcodeScan {
+                        0% { left: 0%; opacity: 0; }
+                        10% { opacity: 1; }
+                        90% { opacity: 1; }
+                        100% { left: 100%; opacity: 0; }
+                    }
+                    @keyframes hex-pan {
+                        from { transform: translateY(0) rotate(0deg); }
+                        to { transform: translateY(-57.735px) rotate(60deg); }
+                    }
+                    @keyframes card-glare {
+                        from { background-position: 200% 0; }
+                        to { background-position: -200% 0; }
+                    }
+                    @keyframes watermark-glitch {
+                        0%, 100% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
+                        49% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
+                        50% { opacity: 0.02; transform: rotate(-45deg) translate(2px, -2px); }
+                        51% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
+                    }
+
+                    /* --- [GOD TIER] 3D HYPER-TECH SHUTTER STYLES --- */
                     .shutter-layer {
                         position: absolute; inset: 0; z-index: 9999;
                         display: flex; pointer-events: none;
@@ -3911,9 +4120,9 @@ async function processAttendance(karyawanId) {
                     /* HYPER-MECHANICAL BOLTS (Kunci Pintu) */
                     .mech-bolt {
                         position: absolute; width: 160px; height: 70px; /* Lebih Besar & Mewah */
-                        /* Gold Bullion 3D Gradient */
-                        background: linear-gradient(to bottom, #4a3c1b, #b8860b 30%, #ffd700 50%, #b8860b 70%, #4a3c1b);
-                        border: 1px solid #5c4d00;
+                        /* [UPDATE] Silver/Chrome 3D Gradient */
+                        background: linear-gradient(to bottom, #666, #ccc 30%, #fff 50%, #ccc 70%, #666);
+                        border: 1px solid #555;
                         box-shadow: 
                             0 10px 30px rgba(0,0,0,0.9), 
                             inset 0 1px 0 rgba(255,255,255,0.6),
@@ -3923,7 +4132,7 @@ async function processAttendance(karyawanId) {
                         display: flex; align-items: center; justify-content: center;
                     }
                     .mech-bolt::after {
-                        content: ''; width: 80%; height: 2px; background: #5c4d00;
+                        content: ''; width: 80%; height: 2px; background: #555;
                         box-shadow: 0 1px 0 rgba(255,255,255,0.4);
                     }
                     
@@ -4196,7 +4405,7 @@ async function processAttendance(karyawanId) {
                     }
                 </style>
 
-                <!-- 3D SHUTTER CURTAIN (Overlay on top) -->
+                <!-- [GOD TIER] 3D SHUTTER CURTAIN (Overlay on top) -->
                 <div id="cyber-shutter" class="shutter-layer">
                     <div class="energy-flash"></div>
                     
@@ -4246,7 +4455,6 @@ async function processAttendance(karyawanId) {
                     <div class="holo-seal"></div>
                 </div>
 
-                <!-- GOD-LEVEL BACKGROUND LAYERS -->
                 <div style="position: absolute; inset: 0; overflow: hidden; pointer-events: none;">
                     <div class="perspective-grid"></div>
                     ${hudRingSvg}
@@ -4282,7 +4490,7 @@ async function processAttendance(karyawanId) {
 
                 <div class="holographic-container" style="perspective: 2000px; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; z-index: 10;">
                 <div style="display: flex; justify-content: center; align-items: center; gap: 100px; width: 100%; transform-style: preserve-3d;">
-                    <!-- Kolom Kiri: ID Card -->
+                    <!-- [FIXED] Kolom Kiri: ID Card (Ditampilkan kembali) -->
                     <div style="transform: translateZ(20px);">
                         ${idCardHTML}
                     </div>
@@ -4337,19 +4545,23 @@ async function processAttendance(karyawanId) {
                 };
             }
 
-            // Trigger Shutter Open Animation (Sequence: Tease -> Surprise)
+            // [UPDATE] Trigger Shutter Open Animation (Sequence: Tease -> Surprise)
             setTimeout(() => {
                 const shutter = document.getElementById('cyber-shutter');
                 if(shutter) {
-                    // Fase 1: Animasi pintu sedikit terbuka (selalu berjalan)
+                    // Play unlock sound
+                    SoundFX.play('shutter_crack');
+                    
+                    // Fase 1: Animasi pintu sedikit terbuka
                     shutter.classList.add('shutter-crack');
                     
                     // Fase 2: Animasi pintu terbuka penuh
                     setTimeout(() => {
+                        // SoundFX.play('shutter_open'); // [REMOVED] Suara pintu terbuka dihapus sesuai permintaan
                         shutter.classList.add('shutter-open');
-                    }, 1200);
+                    }, 1200); // Jeda antara retak dan terbuka penuh
                 }
-            }, 1500); // [MODIFIED] Jeda awal diperlama agar teks terbaca
+            }, 500); // Jeda awal sebelum animasi dimulai
 
             // Animate hash
             animateHash('validation-hash');
