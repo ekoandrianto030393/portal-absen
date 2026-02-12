@@ -1186,6 +1186,13 @@ async function openManualModal() {
     const content = document.getElementById('modal-manual-content');
     const select = document.getElementById('manual-emp-select');
     
+    // [NEW] Reset Search Filter saat modal dibuka
+    const searchInput = document.getElementById('search-manual-emp');
+    if (searchInput) {
+        searchInput.value = '';
+        filterManualEmp(); // Reset visibility options
+    }
+
     // --- LOGIKA UI: Show/Hide Input Waktu Manual ---
     const typeSelect = document.getElementById('manual-type');
     const timeContainer = document.getElementById('manual-time-container');
@@ -2301,5 +2308,17 @@ function toggleDarkMode() {
     if(btn) {
         btn.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
         btn.title = isDark ? 'Light Mode' : 'Dark Mode';
+    }
+}
+
+// --- Filter Nama Pegawai di Input Manual
+function filterManualEmp() {
+    const input = document.getElementById('search-manual-emp').value.toUpperCase();
+    const select = document.getElementById('manual-emp-select');
+    for (let i = 0; i < select.options.length; i++) {
+        const txtValue = select.options[i].textContent || select.options[i].innerText;
+        if (txtValue.toUpperCase().indexOf(input) > -1) {
+            select.options[i].style.display = "";
+        } else { select.options[i].style.display = "none"; }
     }
 }

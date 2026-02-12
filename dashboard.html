@@ -605,9 +605,10 @@ js
 <div id="modal-manual-status"
     class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center opacity-0 transition-opacity">
     <div id="modal-manual-content" class="bg-white p-6 rounded-xl w-96">
-        <h3 class="font-bold mb-4">Input Manual</h3><select id="manual-emp-select"
-            class="w-full border p-2 rounded mb-2"></select><select id="manual-type"
-            class="w-full border p-2 rounded mb-2">
+        <h3 class="font-bold mb-4">Input Manual</h3>
+        <input type="text" id="search-manual-emp" onkeyup="filterManualEmp()" placeholder="Cari Nama Pegawai..." class="w-full border p-2 rounded mb-2 text-sm bg-gray-50 focus:bg-white transition-colors">
+        <select id="manual-emp-select" class="w-full border p-2 rounded mb-2 text-sm"></select>
+        <select id="manual-type" class="w-full border p-2 rounded mb-2 text-sm">
             <option value="HADIR_MANUAL">Hadir Manual</option>
             <option value="DL">Dinas Luar</option>
             <option value="IZIN">Izin</option>

@@ -3465,6 +3465,19 @@ async function processAttendance(karyawanId) {
             const guillocheSvg = `<svg width='100' height='100' xmlns='http://www.w3.org/2000/svg'><path d='M 0,50 C 25,0 75,100 100,50 M 0,50 C 25,100 75,0 100,50' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/><path d='M 50,0 C 0,25 100,75 50,100 M 50,0 C 100,25 0,75 50,100' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/></svg>`;
             const watermarkSvg = `<svg width='300' height='300' xmlns='http://www.w3.org/2000/svg'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='"Times New Roman", serif' font-size='30' font-weight='bold' fill='${finalStatusColor}' opacity='0.06' transform='rotate(-45 150 150)'>PUSKESMAS WANA</text></svg>`;
 
+            // [IDE BARU] Latar Belakang DNA Helix Animasi 3D (Skill Tingkat Tinggi)
+            const dnaHelixStampHTML = `
+            <div class="dna-helix-container">
+                ${Array.from({length: 40}, (_, i) => `
+                    <div class="dna-base" style="top: ${i * 15}px; animation-delay: -${i * 0.1}s;">
+                        <div class="dot left" style="background: ${finalStatusColor}; box-shadow: 0 0 5px ${finalStatusColor};"></div>
+                        <div class="line" style="background: ${finalStatusColor};"></div>
+                        <div class="dot right" style="background: ${finalStatusColor}; box-shadow: 0 0 5px ${finalStatusColor};"></div>
+                    </div>
+                `).join('')}
+            </div>
+            `;
+
             // [NEW] Advanced High-Tech Background SVGs
             const circuitSvg = `<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="circuit" patternUnits="userSpaceOnUse" width="50" height="50"><path d="M0 25h25M25 0v25" stroke="${finalStatusColor}" stroke-width="0.3" opacity="0.1"/><path d="M25 25h25M25 50v-25" stroke="${finalStatusColor}" stroke-width="0.3" opacity="0.1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23circuit)"/></svg>`;
             const hexGridSvg = `<svg width="100" height="115.47" xmlns="http://www.w3.org/2000/svg"><polygon points="50,0 100,28.87 100,86.6 50,115.47 0,86.6 0,28.87" fill="none" stroke="${finalStatusColor}" stroke-width="0.5" opacity="0.1"/></svg>`;
@@ -3864,6 +3877,36 @@ async function processAttendance(karyawanId) {
                         from { background-position: 200% 0; }
                         to { background-position: -200% 0; }
                     }
+                    /* [IDE BARU] Animasi DNA Helix */
+                    @keyframes dna-spin {
+                        from { transform: rotateY(0deg); }
+                        to { transform: rotateY(360deg); }
+                    }
+                    .dna-helix-container {
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        width: 100px;
+                        height: 100%;
+                        transform: translate(-50%, -50%);
+                        perspective: 600px;
+                        z-index: 0;
+                        opacity: 0.15;
+                    }
+                    .dna-base {
+                        position: absolute;
+                        width: 100%;
+                        height: 2px;
+                        left: 0;
+                        transform-style: preserve-3d;
+                        animation: dna-spin 4s linear infinite;
+                    }
+                    .dna-base .dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; top: -2px; }
+                    .dna-base .dot.left { left: 0; }
+                    .dna-base .dot.right { right: 0; }
+                    .dna-base .line { position: absolute; left: 3px; right: 3px; height: 1px; top: 0; opacity: 0.5; }
+
+
                     @keyframes watermark-glitch {
                         0%, 100% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
                         49% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
@@ -4497,6 +4540,8 @@ async function processAttendance(karyawanId) {
 
                     <!-- Kolom Kanan: Stempel Akademik -->
                     <div class="academic-stamp" style="transform: translateZ(60px);">
+                        <!-- [IDE BARU] Latar Belakang DNA Helix Animasi 3D -->
+                        ${dnaHelixStampHTML}
                         <div class="guilloche-bg"></div>
                         <div class="watermark-bg"></div>
                         <div class="stamp-content">
