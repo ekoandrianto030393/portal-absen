@@ -9,7 +9,7 @@ js
     <!-- 1. TIPOGRAFI: Font Inter (Modern Sans Serif) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -45,9 +45,10 @@ js
         /* Card Styling: Border Radius 12px & Shadow Halus */
         .card-academic {
             background: white;
-          border-radius: 6px; /* Sudut lebih kecil (Enterprise Standard) */
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Minimalist Shadow */
+            border-radius: 2px; /* Sudut tajam (Academic Standard) */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             border: 1px solid #e2e8f0;
+            border-top: 3px solid var(--primary-color); /* Aksen Folder Arsip */
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
@@ -60,8 +61,8 @@ js
         }
 
         /* Header Typography */
-        h1, h2, h3 { font-weight: 600; letter-spacing: -0.025em; }
-        .page-header { font-family: 'Inter', sans-serif; font-size: 22px; font-weight: 800; color: var(--primary-color); letter-spacing: -0.5px; }
+        h1, h2, h3 { font-family: 'Merriweather', serif; font-weight: 700; letter-spacing: -0.01em; }
+        .page-header { font-family: 'Merriweather', serif; font-size: 24px; font-weight: 900; color: var(--primary-color); letter-spacing: 0.5px; text-transform: uppercase; }
         
         /* Table Styling Academic */
         table { border-collapse: collapse; width: 100%; }

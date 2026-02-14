@@ -272,17 +272,23 @@ const SoundFX = {
             // Cancel previous speech
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'id-ID'; // [FIX] Set bahasa eksplisit agar aksen sesuai
             utterance.rate = 0.95; // Sedikit lebih lambat agar terdengar tenang dan ramah
             utterance.pitch = 1.1; // [UPDATE] Pitch disesuaikan agar lebih natural (tidak terlalu cempreng)
             utterance.volume = 1.0;
             
             // [UPDATE] Cari suara Bahasa Indonesia (id-ID) dengan prioritas Perempuan Natural
             const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.lang === 'id-ID' && v.name.includes('Google')) || 
-                                   voices.find(v => v.lang === 'id-ID' && v.name.includes('Gadis')) ||
-                                   voices.find(v => v.lang === 'id-ID' && v.name.includes('Damayanti')) ||
-                                   voices.find(v => v.lang === 'id-ID' && (v.name.includes('Female') || v.name.includes('Wanita'))) ||
-                                   voices.find(v => v.lang === 'id-ID');
+            // Helper: Cek bahasa Indonesia lebih fleksibel (id, id-ID, id_ID, atau nama mengandung Indonesia)
+            const isId = (v) => v.lang.startsWith('id') || v.lang.startsWith('ind') || v.name.toLowerCase().includes('indonesia');
+
+            let preferredVoice = voices.find(v => isId(v) && v.name.includes('Google'));
+            if (!preferredVoice) preferredVoice = voices.find(v => isId(v) && v.name.includes('Gadis'));
+            if (!preferredVoice) preferredVoice = voices.find(v => isId(v) && v.name.includes('Damayanti'));
+            if (!preferredVoice) preferredVoice = voices.find(v => isId(v) && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('wanita')));
+            
+            // Fallback 1: Jika tidak ada ID female, coba cari ID apa saja (misal Andika)
+            if (!preferredVoice) preferredVoice = voices.find(v => isId(v));
 
             if (preferredVoice) utterance.voice = preferredVoice;
             // Beri jeda sedikit agar suara "bip" selesai

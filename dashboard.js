@@ -516,9 +516,17 @@ async function saveAbsensiChanges() {
 async function loadMonthlyRecap(silent = false) {
     const month = document.getElementById('filter-month').value;
     const table = document.getElementById('table-rekap');
+
+    // [NEW] Format Nama Bulan untuk Judul Formal
+    const dateObj = new Date(month);
+    const monthName = dateObj.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
     
     // Header Table
     table.innerHTML = `
+        <caption class="caption-top mb-6 text-center border-b-2 border-slate-800 pb-4">
+            <h2 class="text-2xl font-serif font-bold text-slate-900 uppercase tracking-widest">Laporan Rekapitulasi Presensi</h2>
+            <p class="text-sm text-slate-600 font-serif italic mt-1">Periode Laporan: ${monthName}</p>
+        </caption>
         <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider border-b border-slate-700 bg-slate-800 text-white print:bg-white print:text-black">
             <tr>
                 <th class="md:sticky md:left-0 md:z-40 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 text-center w-16 md:border-r border-slate-700 print:border-black">No.</th>
