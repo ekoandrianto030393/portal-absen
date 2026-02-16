@@ -263,6 +263,35 @@ const SoundFX = {
             g.gain.setValueAtTime(0.4, t);
             g.gain.linearRampToValueAtTime(0, t + duration);
             osc.start(t); osc.stop(t + duration);
+        } else if (type === 'robotic') {
+            // [NEW] Suara Robotik (FM Synthesis - Frequency Modulation)
+            // Menghasilkan suara "Gerrr" atau "Ziiing" khas mesin futuristik
+            const t = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const mod = audioCtx.createOscillator(); // Modulator
+            const modGain = audioCtx.createGain();
+            const gain = audioCtx.createGain();
+
+            // Konfigurasi Modulator (Getaran Cepat)
+            mod.frequency.value = 50; // 50Hz = Suara kasar/robotik
+            modGain.gain.value = 500; // Intensitas modulasi
+            
+            // Sambungkan Modulator ke Frekuensi Osilator Utama
+            mod.connect(modGain);
+            modGain.connect(osc.frequency);
+            
+            osc.connect(gain);
+            gain.connect(audioAnalyser);
+
+            osc.type = 'sawtooth'; // Gelombang gergaji (tajam)
+            osc.frequency.setValueAtTime(200, t); // Nada dasar
+            osc.frequency.linearRampToValueAtTime(50, t + 0.3); // Pitch turun (Power down effect)
+
+            gain.gain.setValueAtTime(0.1, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+
+            mod.start(t); osc.start(t);
+            mod.stop(t + 0.3); osc.stop(t + 0.3);
         }
     },
     speak: (text) => {
@@ -273,8 +302,8 @@ const SoundFX = {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'id-ID'; // [FIX] Set bahasa eksplisit agar aksen sesuai
-            utterance.rate = 1.0; // [UPDATE] Kecepatan normal agar lebih fasih
-            utterance.pitch = 1.0; // [UPDATE] Pitch normal agar lebih natural
+            utterance.rate = 1.05; // [UPDATE] Lebih cepat & mengalir (Luwes)
+            utterance.pitch = 1.1; // [UPDATE] Nada jernih & ringan (Plong/Tidak Berat)
             utterance.volume = 1.0;
             
             // [UPDATE] Cari suara Bahasa Indonesia (id-ID) dengan prioritas Perempuan Natural
@@ -291,10 +320,8 @@ const SoundFX = {
             if (!preferredVoice) preferredVoice = voices.find(v => isId(v));
 
             if (preferredVoice) utterance.voice = preferredVoice;
-            // Beri jeda sedikit agar suara "bip" selesai
-            setTimeout(() => {
-                window.speechSynthesis.speak(utterance);
-            }, 50);
+            // [UPDATE] Langsung bicara tanpa jeda agar responsif (Hapus setTimeout)
+            window.speechSynthesis.speak(utterance);
         }
     }
 };
@@ -2653,6 +2680,61 @@ function checkFaceGeometry(landmarks) {
     };
 }
 
+// --- [NEW] FITUR: SCI-FI HUD RENDERER ---
+function drawSciFiHUD(ctx, box, landmarks, color, label, status) {
+    const { x, y, width, height } = box;
+    const cx = x + width / 2;
+    const cy = y + height / 2;
+    const time = Date.now() / 1000;
+    const radius = Math.max(width, height) * 0.65;
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+
+    // 1. Cincin Luar Berputar (Terputus-putus)
+    ctx.beginPath();
+    const segments = 3;
+    const segLen = (Math.PI * 2) / segments;
+    for (let i = 0; i < segments; i++) {
+        const start = (time * 0.5) + i * segLen; // Rotasi pelan
+        const end = start + segLen * 0.4; // Celah antar segmen
+        ctx.arc(cx, cy, radius, start, end);
+    }
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 2. Cincin Dalam Berlawanan Arah
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 0.85, -time, -time + Math.PI * 1.5);
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 8]); // Garis putus-putus halus
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 3. Bracket Sudut Taktis
+    const bLen = 25;
+    const bGap = 15; // Jarak dari wajah
+    ctx.lineWidth = 3;
+    
+    // Gambar 4 Sudut
+    const drawCorner = (px, py, dx, dy) => {
+        ctx.beginPath();
+        ctx.moveTo(px + (dx * bLen), py);
+        ctx.lineTo(px, py);
+        ctx.lineTo(px, py + (dy * bLen));
+        ctx.stroke();
+    };
+    drawCorner(x - bGap, y - bGap, 1, 1);           // Kiri Atas
+    drawCorner(x + width + bGap, y - bGap, -1, 1);  // Kanan Atas
+    drawCorner(x + width + bGap, y + height + bGap, -1, -1); // Kanan Bawah
+    drawCorner(x - bGap, y + height + bGap, 1, -1); // Kiri Bawah
+
+    ctx.restore();
+}
+
 async function detectFace() {
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -2724,15 +2806,15 @@ async function detectFace() {
         // drawRetinalScan(context, landmarks, '#00FFFF');
 
         // --- GAMBAR EFEK BARU ---
-        // drawScanningBeam(context, box); // Diganti dengan HUD Sci-Fi
-        // drawTacticalHUD(context, box, '#00FFFF');
+        // [UPDATE] Gunakan HUD Sci-Fi Baru yang lebih canggih
+        drawSciFiHUD(context, box, landmarks, '#00FFFF', '', 'SCANNING');
         
-        const nose = landmarks.getNose()[3]; // Titik tengah hidung
+        // const nose = landmarks.getNose()[3]; // Titik tengah hidung
         // drawTargetLock(context, nose.x, nose.y, box.width * 0.3); // Diganti Sci-Fi HUD
         
         // --- EFEK SUARA: TARGET ACQUIRED ---
         if (!isTargetLocked) {
-            SoundFX.play('scan'); // Bunyi "Chirp" saat pertama kali wajah terkunci
+            SoundFX.play('robotic'); // [UPDATE] Gunakan efek suara robotik baru
             isTargetLocked = true;
         }
 
@@ -2987,9 +3069,9 @@ async function detectFace() {
         
         // drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor); // Diganti Sci-Fi HUD
         // drawTacticalHUD(context, box, faceColor);
-        
-        // Gunakan Smart HUD baru
-        // drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion, gender, age);
+        // [UPDATE] Override HUD dengan status & warna terkini
+        drawSciFiHUD(context, box, landmarks, faceColor, faceLabel, userStatusDisplay.textContent);
+        drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion, gender, age);
         drawHolographicMesh(context, landmarks);
         // [NEW] Draw Face Shape (Visualisasi Wajah)
         const isVerifying = faceLabel.includes('VERIFYING') || (userStatusDisplay && userStatusDisplay.textContent.includes('VERIFYING'));
