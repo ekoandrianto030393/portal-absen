@@ -273,8 +273,8 @@ const SoundFX = {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'id-ID'; // [FIX] Set bahasa eksplisit agar aksen sesuai
-            utterance.rate = 0.95; // Sedikit lebih lambat agar terdengar tenang dan ramah
-            utterance.pitch = 1.1; // [UPDATE] Pitch disesuaikan agar lebih natural (tidak terlalu cempreng)
+            utterance.rate = 1.0; // [UPDATE] Kecepatan normal agar lebih fasih
+            utterance.pitch = 1.0; // [UPDATE] Pitch normal agar lebih natural
             utterance.volume = 1.0;
             
             // [UPDATE] Cari suara Bahasa Indonesia (id-ID) dengan prioritas Perempuan Natural
@@ -282,7 +282,7 @@ const SoundFX = {
             // Helper: Cek bahasa Indonesia lebih fleksibel (id, id-ID, id_ID, atau nama mengandung Indonesia)
             const isId = (v) => v.lang.startsWith('id') || v.lang.startsWith('ind') || v.name.toLowerCase().includes('indonesia');
 
-            let preferredVoice = voices.find(v => isId(v) && v.name.includes('Google'));
+            let preferredVoice = voices.find(v => isId(v) && v.name.includes('damayanti'));
             if (!preferredVoice) preferredVoice = voices.find(v => isId(v) && v.name.includes('Gadis'));
             if (!preferredVoice) preferredVoice = voices.find(v => isId(v) && v.name.includes('Damayanti'));
             if (!preferredVoice) preferredVoice = voices.find(v => isId(v) && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('wanita')));
@@ -4174,8 +4174,7 @@ async function processAttendance(karyawanId) {
                         border: 1px solid #555;
                         box-shadow: 
                             0 10px 30px rgba(0,0,0,0.9), 
-                            inset 0 1px 0 rgba(255,255,255,0.6),
-                            0 0 20px ${finalStatusColor}4D; /* Status Glow */
+                            inset 0 1px 0 rgba(255,255,255,0.6);
                         z-index: 20;
                         transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Springy retract */
                         display: flex; align-items: center; justify-content: center;
@@ -4239,7 +4238,7 @@ async function processAttendance(karyawanId) {
                             linear-gradient(180deg, #0a0a0a 0%, #252525 50%, #0a0a0a 100%);
                         position: relative;
                         overflow: hidden;
-                        border: 2px solid ${finalStatusColor};
+                        border: 2px solid #555;
                         box-shadow: inset 0 0 60px #000, 0 0 40px rgba(0,0,0,0.9);
                     }
 
@@ -4286,7 +4285,7 @@ async function processAttendance(karyawanId) {
                     .lock-pin {
                         position: absolute; width: 60px; height: 20px; /* Lebih besar */
                         background: linear-gradient(to bottom, #fff, #ccc, #fff); /* Metallic */
-                        box-shadow: 0 0 15px ${finalStatusColor}, 0 0 5px #000;
+                        box-shadow: 0 0 5px #000;
                         top: 50%; transform: translateY(-50%);
                         z-index: 20;
                         transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -4321,6 +4320,39 @@ async function processAttendance(karyawanId) {
                     @keyframes spin-cw { from { transform: translateY(-50%) rotate(0deg); } to { transform: translateY(-50%) rotate(360deg); } }
                     @keyframes spin-ccw { from { transform: translateY(-50%) rotate(360deg); } to { transform: translateY(-50%) rotate(0deg); } }
                     @keyframes pulse-core { 0%, 100% { opacity: 0.3; transform: translateY(-50%) scale(1); } 50% { opacity: 0.6; transform: translateY(-50%) scale(1.2); } }
+
+                    /* GEAR ANIMATIONS */
+                    @keyframes gear-spin-cw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                    @keyframes gear-spin-ccw { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+
+                    /* GEAR MECHANISM */
+                    .gear-mechanism { position: absolute; inset: 0; z-index: 1; opacity: 0.6; pointer-events: none; }
+                    .gear {
+                        position: absolute; border-radius: 50%;
+                        background: conic-gradient(from 0deg, #111 0%, #444 10%, #111 20%, #444 30%, #111 40%, #444 50%, #111 60%, #444 70%, #111 80%, #444 90%, #111 100%);
+                        box-shadow: inset 0 0 10px #000, 0 5px 10px rgba(0,0,0,0.8);
+                        display: flex; align-items: center; justify-content: center;
+                        border: 1px solid #333;
+                    }
+                    .gear::after {
+                        content: ''; position: absolute; inset: -4px; border-radius: 50%;
+                        border: 4px dashed #555; box-sizing: border-box;
+                        mask-image: radial-gradient(transparent 65%, black 70%); -webkit-mask-image: radial-gradient(transparent 65%, black 70%);
+                    }
+                    .gear::before { content: ''; position: absolute; width: 30%; height: 30%; background: radial-gradient(circle, #000 0%, #333 100%); border-radius: 50%; border: 1px solid #555; }
+                    .g-1 { width: 120px; height: 120px; top: -30px; right: -30px; animation: gear-spin-ccw 10s linear infinite; }
+                    .g-2 { 
+                        width: 45px; height: 45px; top: 70px; right: 35px; animation: gear-spin-cw 6s linear infinite;
+                        /* 3D Realistic Style */
+                        background: radial-gradient(circle at 30% 30%, #888, #222);
+                        box-shadow: inset 2px 2px 5px rgba(255,255,255,0.4), inset -2px -2px 5px rgba(0,0,0,0.9), 0 5px 15px rgba(0,0,0,0.8);
+                        border: none;
+                    }
+                    .g-2::after { border: 5px dashed #666; filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.9)); inset: -5px; }
+                    .g-2::before { background: radial-gradient(circle at 70% 70%, #222, #000); box-shadow: inset 1px 1px 3px rgba(0,0,0,1); border: 1px solid #555; width: 35%; height: 35%; }
+                    .g-3 { width: 50px; height: 50px; bottom: 60px; right: 10px; animation: gear-spin-ccw 4s linear infinite; }
+                    .shutter-right .gear-mechanism { transform: scaleX(-1); }
+                    .shutter-crack .gear { animation-duration: 0.5s; filter: brightness(1.5); }
 
                     /* HOLOGRAPHIC SEAL (Segel Tengah - Updated) */
                     .holo-seal {
@@ -4474,6 +4506,11 @@ async function processAttendance(karyawanId) {
                         <!-- God Tier Lock Left -->
                         <div class="lock-half">
                             <div class="lock-casing">
+                                <div class="gear-mechanism">
+                                    <div class="gear g-1"></div>
+                                    <div class="gear g-2"></div>
+                                    <div class="gear g-3"></div>
+                                </div>
                                 <div class="vent-slots"></div>
                                 <div class="lock-indicator"></div>
                             </div>
@@ -4490,6 +4527,11 @@ async function processAttendance(karyawanId) {
                         <!-- God Tier Lock Right -->
                         <div class="lock-half">
                             <div class="lock-casing">
+                                <div class="gear-mechanism">
+                                    <div class="gear g-1"></div>
+                                    <div class="gear g-2"></div>
+                                    <div class="gear g-3"></div>
+                                </div>
                                 <div class="vent-slots"></div>
                                 <div class="lock-indicator"></div>
                             </div>
@@ -5088,7 +5130,7 @@ function injectAmbulanceDisplay() {
 
         wrapper.innerHTML = `
             <div style="position: relative;">
-                <img src="pemandangan.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
+                <img src="tung.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
                 
                 <!-- UNDERGLOW (Neon Bawah Mobil) -->
                 <div style="position: absolute; bottom: 2%; left: 10%; width: 80%; height: 20%; background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.6) 0%, transparent 70%); filter: blur(20px); opacity: 0.6; animation: underglow-pulse 3s infinite; z-index: 0;"></div>
