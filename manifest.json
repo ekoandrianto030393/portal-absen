@@ -1,0 +1,38 @@
+{
+  "name": "Biometrik Absensi Puskesmas Wana",
+  "short_name": "Biometrik",
+  "description": "Aplikasi absensi biometrik dengan pemindaian wajah untuk Puskesmas Wana",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#05050A",
+  "theme_color": "#00FFFF",
+  "categories": ["productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%2300FFFF;stop-opacity:1' /><stop offset='100%' style='stop-color:%230088FF;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='192' height='192' rx='40'/><text x='96' y='96' font-size='100' fill='white' text-anchor='middle' dominant-baseline='central' font-weight='bold' font-family='Arial'>B</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%2300FFFF;stop-opacity:1' /><stop offset='100%' style='stop-color:%230088FF;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='512' height='512' rx='100'/><text x='256' y='256' font-size='280' fill='white' text-anchor='middle' dominant-baseline='central' font-weight='bold' font-family='Arial'>B</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%2300FFFF;stop-opacity:1' /><stop offset='100%' style='stop-color:%230088FF;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='192' height='192' rx='40'/><circle cx='96' cy='60' r='30' fill='white'/><path d='M 96 100 Q 70 115 70 140 L 122 140 Q 122 115 96 100' fill='white'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%2300FFFF;stop-opacity:1' /><stop offset='100%' style='stop-color:%230088FF;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='512' height='512' rx='100'/><circle cx='256' cy='160' r='80' fill='white'/><path d='M 256 280 Q 180 320 180 380 L 332 380 Q 332 320 256 280' fill='white'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

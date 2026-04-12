@@ -1,3 +1,4 @@
+//
 /**
  * scan.js - Advanced Biometric Gateway (PUSKESMAS WANA)
  * FINAL STABILIZATION & CUSTOMIZATION: Disesuaikan 100% untuk UI FUTURISTIK Anda.
@@ -58,6 +59,8 @@ let isTargetLocked = false; // Status penguncian target untuk efek suara
 let employeeMap = {}; 
 let currentStream = null; // Variabel untuk stream kamera aktif
 let videoDevices = []; 
+const offscreenCanvas = document.createElement('canvas'); // [NEW] Canvas tersembunyi untuk pre-processing
+const offCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
 // turunkan jadi 80, namun jangan dibawah itu
 const DETECTION_INTERVAL_MS = 80; // Interval scan dalam milidetik
 const DEFAULT_PHOTO = ''; // Path ke foto default/placeholder jika diperlukan
@@ -74,6 +77,8 @@ let faceParticles = []; // NEW: Global particle array
 let eyeParticles = []; // NEW: Partikel mata saat berkedip
 let isBlinking = false; // Status kedipan
 
+let blazeModel = null; // [NEW] Variabel Model BlazeFace untuk Pre-Detection Cepat
+
 // --- STABILIZER VARS (ANTI-ACAK) ---
 let recognitionHistory = []; // Menyimpan hasil deteksi beberapa frame terakhir
 const HISTORY_LIMIT = 4;     // [UPDATE] Turunkan ke 5 agar nama lebih CEPAT muncul (Responsif)
@@ -82,6 +87,8 @@ let lockGraceCounter = 0;    // [NEW] Counter untuk menahan hasil lama (Anti-Fli
 let lastStableResult = null; // [NEW] Menyimpan hasil valid terakhir
 let isLastFaceCentered = false; // [NEW] Status posisi wajah frame sebelumnya (untuk warna target)
 let lastNosePosition = null; // [NEW] Untuk deteksi kestabilan gerakan
+let lastFaceBox = null;      // [NEW] Untuk ROI Tracking
+let trackingMissCount = 0;   // [NEW] Counter jika tracking hilang
 let stabilityCounter = 0;    // [NEW] Counter frame stabil
 let userScanCounters = {};   // [NEW] Counter scan per user session
 
@@ -294,35 +301,67 @@ const SoundFX = {
             mod.stop(t + 0.3); osc.stop(t + 0.3);
         }
     },
-    speak: (text) => {
+    // --- ELEVENLABS TTS ENGINE CONFIG ---
+    elevenLabs: {
+        // PERINGATAN: Pastikan API Key di bawah ini valid dari Dashboard ElevenLabs
+        apiKey: "12d381ffd65727d06fc3f0dd0c704ad6b8d80b19ff742e577ab3b59994234c06",
+        voiceId: "21m00Tcm4TlvDq8ikWAM" // Menggunakan ID Suara standar "George" (Pre-made) yang lebih stabil
+    },
+    speak: async (text) => {
         if (isStealthMode) return; // Mute jika Stealth Mode aktif
-        if ('speechSynthesis' in window) {
-            SoundFX.play('comms_open'); // EFEK BARU: Suara "bip" sebelum bicara
-            // Cancel previous speech
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'id-ID'; // [FIX] Set bahasa eksplisit agar aksen sesuai
-            utterance.rate = 1.05; // [UPDATE] Lebih cepat & mengalir (Luwes)
-            utterance.pitch = 1.1; // [UPDATE] Nada jernih & ringan (Plong/Tidak Berat)
-            utterance.volume = 1.0;
-            
-            // [UPDATE] Cari suara Bahasa Indonesia (id-ID) dengan prioritas Perempuan Natural
-            const voices = window.speechSynthesis.getVoices();
-            // Helper: Cek bahasa Indonesia lebih fleksibel (id, id-ID, id_ID, atau nama mengandung Indonesia)
-            const isId = (v) => v.lang.startsWith('id') || v.lang.startsWith('ind') || v.name.toLowerCase().includes('indonesia');
 
-            let preferredVoice = voices.find(v => isId(v) && v.name.includes('damayanti'));
-            if (!preferredVoice) preferredVoice = voices.find(v => isId(v) && v.name.includes('Gadis'));
-            if (!preferredVoice) preferredVoice = voices.find(v => isId(v) && v.name.includes('Damayanti'));
-            if (!preferredVoice) preferredVoice = voices.find(v => isId(v) && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('wanita')));
-            
-            // Fallback 1: Jika tidak ada ID female, coba cari ID apa saja (misal Andika)
-            if (!preferredVoice) preferredVoice = voices.find(v => isId(v));
+        try {
+            // Add AbortController to handle network timeouts and protocol errors gracefully
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-            if (preferredVoice) utterance.voice = preferredVoice;
-            // [UPDATE] Langsung bicara tanpa jeda agar responsif (Hapus setTimeout)
+            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${SoundFX.elevenLabs.voiceId}`, {
+                method: 'POST',
+                signal: controller.signal,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'xi-api-key': SoundFX.elevenLabs.apiKey,
+                    'accept': 'audio/mpeg'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    model_id: "eleven_multilingual_v2",
+                    voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+                })
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(`HTTP ${response.status}: ${errData.detail?.message || 'API Key Invalid'}`);
+            }
+
+            SoundFX.play('comms_open'); // Play entry chime only on successful response
+
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioAnalyser); // Terhubung ke visualisator gelombang suara
+            source.start(0);
+
+        } catch (e) {
+            // Log error to system HUD instead of crashing console
+            console.warn("ElevenLabs TTS unavailable:", e.message);
+            logSystem(`VOICE MODULE: Communication link failed (${e.message})`, 'text-red-400');
+            console.warn("ElevenLabs unavailable, using browser fallback:", e.message);
+            logSystem(`TTS FALLBACK: Using System Voice`, 'text-amber-400');
+
+            // --- FALLBACK: Browser Web Speech API ---
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'id-ID';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
             window.speechSynthesis.speak(utterance);
         }
+    }
     }
 };
 
@@ -1092,7 +1131,7 @@ function drawFaceShape(ctx, landmarks, color, isPulsing = false) {
     const points = landmarks.positions;
     ctx.save();
     ctx.strokeStyle = color;
-    
+
     if (isPulsing) {
         const pulse = Math.abs(Math.sin(Date.now() / 150));
         ctx.lineWidth = 1.5 + (pulse * 2.5); // Berdenyut tebal tipis
@@ -2339,14 +2378,22 @@ const api = {
                 if (!data.success) throw new Error(data.message || 'API returned failure.');
                 return data.descriptors;
             } catch (e) {
-                console.error("RAW SERVER RESPONSE (Bukan JSON):", text);
-                // console.error("RAW SERVER RESPONSE (Bukan JSON):", text); // Suppress noise
+                console.warn("DIAGNOSTIK: Respons server bukan format JSON yang valid.");
                 throw new Error(`Invalid JSON received. Cek Console (F12) untuk melihat respons server.`);
             }
         } catch (error) {
             console.error('Error loading descriptors:', error);
             // console.error('Error loading descriptors:', error); // Suppress duplicate logging
             throw error; // Lemparkan error agar bisa ditangkap oleh pemanggil
+        }
+    },
+    getConfig: async () => {
+        try {
+            const response = await fetch('/api/config');
+            if (!response.ok) return null;
+            return await response.json();
+        } catch (e) {
+            return null;
         }
     },
     postAttendance: async (karyawanId) => {
@@ -2575,17 +2622,25 @@ async function loadTodayAttendance() {
                 }
                 logAttendance(nama, jam);
             });
-            // Update Roster Visual juga saat load awal
-            updatePersonnelRoster();
         }
     } catch (e) {
         console.error("Error loading today attendance:", e);
     }
 }
 
+let isAppInitialized = false;
 async function initializeApp() {
+    if (isAppInitialized) return;
+    isAppInitialized = true;
+
     setStatusVisual('BOOT SEQUENCE: Loading Neural Engine...', 'text-cyan-500', true);
     logSystem('Application boot sequence initiated.', 'text-cyan-500');
+
+    // [FIX] Suppress TensorFlow.js Backend/Platform Overwrite Warnings
+    if (window.faceapi && faceapi.tf) {
+        faceapi.tf.ENV.set('DEBUG', false);
+        try { faceapi.tf.enableProdMode(); } catch (e) { }
+    }
 
     try {
         // Memuat Model Face-API.js
@@ -2597,6 +2652,16 @@ async function initializeApp() {
             faceapi.nets.ageGenderNet.loadFromUri('./models') // [NEW] Load Age & Gender Model
         ]);
         
+        // [NEW] Load BlazeFace Model dengan error handling
+        try {
+            // Memuat dari folder lokal untuk mode 100% offline
+            blazeModel = await blazeface.load({ modelUrl: './models/blazeface/model.json' });
+            logSystem('ENGINE: BLAZEFACE ACCELERATOR ONLINE', 'text-purple-400');
+        } catch (blazeErr) {
+            console.warn("BlazeFace local load failed, using TinyFace fallback.", blazeErr);
+            logSystem('ENGINE: BLAZEFACE OFFLINE (Using Fallback)', 'text-amber-500');
+        }
+
         logSystem('Neural Network Models Loaded.', 'text-green-500');
         setStatusVisual('Models Loaded. Starting Camera Stream...', 'text-cyan-400', true);
 
@@ -2604,8 +2669,17 @@ async function initializeApp() {
         const initialDeviceId = cameraSelect ? cameraSelect.value : null;
         await startCamera(initialDeviceId); 
 
+        // [NEW] Sinkronisasi konfigurasi ElevenLabs dari server (.env)
+        const configData = await api.getConfig();
+        if (configData && configData.success) {
+            SoundFX.elevenLabs.apiKey = configData.config.elevenlabs_api_key || SoundFX.elevenLabs.apiKey;
+            SoundFX.elevenLabs.voiceId = configData.config.elevenlabs_voice_id || SoundFX.elevenLabs.voiceId;
+            logSystem(`VOICE MODULE: Sync successful (Voice ID: ${SoundFX.elevenLabs.voiceId.substring(0, 6)}...)`, 'text-purple-400');
+        }
+
         // Load data absensi hari ini ke panel Diagnostic/Log
         loadTodayAttendance();
+        // Catatan: loadTodayAttendance ditiadakan di sini karena sudah dipanggil oleh updatePersonnelRoster
 
     } catch (err) {
         setStatusVisual(`❌ FATAL ERROR: Gagal Init Model. Cek folder /models.`, 'text-red-500');
@@ -2748,12 +2822,55 @@ async function detectFace() {
     
     const displaySize = { width: canvas.width, height: canvas.height };
 
-    // LOW LIGHT OPTIMIZATION: scoreThreshold diturunkan (0.50 -> 0.30) agar wajah gelap/samar tetap terdeteksi
-    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 256, scoreThreshold: 0.3 })) // [UPDATE] Turunkan threshold deteksi agar wajah lebih mudah tertangkap, filter dilakukan saat matching
-	.withFaceLandmarks()
-    .withFaceExpressions() // NEW: Detect Expressions
-    .withAgeAndGender() // [NEW] Detect Age & Gender
-    .withFaceDescriptor();
+    // --- TEKNIK 3: CLAHE (NORMALISASI CAHAYA) ---
+    if (!video.videoWidth) return;
+    offscreenCanvas.width = video.videoWidth;
+    offscreenCanvas.height = video.videoHeight;
+
+    // Normalisasi kontras agar fitur wajah tetap tajam meski cahaya redup
+    offCtx.filter = 'brightness(1.1) contrast(1.2) saturate(1.0) grayscale(0.2)';
+    offCtx.drawImage(video, 0, 0);
+    const aiInput = offscreenCanvas;
+
+    let detections = null;
+
+    // --- TEKNIK 1 & 2: ROI & FACE TRACKING ---
+    if (blazeModel) {
+        let searchArea = aiInput;
+
+        // Jika wajah sebelumnya sudah terkunci (Tracking), kita bisa mempersempit area pencarian
+        // Namun BlazeFace sangat cepat, jadi kita gunakan ia sebagai generator ROI utama
+        const predictions = await blazeModel.estimateFaces(searchArea, false);
+
+        if (predictions.length === 0) {
+            lastFaceBox = null;
+            trackingMissCount++;
+            handleNoFace(context);
+            return;
+        }
+
+        trackingMissCount = 0;
+        const face = predictions[0];
+
+        // ROI: Ambil koordinat box dari BlazeFace untuk membatasi kerja Face-API
+        // Hal ini membuat identifikasi jauh lebih cepat karena AI tidak memindai seluruh background
+        lastFaceBox = face.topLeft;
+
+        // TAHAP IDENTIFIKASI (Hanya pada Single Face yang sudah dipastikan ada)
+        // inputSize diatur ke 160 untuk kecepatan maksimal tanpa mengorbankan akurasi identitas
+        detections = await faceapi.detectSingleFace(aiInput, new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.45 }))
+            .withFaceLandmarks()
+            .withFaceExpressions()
+            .withAgeAndGender()
+            .withFaceDescriptor();
+    } else {
+        // Fallback jika BlazeFace gagal
+        detections = await faceapi.detectSingleFace(aiInput, new faceapi.TinyFaceDetectorOptions({ inputSize: 256, scoreThreshold: 0.5 }))
+            .withFaceLandmarks()
+            .withFaceExpressions()
+            .withAgeAndGender()
+            .withFaceDescriptor();
+    }
 
     // Efek transisi ketika wajah terdeteksi dan frame aktif
     if (detections) {
@@ -2777,9 +2894,12 @@ async function detectFace() {
         const { landmarks } = resizedDetections;
 
         // --- ANALISIS EMOSI (NEW) ---
-        const expressions = resizedDetections.expressions;
-        const sortedEmotions = Object.keys(expressions).sort((a, b) => expressions[b] - expressions[a]);
-        const dominantEmotion = sortedEmotions[0] || 'NEUTRAL';
+        const expressions = resizedDetections.expressions; // Retrieve expressions
+        let dominantEmotion = 'NEUTRAL'; // Declare with 'let' and initialize default value
+        if (expressions) {
+            const sortedEmotions = Object.keys(expressions).sort((a, b) => expressions[b] - expressions[a]);
+            dominantEmotion = sortedEmotions[0] || 'NEUTRAL';
+        }
 
         // [NEW] Extract Gender & Age
         const gender = resizedDetections.gender || '-';
@@ -3123,40 +3243,35 @@ async function detectFace() {
         if (Math.random() < 0.005) triggerGlitch();
 
     } else {
-        // Tidak ada deteksi wajah
-        if(window.LivenessCheck) window.LivenessCheck.reset();
-        resetTargetData();
-        
-        // [NEW] Revert Ambulance Status (No Face)
-        const ambStatus = document.getElementById('amb-status');
-        if (ambStatus && ambStatus.textContent !== '') {
-            ambStatus.textContent = '';
-            ambStatus.style.color = '#FF3333';
-            ambStatus.style.textShadow = '0 0 10px #FF0000';
-        }
-
-        isTargetLocked = false; // Reset status lock
-        updateSystemDiagnostics(0);
-        // [UPDATE] Jangan langsung kosongkan history agar Grace Period bekerja
-        if (recognitionHistory.length > 0) recognitionHistory.shift(); 
-        
-        // Reset transform (tetap mirror)
-        video.style.transform = 'scaleX(-1)';
-        setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
-        confidenceHistory = []; // Reset grafik
-        faceParticles = []; // Reset partikel saat wajah hilang
-        if(userEmotionDisplay) userEmotionDisplay.textContent = 'SCANNING...';
-        targetLabel = '';
-        setSystemTheme('IDLE'); // Reset Theme
-        lastKnownMatch = null; 
-        
-        // Draw Idle Radar when no face detected
-        // drawIdleRadar(context, canvas.width / 2, canvas.height / 2, canvas.height / 3);
-        isLastFaceCentered = false; // [UPDATE] Reset status jika wajah hilang
-        
-        // [NEW] Gambar Siku-Siku Layar (Mode Idle/Breathing)
-        // drawDynamicScreenCorners(context, canvas.width, canvas.height, null, '#00FFFF');
+        handleNoFace(context);
     }
+}
+
+// [NEW] Fungsi helper untuk menangani kondisi Standby (Tidak ada wajah)
+function handleNoFace(context) {
+    if (window.LivenessCheck) window.LivenessCheck.reset();
+    resetTargetData();
+
+    const ambStatus = document.getElementById('amb-status');
+    if (ambStatus && ambStatus.textContent !== '') {
+        ambStatus.textContent = '';
+        ambStatus.style.color = '#FF3333';
+        ambStatus.style.textShadow = '0 0 10px #FF0000';
+    }
+
+    isTargetLocked = false;
+    updateSystemDiagnostics(0);
+    if (recognitionHistory.length > 0) recognitionHistory.shift();
+
+    video.style.transform = 'scaleX(-1)';
+    setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
+    confidenceHistory = [];
+    faceParticles = [];
+    if (userEmotionDisplay) userEmotionDisplay.textContent = 'SCANNING...';
+    targetLabel = '';
+    setSystemTheme('IDLE');
+    lastKnownMatch = null; 
+    isLastFaceCentered = false;
 }
 
 // --- NEW: HOLOGRAPHIC PARALLAX TILT EFFECT ---
@@ -3363,17 +3478,17 @@ async function processAttendance(karyawanId) {
             
             // [UPDATE] Logika Pesan Suara Berbeda untuk Masuk vs Pulang
             if (result.result_code === 'CHECK_OUT_SUCCESS') {
-                SoundFX.speak(`Sampai Jumpa ${display_name}. Terima kasih atas dedikasimu hari ini. Hati-hati di jalan.`);
+                await SoundFX.speak(`Sampai Jumpa ${display_name}. Terima kasih atas dedikasimu hari ini. Hati-hati di jalan.`);
             } else {
                 // [MODIFIKASI] Pesan Khusus untuk ID H87
                 if (karyawanId === 'H87') {
-                    SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet.`);
+                    await SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet.`);
                 } else if (result.telat_menit > 0) {
                     // [NEW] Sapaan Khusus Terlambat
-                    SoundFX.speak(`Halo ${display_name}. Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
+                    await SoundFX.speak(`Halo ${display_name}. Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
                 } else {
                     // [UPDATE] Greeting lebih ramah dengan sapaan "Halo"
-                    SoundFX.speak(`Halo, Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
+                    await SoundFX.speak(`Halo, Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
                 }
             }
             
@@ -3397,13 +3512,13 @@ async function processAttendance(karyawanId) {
                     // [UPDATE] Logika Tepat Waktu vs Terlambat
                     if (result.telat_menit > 0) {
                         finalStatusText = `TERLAMBAT`;
-                        finalMessageHTML = `Absensi masuk tetap dicatat.<br><span style="color:#FFD700; font-weight:900; font-size: 2.5rem; line-height: 1.2; display:block; margin-top:10px; text-shadow: 0 0 15px #FFD700, 0 0 30px #FFD700;">+ ${result.telat_menit} MENIT</span>`;
+                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi masuk tetap dicatat.</div><span style="color:#FFD700; font-weight:950; font-size: 2.8rem; line-height: 1.1; display:block; margin-top:10px; text-shadow: 0 1px 0 #886600, 0 2px 0 #775500, 0 3px 0 #664400, 0 4px 0 #553300, 0 10px 20px rgba(0,0,0,0.5), 0 0 25px #FFD700; transform: perspective(500px) rotateX(15deg); letter-spacing: 2px;">+ ${result.telat_menit} MENIT</span>`;
                         finalStatusColor = '#FFD700'; // Kuning Emas
                         finalBackground = `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
                     } else {
                         finalStatusText = 'TEPAT WAKTU';
                         finalStatusText = 'ABSEN MASUK BERHASIL';
-                        finalMessageHTML = `Absensi MASUK Terkonfirmasi.<br><span style="color:#00FF7F; font-weight:bold; font-size: 1.8rem; display:block; margin-top:10px; text-shadow: 0 0 15px #00FF7F, 0 0 30px #00FF7F;">SELAMAT BEKERJA</span>`;
+                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi MASUK Terkonfirmasi.</div><span style="color:#00FF7F; font-weight:950; font-size: 2.2rem; display:block; margin-top:10px; text-shadow: 0 1px 0 #008844, 0 2px 0 #007733, 0 3px 0 #006622, 0 4px 0 #005511, 0 8px 15px rgba(0,0,0,0.5), 0 0 20px #00FF7F; transform: perspective(500px) rotateX(15deg); letter-spacing: 4px;">SELAMAT BEKERJA</span>`;
                         finalBackground = ABSEN_NORMAL_BG;
                         finalStatusColor = '#00FF7F'; // Hijau Spring
                     }
@@ -3422,7 +3537,7 @@ async function processAttendance(karyawanId) {
                         finalBackground = `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
                     } else {
                         finalStatusText = 'CHECK-OUT BERHASIL';
-                        finalMessageHTML = `Absensi PULANG Terkonfirmasi.<br><span style="color:#00FF7F; text-shadow: 0 0 10px #00FF7F;">Terima kasih, Hati-hati di jalan.</span>`;
+                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi PULANG Terkonfirmasi.</div><span style="color:#00FF7F; font-weight:900; font-size: 1.8rem; text-shadow: 0 1px 0 #008844, 0 2px 0 #007733, 0 10px 20px rgba(0,0,0,0.5);">Hati-hati di jalan.</span>`;
                         finalStatusColor = '#00FF7F'; // Hijau Spring (Sama seperti Check-In)
                         finalBackground = ABSEN_NORMAL_BG;
                     }
@@ -3430,7 +3545,7 @@ async function processAttendance(karyawanId) {
                     break;
                 case 'ALREADY_IN_CONFIRMATION':
                     finalStatusText = 'SUDAH ABSEN MASUK';
-                    finalMessageHTML = `<span style="color:#00FF7F; font-weight:bold; font-size: 1.5rem;">DATA TERKONFIRMASI</span><br>Anda sudah melakukan absen masuk.`;
+                    finalMessageHTML = `<span style="color:#00FF7F; font-weight:950; font-size: 2rem; text-shadow: 0 1px 0 #008844, 0 2px 0 #007733, 0 10px 20px rgba(0,0,0,0.5);">DATA TERKONFIRMASI</span><br><span style="font-size: 1.1rem; opacity: 0.8;">Anda sudah melakukan absen masuk.</span>`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = '#00FF7F';
                     break;
@@ -3478,24 +3593,24 @@ async function processAttendance(karyawanId) {
                     break;
                 case 'TOO_EARLY_OUT':
                     finalStatusText = 'DILUAR JAM PULANG';
-                    finalMessageHTML = `<span style="color:#FF0055;">${cleanMessage}</span>`;
+                    finalMessageHTML = `<span style="color:#FF0055; font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #880022, 0 2px 0 #770011, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`; 
                     break;
                 case 'ALREADY_CHECKED_IN':
                     finalStatusText = 'MOHON TUNGGU'; // Cooldown
-                    finalMessageHTML = `<span style="color:#FFD700;">${cleanMessage}</span>`;
+                    finalMessageHTML = `<span style="color:#FFD700; font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #886600, 0 2px 0 #775500, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`;
                     break;
                 case 'ALREADY_CHECKED_OUT':
                     finalStatusText = 'SUDAH PULANG';
-                    finalMessageHTML = `<span style="color:#FFD700;">${cleanMessage}</span>`;
+                    finalMessageHTML = `<span style="color:#FFD700; font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #886600, 0 2px 0 #775500, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`;
                     break;
                 default:
                     finalStatusText = isWarning ? 'PERINGATAN' : 'AKSES DITOLAK';
-                    finalMessageHTML = `<span style="color:${isWarning ? '#FFD700' : '#FF0055'}; font-weight:bold; font-size: 1.5rem; display:block; margin-top:10px; text-shadow: 0 0 15px ${isWarning ? '#FFD700' : '#FF0055'}, 0 0 30px ${isWarning ? '#FFD700' : '#FF0055'};">${cleanMessage}</span>`;
+                    finalMessageHTML = `<span style="color:${isWarning ? '#FFD700' : '#FF0055'}; font-weight:950; font-size: 2rem; display:block; margin-top:10px; text-shadow: 0 1px 0 ${isWarning ? '#886600' : '#880022'}, 0 2px 0 ${isWarning ? '#775500' : '#770011'}, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`;
             }
 
             // VISUAL UPDATES (Dipindahkan ke sini agar override isWarning di switch berlaku)
             SoundFX.play('error');
-            SoundFX.speak(isWarning ? `Peringatan, ${display_name}` : `Akses Ditolak, ${display_name}`);
+            await SoundFX.speak(isWarning ? `Peringatan, ${display_name}` : `Akses Ditolak, ${display_name}`);
             setSystemTheme('ERROR'); 
 
             setStatusVisual(`${display_name}: ${cleanMessage}`, isWarning ? 'text-amber-500' : 'text-red-500');
@@ -4081,24 +4196,24 @@ async function processAttendance(karyawanId) {
                     /* --- HIGH-TECH STAMP & CARD STYLES --- */
                     .academic-stamp {
                         position: relative;
-                        width: 450px;
-                        padding: 30px;
-                        /* Glassmorphism Elegant */
-                        background: rgba(20, 20, 20, 0.6);
-                        backdrop-filter: blur(20px);
-                        -webkit-backdrop-filter: blur(20px);
-                        border: 1px solid rgba(255, 255, 255, 0.1);
-                        border-top: 1px solid rgba(255, 255, 255, 0.2);
-                        border-left: 1px solid rgba(255, 255, 255, 0.2);
-                        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+                        width: 480px;
+                        padding: 40px;
+                        background: radial-gradient(circle at top left, rgba(35, 35, 40, 0.95) 0%, rgba(5, 5, 10, 0.98) 100%);
+                        backdrop-filter: blur(30px);
+                        -webkit-backdrop-filter: blur(30px);
+                        border: 2px solid ${finalStatusColor}88;
+                        box-shadow: 
+                            0 40px 120px rgba(0,0,0,0.95),
+                            inset 0 0 0 1px rgba(255,255,255,0.1),
+                            inset 0 0 80px ${finalStatusColor}15;
                         border-radius: 4px;
-                        
-                        font-family: 'Times New Roman', serif;
+                        font-family: 'Rajdhani', sans-serif;
                         color: #FFF;
                         overflow: hidden;
                         transform: translateY(-600px) scale(2);
                         opacity: 0;
                         animation: stampDescend 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards 1.2s;
+                        clip-path: polygon(40px 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%, 0 40px);
                     }
                     .guilloche-bg {
                         position: absolute; inset: 0;
@@ -4132,18 +4247,35 @@ async function processAttendance(karyawanId) {
                     }
                     .emblem img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
                     .emblem-text { text-align: left; }
-                    .emblem-text span { display: block; text-transform: uppercase; font-weight: 900; background: linear-gradient(to bottom, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.9)); border-bottom: 4px double ${finalStatusColor}; padding-bottom: 2px; }
-                    .emblem-text span { font-size: 24px; letter-spacing: 1px; }
+                    .emblem-text span {
+                        display: block; text-transform: uppercase; font-weight: 900;
+                        background: linear-gradient(to bottom, #FFF, ${finalStatusColor});
+                        -webkit-background-clip: text; background-clip: text; color: transparent; 
+                        filter: drop-shadow(0 0 10px ${finalStatusColor}44); 
+                        border-bottom: 3px double ${finalStatusColor}aa; padding-bottom: 4px;
+                        font-size: 28px; letter-spacing: 3px;
+                    }
                     .stamp-status {
-                        font-size: 3rem; font-weight: 900; letter-spacing: 2px;
-                        text-transform: uppercase; color: ${finalStatusColor};
-                        text-shadow: 0 0 10px ${finalStatusColor}, 0 0 20px ${finalStatusColor}, 0 0 40px ${finalStatusColor}; margin: 15px 0; line-height: 1;
+                        font-size: 4.5rem; font-weight: 950; letter-spacing: 10px;
+                        text-transform: uppercase;
+                        color: #FFF;
+                        /* 4D Depth Shadow Effect */
+                        text-shadow:
+                            0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9,
+                            0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.1), 0 0 5px rgba(0,0,0,.1),
+                            0 1px 3px rgba(0,0,0,.3), 0 3px 5px rgba(0,0,0,.2), 0 5px 10px rgba(0,0,0,.25),
+                            0 10px 10px rgba(0,0,0,.2), 0 20px 20px rgba(0,0,0,.15),
+                            0 0 30px ${finalStatusColor}, 0 0 60px ${finalStatusColor}66;
+                        margin: 30px 0; line-height: 0.8;
+                        transform: perspective(800px) rotateX(15deg);
+                        filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
                     }
                     .stamp-details {
-                        font-size: 12px; color: #DDD;
-                        border-top: 1px solid ${finalStatusColor}40;
-                        border-bottom: 1px solid ${finalStatusColor}40;
-                        padding: 10px 0; margin-bottom: 15px;
+                        font-size: 13px; color: rgba(255,255,255,0.9);
+                        border-top: 1px solid ${finalStatusColor}44;
+                        border-bottom: 1px solid ${finalStatusColor}44;
+                        padding: 15px 0; margin-bottom: 20px;
+                        background: rgba(255,255,255,0.03);
                     }
                     .stamp-details > div { display: flex; justify-content: space-between; padding: 2px 5px; }
                     .stamp-details > div span:first-child { font-weight: bold; opacity: 0.8; }
@@ -4662,14 +4794,21 @@ async function processAttendance(karyawanId) {
                 </div>
 
                 <div class="holographic-container" style="perspective: 2000px; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; z-index: 10;">
-                <div style="display: flex; justify-content: center; align-items: center; gap: 100px; width: 100%; transform-style: preserve-3d;">
+                <div style="display: flex; justify-content: center; align-items: center; gap: 40px; width: 100%; transform-style: preserve-3d;">
                     <!-- [FIXED] Kolom Kiri: ID Card (Ditampilkan kembali) -->
                     <div style="transform: translateZ(20px);">
                         ${idCardHTML}
                     </div>
 
-                    <!-- Kolom Kanan: Stempel Akademik -->
-                    <div class="academic-stamp" style="transform: translateZ(60px);">
+                    <div class="academic-stamp">
+                        <div class="hologram-scanline-v"></div>
+                        <div class="hologram-noise-overlay"></div>
+                        <div class="prismatic-layer"></div>
+                        <!-- Decor corners -->
+                        <div style="position:absolute; top:15px; left:15px; width:30px; height:30px; border-top:2px solid ${finalStatusColor}; border-left:2px solid ${finalStatusColor}; opacity:0.4;"></div>
+                        <div style="position:absolute; top:15px; right:15px; width:30px; height:30px; border-top:2px solid ${finalStatusColor}; border-right:2px solid ${finalStatusColor}; opacity:0.4;"></div>
+                        <div style="position:absolute; bottom:15px; left:15px; width:30px; height:30px; border-bottom:2px solid ${finalStatusColor}; border-left:2px solid ${finalStatusColor}; opacity:0.4;"></div>
+                        <div style="position:absolute; bottom:15px; right:15px; width:30px; height:30px; border-bottom:2px solid ${finalStatusColor}; border-right:2px solid ${finalStatusColor}; opacity:0.4;"></div>
                         <!-- [IDE BARU] Latar Belakang DNA Helix Animasi 3D -->
                         ${dnaHelixStampHTML}
                         <div class="guilloche-bg"></div>
@@ -5212,7 +5351,7 @@ function injectAmbulanceDisplay() {
 
         wrapper.innerHTML = `
             <div style="position: relative;">
-                <img src="tung.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
+                <img src="santriwati.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
                 
                 <!-- UNDERGLOW (Neon Bawah Mobil) -->
                 <div style="position: absolute; bottom: 2%; left: 10%; width: 80%; height: 20%; background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.6) 0%, transparent 70%); filter: blur(20px); opacity: 0.6; animation: underglow-pulse 3s infinite; z-index: 0;"></div>
@@ -5282,6 +5421,11 @@ document.addEventListener('DOMContentLoaded', () => {
     updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih
     initAudioVisualizer(); // Start Visualizer Loop
     injectAmbulanceDisplay(); // Inject Ambulance Image di atas Target Data
+
+    // [NEW] Panggil roster segera saat startup agar tidak menunggu 10 detik pertama
+    updatePersonnelRoster();
+    // Sinkronisasi data awal
+    setTimeout(updatePersonnelRoster, 2000);
 
     // [NEW] Auto-refresh roster setiap 10 detik agar status DL/Manual muncul otomatis tanpa reload
     setInterval(updatePersonnelRoster, 10000);

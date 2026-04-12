@@ -1,0 +1,4 @@
+# Placeholder Icon Files
+# Replace icon-192.png and icon-512.png with actual PNG icons
+# Recommended size: 192x192 and 512x512 pixels
+# You can create icons using online tools or design software

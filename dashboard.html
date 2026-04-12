@@ -1,11 +1,18 @@
-js
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="theme-color" content="#00FFFF">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Biometrik">
+    <link rel="apple-touch-icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%2300FFFF;stop-opacity:1' /><stop offset='100%' style='stop-color:%230088FF;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='180' height='180' rx='40'/><text x='90' y='90' font-size='90' fill='white' text-anchor='middle' dominant-baseline='central' font-weight='bold' font-family='Arial'>B</text></svg>">
     <title>Dashboard Absensi - Puskesmas Wana</title>
-    
+
     <!-- 1. TIPOGRAFI: Font Inter (Modern Sans Serif) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -112,7 +119,8 @@ js
         @media print {
             @page { 
                 size: landscape; 
-                margin: 10mm 10mm 15mm 10mm; /* Margin bawah 15mm untuk ruang footer */
+
+                margin: 10mm 10mm 20mm 10mm; /* Margin bawah diperbesar agar tidak bertabrakan dengan footer */
                 
                 /* Menampilkan nomor halaman (Support: Firefox & PDF Tools) */
                 @bottom-right {
@@ -121,24 +129,41 @@ js
                     font-size: 9pt;
                 }
             }
-            /* Reset Body untuk Cetak Panjang (Mencegah terpotong 1 halaman) */
-            body { 
+            /* Total Reset untuk Cetak Multipage (Mencegah baris hilang di akhir halaman) */
+            html, body { 
                 -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important;
-                height: auto !important; overflow: visible !important; 
+                height: auto !important; min-height: 0 !important;
+                overflow: visible !important; display: block !important; 
+                position: static !important; width: 100% !important;
             }
-            #print-area { background-color: white; width: 100%; }
+            
+            #print-area { 
+                background-color: white !important; width: 100% !important; 
+                overflow: visible !important; display: block !important; 
+                position: relative !important;
+            }
             
             /* Optimasi Tabel Panjang & Lebar */
-            thead { display: table-header-group; } /* Header berulang di tiap halaman baru */
-            tr { break-inside: avoid; page-break-inside: avoid; } /* Mencegah baris terpotong di tengah teks */
+            #print-table-container { width: 100%; overflow: visible !important; display: block !important; }
+            #print-table-container table {
+                table-layout: auto; width: 100% !important; border-collapse: collapse !important; 
+                overflow: visible !important; page-break-inside: auto !important;
+            }
+            #print-table-container th, #print-table-container td { font-size: 7px !important; padding: 1px !important; word-wrap: break-word; }
+            thead { display: table-header-group !important; } 
+            tr { break-inside: avoid !important; page-break-inside: avoid !important; page-break-after: auto !important; } 
+            
+            /* Perbaikan Footer: Ubah dari FIXED ke RELATIVE agar tidak menutupi baris terakhir */
+            .print\:hidden { display: none !important; }
+            #print-area .fixed.bottom-0 { position: relative !important; margin-top: 50px; border-top: 1px solid black; }
         }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
 
     <!-- SIDEBAR -->
-    <aside
-        class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20 transition-all duration-300 shadow-xl print:hidden text-slate-300">
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 shadow-xl print:hidden text-slate-300 -translate-x-full md:relative md:translate-x-0">
         <div class="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-900">
             <img src="logo.jpg" alt="Logo" class="h-10 w-auto mr-3 object-contain">
             <span class="text-lg font-extrabold text-white tracking-tight">PUSKESMAS <span
@@ -168,6 +193,9 @@ js
                 <li class="pt-4 mt-4 border-t border-slate-700"><button id="nav-settings" onclick="switchTab('settings')"
                         class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-400 rounded-md hover:bg-slate-800 hover:text-white transition-colors"><i
                             class="fa-solid fa-sliders w-5"></i> Pengaturan</button></li>
+                <li><button onclick="logout()"
+                        class="w-full flex items-center gap-3 px-4 py-3 text-rose-400 rounded-md hover:bg-rose-900/20 hover:text-rose-300 transition-colors mt-2"><i
+                            class="fa-solid fa-right-from-bracket w-5"></i> Keluar</button></li>
             </ul>
         </nav>
 
@@ -176,17 +204,21 @@ js
         </div>
         </aside>
 
+    <!-- MOBILE OVERLAY (Muncul saat menu diklik di HP) -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()"
+        class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300 opacity-0"></div>
+
     <!-- MAIN CONTENT -->
     <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-[#f1f5f9] print:hidden">
         <!-- HEADER -->
         <header
             class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 sticky top-0 shadow-sm">
             <div class="flex items-center">
-                <h1 id="page-title" class="page-header text-slate-800">Dashboard Overview</h1>
+                <h1 id="page-title" class="page-header text-slate-800 text-lg md:text-xl lg:text-2xl">Dashboard Overview</h1>
             </div>
             <div class="flex items-center gap-6">
                 <!-- Clock -->
-                <div class="text-right hidden md:block">
+                <div class="text-right hidden sm:block">
                     <div id="clock-time" class="text-lg font-bold text-[#2c3e50] leading-none">00:00:00</div>
                     <div id="clock-date" class="text-xs text-gray-500 mt-1">Senin, 1 Januari 2024</div>
                 </div>
@@ -201,6 +233,9 @@ js
                         title="Refresh Data"><i class="fa-solid fa-arrows-rotate"></i></button>
                     <button onclick="toggleFullscreen()" class="p-2 text-gray-400 hover:text-[#3498db] transition-colors"><i
                             id="icon-fullscreen" class="fa-solid fa-expand"></i></button>
+                    <button id="installBtn" onclick="installApp()" style="display:none;"
+                        class="p-2 text-gray-400 hover:text-green-400 transition-colors" title="Install App"><i
+                            class="fa-solid fa-download"></i></button>
                 
                     <!-- Notification -->
                     <div class="relative">
@@ -219,7 +254,7 @@ js
                     </header>
 
         <!-- CONTENT VIEWS -->
-        <div class="flex-1 overflow-y-auto p-6 scroll-smooth">
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 scroll-smooth">
         
             <!-- VIEW: OVERVIEW -->
             <div id="view-overview" class="space-y-6">
@@ -494,6 +529,31 @@ js
                                     placeholder="Dokter=7000000&#10;Perawat=4500000"></textarea>
                                 </div>
                         </div>
+                        <!-- Kolom Bawah: Geofencing (GPS) -->
+                        <div class="col-span-1 md:col-span-2 pt-4 border-t border-gray-100">
+                            <h4 class="font-bold text-gray-600 uppercase text-xs tracking-wider mb-4">Konfigurasi Lokasi Kantor (GPS)</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500">Latitude Kantor</label>
+                                    <input type="text" id="conf-lat" placeholder="-5.123456"
+                                        class="w-full border-gray-300 rounded text-sm font-mono">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500">Longitude Kantor</label>
+                                    <input type="text" id="conf-lon" placeholder="105.123456"
+                                        class="w-full border-gray-300 rounded text-sm font-mono">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500">Radius Absen (Meter)</label>
+                                    <input type="number" id="conf-radius" placeholder="100"
+                                        class="w-full border-gray-300 rounded text-sm font-mono">
+                                </div>
+                            </div>
+                            <button onclick="getCurrentLocation()"
+                                class="mt-3 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded border border-slate-300 font-bold transition-all flex items-center gap-2">
+                                <i class="fa-solid fa-crosshairs"></i> AMBIL LOKASI SAYA SAAT INI
+                            </button>
+                        </div>
                         </div>
 <div class="mt-8 pt-6 border-t border-gray-100 flex justify-end gap-3">
     <button onclick="resetSignatureConfig()"
@@ -510,6 +570,54 @@ js
         </main>
 <!-- TOAST CONTAINER -->
 <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 print:hidden"></div>
+
+    <!-- LOGIN OVERLAY (Ditampilkan jika belum login) -->
+    <div id="login-overlay" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-4">
+        <div
+            class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 transition-all">
+            <div class="text-center mb-8">
+                <img src="logo.jpg" alt="Logo" class="h-16 mx-auto mb-4 object-contain">
+                <h2 id="login-title" class="text-2xl font-bold text-slate-800 dark:text-white font-serif">Sistem
+                    Administrasi</h2>
+                <p id="login-subtitle" class="text-slate-500 dark:text-slate-400 text-sm">Puskesmas Wana - Silakan Login</p>
+            </div>
+            <form onsubmit="event.preventDefault(); handleLogin();" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Username</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="login-username" required autocomplete="username"
+                            class="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="password" id="login-password" required autocomplete="current-password"
+                            class="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    </div>
+                </div>
+                <div id="confirm-password-container" class="hidden">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Konfirmasi Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-shield-halved absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="password" id="login-confirm-password" autocomplete="new-password"
+                            class="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    </div>
+                </div>
+                <div id="login-error" class="hidden text-xs font-bold p-2 rounded border text-center animate-pulse">
+                </div>
+                <button type="submit" id="btn-login-submit"
+                    class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg transition-all transform hover:-translate-y-0.5 active:scale-95">
+                    MASUK KE DASHBOARD
+                </button>
+            </form>
+            <div class="mt-8 text-center text-[10px] text-slate-400 uppercase tracking-widest">
+                SIM Puskesmas Wana v4.5.2
+            </div>
+        </div>
+    </div>
 
     <!-- MODALS (Hidden by default) -->
     <!-- Modal Edit Absensi (NEW) -->
@@ -614,6 +722,7 @@ js
             <option value="DL">Dinas Luar</option>
             <option value="IZIN">Izin</option>
             <option value="SAKIT">Sakit</option>
+            <option value="CUTI">Cuti</option>
         </select>
         <div id="manual-time-container"><input type="time" id="manual-jam-masuk"
                 class="w-full border p-2 rounded mb-2"><input type="time" id="manual-jam-keluar"
@@ -725,5 +834,6 @@ js
 
     <!-- Load Logic -->
     <script src="dashboard.js"></script>
+    <script src="pwa.js"></script>
 </body>
 </html>

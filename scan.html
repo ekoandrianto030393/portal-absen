@@ -1,24 +1,26 @@
-node server.js
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="id">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerbang Biometrik - Operasi Antarbintang</title>
+    <meta name="theme-color" content="#00FFFF">
+    <link rel="manifest" href="/manifest.json">
+    <title>Gerbang Biometrik - Puskesmas Wana</title>
 
     <!-- RESOURCE HINTS FOR PRODUCTION -->
     <link rel="preconnect" href="https://cdn.babylonjs.com">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
 
     <!-- Babylon.js Core & Loaders -->
-    <script src="https://cdn.babylonjs.com/babylon.js"></script> <!-- Cukup satu versi -->
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script> <!-- Cukup satu versi -->
-    <!-- Hapus duplikat -->
-    <!-- Hapus duplikat -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    
+    <!-- Load full TensorFlow.js bundle to provide the loader components needed by BlazeFace -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.0/dist/tf.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="./models/blazeface.js"></script> <!-- Gunakan file lokal Anda -->
     <!-- FONT SCI-FI: Rajdhani -->
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
@@ -1119,27 +1121,39 @@ node server.js
         .digital-stamp {
             position: absolute;
             right: 10%;
+            right: 20%;
             bottom: 25%;
-            min-width: 280px;
-            padding: 15px;
+            min-width: 320px;
+            padding: 25px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border: 10px solid currentColor;
-            border-radius: 12px;
+            border: 4px double currentColor;
+            border-radius: 4px;
             font-size: 4rem;
-            font-weight: 900;
+            font-weight: 950;
             text-transform: uppercase;
-            letter-spacing: 5px;
-            transform: translateY(-120vh) scale(2) rotate(-25deg);
+            letter-spacing: 12px;
+            transform: translateY(-120vh) scale(3) rotate(-45deg);
             opacity: 0;
-            animation: stampFall 0.4s cubic-bezier(0.6, 0.04, 0.98, 0.335) forwards 1.2s;
+            animation: stampFall 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards 1.2s, stampHoloLoop 8s infinite 2s;
             z-index: 60;
             mix-blend-mode: normal;
-            background: rgba(0,0,0,0.4);
-            box-shadow: 0 0 50px currentColor, inset 0 0 20px currentColor;
-            backdrop-filter: blur(4px);
+            background: linear-gradient(135deg, rgba(10, 20, 30, 0.95) 0%, rgba(5, 10, 15, 0.98) 100%);
+            box-shadow: 0 40px 120px rgba(0,0,0,1), inset 0 0 50px rgba(0,255,255,0.1);
+            backdrop-filter: blur(20px);
+            clip-path: polygon(30px 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%, 0 30px);
+            /* 4D Deep Text Shadow */
+            text-shadow: 
+                0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 
+                0 5px 0 #aaa, 0 10px 20px rgba(0,0,0,0.5);
+        }
+        @keyframes stampHoloLoop {
+            0%, 94%, 100% { filter: none; transform: translateY(0) scale(0.85) rotate(-15deg); }
+            95% { filter: hue-rotate(90deg) brightness(1.8) contrast(1.5); transform: translate(-3px, 1px) scale(0.86) rotate(-14deg); }
+            96% { filter: hue-rotate(-90deg) opacity(0.7); transform: translate(3px, -1px) scale(0.84) rotate(-16deg); }
+            97% { filter: invert(1) brightness(2) blur(1px); transform: translate(0, 0) scale(0.85) rotate(-15deg); }
         }
 
         .stamp-inner {
@@ -1181,6 +1195,7 @@ node server.js
         .impact-dust {
             position: absolute;
             right: 15%;
+            right: 25%;
             bottom: 20%;
             width: 400px;
             height: 100px;
@@ -1309,6 +1324,24 @@ node server.js
             0% { transform: translateX(100%); }
             100% { transform: translateX(-100%); }
         }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .btn-menu {
+                font-size: 1rem !important;
+                padding: 1rem !important;
+            }
+            #videoContainer {
+                max-width: 100vw !important;
+                height: auto !important;
+            }
+            #main-content {
+                padding: 1rem !important;
+            }
+            .hud-panel {
+                font-size: 0.8rem !important;
+            }
+        }
     </style>
 
 </head>
@@ -1364,7 +1397,7 @@ node server.js
                     <!-- AMBULANCE DISPLAY (STATIC) -->
                     <div id="ambulance-unit-display" style="margin-top: 10px; margin-bottom: 15px; border: 1px solid #00FFFF; border-radius: 6px; overflow: hidden; box-shadow: 0 0 10px rgba(0, 255, 255, 0.2); position: relative; background: rgba(0, 20, 30, 0.6);">
                         <div style="position: relative;">
-                            <img src="tung.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
+                            <img src="santri.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
                             
                             <!-- UNDERGLOW -->
                             <div style="position: absolute; bottom: 2%; left: 10%; width: 80%; height: 20%; background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.6) 0%, transparent 70%); filter: blur(20px); opacity: 0.6; animation: underglow-pulse 3s infinite; z-index: 0;"></div>
@@ -1711,8 +1744,15 @@ node server.js
             </div>
         </div>
 
-        <script src="scan.js"></script>
+        <!-- [NEW] ELEVENLABS TTS CONFIGURATION -->
+        <script>
+            window.ELEVENLABS_API_KEY = "025c2bccb58bdbefdf2401b8355f3e30a0237800ef79520bc68faad5108d843e";
+            window.ELEVENLABS_VOICE_ID = "GdyFAZdMpKMBHw5pc1Bu";
+        </script>
 
-</body>
+        <script src="scan.js"></script>
+        <script src="sw.js"></script>
+
+    </body>
 
 </html>

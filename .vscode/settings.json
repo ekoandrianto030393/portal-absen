@@ -1,7 +1,8 @@
 {
     "liveServer.settings.port": 5501,
-    "editor.formatOnSave": true,
+    "editor.formatOnSave": false,
     "editor.formatOnSaveMode": "modifications",
     "files.autoSave": "onFocusChange",
-    "php.validate.executablePath": "copilot"
+    "php.validate.executablePath": "copilot",
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
 }

@@ -3,9 +3,24 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="theme-color" content="#00FFFF">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Biometrik">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%2300FFFF;stop-opacity:1' /><stop offset='100%' style='stop-color:%230088FF;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='180' height='180' rx='40'/><text x='90' y='90' font-size='90' fill='white' text-anchor='middle' dominant-baseline='central' font-weight='bold' font-family='Arial'>B</text></svg>">
     <title>Dashboard Biometrik</title>
+    <script>
+        // Suppress Tailwind CSS CDN warning for development
+        tailwind = window.tailwind;
+        if (tailwind) tailwind.config = { future: { hoverOnlyWhenSupported: true } };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -51,6 +66,22 @@
                 <p class="text-sm font-normal text-gray-400 mt-1">Masuk ke terminal pemindaian wajah</p>
             </a>
 
+            <!-- Install App Button -->
+            <button id="installBtn" class="btn-menu" style="display:none; cursor:pointer;">
+                📥 INSTALL APP
+                <p class="text-sm font-normal text-gray-400 mt-1">Tambahkan ke home screen</p>
+            </button>
+            
+            <!-- iOS Install Instructions -->
+            <div id="iosInstallMsg" class="btn-menu bg-blue-900/30 border-blue-500/50"
+                style="display:none; text-align: left; font-size: 0.9rem;">
+                📱 <strong>Cara Install di iPhone/iPad:</strong><br>
+                1. Tap tombol Share <span style="font-weight:bold">⬆️</span> di bawah<br>
+                2. Scroll dan pilih "Add to Home Screen"<br>
+                3. Tap "Add"<br>
+                ✅ Aplikasi akan tersimpan di home screen
+            </div>
+
             <!-- Link API untuk testing -->
             <div class="grid grid-cols-2 gap-4">
                 <a href="/api/monitoring/stats" target="_blank" class="btn-menu text-lg">
@@ -62,6 +93,12 @@
                     <p class="text-xs text-gray-400">JSON Data</p>
                 </a>
             </div>
+<!-- Debug Info -->
+<div id="pwaDebug"
+    style="font-size:0.8rem; color:#888; margin-top:1rem; padding:1rem; border:1px solid #444; border-radius:4px; display:none;">
+    <strong>DEBUG INFO:</strong><br>
+    <span id="debugMsg"></span>
+</div>
         </div>
 
         <div class="mt-8 text-center text-xs text-gray-500">
@@ -69,6 +106,7 @@
         </div>
     </div>
 
+    <script src="pwa.js"></script>
 </body>
 
 </html>

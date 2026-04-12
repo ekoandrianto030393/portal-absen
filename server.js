@@ -35,6 +35,8 @@ const AUTO_PULANG_SABTU    = process.env.AUTO_PULANG_DEFAULT_SABTU ? formatTime(
 // [NEW] Jam Pulang Khusus Jumat & Sabtu (Default jika tidak ada di .env)
 let JAM_PULANG_JUMAT       = formatTime(process.env.JAM_PULANG_JUMAT);
 let JAM_PULANG_SABTU       = formatTime(process.env.JAM_PULANG_SABTU);
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID;
 
 // Middleware untuk parsing JSON body (limit besar untuk upload foto)
 app.use(bodyParser.json({ limit: '50mb' }));
@@ -43,8 +45,14 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 // Endpoint khusus untuk mencegah error 404 favicon.ico di browser
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
-// Serve file statis (HTML, CSS, JS) dari folder yang sama
-app.use(express.static(path.join(__dirname, '.')));
+// Serve file statis dengan optimasi caching untuk file model
+app.use(express.static(path.join(__dirname, '.'), {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.bin') || path.endsWith('.json') || path.endsWith('.onnx') || path.endsWith('.wasm')) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache 1 tahun (High Speed Load)
+        }
+    }
+}));
 
 // Middleware CORS Manual (Agar tidak error saat diakses dari Live Server/Port berbeda)
 app.use((req, res, next) => {
@@ -1083,7 +1091,9 @@ app.get('/api/config', (req, res) => {
             jam_pulang_start: JAM_PULANG_START,
             batas_min_pulang: BATAS_MIN_PULANG,
             auto_pulang_default: AUTO_PULANG_DEFAULT,
-            potongan_lupa_pulang: POTONGAN_LUPA_PULANG
+            potongan_lupa_pulang: POTONGAN_LUPA_PULANG,
+            elevenlabs_api_key: ELEVENLABS_API_KEY,
+            elevenlabs_voice_id: ELEVENLABS_VOICE_ID
         }
     });
 });

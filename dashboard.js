@@ -35,6 +35,9 @@ function formatPelanggaranToHHMMSS(totalMinutes) {
 
 // --- INISIALISASI ---
 document.addEventListener('DOMContentLoaded', () => {
+    // [NEW] Cek Status Login Terlebih Dahulu
+    if (!checkAuth()) return;
+
     updateClock();
     setInterval(updateClock, 1000);
 
@@ -96,6 +99,81 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 60000);
 });
 
+// --- [NEW] AUTHENTICATION LOGIC ---
+function checkAuth() {
+    const session = localStorage.getItem('pkm_wana_session');
+    const adminData = localStorage.getItem('pkm_wana_admin');
+    const loginOverlay = document.getElementById('login-overlay');
+
+    if (session === 'active') {
+        if (loginOverlay) loginOverlay.classList.add('hidden');
+        return true;
+    } else {
+        if (loginOverlay) loginOverlay.classList.remove('hidden');
+
+        // Jika belum ada admin terdaftar, ubah UI jadi Mode Pendaftaran
+        if (!adminData) {
+            if (document.getElementById('login-title')) document.getElementById('login-title').textContent = "Pendaftaran Admin";
+            if (document.getElementById('login-subtitle')) document.getElementById('login-subtitle').textContent = "Buat akun administrator pertama Anda";
+            if (document.getElementById('confirm-password-container')) document.getElementById('confirm-password-container').classList.remove('hidden');
+            if (document.getElementById('btn-login-submit')) document.getElementById('btn-login-submit').textContent = "DAFTAR SEKARANG";
+        }
+        return false;
+    }
+}
+
+function handleLogin() {
+    const user = document.getElementById('login-username').value;
+    const pass = document.getElementById('login-password').value;
+    const confirmPass = document.getElementById('login-confirm-password').value;
+    const adminDataRaw = localStorage.getItem('pkm_wana_admin');
+
+    // MODE PENDAFTARAN (Jika belum ada admin terdaftar)
+    if (!adminDataRaw) {
+        if (pass !== confirmPass) {
+            showLoginError("Password tidak cocok!", "bg-rose-50 text-rose-500 border-rose-200");
+            return;
+        }
+        if (pass.length < 6) {
+            showLoginError("Password minimal 6 karakter!", "bg-amber-50 text-amber-600 border-amber-200");
+            return;
+        }
+
+        // Simpan akun baru
+        const newAdmin = { username: user, password: pass };
+        localStorage.setItem('pkm_wana_admin', JSON.stringify(newAdmin));
+        localStorage.setItem('pkm_wana_session', 'active');
+
+        alert("Pendaftaran Berhasil! Selamat datang Admin.");
+        location.reload();
+        return;
+    }
+
+    // MODE LOGIN NORMAL (Jika admin sudah terdaftar)
+    const admin = JSON.parse(adminDataRaw);
+    if (user === admin.username && pass === admin.password) {
+        localStorage.setItem('pkm_wana_session', 'active');
+        location.reload();
+    } else {
+        showLoginError("Username atau password salah!", "bg-rose-50 text-rose-500 border-rose-200");
+    }
+}
+
+function showLoginError(msg, classes) {
+    const errorMsg = document.getElementById('login-error');
+    errorMsg.textContent = msg;
+    errorMsg.className = `p-2 rounded border text-center animate-pulse ${classes}`;
+    errorMsg.classList.remove('hidden');
+    setTimeout(() => errorMsg.classList.add('hidden'), 3000);
+}
+
+function logout() {
+    if (confirm('Apakah Anda yakin ingin keluar?')) {
+        localStorage.removeItem('pkm_wana_session');
+        location.reload();
+    }
+}
+
 // --- LOAD CONFIG DARI SERVER ---
 async function loadSystemConfig() {
     try {
@@ -108,6 +186,9 @@ async function loadSystemConfig() {
             // [NEW] Populate Jam Pulang Khusus dari Server Config (jika input kosong)
             const jumatInput = document.getElementById('conf-jam-pulang-jumat');
             const sabtuInput = document.getElementById('conf-jam-pulang-sabtu');
+            if (document.getElementById('conf-lat')) document.getElementById('conf-lat').value = systemConfig.office_lat;
+            if (document.getElementById('conf-lon')) document.getElementById('conf-lon').value = systemConfig.office_lon;
+            if (document.getElementById('conf-radius')) document.getElementById('conf-radius').value = systemConfig.office_radius;
             if (jumatInput && !jumatInput.value) jumatInput.value = systemConfig.jam_pulang_jumat;
             if (sabtuInput && !sabtuInput.value) sabtuInput.value = systemConfig.jam_pulang_sabtu;
         }
@@ -299,8 +380,12 @@ async function loadDailyData(silent = false) {
                     statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-heart-pulse"></i> Sakit</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
-                } else if (status === 'IZIN' || status === 'CUTI') {
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-file-signature"></i> Izin/Cuti</span>`;
+                } else if (status === 'IZIN') {
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-file-signature"></i> Izin</span>`;
+                    row.jam_masuk = '-';
+                    row.jam_keluar = '-';
+                } else if (status === 'CUTI') {
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-calendar-check"></i> Cuti</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
                 } else if (status === 'HADIR_MANUAL') {
@@ -535,18 +620,18 @@ async function loadMonthlyRecap(silent = false) {
                 <th onclick="sortTable('table-rekap-body', 3)" class="cursor-pointer hover:bg-slate-700 transition-colors pl-16 pr-6 py-3 text-left">Jabatan <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
                 <th onclick="sortTable('table-rekap-body', 4)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
                 <th class="px-6 py-3 text-center">DL</th>
-                <th onclick="sortTable('table-rekap-body', 6)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Alpa <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th onclick="sortTable('table-rekap-body', 7)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300">% Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="px-6 py-3 text-center bg-rose-50 text-rose-800 border-l border-r border-slate-200">S</th>
+                <th class="px-6 py-3 text-center bg-purple-50 text-purple-800 border-r border-slate-200">I</th>
+                <th class="px-6 py-3 text-center bg-orange-50 text-orange-800 border-r border-slate-200">C</th>
+                <th onclick="sortTable('table-rekap-body', 9)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Alpa <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 10)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300">% Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
                 <th class="px-6 py-3 text-center">Telat (x)</th>
                 <th class="px-6 py-3 text-center">Telat Waktu</th>
                 <th class="px-6 py-3 text-center">PSW (x)</th>
                 <th class="px-6 py-3 text-center">PSW Waktu</th>
-                <th onclick="sortTable('table-rekap-body', 12)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300 border-l border-slate-700 print:text-black">Pelanggaran (Jam) <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 15)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300 border-l border-slate-700 print:text-black">Pelanggaran (Jam) <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
                 <th class="px-6 py-3 text-center">Tanpa Absen Pulang</th>
                 <th class="px-6 py-3 text-center">Potongan</th>
-                <th class="px-6 py-3 text-center bg-rose-50 text-rose-800 border-l border-r border-slate-200">S</th>
-                <th class="px-6 py-3 text-center bg-purple-50 text-purple-800 border-r border-slate-200">I</th>
-                <th class="px-6 py-3 text-center bg-orange-50 text-orange-800 border-r border-slate-200">C</th>
                 <th class="px-6 py-3 text-center">Total Jam Kerja</th>
                 <th class="px-6 py-3 text-center print:hidden">Aksi</th>
             </tr>
@@ -660,6 +745,9 @@ async function loadMonthlyRecap(silent = false) {
                         <td class="px-6 py-3 text-center">
                             <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold text-xs border border-blue-200">${row.total_dl || 0}</span>
                         </td>
+                        <td class="px-6 py-3 text-center bg-rose-50/50 text-rose-700 font-bold border-l border-r border-slate-200">${row.total_sakit || 0}</td>
+                        <td class="px-6 py-3 text-center bg-purple-50/50 text-purple-700 font-bold border-r border-slate-200">${row.total_izin || 0}</td>
+                        <td class="px-6 py-3 text-center bg-orange-50/50 text-orange-700 font-bold border-r border-slate-200">${row.total_cuti || 0}</td>
                         <td class="px-6 py-3 text-center ${row.alpa > 0 ? 'text-red-600 font-black' : 'text-slate-300'}">${row.alpa}</td>
                         <td class="px-6 py-3 text-center font-bold ${persentase >= 95 ? 'text-emerald-600' : (persentase >= 80 ? 'text-blue-600' : 'text-red-600')}">${persentase}%</td>
                         <td class="px-6 py-3 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-black' : 'text-slate-300'}">${row.telat_kali}</td>
@@ -669,9 +757,6 @@ async function loadMonthlyRecap(silent = false) {
                         <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-200">${formatPelanggaranToHHMMSS(totalMenitPelanggaranBaru)}</td>
                         <td class="px-6 py-3 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-black' : 'text-slate-300'}">${row.tanpa_absen_pulang}</td>
                         <td class="px-6 py-3 text-center text-red-600">${row.potongan_jam} Jam</td>
-                        <td class="px-6 py-3 text-center bg-rose-50/50 text-rose-700 font-bold border-l border-r border-slate-200">${row.total_sakit || 0}</td>
-                        <td class="px-6 py-3 text-center bg-purple-50/50 text-purple-700 font-bold border-r border-slate-200">${row.total_izin || 0}</td>
-                        <td class="px-6 py-3 text-center bg-orange-50/50 text-orange-700 font-bold border-r border-slate-200">${row.total_cuti || 0}</td>
                         <td class="px-6 py-3 text-center font-mono text-emerald-600 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
                         <td class="px-6 py-3 text-center print:hidden">
                             <button onclick="event.stopPropagation(); deleteEmployee('${row.id_karyawan}', '${escapeHtml(row.nama)}')" class="w-8 h-8 rounded flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Hapus Pegawai">
@@ -687,6 +772,9 @@ async function loadMonthlyRecap(silent = false) {
                     <td colspan="4" class="px-6 py-3 text-right uppercase text-xs tracking-wider">Total Ringkasan:</td>
                     <td class="px-6 py-3 text-center">${tHadir}</td>
                     <td class="px-6 py-3 text-center">${tDL}</td>
+                    <td class="px-6 py-3 text-center text-rose-800 bg-rose-100">${tSakit}</td>
+                    <td class="px-6 py-3 text-center text-purple-800 bg-purple-100">${tIzin}</td>
+                    <td class="px-6 py-3 text-center text-orange-800 bg-orange-100">${tCuti}</td>
                     <td class="px-6 py-3 text-center">${tAlpa}</td>
                     <td class="px-6 py-3 text-center">-</td>
                     <td class="px-6 py-3 text-center">${tTelat}</td>
@@ -696,9 +784,6 @@ async function loadMonthlyRecap(silent = false) {
                     <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-300">${formatPelanggaranToHHMMSS(tPelanggaranMin)}</td>
                     <td class="px-6 py-3 text-center">${tNoOut}</td>
                     <td class="px-6 py-3 text-center">${tPot}</td>
-                    <td class="px-6 py-3 text-center text-rose-800 bg-rose-100">${tSakit}</td>
-                    <td class="px-6 py-3 text-center text-purple-800 bg-purple-100">${tIzin}</td>
-                    <td class="px-6 py-3 text-center text-orange-800 bg-orange-100">${tCuti}</td>
                     <td class="px-6 py-3"></td>
                     <td class="px-6 py-3 print:hidden"></td>
                 </tr>
@@ -707,9 +792,10 @@ async function loadMonthlyRecap(silent = false) {
                     <td colspan="15" class="px-6 py-4 text-right uppercase text-sm tracking-wider">
                         Total Estimasi Pengeluaran Gaji (Bulan Ini):
                     </td>
-                    <td colspan="5" class="px-6 py-4 text-right text-xl font-black text-emerald-800 border-l border-emerald-200">
+                    <td colspan="4" class="px-6 py-4 text-right text-xl font-black text-emerald-800 border-l border-emerald-200">
                         ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totalGaji)}
                     </td>
+                    <td class="print:hidden"></td>
                 </tr>
             `;
         } else {
@@ -1473,22 +1559,46 @@ function toggleFullscreen() {
     }
 }
 
+// --- [NEW] HELPER: AMBIL LOKASI GPS ADMIN ---
+function getCurrentLocation() {
+    if ("geolocation" in navigator) {
+        showToast("Mendapatkan posisi GPS...", "info");
+        navigator.geolocation.getCurrentPosition(function (position) {
+            if (document.getElementById('conf-lat')) document.getElementById('conf-lat').value = position.coords.latitude.toFixed(6);
+            if (document.getElementById('conf-lon')) document.getElementById('conf-lon').value = position.coords.longitude.toFixed(6);
+            showToast("Lokasi berhasil diambil!", "success");
+        }, function (error) {
+            showToast("Gagal mengambil lokasi: " + error.message, "error");
+        }, { enableHighAccuracy: true });
+    } else {
+        showToast("Browser tidak mendukung geolokasi.", "error");
+    }
+}
+
 // --- FITUR: SIDEBAR TOGGLE (Full Width) ---
 function toggleSidebar() {
-    const nav = document.getElementById('nav-overview');
-    // Coba cari elemen sidebar (prioritas: tag <aside>, lalu parent dari nav)
-    const sidebar = document.querySelector('aside') || (nav ? nav.parentElement.parentElement : null);
-    
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+
     if (sidebar) {
-        // [FIX] Gunakan margin negatif (-ml-64) agar layout konten ikut bergeser (Full Width)
-        // Tambahkan class transisi agar animasi halus
-        sidebar.classList.add('transition-all', 'duration-300', 'ease-in-out');
-        
-        // Toggle margin kiri negatif sebesar lebarnya (w-64 = 16rem)
-        sidebar.classList.toggle('-ml-64');
-        
-        // Hapus class translate lama jika ada (cleanup)
-        sidebar.classList.remove('translate-x-[-100%]');
+        const isMobile = window.innerWidth < 768;
+
+        if (isMobile) {
+            // Logika Mobile: Slide In/Out dari samping
+            sidebar.classList.toggle('-translate-x-full');
+            if (overlay) {
+                if (overlay.classList.contains('hidden')) {
+                    overlay.classList.remove('hidden');
+                    setTimeout(() => overlay.classList.replace('opacity-0', 'opacity-100'), 10);
+                } else {
+                    overlay.classList.replace('opacity-100', 'opacity-0');
+                    setTimeout(() => overlay.classList.add('hidden'), 300);
+                }
+            }
+        } else {
+            // Logika Desktop: Mempersempit layout
+            sidebar.classList.toggle('md:-ml-64');
+        }
 
         // Trigger resize event untuk memperbaiki layout grafik Chart.js
         setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
@@ -1575,7 +1685,7 @@ function printReport() {
         const tableClone = sourceTable.cloneNode(true);
         
         // Hapus class Tailwind yang tidak cocok untuk cetak resmi
-        tableClone.className = 'w-full border-collapse border border-black text-[10px] font-serif leading-tight';
+        tableClone.className = 'border-collapse border border-black text-[7px] font-serif leading-tight w-full';
         
         // Styling Header (Hitam Putih, Tegas)
         const thead = tableClone.querySelector('thead');
@@ -1604,6 +1714,7 @@ function printReport() {
             const rows = tbody.querySelectorAll('tr');
             rows.forEach(row => {
                 row.className = ''; // Hapus class row (warna bg dll)
+                row.style.display = ''; // Reset filter pencarian agar baris yang tersembunyi ikut tercetak
                 row.removeAttribute('onclick'); // Hapus interaksi
                 
                 const cells = row.querySelectorAll('td');
@@ -1873,7 +1984,11 @@ async function saveSignatureConfig() {
         dendaPsw: document.getElementById('conf-denda-psw')?.value || 0, // [NEW]
         dendaLupa: document.getElementById('conf-denda-lupa')?.value || 0, // [NEW]
         gajiJabatanStr: document.getElementById('conf-gaji-jabatan')?.value || '', 
-     // [NEW] Simpan string mapping jabatan
+        // [NEW] Konfigurasi Lokasi
+        officeLat: document.getElementById('conf-lat')?.value || 0,
+        officeLon: document.getElementById('conf-lon')?.value || 0,
+        officeRadius: document.getElementById('conf-radius')?.value || 100,
+        // [NEW] Simpan string mapping jabatan
         jamPulangJumat: document.getElementById('conf-jam-pulang-jumat')?.value || '', // [NEW]
         jamPulangSabtu: document.getElementById('conf-jam-pulang-sabtu')?.value || ''  // [NEW]
     };
@@ -1887,7 +2002,10 @@ async function saveSignatureConfig() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 jam_pulang_jumat: config.jamPulangJumat, 
-                jam_pulang_sabtu: config.jamPulangSabtu 
+                jam_pulang_sabtu: config.jamPulangSabtu,
+                office_lat: config.officeLat,
+                office_lon: config.officeLon,
+                office_radius: config.officeRadius
             })
         });
         const result = await response.json();
@@ -1920,6 +2038,12 @@ function loadSignatureConfig() {
         if(document.getElementById('conf-denda-psw')) document.getElementById('conf-denda-psw').value = config.dendaPsw || ''; // [NEW]
         if(document.getElementById('conf-denda-lupa')) document.getElementById('conf-denda-lupa').value = config.dendaLupa || ''; // [NEW]
         if(document.getElementById('conf-gaji-jabatan')) document.getElementById('conf-gaji-jabatan').value = config.gajiJabatanStr || ''; // [NEW] Load mapping
+        if (document.getElementById('conf-lat')) document.getElementById('conf-lat').value = config.officeLat || '';
+        if (document.getElementById('conf-lon')) document.getElementById('conf-lon').value = config.officeLon || '';
+        if (document.getElementById('conf-radius')) document.getElementById('conf-radius').value = config.officeRadius || '';
+        if (document.getElementById('conf-lat')) document.getElementById('conf-lat').value = config.officeLat || '';
+        if (document.getElementById('conf-lon')) document.getElementById('conf-lon').value = config.officeLon || '';
+        if (document.getElementById('conf-radius')) document.getElementById('conf-radius').value = config.officeRadius || ''; 
         if(document.getElementById('conf-jam-pulang-jumat')) document.getElementById('conf-jam-pulang-jumat').value = config.jamPulangJumat || ''; // [NEW]
         if(document.getElementById('conf-jam-pulang-sabtu')) document.getElementById('conf-jam-pulang-sabtu').value = config.jamPulangSabtu || ''; // [NEW]
 
@@ -2248,7 +2372,7 @@ function printSalarySlip(id) {
 
             <div class="signatures">
                 <div class="sign-box"><p>Penerima,</p><div class="sign-line"></div><p>${emp.nama}</p></div>
-                <div class="sign-box"><p>Kepala Puskesmas,</p><div class="sign-line"></div><p>( ${config.kepalaNama || '...........................'} )</p></div>
+                <div class="sign-box"><p>Kepala Puskesmas Wana,</p><div class="sign-line"></div><p>( ${config.kepalaNama || '...........................'} )</p></div>
             </div>
 
             <div class="footer">Dicetak otomatis oleh Sistem Biometrik Puskesmas Wana.<br>ID: ${Date.now().toString(36).toUpperCase()}</div>
