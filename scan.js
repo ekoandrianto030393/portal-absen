@@ -3479,16 +3479,20 @@ async function processAttendance(karyawanId) {
             // [UPDATE] Logika Pesan Suara Berbeda untuk Masuk vs Pulang
             if (result.result_code === 'CHECK_OUT_SUCCESS') {
                 await SoundFX.speak(`Sampai Jumpa ${display_name}. Terima kasih atas dedikasimu hari ini. Hati-hati di jalan.`);
+                SoundFX.speak(`Sampai Jumpa ${display_name}. Terima kasih atas dedikasimu hari ini. Hati-hati di jalan.`);
             } else {
                 // [MODIFIKASI] Pesan Khusus untuk ID H87
                 if (karyawanId === 'H87') {
                     await SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet.`);
+                    SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet.`);
                 } else if (result.telat_menit > 0) {
                     // [NEW] Sapaan Khusus Terlambat
                     await SoundFX.speak(`Halo ${display_name}. Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
+                    SoundFX.speak(`Halo ${display_name}. Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
                 } else {
                     // [UPDATE] Greeting lebih ramah dengan sapaan "Halo"
                     await SoundFX.speak(`Halo, Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
+                    SoundFX.speak(`Halo, Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
                 }
             }
             
@@ -3611,6 +3615,7 @@ async function processAttendance(karyawanId) {
             // VISUAL UPDATES (Dipindahkan ke sini agar override isWarning di switch berlaku)
             SoundFX.play('error');
             await SoundFX.speak(isWarning ? `Peringatan, ${display_name}` : `Akses Ditolak, ${display_name}`);
+            SoundFX.speak(isWarning ? `Peringatan, ${display_name}` : `Akses Ditolak, ${display_name}`);
             setSystemTheme('ERROR'); 
 
             setStatusVisual(`${display_name}: ${cleanMessage}`, isWarning ? 'text-amber-500' : 'text-red-500');
@@ -3877,6 +3882,54 @@ async function processAttendance(karyawanId) {
                         pointer-events: none;
                         animation: pulse-spotlight 4s infinite alternate;
                     }
+                    .render-line {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 4px;
+                        background: linear-gradient(to right, transparent, ${finalStatusColor}, #FFF, ${finalStatusColor}, transparent);
+                        box-shadow: 0 0 25px ${finalStatusColor}, 0 0 50px ${finalStatusColor};
+                        z-index: 100;
+                        opacity: 0;
+                        pointer-events: none;
+                        animation: scan-rendering 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards 1.2s;
+                    }
+                    .render-line::before {
+                        content: 'ANALYZING_BIOMETRIC_DATA...';
+                        position: absolute;
+                        right: 20px;
+                        top: -20px;
+                        font-family: 'Share Tech Mono', monospace;
+                        font-size: 10px;
+                        color: #FFF;
+                        text-shadow: 0 0 10px ${finalStatusColor};
+                        letter-spacing: 2px;
+                        animation: blink 0.2s infinite;
+                    }
+                    /* Efek Percikan Cahaya pada Garis */
+                    .render-line::after {
+                        content: '';
+                        position: absolute;
+                        inset: 0;
+                        background: linear-gradient(90deg, transparent, #FFF, transparent);
+                        filter: blur(2px);
+                        animation: line-shine 0.5s infinite;
+                    }
+                    @keyframes scan-rendering {
+                        0% { top: 0%; opacity: 0; }
+                        15% { opacity: 1; }
+                        85% { opacity: 1; }
+                        100% { top: 100%; opacity: 0; }
+                    }
+                    @keyframes line-shine {
+                        0% { transform: translateX(-100%); }
+                        100% { transform: translateX(100%); }
+                    }
+                    @keyframes cardShadowEntry {
+                        0% { opacity: 0; transform: scale(0.8); filter: blur(20px); }
+                        100% { opacity: 0.5; transform: scale(1); filter: blur(10px); }
+                    }
                     @keyframes pulse-spotlight {
                         0% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
                         100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); }
@@ -4121,6 +4174,45 @@ async function processAttendance(karyawanId) {
                         100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); }
                     }
                     
+                    /* --- ENHANCED REALISTIC HOLOGRAM STAMP EFFECTS --- */
+                    .hologram-scanline-v {
+                        position: absolute; inset: 0;
+                        background: linear-gradient(to bottom, transparent, ${finalStatusColor}44 50%, transparent);
+                        background-size: 100% 12px;
+                        animation: h-scan 4s linear infinite;
+                        z-index: 10; pointer-events: none;
+                        mix-blend-mode: overlay;
+                    }
+                    @keyframes h-scan { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+                    
+                    .hologram-noise-overlay {
+                        position: absolute; inset: 0;
+                        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+                        opacity: 0.15; mix-blend-mode: screen; z-index: 11; pointer-events: none;
+                        animation: noise-jitter 0.15s steps(2) infinite;
+                    }
+                    @keyframes noise-jitter { from { transform: translate(0,0); } to { transform: translate(-1%, -1%); } }
+
+                    .prismatic-layer {
+                        position: absolute; inset: 0;
+                        background: linear-gradient(135deg, rgba(255,0,0,0.1), rgba(0,255,0,0.1), rgba(0,0,255,0.1), rgba(255,255,0,0.1), rgba(255,0,255,0.1));
+                        background-size: 400% 400%;
+                        animation: prism-flow 8s ease infinite;
+                        mix-blend-mode: color-dodge; z-index: 4; opacity: 0.4;
+                        filter: blur(15px);
+                    }
+                    @keyframes prism-flow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+                    /* Realistic Chromatic Aberration for Text */
+                    .stamp-status {
+                        animation: chromatic-flicker 4s infinite;
+                    }
+                    @keyframes chromatic-flicker {
+                        0%, 90%, 100% { text-shadow: 0 0 10px ${finalStatusColor}, 0 0 20px ${finalStatusColor}66; }
+                        92% { text-shadow: -3px 0 0 #ff00ff, 3px 0 0 #00ffff, 0 0 15px ${finalStatusColor}; }
+                        94% { text-shadow: 3px 0 0 #ff00ff, -3px 0 0 #00ffff, 0 0 10px ${finalStatusColor}; }
+                    }
+                    
                     /* GOD-LEVEL ANIMATIONS */
                     @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
                     @keyframes floatMath { 
@@ -4216,7 +4308,7 @@ async function processAttendance(karyawanId) {
                         clip-path: polygon(40px 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%, 0 40px);
                     }
                     .guilloche-bg {
-                        position: absolute; inset: 0;
+                        position: absolute; inset: 0; opacity: 0.3;
                         background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(guillocheSvg)}');
                         background-size: 100px 100px;
                         z-index: 1;
@@ -4794,13 +4886,22 @@ async function processAttendance(karyawanId) {
                 </div>
 
                 <div class="holographic-container" style="perspective: 2000px; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; z-index: 10;">
+                <div class="render-line"></div>
                 <div style="display: flex; justify-content: center; align-items: center; gap: 40px; width: 100%; transform-style: preserve-3d;">
                     <!-- [FIXED] Kolom Kiri: ID Card (Ditampilkan kembali) -->
-                    <div style="transform: translateZ(20px);">
+                    <div style="transform: translateZ(20px); position: relative;">
+                        <!-- Card Drop Shadow -->
+                        <div style="position: absolute; inset: 10px; background: rgba(0,0,0,0.8); filter: blur(20px); z-index: -1; border-radius: 12px; animation: cardShadowEntry 1s ease-out forwards 0.2s; opacity: 0;"></div>
                         ${idCardHTML}
                     </div>
 
                     <div class="academic-stamp">
+                        <!-- Stamp Drop Shadow -->
+                        <div style="
+                            position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); width: 80%; height: 30px; 
+                            background: radial-gradient(ellipse at center, rgba(0,0,0,0.9) 0%, transparent 70%); 
+                            filter: blur(15px); z-index: -1; opacity: 0; animation: cardShadowEntry 0.8s ease-out forwards 1.2s;
+                        "></div>
                         <div class="hologram-scanline-v"></div>
                         <div class="hologram-noise-overlay"></div>
                         <div class="prismatic-layer"></div>
@@ -4958,6 +5059,12 @@ async function processAttendance(karyawanId) {
                         </div>
                     </div>
                 </div>
+                <style>
+                    @keyframes spark-fall {
+                        0% { top: 0%; opacity: 1; transform: scale(1); }
+                        100% { top: 100%; opacity: 0; transform: scale(0); }
+                    }
+                </style>
              `;
         }
         await new Promise(resolve => setTimeout(resolve, 3000)); 
