@@ -355,13 +355,26 @@ const SoundFX = {
 
             // --- FALLBACK: Browser Web Speech API ---
             if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Hentikan suara sebelumnya jika ada
                 const utterance = new SpeechSynthesisUtterance(text);
+                const voices = window.speechSynthesis.getVoices();
+                
+                // MENCARI SUARA EKSTENSI:
+                // Ganti 'Google Bahasa Indonesia' dengan nama suara yang Anda temukan di console tadi
+                const preferredVoice = voices.find(v => v.name.includes('Google Bahasa Indonesia')) 
+                                    || voices.find(v => v.lang.startsWith('id')) 
+                                    || voices[0];
+
+                if (preferredVoice) {
+                    utterance.voice = preferredVoice;
+                }
+
                 utterance.lang = 'id-ID';
                 utterance.rate = 1.0;
                 utterance.pitch = 1.0;
-            window.speechSynthesis.speak(utterance);
+                window.speechSynthesis.speak(utterance);
+            }
         }
-    }
     }
 };
 
@@ -3673,14 +3686,14 @@ async function processAttendance(karyawanId) {
             const guillocheSvg = `<svg width='100' height='100' xmlns='http://www.w3.org/2000/svg'><path d='M 0,50 C 25,0 75,100 100,50 M 0,50 C 25,100 75,0 100,50' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/><path d='M 50,0 C 0,25 100,75 50,100 M 50,0 C 100,25 0,75 50,100' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/></svg>`;
             const watermarkSvg = `<svg width='300' height='300' xmlns='http://www.w3.org/2000/svg'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='"Times New Roman", serif' font-size='30' font-weight='bold' fill='${finalStatusColor}' opacity='0.06' transform='rotate(-45 150 150)'>PUSKESMAS WANA</text></svg>`;
 
-            // [IDE BARU] Latar Belakang DNA Helix Animasi 3D (Skill Tingkat Tinggi)
+            // [IDE BARU] DNA Pulse Curve with Glitch & Color Shift (God-Level Custom)
             const dnaHelixStampHTML = `
-            <div class="dna-helix-container">
-                ${Array.from({length: 40}, (_, i) => `
-                    <div class="dna-base" style="top: ${i * 15}px; animation-delay: -${i * 0.1}s;">
-                        <div class="dot left" style="background: ${finalStatusColor}; box-shadow: 0 0 5px ${finalStatusColor};"></div>
-                        <div class="line" style="background: ${finalStatusColor};"></div>
-                        <div class="dot right" style="background: ${finalStatusColor}; box-shadow: 0 0 5px ${finalStatusColor};"></div>
+            <div class="dna-helix-container" style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100px; height: 100%; opacity: 0.6; z-index: 0; pointer-events: none;">
+                ${Array.from({length: 50}, (_, i) => `
+                    <div class="dna-base" style="top: ${i * 12}px; animation-delay: -${i * 0.15}s;">
+                        
+                        <div class="line" style="background: linear-gradient(90deg, ${finalStatusColor}, transparent, ${finalStatusColor}); height: 1px; opacity: 0.4;"></div>
+                        <div class="dot right" style="background: ${finalStatusColor}; box-shadow: 0 0 10px ${finalStatusColor};"></div>
                     </div>
                 `).join('')}
             </div>
@@ -3874,6 +3887,27 @@ async function processAttendance(karyawanId) {
             successOverlay.style.background = 'radial-gradient(circle at center, rgba(5, 10, 20, 0.98) 0%, #000000 100%)';
             successOverlay.innerHTML = `
                 <style>
+                    @keyframes hologram-flicker {
+                        0%, 19.9%, 22%, 62.9%, 64%, 64.9%, 70%, 100% { opacity: 1; filter: brightness(1) contrast(1); }
+                        20%, 21.9% { opacity: 0.4; filter: brightness(3) contrast(1.5); }
+                        63%, 63.9% { opacity: 0.7; transform: scale(1.01) skewX(1deg); }
+                        65%, 69.9% { opacity: 0.3; filter: brightness(0.5) blur(1px); }
+                    }
+                    @keyframes hologram-glitch {
+                        0%, 95%, 100% { transform: translate(0,0); filter: none; clip-path: inset(0 0 0 0); }
+                        96% { transform: translate(-15px, 5px) skewX(10deg); filter: hue-rotate(90deg) saturate(2); clip-path: inset(20% 0 50% 0); }
+                        97% { transform: translate(15px, -5px) skewX(-10deg); filter: hue-rotate(-90deg) contrast(2); clip-path: inset(80% 0 5% 0); }
+                        98% { transform: translate(-5px, 10px) scaleY(0.8); filter: invert(0.2); }
+                        99% { transform: translate(0, -10px) scaleY(1.2); filter: brightness(2); }
+                    }
+                    @keyframes data-pulse-retain {
+                        0%, 100% { text-shadow: 0 0 5px ${finalStatusColor}; opacity: 0.8; }
+                        50% { text-shadow: 0 0 20px ${finalStatusColor}, 0 0 35px ${finalStatusColor}; opacity: 1; }
+                    }
+                    @keyframes scanline-refresh {
+                        0% { transform: translateY(-100%); }
+                        100% { transform: translateY(1000%); }
+                    }
                     .spotlight {
                         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
                         width: 100vw; height: 100vh;
@@ -3896,16 +3930,19 @@ async function processAttendance(karyawanId) {
                         animation: scan-rendering 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards 1.2s;
                     }
                     .render-line::before {
-                        content: 'ANALYZING_BIOMETRIC_DATA...';
+                        content: '[ SYSTEM_ANALYZING_BIOMETRIC_IDENTITY_DATA_STREAM ]';
                         position: absolute;
-                        right: 20px;
-                        top: -20px;
-                        font-family: 'Share Tech Mono', monospace;
-                        font-size: 10px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        top: -45px;
+                        font-family: 'Rajdhani', 'Share Tech Mono', monospace;
+                        font-size: 28px;
+                        font-weight: 900;
                         color: #FFF;
-                        text-shadow: 0 0 10px ${finalStatusColor};
-                        letter-spacing: 2px;
-                        animation: blink 0.2s infinite;
+                        text-shadow: 0 0 15px ${finalStatusColor}, 0 0 30px ${finalStatusColor}, 2px 2px 0px rgba(255,0,0,0.5);
+                        letter-spacing: 6px;
+                        animation: blink 0.15s infinite;
+                        white-space: nowrap;
                     }
                     /* Efek Percikan Cahaya pada Garis */
                     .render-line::after {
@@ -3915,6 +3952,14 @@ async function processAttendance(karyawanId) {
                         background: linear-gradient(90deg, transparent, #FFF, transparent);
                         filter: blur(2px);
                         animation: line-shine 0.5s infinite;
+                    }
+                    .stamp-scanline {
+                        position: absolute;
+                        top: 0; left: 0; width: 100%; height: 100px;
+                        background: linear-gradient(to bottom, transparent, ${finalStatusColor}22 50%, transparent);
+                        z-index: 5;
+                        pointer-events: none;
+                        animation: scanline-refresh 4s linear infinite;
                     }
                     @keyframes scan-rendering {
                         0% { top: 0%; opacity: 0; }
@@ -3991,20 +4036,47 @@ async function processAttendance(karyawanId) {
                     .stat-val { font-size: 24px; font-weight: 900; text-shadow: 0 0 10px ${finalStatusColor}; }
                     .stat-label { font-size: 10px; letter-spacing: 3px; opacity: 0.7; margin-top: 2px; }
 
-                    /* DNA HELIX STYLES */
+                    /* --- GOD-LEVEL DNA PULSE CURVE STYLES (Inside Stamp) --- */
+                    .dna-helix-container { perspective: 1000px; overflow: hidden; }
                     .dna-base {
-                        position: absolute; width: 100%; height: 2px;
+                        position: absolute; width: 100%; height: 2px; 
                         transform-style: preserve-3d;
-                        animation: dna-spin 4s linear infinite;
+                        animation: dna-hyper-pulse 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
                     }
-                    .dna-base .dot { position: absolute; width: 4px; height: 4px; border-radius: 50%; top: -1px; }
+                    .dna-base .dot { 
+                        position: absolute; width: 5px; height: 5px; border-radius: 50%; top: -1.5px; 
+                        filter: drop-shadow(0 0 8px currentColor);
+                    }
                     .dna-base .dot.left { left: 0; }
                     .dna-base .dot.right { right: 0; }
-                    .dna-base .line { position: absolute; left: 2px; right: 2px; height: 1px; opacity: 0.3; }
-                    @keyframes dna-spin {
-                        0% { transform: rotateY(0deg); opacity: 0.3; }
-                        50% { opacity: 1; }
-                        100% { transform: rotateY(360deg); opacity: 0.3; }
+                    .dna-base .line { 
+                        position: absolute; left: 5px; right: 5px; height: 1px; top: 0.5px; 
+                        opacity: 0.3;
+                    }
+                    @keyframes dna-hyper-pulse {
+                        0%, 100% { 
+                            transform: rotateY(0deg) scaleX(1) translateX(0); 
+                            filter: hue-rotate(0deg) brightness(1);
+                            opacity: 0.2;
+                        }
+                        25% {
+                            transform: rotateY(90deg) scaleX(1.4) translateX(15px);
+                            filter: hue-rotate(90deg) brightness(1.4);
+                            opacity: 0.7;
+                        }
+                        48% { transform: rotateY(175deg) scaleX(1) translateX(0); filter: hue-rotate(180deg); opacity: 0.4; }
+                        /* [GLITCH IMPACT] */
+                        50% { 
+                            transform: rotateY(180deg) scaleX(3) translateX(-30px) skewX(25deg); 
+                            filter: hue-rotate(220deg) brightness(4) contrast(2) saturate(2);
+                            opacity: 1;
+                        }
+                        52% { transform: rotateY(185deg) scaleX(1) translateX(0); filter: hue-rotate(180deg); opacity: 0.4; }
+                        75% {
+                            transform: rotateY(270deg) scaleX(1.2) translateX(-15px);
+                            filter: hue-rotate(270deg) brightness(1.2);
+                            opacity: 0.6;
+                        }
                     }
 
                     /* --- HIGH-TECH STAMP & CARD STYLES --- */
@@ -4058,6 +4130,12 @@ async function processAttendance(karyawanId) {
                     .emblem {
                         width: 60px; height: 60px; border-radius: 50%;
                         border: 2px solid ${finalStatusColor}; padding: 4px; background: #000;
+                        position: relative;
+                    }
+                    .emblem::before {
+                        content: ''; position: absolute; inset: -8px; 
+                        border: 2px dashed ${finalStatusColor}; border-radius: 50%;
+                        animation: spin-slow 4s linear infinite; opacity: 0.4;
                     }
                     .emblem img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
                     .emblem-text { text-align: left; }
@@ -4080,6 +4158,7 @@ async function processAttendance(karyawanId) {
                         font-family: 'Courier New', monospace; font-size: 10px;
                         background: rgba(0,0,0,0.3); padding: 8px; border: 1px solid ${finalStatusColor}30;
                         word-break: break-all; color: ${finalStatusColor}CC;
+                        position: relative; overflow: hidden;
                     }
                     
                     /* --- ID CARD STYLES --- */
@@ -4169,6 +4248,19 @@ async function processAttendance(karyawanId) {
                         50% { opacity: 0.02; transform: rotate(-45deg) translate(2px, -2px); }
                         51% { opacity: 0.06; transform: rotate(-45deg) translate(0,0); }
                     }
+                    @keyframes hologram-flicker {
+                        0%, 19.9%, 22%, 62.9%, 64%, 64.9%, 70%, 100% { opacity: 1; filter: brightness(1); }
+                        20%, 21.9% { opacity: 0.5; filter: brightness(2) contrast(1.5); }
+                        63%, 63.9% { opacity: 0.8; transform: scale(1.01); }
+                        65%, 69.9% { opacity: 0.4; filter: brightness(0.6) blur(1px); }
+                    }
+                    @keyframes hologram-glitch {
+                        0%, 95%, 100% { transform: translate(0,0); filter: none; }
+                        96% { transform: translate(-10px, 5px) skewX(15deg); filter: hue-rotate(120deg) saturate(3); opacity: 0.8; }
+                        97% { transform: translate(10px, -5px) skewX(-15deg); filter: hue-rotate(-120deg) contrast(3); opacity: 0.8; }
+                        98% { transform: translate(0, 10px) scaleY(0.05); }
+                        99% { transform: translate(0,0); filter: invert(1) brightness(2); }
+                    }
                     @keyframes holo-bar {
                         0% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
                         100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); }
@@ -4195,11 +4287,11 @@ async function processAttendance(karyawanId) {
 
                     .prismatic-layer {
                         position: absolute; inset: 0;
-                        background: linear-gradient(135deg, rgba(255,0,0,0.1), rgba(0,255,0,0.1), rgba(0,0,255,0.1), rgba(255,255,0,0.1), rgba(255,0,255,0.1));
+                        background: linear-gradient(135deg, rgba(255,0,0,0.15), rgba(0,255,0,0.15), rgba(0,0,255,0.15), rgba(255,255,0,0.15), rgba(255,0,255,0.15), rgba(0,255,255,0.15));
                         background-size: 400% 400%;
                         animation: prism-flow 8s ease infinite;
-                        mix-blend-mode: color-dodge; z-index: 4; opacity: 0.4;
-                        filter: blur(15px);
+                        mix-blend-mode: overlay; z-index: 4; opacity: 0.6;
+                        filter: blur(20px) contrast(1.8);
                     }
                     @keyframes prism-flow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
@@ -4290,21 +4382,27 @@ async function processAttendance(karyawanId) {
                         position: relative;
                         width: 480px;
                         padding: 40px;
-                        background: radial-gradient(circle at top left, rgba(35, 35, 40, 0.95) 0%, rgba(5, 5, 10, 0.98) 100%);
+                        /* Best Material: Ultra-Realistic Holographic Glass */
+                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(0, 0, 0, 0.2) 100%),
+                                    radial-gradient(circle at top left, rgba(35, 35, 40, 0.95) 0%, rgba(5, 5, 10, 0.98) 100%);
                         backdrop-filter: blur(30px);
                         -webkit-backdrop-filter: blur(30px);
-                        border: 2px solid ${finalStatusColor}88;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        outline: 2px solid ${finalStatusColor}88;
                         box-shadow: 
                             0 40px 120px rgba(0,0,0,0.95),
                             inset 0 0 0 1px rgba(255,255,255,0.1),
-                            inset 0 0 80px ${finalStatusColor}15;
+                            inset 0 0 80px ${finalStatusColor}25;
                         border-radius: 4px;
                         font-family: 'Rajdhani', sans-serif;
                         color: #FFF;
                         overflow: hidden;
                         transform: translateY(-600px) scale(2);
                         opacity: 0;
-                        animation: stampDescend 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards 1.2s;
+                        animation: 
+                            stampDescend 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards 1.2s,
+                            hologram-flicker 5s infinite ease-in-out,
+                            hologram-glitch 10s infinite step-end;
                         clip-path: polygon(40px 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%, 0 40px);
                     }
                     .guilloche-bg {
@@ -4368,6 +4466,7 @@ async function processAttendance(karyawanId) {
                         border-bottom: 1px solid ${finalStatusColor}44;
                         padding: 15px 0; margin-bottom: 20px;
                         background: rgba(255,255,255,0.03);
+                        animation: data-pulse-retain 3s infinite ease-in-out;
                     }
                     .stamp-details > div { display: flex; justify-content: space-between; padding: 2px 5px; }
                     .stamp-details > div span:first-child { font-weight: bold; opacity: 0.8; }
@@ -4896,6 +4995,7 @@ async function processAttendance(karyawanId) {
                     </div>
 
                     <div class="academic-stamp">
+                        <div class="stamp-scanline"></div>
                         <!-- Stamp Drop Shadow -->
                         <div style="
                             position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); width: 80%; height: 30px; 
@@ -4933,10 +5033,15 @@ async function processAttendance(karyawanId) {
                                 <div><span>Nama Pegawai</span><span>${display_name}</span></div>
                                 <div><span>Tanggal Verifikasi</span><span>${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
                                 <div><span>Waktu Verifikasi</span><span>${serverTimestamp}</span></div>
+                                <div><span>Data Integrity</span><span style="color:#00FF7F; font-weight:bold; animation: blink 1s infinite;">100% SECURE</span></div>
                                 <div><span>Petugas Sistem</span><span>AETHER BIOMETRIC v4.5</span></div>
                             </div>
                             <div class="stamp-footer">
                                 <div style="font-size: 8px; opacity: 0.7; margin-bottom: 2px;">Kunci Validasi Digital (SHA-256)</div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                    <div style="font-size: 8px; opacity: 0.7;">Kunci Validasi Digital (SHA-256)</div>
+                                    <div style="font-size: 8px; color:#00FF7F; font-weight:bold; letter-spacing:1px; animation:blink 1s infinite;">[ DATA_RETAINED ]</div>
+                                </div>
                                 <div id="validation-hash">GENERATING...</div>
                             </div>
                         </div>
