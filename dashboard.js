@@ -102,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- [NEW] AUTHENTICATION LOGIC ---
 function checkAuth() {
     const session = localStorage.getItem('pkm_wana_session');
-    const adminData = localStorage.getItem('pkm_wana_admin');
     const loginOverlay = document.getElementById('login-overlay');
 
     if (session === 'active') {
@@ -110,14 +109,6 @@ function checkAuth() {
         return true;
     } else {
         if (loginOverlay) loginOverlay.classList.remove('hidden');
-
-        // Jika belum ada admin terdaftar, ubah UI jadi Mode Pendaftaran
-        if (!adminData) {
-            if (document.getElementById('login-title')) document.getElementById('login-title').textContent = "Pendaftaran Admin";
-            if (document.getElementById('login-subtitle')) document.getElementById('login-subtitle').textContent = "Buat akun administrator pertama Anda";
-            if (document.getElementById('confirm-password-container')) document.getElementById('confirm-password-container').classList.remove('hidden');
-            if (document.getElementById('btn-login-submit')) document.getElementById('btn-login-submit').textContent = "DAFTAR SEKARANG";
-        }
         return false;
     }
 }
@@ -125,33 +116,12 @@ function checkAuth() {
 function handleLogin() {
     const user = document.getElementById('login-username').value;
     const pass = document.getElementById('login-password').value;
-    const confirmPass = document.getElementById('login-confirm-password').value;
-    const adminDataRaw = localStorage.getItem('pkm_wana_admin');
 
-    // MODE PENDAFTARAN (Jika belum ada admin terdaftar)
-    if (!adminDataRaw) {
-        if (pass !== confirmPass) {
-            showLoginError("Password tidak cocok!", "bg-rose-50 text-rose-500 border-rose-200");
-            return;
-        }
-        if (pass.length < 6) {
-            showLoginError("Password minimal 6 karakter!", "bg-amber-50 text-amber-600 border-amber-200");
-            return;
-        }
+    // Kredensial Admin yang ditanam (Hardcoded)
+    const ADMIN_USER = 'Pkm-wana';
+    const ADMIN_PASS = 'Wana1212@';
 
-        // Simpan akun baru
-        const newAdmin = { username: user, password: pass };
-        localStorage.setItem('pkm_wana_admin', JSON.stringify(newAdmin));
-        localStorage.setItem('pkm_wana_session', 'active');
-
-        alert("Pendaftaran Berhasil! Selamat datang Admin.");
-        location.reload();
-        return;
-    }
-
-    // MODE LOGIN NORMAL (Jika admin sudah terdaftar)
-    const admin = JSON.parse(adminDataRaw);
-    if (user === admin.username && pass === admin.password) {
+    if (user === ADMIN_USER && pass === ADMIN_PASS) {
         localStorage.setItem('pkm_wana_session', 'active');
         location.reload();
     } else {

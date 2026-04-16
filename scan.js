@@ -1802,11 +1802,23 @@ function logSystem(message, color = 'text-green-500') {
 function setStatusVisual(message, colorClass, isPulsing = false) {
     if (!statusMessage) return;
     statusMessage.textContent = message;
-    // Hapus glitch-text saat status berubah agar lebih jelas
-    statusMessage.classList.remove('glitch-text'); 
-    statusMessage.className = 'text-xl lg:text-2xl font-bold transition-colors duration-300';
-    // Gunakan kelas warna dari Tailwind yang ada di CSS Anda
+    statusMessage.classList.remove('glitch-text');
+    
+    // Gunakan font-black, uppercase, dan tracking-wide untuk tampilan lebih futuristik
+    statusMessage.className = 'text-xl lg:text-2xl font-black transition-colors duration-300 uppercase tracking-wide';
     statusMessage.classList.add(colorClass);
+
+    // Tentukan warna shadow berdasarkan colorClass untuk efek glow
+    let shadowColor = '#00FFFF'; // Default untuk text-cyan-500
+    if (colorClass.includes('text-green-500')) shadowColor = '#00FF7F';
+    else if (colorClass.includes('text-red-500')) shadowColor = '#FF0055';
+    else if (colorClass.includes('text-amber-500') || colorClass.includes('text-yellow-400')) shadowColor = '#FFD700';
+    else if (colorClass.includes('text-gray-300')) shadowColor = '#CCCCCC';
+
+    // Terapkan font-family dan text-shadow untuk kedalaman dan glow
+    statusMessage.style.fontFamily = '"Rajdhani", sans-serif';
+    statusMessage.style.textShadow = `0 0 15px ${shadowColor}, 0 0 30px ${shadowColor}80`;
+    statusMessage.style.filter = `drop-shadow(0 0 8px ${shadowColor}60)`; // Tambahan drop-shadow untuk efek lebih tebal
 
     if (isPulsing) {
         statusMessage.classList.add('animate-pulse');
