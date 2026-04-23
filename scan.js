@@ -45,9 +45,6 @@ const cornerJabatan = document.getElementById('corner-jabatan');
 const cornerId = document.getElementById('corner-id');
 const cornerStatus = document.getElementById('corner-status');
 
-
-const cameraSelect = document.getElementById('cameraSelect');
-
 const stealthToggle = document.getElementById('stealthToggle');
 const stealthIcon = document.getElementById('stealthIcon');
 
@@ -58,7 +55,6 @@ let lastKnownMatch = null;
 let isTargetLocked = false; // Status penguncian target untuk efek suara
 let employeeMap = {}; 
 let currentStream = null; // Variabel untuk stream kamera aktif
-let videoDevices = []; 
 const offscreenCanvas = document.createElement('canvas'); // [NEW] Canvas tersembunyi untuk pre-processing
 const offCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
 // turunkan jadi 80, namun jangan dibawah itu
@@ -1786,7 +1782,7 @@ function drawSmartHUD(ctx, box, label, color, confidence, emotion = 'ANALYZING',
 // =============================================================================
 
 function logSystem(message, color = 'text-green-500') {
-    if (!systemLog) return;
+    return; // Kontainer log telah dihapus, fungsi dinonaktifkan.
     const timestamp = new Date().toLocaleTimeString('id-ID', { hour12: false });
     const newLog = document.createElement('p');
     newLog.className = `${color} my-0.5 text-xs`;
@@ -2550,38 +2546,7 @@ async function loadLabeledImages() {
 }
 
 async function getCameraDevices() {
-    videoDevices = [];
-    if (!cameraSelect) return;
-    cameraSelect.innerHTML = ''; 
-
-    try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        devices.forEach(device => {
-            if (device.kind === 'videoinput') {
-                videoDevices.push(device);
-                const option = document.createElement('option');
-                option.value = device.deviceId;
-                option.text = device.label || `Camera ${videoDevices.length}`;
-                cameraSelect.appendChild(option);
-            }
-        });
-
-        // Tampilkan/sembunyikan select berdasarkan jumlah kamera
-        // [FIX] Jangan sembunyikan panel induk karena ada Ambulance Display & Kontrol Lain
-        if (videoDevices.length > 1) { 
-            cameraSelect.style.display = 'block'; 
-        } else {
-             cameraSelect.style.display = 'none'; // Hanya sembunyikan dropdown jika cuma 1 kamera
-        }
-
-        if (!cameraSelect.dataset.listenerAttached) {
-            cameraSelect.addEventListener('change', (e) => switchCamera(e.target.value));
-            cameraSelect.dataset.listenerAttached = 'true';
-        }
-
-    } catch (error) {
-        logSystem(`Error enumerating devices: ${error.message}`, 'text-red-500');
-    }
+    return; // Fungsi pemilihan perangkat dihapus.
 }
 
 function stopCamera() {
@@ -2625,9 +2590,7 @@ async function startCamera(deviceId = null) {
 }
 
 async function switchCamera(deviceId) {
-    setStatusVisual('SWITCHING CAMERA...', 'text-cyan-500', true);
-    logSystem(`Switching to camera ID: ${deviceId.substring(0, 8)}...`, 'text-amber-500');
-    await startCamera(deviceId);
+    return; // Fungsi ganti kamera dihapus.
 }
 
 async function loadTodayAttendance() {
@@ -2690,9 +2653,8 @@ async function initializeApp() {
         logSystem('Neural Network Models Loaded.', 'text-green-500');
         setStatusVisual('Models Loaded. Starting Camera Stream...', 'text-cyan-400', true);
 
-        await getCameraDevices(); 
-        const initialDeviceId = cameraSelect ? cameraSelect.value : null;
-        await startCamera(initialDeviceId); 
+        // Langsung mulai kamera default
+        await startCamera(null); 
 
         // [NEW] Sinkronisasi konfigurasi ElevenLabs dari server (.env)
         const configData = await api.getConfig();
@@ -5555,83 +5517,7 @@ function initBackground3D() {
 
 // --- FITUR BARU: INJECT AMBULANCE DISPLAY (REQUESTED) ---
 function injectAmbulanceDisplay() {
-    // MODIFIKASI: Target Panel Device Select (Media Device) agar posisi di kiri atas
-    const cameraSelect = document.getElementById('cameraSelect');
-    const targetPanel = cameraSelect ? cameraSelect.closest('.widget-panel') : null;
-
-    // Cek jika panel ada dan belum di-inject
-    if (targetPanel && !document.getElementById('ambulance-unit-display')) {
-        const wrapper = document.createElement('div');
-        wrapper.id = 'ambulance-unit-display';
-        // Styling futuristik agar senada dengan UI
-        wrapper.style.marginTop = '10px'; 
-        wrapper.style.marginBottom = '15px';
-        wrapper.style.border = '1px solid #00FFFF';
-        wrapper.style.borderRadius = '6px';
-        wrapper.style.overflow = 'hidden';
-        wrapper.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.2)';
-        wrapper.style.position = 'relative';
-        wrapper.style.background = 'rgba(0, 20, 30, 0.6)';
-
-        wrapper.innerHTML = `
-            <div style="position: relative;">
-                <img src="santriwati.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
-                
-                <!-- UNDERGLOW (Neon Bawah Mobil) -->
-                <div style="position: absolute; bottom: 2%; left: 10%; width: 80%; height: 20%; background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.6) 0%, transparent 70%); filter: blur(20px); opacity: 0.6; animation: underglow-pulse 3s infinite; z-index: 0;"></div>
-
-                <!-- HUD TELEMETRY (Data Teknis) -->
-                <div style="position: absolute; top: 5%; right: 5%; text-align: right; z-index: 10;">
-                    <div style="color: #00FFFF; font-size: 9px; font-family: 'Courier New'; font-weight: bold; text-shadow: 0 0 5px #00FFFF; margin-bottom: 2px;">ENGINE: <span style="color: #00FF7F; animation: blink 2s infinite;">IDLE</span></div>
-                    <div style="color: #00FFFF; font-size: 9px; font-family: 'Courier New'; font-weight: bold; text-shadow: 0 0 5px #00FFFF; margin-bottom: 2px;">GPS: <span style="color: #00FF7F;">LOCKED</span></div>
-                    <div style="color: #00FFFF; font-size: 9px; font-family: 'Courier New'; font-weight: bold; text-shadow: 0 0 5px #00FFFF;">FUEL: <span style="color: #00FF7F;">98%</span></div>
-                </div>
-
-                <!-- WINDSHIELD REFLECTION (Kilatan Kaca) -->
-                <div style="position: absolute; top: 15%; left: 20%; width: 60%; height: 30%; background: linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%); background-size: 200% 100%; animation: glass-shine 4s infinite linear; pointer-events: none;"></div>
-
-                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, transparent 70%, rgba(0,0,0,0.8));"></div>
-                <div style="position: absolute; bottom: 8px; left: 0; width: 100%; text-align: center;">
-                    <span id="amb-status" style="color: #FF3333; font-family: 'Courier New'; font-size: 22px; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 10px #FF0000; animation: glitch-text 0.2s infinite;"></span>
-                    <style>
-                        @keyframes glitch-text {
-                            0% { transform: translate(0); text-shadow: 2px 2px 0px #00FFFF, -2px -2px 0px #FF0055; }
-                            25% { transform: translate(-2px, 2px); text-shadow: -2px 2px 0px #00FFFF, 2px -2px 0px #FF0055; }
-                            50% { transform: translate(2px, -2px); text-shadow: 2px -2px 0px #00FFFF, -2px 2px 0px #FF0055; }
-                            75% { transform: translate(-2px, -2px); text-shadow: -2px -2px 0px #00FFFF, 2px 2px 0px #FF0055; }
-                            100% { transform: translate(0); text-shadow: 2px 2px 0px #00FFFF, -2px -2px 0px #FF0055; }
-                        }
-                        @keyframes underglow-pulse {
-                            0%, 100% { opacity: 0.4; transform: scaleX(0.9); }
-                            50% { opacity: 0.8; transform: scaleX(1.05); }
-                        }
-                        @keyframes glass-shine {
-                            0% { background-position: 200% 0; }
-                            100% { background-position: -200% 0; }
-                        }
-                        @keyframes vehicle-scan-loop {
-                            0% { top: -5%; opacity: 0; }
-                            10% { opacity: 1; }
-                            90% { opacity: 1; }
-                            100% { top: 105%; opacity: 0; }
-                        }
-                    </style>
-                </div>
-                <!-- Scanline effect -->
-                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.1) 3px); pointer-events: none;"></div>
-                <!-- Active Scanner Line -->
-                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 255, 0.8); box-shadow: 0 0 15px #00FFFF; animation: vehicle-scan-loop 3s ease-in-out infinite;"></div>
-            </div>
-        `;
-
-        // Insert di dalam panel Device Select (di bawah judul, di atas select camera)
-        const title = targetPanel.querySelector('.widget-title');
-        if (title && title.nextSibling) {
-            targetPanel.insertBefore(wrapper, title.nextSibling);
-        } else {
-            targetPanel.appendChild(wrapper);
-        }
-    }
+    return; // Fungsi injeksi display ambulans dihapus.
 }
 
 // --- START APP (setelah semua HTML siap) ---
@@ -5644,7 +5530,6 @@ document.addEventListener('DOMContentLoaded', () => {
     animateTitle();
     updateClock(); // Panggil sekali agar jam langsung muncul, lalu interval akan mengambil alih
     initAudioVisualizer(); // Start Visualizer Loop
-    injectAmbulanceDisplay(); // Inject Ambulance Image di atas Target Data
 
     // [NEW] Panggil roster segera saat startup agar tidak menunggu 10 detik pertama
     updatePersonnelRoster();

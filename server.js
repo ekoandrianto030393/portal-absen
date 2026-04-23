@@ -821,15 +821,15 @@ app.post('/api/absensi', (req, res) => {
                         });
                     }
 
-                    // [BARU] Validasi Batas Minimum Pulang (Cegah PSW terlalu dini/Scan Ganda)
+                    // [FIX] Penolakan Scan Kedua: Jika sudah absen masuk, scan selanjutnya ditolak sampai batas waktu minimal pulang
                     if (currentTime < batasMinPulangEfektif) {
                         return res.json({
                             success: false,
-                            message: `Absen Pulang/PSW belum dibuka. Minimal jam ${batasMinPulangEfektif}.`,
+                            message: `Anda sudah absen masuk pada pukul ${dataAbsen.jam_masuk}. Scan pulang baru diizinkan mulai pukul ${batasMinPulangEfektif}.`,
                             nama: k.nama,
                             jabatan: k.jabatan,
-                            result_code: 'TOO_EARLY_OUT',
-                            statusColor: 'red'
+                            result_code: 'ALREADY_CHECKED_IN',
+                            statusColor: 'yellow'
                         });
                     }
 

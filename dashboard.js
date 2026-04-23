@@ -119,7 +119,7 @@ function handleLogin() {
 
     // Kredensial Admin yang ditanam (Hardcoded)
     const ADMIN_USER = 'Pkm-wana';
-    const ADMIN_PASS = 'Wana1212@';
+    const ADMIN_PASS = 'Wana2026?';
 
     if (user === ADMIN_USER && pass === ADMIN_PASS) {
         localStorage.setItem('pkm_wana_session', 'active');
@@ -856,11 +856,11 @@ async function loadPerformanceData(silent = false) {
                         </div>
                         
                         <div class="relative z-10">
-                            <h3 class="text-lg font-bold text-[#2c3e50] truncate">${escapeHtml(emp.nama)}</h3>
+                            <h3 class="text-lg font-bold text-[#064e3b] truncate">${escapeHtml(emp.nama)}</h3>
                             <p class="text-xs text-gray-500 mb-4 uppercase tracking-wide">${escapeHtml(emp.jabatan || 'Staff')} • ID: ${emp.id_karyawan}</p>
                             
                             <div class="flex items-end gap-2 mb-2">
-                                <span class="text-4xl font-bold text-[#2c3e50]">${score}</span>
+                                <span class="text-4xl font-bold text-[#064e3b]">${score}</span>
                                 <span class="text-sm text-gray-400 mb-1">/ 100</span>
                             </div>
                             
@@ -871,7 +871,7 @@ async function loadPerformanceData(silent = false) {
                             <div class="grid grid-cols-3 gap-2 text-center text-xs">
                                 <div class="bg-gray-50 p-2 rounded border border-gray-200">
                                     <div class="text-gray-500">Hadir</div>
-                                    <div class="font-bold text-[#2c3e50]">${emp.total_masuk}</div>
+                                    <div class="font-bold text-[#064e3b]">${emp.total_masuk}</div>
                                     ${emp.total_dl ? `<div class="text-[9px] text-blue-500">(${emp.total_dl} DL)</div>` : ''}
                                 </div>
                                 <div class="bg-gray-50 p-2 rounded border border-gray-200">
@@ -880,7 +880,7 @@ async function loadPerformanceData(silent = false) {
                                 </div>
                                 <div class="bg-gray-50 p-2 rounded border border-gray-200">
                                     <div class="text-gray-500">Alpa</div>
-                                    <div class="font-bold text-red-600">${emp.alpa}</div>
+                                    <div class="font-bold text-red-600">${emp.alpa || 0}</div>
                                 </div>
                             </div>
 
@@ -967,7 +967,7 @@ async function loadEmployees(silent = false) {
                 const card = `
                     <div class="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 group border border-gray-200 overflow-hidden relative flex flex-col">
                         <!-- Decorative Top Bar -->
-                        <div class="h-1.5 w-full bg-[#2c3e50]"></div>
+                        <div class="h-1.5 w-full bg-[#064e3b]"></div>
                         
                         <div class="p-5 flex items-start gap-4">
                             <!-- Avatar -->
@@ -981,7 +981,7 @@ async function loadEmployees(silent = false) {
                             <div class="flex-1 min-w-0">
                                 <div class="flex justify-between items-start">
                                     <div onclick="openModal('${emp.id_karyawan}')" class="cursor-pointer flex-1 min-w-0 mr-2">
-                                        <h4 class="text-[#2c3e50] font-bold truncate text-base group-hover:text-[#2980b9] transition-colors" title="${escapeHtml(emp.nama)}">${escapeHtml(emp.nama)}</h4>
+                                        <h4 class="text-[#064e3b] font-bold truncate text-base group-hover:text-emerald-600 transition-colors" title="${escapeHtml(emp.nama)}">${escapeHtml(emp.nama)}</h4>
                                         <div class="flex flex-wrap items-center gap-2 mt-1">
                                             <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wide truncate max-w-full">${escapeHtml(emp.jabatan || 'Staff')}</span>
                                             <!-- [NEW] Badge Sampel Wajah -->
@@ -1580,7 +1580,7 @@ function setupSidebarToggle() {
     if (title && title.parentNode && !document.getElementById('btn-sidebar-toggle')) {
         const btn = document.createElement('button');
         btn.id = 'btn-sidebar-toggle';
-        btn.className = 'mr-4 text-slate-500 hover:text-blue-600 transition-colors p-1 rounded hover:bg-slate-100';
+        btn.className = 'mr-4 text-slate-500 hover:text-emerald-700 transition-colors p-1 rounded hover:bg-emerald-50';
         btn.innerHTML = '<i class="fa-solid fa-bars text-xl"></i>';
         btn.onclick = toggleSidebar;
         btn.title = "Sembunyikan Menu (Full Width)";

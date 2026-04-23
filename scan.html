@@ -1395,94 +1395,6 @@
         <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 mt-0 p-2">
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
-                <div class="widget-panel">
-                    <h2 class="widget-title">:: PILIH PERANGKAT ::</h2>
-                    
-                    <!-- AMBULANCE DISPLAY (STATIC) -->
-                    <div id="ambulance-unit-display" style="margin-top: 10px; margin-bottom: 15px; border: 1px solid #00FFFF; border-radius: 6px; overflow: hidden; box-shadow: 0 0 10px rgba(0, 255, 255, 0.2); position: relative; background: rgba(0, 20, 30, 0.6);">
-                        <div style="position: relative;">
-                            <img src="santri.jpg" style="width: 100%; height: auto; display: block; opacity: 0.9; filter: contrast(1.1);">
-                            
-                            <!-- UNDERGLOW -->
-                            <div style="position: absolute; bottom: 2%; left: 10%; width: 80%; height: 20%; background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.6) 0%, transparent 70%); filter: blur(20px); opacity: 0.6; animation: underglow-pulse 3s infinite; z-index: 0;"></div>
-
-                            <!-- HUD TELEMETRY -->
-                            <div style="position: absolute; top: 5%; right: 5%; text-align: right; z-index: 10;">
-                                <div style="color: #00FFFF; font-size: 9px; font-family: 'Courier New'; font-weight: bold; text-shadow: 0 0 5px #00FFFF; margin-bottom: 2px;">ENGINE: <span style="color: #00FF7F; animation: blink 2s infinite;">IDLE</span></div>
-                                <div style="color: #00FFFF; font-size: 9px; font-family: 'Courier New'; font-weight: bold; text-shadow: 0 0 5px #00FFFF; margin-bottom: 2px;">GPS: <span style="color: #00FF7F;">LOCKED</span></div>
-                                <div style="color: #00FFFF; font-size: 9px; font-family: 'Courier New'; font-weight: bold; text-shadow: 0 0 5px #00FFFF;">FUEL: <span style="color: #00FF7F;">98%</span></div>
-                            </div>
-
-                            <!-- WINDSHIELD REFLECTION -->
-                            <div style="position: absolute; top: 15%; left: 20%; width: 60%; height: 30%; background: linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%); background-size: 200% 100%; animation: glass-shine 4s infinite linear; pointer-events: none;"></div>
-
-                            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, transparent 70%, rgba(0,0,0,0.8));"></div>
-                            <div style="position: absolute; bottom: 8px; left: 0; width: 100%; text-align: center;">
-                                <span id="amb-status" style="color: #FF3333; font-family: 'Courier New'; font-size: 22px; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 10px #FF0000; animation: glitch-text 0.2s infinite;"></span>
-                                <style>
-                                    @keyframes glitch-text { 0% { transform: translate(0); text-shadow: 2px 2px 0px #00FFFF, -2px -2px 0px #FF0055; } 25% { transform: translate(-2px, 2px); text-shadow: -2px 2px 0px #00FFFF, 2px -2px 0px #FF0055; } 50% { transform: translate(2px, -2px); text-shadow: 2px -2px 0px #00FFFF, -2px 2px 0px #FF0055; } 75% { transform: translate(-2px, -2px); text-shadow: -2px -2px 0px #00FFFF, 2px 2px 0px #FF0055; } 100% { transform: translate(0); text-shadow: 2px 2px 0px #00FFFF, -2px -2px 0px #FF0055; } }
-                                    @keyframes underglow-pulse { 0%, 100% { opacity: 0.4; transform: scaleX(0.9); } 50% { opacity: 0.8; transform: scaleX(1.05); } }
-                                    @keyframes glass-shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-                                    @keyframes vehicle-scan-loop { 0% { top: -5%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 105%; opacity: 0; } }
-                                </style>
-                            </div>
-                            <!-- Scanline effect -->
-                            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.1) 3px); pointer-events: none;"></div>
-                            <!-- Active Scanner Line -->
-                            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 255, 0.8); box-shadow: 0 0 15px #00FFFF; animation: vehicle-scan-loop 3s ease-in-out infinite;"></div>
-                        </div>
-                    </div>
-
-                    <select id="cameraSelect"
-                        class="bg-gray-900/50 border border-cyan-500/50 text-cyan-400 p-2 text-sm w-full font-mono mb-3 backdrop-blur-sm">
-                    </select>
-
-                    <!-- MODEL LOADER & CAMERA CONTROLS -->
-                    <div id="modelControls" class="mt-2">
-                        <div class="text-[10px] text-gray-400 mb-1">Model status</div>
-                        <div class="loader-bar" aria-hidden="true"><div id="modelProgress" class="loader-fill" style="width:0%"></div></div>
-                        <div class="flex items-center gap-2 mt-2">
-                            <button id="btnStartCamera" class="text-[11px] px-3 py-1 bg-cyan-700/20 border border-cyan-500/40 text-cyan-200 rounded">Start</button>
-                            <button id="btnStopCamera" class="text-[11px] px-3 py-1 bg-red-700/10 border border-red-500/30 text-red-300 rounded">Stop</button>
-                            <span id="modelStatus" class="text-[11px] text-gray-300 font-mono ml-2">Idle</span>
-                        </div>
-                    </div>
-
-                    <!-- STEALTH MODE TOGGLE -->
-                    <div class="flex items-center justify-between border-t border-cyan-500/30 pt-2">
-                        <div class="flex items-center gap-2">
-                            <div id="stealthIcon"
-                                class="w-2 h-2 rounded-full bg-gray-600 transition-colors duration-300"></div>
-                            <span class="text-xs font-mono text-cyan-400 tracking-wider">MODE SENYAP</span>
-                        </div>
-                        <button id="stealthToggle"
-                            class="bg-transparent border border-cyan-500/50 text-cyan-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all duration-300">
-                            [ OFF ]
-                        </button>
-                </div>
-                
-                <!-- SENSOR MODE SELECTOR -->
-                <div class="mt-3 pt-2 border-t border-cyan-500/30">
-                    <h3 class="text-[10px] font-mono text-cyan-600 mb-1 tracking-widest">:: OPTIK SENSOR ::</h3>
-                    <div class="grid grid-cols-3 gap-1">
-                        <button onclick="setVisionMode('normal')"
-                            class="bg-cyan-900/30 border border-cyan-500/50 text-[9px] py-1 text-cyan-300 hover:bg-cyan-500/20 transition-all">OPTICAL</button>
-                        <button onclick="setVisionMode('thermal')"
-                            class="bg-red-900/30 border border-red-500/50 text-[9px] py-1 text-red-300 hover:bg-red-500/20 transition-all">THERMAL</button>
-                        <button onclick="setVisionMode('night')"
-                            class="bg-green-900/30 border border-green-500/50 text-[9px] py-1 text-green-300 hover:bg-green-500/20 transition-all">NIGHT</button>
-                    </div>
-                    </div>
-
-                    <!-- ADMIN SETTINGS BUTTON (VISIBLE) -->
-                    <div class="mt-3 pt-2 border-t border-cyan-500/30">
-                        <button id="btnSecretAdmin"
-                            class="w-full bg-red-900/20 border border-red-500/50 text-red-400 text-[10px] py-1.5 font-mono hover:bg-red-900/40 hover:text-white transition-all tracking-wider flex items-center justify-center gap-2">
-                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-                            :: BUKA MENU ADMIN ::
-                        </button>
-                    </div>
-                </div>
 <!-- [NEW] PANEL KHUSUS DINAS LUAR (Hidden by default) -->
 <div id="dl-panel" class="widget-panel hidden border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
     <h2 class="widget-title" style="background: rgba(59, 130, 246, 0.8); color: white;">:: DINAS LUAR ::</h2>
@@ -1521,13 +1433,6 @@
                             <p class="text-xs text-gray-400">LOG TERAKHIR</p>
                             <p id="lastActionDisplay" class="text-md font-mono text-amber-400">--:--:--</p>
                         </div>
-                    </div>
-                </div>
-
-                <div class="widget-panel flex-grow h-32 lg:h-auto">
-                    <h2 class="widget-title">:: LOG KERNEL ::</h2>
-                    <div id="systemLog" class="text-xs h-full overflow-y-auto font-mono space-y-1">
-                        <p class="text-green-500">> System Init: OK</p>
                     </div>
                 </div>
             </div>
