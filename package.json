@@ -34,6 +34,7 @@
     "my": "^0.3.3",
     "mysql2": "^3.16.0",
     "node-cron": "^4.2.1",
+    "onnxruntime-web": "^1.24.3",
     "partial": "^0.0.7",
     "path": "^0.12.7",
     "router": "^2.2.0",

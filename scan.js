@@ -303,14 +303,39 @@ const SoundFX = {
         apiKey: "12d381ffd65727d06fc3f0dd0c704ad6b8d80b19ff742e577ab3b59994234c06",
         voiceId: "21m00Tcm4TlvDq8ikWAM" // Menggunakan ID Suara standar "George" (Pre-made) yang lebih stabil
     },
+    cfWorkerUrl: null, // [NEW] Endpoint Cloudflare Worker TTS
     speak: async (text) => {
         if (isStealthMode) return; // Mute jika Stealth Mode aktif
 
         try {
-            // Add AbortController to handle network timeouts and protocol errors gracefully
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
 
+            // [NEW] Coba gunakan Cloudflare Worker TTS terlebih dahulu (Gratis & Cepat)
+            if (SoundFX.cfWorkerUrl) {
+                try {
+                    const response = await fetch(SoundFX.cfWorkerUrl, {
+                        method: 'POST',
+                        signal: controller.signal,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: text })
+                    });
+                    clearTimeout(timeoutId);
+                    if (response.ok) {
+                        const arrayBuffer = await response.arrayBuffer();
+                        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                        const source = audioCtx.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(audioAnalyser);
+                        source.start(0);
+                        return; // Sukses, tidak perlu lanjut ke ElevenLabs
+                    }
+                } catch (cfErr) {
+                    console.warn("Cloudflare TTS failed, falling back to ElevenLabs...");
+                }
+            }
+
+            // --- FALLBACK KE ELEVENLABS ---
             const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${SoundFX.elevenLabs.voiceId}`, {
                 method: 'POST',
                 signal: controller.signal,
@@ -351,24 +376,30 @@ const SoundFX = {
 
             // --- FALLBACK: Browser Web Speech API ---
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // Hentikan suara sebelumnya jika ada
-                const utterance = new SpeechSynthesisUtterance(text);
-                const voices = window.speechSynthesis.getVoices();
-                
-                // MENCARI SUARA EKSTENSI:
-                // Ganti 'Google Bahasa Indonesia' dengan nama suara yang Anda temukan di console tadi
-                const preferredVoice = voices.find(v => v.name.includes('Google Bahasa Indonesia')) 
-                                    || voices.find(v => v.lang.startsWith('id')) 
-                                    || voices[0];
+                const runFallbackSpeak = () => {
+                    window.speechSynthesis.cancel(); 
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    const voices = window.speechSynthesis.getVoices();
+                    
+                    // Pencarian suara Bahasa Indonesia yang lebih akurat
+                    const preferredVoice = voices.find(v => v.name.includes('Google Bahasa Indonesia')) 
+                                        || voices.find(v => v.lang.startsWith('id')) 
+                                        || voices.find(v => v.name.includes('Indonesian'))
+                                        || voices[0];
 
-                if (preferredVoice) {
-                    utterance.voice = preferredVoice;
+                    if (preferredVoice) utterance.voice = preferredVoice;
+                    utterance.lang = 'id-ID';
+                    utterance.rate = 1.0;
+                    utterance.pitch = 1.0;
+                    window.speechSynthesis.speak(utterance);
+                };
+
+                // Fix Chrome bug: getVoices() seringkali kosong saat dipanggil pertama kali
+                if (window.speechSynthesis.getVoices().length === 0) {
+                    window.speechSynthesis.onvoiceschanged = runFallbackSpeak;
+                } else {
+                    runFallbackSpeak();
                 }
-
-                utterance.lang = 'id-ID';
-                utterance.rate = 1.0;
-                utterance.pitch = 1.0;
-                window.speechSynthesis.speak(utterance);
             }
         }
     }
@@ -818,6 +849,41 @@ function drawRetinalScan(ctx, landmarks, color) {
     
     drawEye(leftEye);
     drawEye(rightEye);
+}
+
+// --- [NEW] LIVE TELEMETRY & PROGRESS RING ---
+function drawBiometricProgress(ctx, box, progress, color) {
+    const { x, y, width, height } = box;
+    const cx = x + width / 2;
+    const cy = y + height / 2;
+    const radius = Math.max(width, height) * 0.55;
+
+    ctx.save();
+    // 1. Background Circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // 2. Progress Arc
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * progress));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 15;
+    ctx.stroke();
+
+    // 3. Telemetry Text
+    ctx.fillStyle = color;
+    ctx.font = '9px "Share Tech Mono", monospace';
+    const hex = Math.random().toString(16).substr(2, 8).toUpperCase();
+    ctx.fillText(`ENC_KEY: ${hex}`, x, y + height + 25);
+    ctx.fillText(`COORD_X: ${cx.toFixed(2)}`, x, y + height + 35);
+    ctx.fillText(`COORD_Y: ${cy.toFixed(2)}`, x, y + height + 45);
+    
+    ctx.restore();
 }
 
 // --- FITUR BARU: TACTICAL HUD (Pengganti Sci-Fi HUD) ---
@@ -1886,85 +1952,44 @@ function logAttendance(name, time) {
 // Panggil update HUD pada interval
 function updateClock() {
     const now = new Date();
-    
-    // FIX: Definisi variabel animasi warna dan waktu UTC yang hilang
     const time = Date.now();
-    const hue = (time / 20) % 360;
-    const hue1 = hue;
-    const hue2 = (hue + 60) % 360;
-    const utcH = String(now.getUTCHours()).padStart(2, '0');
-    const utcM = String(now.getUTCMinutes()).padStart(2, '0');
-    
-    // FIX: Ambil elemen secara dinamis karena di-inject via JS (animateTitle)
+
     const clockH = document.getElementById('clock-h');
     const clockM = document.getElementById('clock-m');
     const clockS = document.getElementById('clock-s');
-    const clockDate = document.getElementById('clock-date');
+    const clockMsSoph = document.getElementById('clock-ms-soph');
+    const clockRingSec = document.getElementById('clock-ring-sec');
+    const clockDateSoph = document.getElementById('clock-date-soph');
+    const teleUnix = document.getElementById('tele-unix');
+    const teleJulian = document.getElementById('tele-julian');
 
-    // Update Jam, Menit, Detik
     if (clockH) clockH.textContent = String(now.getHours()).padStart(2, '0');
     if (clockM) clockM.textContent = String(now.getMinutes()).padStart(2, '0');
     if (clockS) clockS.textContent = String(now.getSeconds()).padStart(2, '0');
-    
-    // Update Milidetik (High Precision & Nanosecond Simulation)
-    if (clockMs) {
+
+    if (clockMsSoph) {
         const ms = String(now.getMilliseconds()).padStart(3, '0');
-        // Simulasi Nanosecond (3 digit random)
-        const ns = String(Math.floor(Math.random() * 999)).padStart(3, '0');
-        
-        clockMs.innerHTML = `
-            <span style="color:hsl(${hue}, 100%, 75%); text-shadow:0 0 8px hsl(${hue}, 100%, 50%);">${ms}</span>
-            <span style="font-size:0.5em; color:#666; vertical-align:top; margin-left:1px;">.${ns}</span>
-        `;
+        const micro = String(Math.floor(Math.random() * 99)).padStart(2, '0');
+        clockMsSoph.textContent = `.${ms.substring(0, 2)}${micro}`;
     }
-    
-    if (clockDate) {
+
+    if (clockRingSec) {
+        const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
+        const dash = (seconds / 60) * 282.7; // 2 * PI * 45
+        clockRingSec.setAttribute('stroke-dasharray', `${dash} 282.7`);
+    }
+
+    if (clockDateSoph) {
         const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-        // Hitung Day of Year (DOY)
-        const start = new Date(now.getFullYear(), 0, 0);
-        const diff = now - start;
-        const oneDay = 1000 * 60 * 60 * 24;
-        const dayOfYear = Math.floor(diff / oneDay);
-        
-        // Hex Timestamp (Last 6 chars)
-        const hexStamp = Math.floor(now.getTime() / 1000).toString(16).toUpperCase().slice(-6);
-        
-        // Binary Seconds Visualization (6 bits)
-        const sec = now.getSeconds();
-        let binVis = '';
-        for(let i=5; i>=0; i--) {
-            const bit = (sec >> i) & 1;
-            binVis += `<span style="display:inline-block; width:6px; height:6px; margin:0 1px; background-color:${bit ? '#00FF7F' : '#333'}; box-shadow:${bit ? '0 0 4px #00FF7F' : 'none'}; border-radius:50%;"></span>`;
-        }
-
-        clockDate.innerHTML = `
-            <div style="display:flex; flex-direction:column; align-items:center; gap:2px; line-height:1.1;">
-                <div style="font-size:0.9em; letter-spacing:1px;">
-                    <span style="color:#00FFFF; text-shadow:0 0 5px rgba(0,255,255,0.5);">${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}</span>
-                    <span style="color:#444; margin:0 5px;">|</span>
-                    <span style="color:#FFD700;">DOY.${String(dayOfYear).padStart(3, '0')}</span>
-                    <span style="color:#444; margin:0 5px;">|</span>
-                    <span style="color:#00FF7F;">${days[now.getDay()]}</span>
-                </div>
-                <div style="font-size:0.75em; display:flex; align-items:center; gap:8px; opacity:0.9;">
-                    <span style="color:#AAA;">ZULU: ${utcH}:${utcM}</span>
-                    <span style="color:#444;">//</span>
-                    <span style="color:#FF0055; font-family:'Courier New';">0x${hexStamp}</span>
-                    <span style="color:#444;">//</span>
-                    <div style="display:flex; align-items:center;">${binVis}</div>
-                </div>
-            </div>
-        `;
+        clockDateSoph.textContent = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} [${days[now.getDay()]}]`;
     }
 
-    if (clockBar) {
-        // Progress bar detik dengan efek gradient flow
-        const totalMs = (now.getSeconds() * 1000) + now.getMilliseconds();
-        const percent = (totalMs / 60000) * 100;
-        clockBar.style.width = `${percent}%`;
-        
-        clockBar.style.background = `linear-gradient(90deg, hsl(${hue1}, 100%, 50%), hsl(${hue2}, 100%, 50%))`;
-        clockBar.style.boxShadow = `0 0 15px hsl(${hue1}, 100%, 60%)`;
+    if (teleUnix) teleUnix.textContent = `0x${Math.floor(time / 1000).toString(16).toUpperCase()}`;
+
+    if (teleJulian) {
+        const start = new Date(now.getFullYear(), 0, 0);
+        const dayOfYear = Math.floor((now - start) / 86400000);
+        teleJulian.textContent = `JD.${String(dayOfYear).padStart(3, '0')}`;
     }
     
     requestAnimationFrame(updateClock);
@@ -1991,90 +2016,70 @@ function animateTitle() {
             align-items: center; 
             justify-content: center; 
             width: 100%; 
-            max-width: 640px; /* Samakan dengan lebar video */
+            max-width: 640px; 
             margin: 0 auto; 
-            padding: 15px; /* Padding diperbesar agar foto tidak sesak */
-            border: 1px solid rgba(0, 255, 255, 0.6); 
-            border-radius: 12px;
-            background: rgba(0, 20, 30, 0.6);
-            backdrop-filter: blur(5px);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-            animation: floatLogo 4s ease-in-out infinite; 
+            padding: 12px; 
+            border: 1px solid rgba(0, 255, 255, 0.8); 
+            background: linear-gradient(135deg, rgba(6, 20, 30, 0.9) 0%, rgba(3, 10, 15, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.1);
+            position: relative;
+            clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
         ">
-            <!-- NEW WRAPPER with flex-direction: row -->
-            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center; width: 100%; gap: 15px;">
+            <div style="display: flex; flex-direction: row; align-items: stretch; justify-content: center; width: 100%; gap: 10px;">
                 
-                <!-- LEFT DATA BLOCK -->
-                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: 'Courier New', monospace; color: #00FFFF; text-transform: uppercase;">
-                    <div style="font-size: 9px; letter-spacing: 2px; opacity: 0.8; color: #00FF7F; margin-bottom: 2px;">SYSTEM TIME</div>
-                    <div style="display: flex; align-items: baseline; gap: 2px; font-weight: bold; text-shadow: 0 0 10px rgba(0,255,255,0.6);">
-                        <span id="clock-h" style="font-size: 28px; line-height: 1;">--</span>
-                        <span style="font-size: 18px; opacity: 0.8; animation: blink 1s infinite;">:</span>
-                        <span id="clock-m" style="font-size: 28px; line-height: 1;">--</span>
-                        <span id="clock-s" style="font-size: 14px; color: #FFD700; margin-left: 2px;">--</span>
+                <!-- CHRONO MODULE -->
+                <div style="flex: 1.6; border: 1px solid rgba(0,255,255,0.3); padding: 10px; background: rgba(0,0,0,0.5); position: relative; display: flex; align-items: center; gap: 15px;">
+                    <div style="width: 75px; height: 75px; position: relative;">
+                        <svg viewBox="0 0 100 100" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,255,255,0.1)" stroke-width="2" />
+                            <circle id="clock-ring-sec" cx="50" cy="50" r="45" fill="none" stroke="#00FFFF" stroke-width="4" stroke-dasharray="0 283" style="transition: stroke-dasharray 0.1s linear;" stroke-linecap="round" />
+                        </svg>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; pointer-events: none;">
+                            <span id="clock-s" style="font-size: 24px; font-weight: 900; color: #FFD700; font-family: 'Rajdhani';">--</span>
+                            <span id="clock-ms-soph" style="font-size: 9px; color: #00FFFF; margin-top: -5px; font-family: 'Share Tech Mono';">.00</span>
+                        </div>
                     </div>
-                    <div style="width: 80%; height: 1px; background: linear-gradient(90deg, transparent, #00FFFF, transparent); margin: 4px 0;"></div>
-                    <div id="clock-date" style="font-size: 9px; transform: scale(0.9);">--</div>
+                    
+                    <div style="display: flex; flex-direction: column;">
+                        <div style="font-size: 8px; color: #00FF7F; letter-spacing: 2px; font-family: 'Share Tech Mono';">MASTER_CLOCK [SYNCED]</div>
+                        <div style="display: flex; align-items: baseline; font-family: 'Rajdhani'; font-weight: 900; color: #FFF; text-shadow: 0 0 20px #00FFFF;">
+                            <span id="clock-h" style="font-size: 46px; line-height: 1;">--</span>
+                            <span style="font-size: 34px; margin: 0 2px; animation: blink 1s infinite;">:</span>
+                            <span id="clock-m" style="font-size: 46px; line-height: 1;">--</span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- CENTER IMAGE -->
-                <div style="flex: 2.5; height: 120px; position: relative; overflow: hidden; border-radius: 8px; border: 1px solid #00FFFF; box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);">
-                    <img src="pkm.jpg" alt="Banner" style="width: 100%; height: 100%; object-fit: cover; object-position: center; animation: holo-flicker 5s infinite;">
-                    <!-- Scanline Overlay -->
+                <!-- TELEMETRY & IMAGE -->
+                <div style="flex: 2.2; height: 95px; position: relative; border: 1px solid rgba(0,255,255,0.5); overflow: hidden; background: #000;">
+                    <img src="pkm.jpg" alt="PKM" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.5; filter: contrast(1.2);">
+                    <div style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.9) 0%, transparent 50%, rgba(0,0,0,0.9) 100%);"></div>
+                    
+                    <div style="position: absolute; top: 8px; left: 12px; font-size: 8px; color: #00FFFF; opacity: 0.9; font-family: 'Share Tech Mono';">
+                        UNIX: <span id="tele-unix" style="color:#FFF;">--</span><br>
+                        JULI: <span id="tele-julian" style="color:#FFD700;">--</span><br>
+                        LAT: <span style="color:#00FF7F;">${Math.floor(Math.random()*20+5)}ms</span>
+                    </div>
+                    
+                    <div style="position: absolute; bottom: 8px; right: 12px; text-align: right;">
+                         <div id="clock-date-soph" class="chrono-text" style="font-size: 13px; font-weight: bold; color: #00FFFF; letter-spacing: 1px;">--</div>
+                         <div style="font-size: 8px; color: rgba(255,255,255,0.5); font-family: 'Share Tech Mono';">SYSTEM_VERSION_4.5_STABLE</div>
+                    </div>
+
+                    <!-- SCANLINE FX -->
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.1) 3px); pointer-events: none;"></div>
-                    <img src="pkm.jpg" alt="Banner" style="width: 100%; height: 100%; object-fit: cover; object-position: center; image-rendering: auto;">
                 </div>
-
-                <!-- RIGHT DATA BLOCK -->
-                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-family: 'Courier New', monospace; font-size: 10px; color: #00FFFF; text-transform: uppercase;">
-                    <div style="font-weight: bold; letter-spacing: 1px;">BIOMETRIC KERNEL</div>
-                    <div style="width: 80%; height: 20px; display: flex; gap: 2px; align-items: flex-end; border: 1px solid #00FFFF33; padding: 2px;">
-                        <div class="data-bar" style="width: 20%; background: #00FFFF;"></div>
-                        <div class="data-bar" style="width: 20%; background: #00FFFF;"></div>
-                        <div class="data-bar" style="width: 20%; background: #00FFFF;"></div>
-                        <div class="data-bar" style="width: 20%; background: #00FFFF;"></div>
-                        <div class="data-bar" style="width: 20%; background: #00FFFF;"></div>
-                    </div>
-                    <div style="width: 80%; height: 1px; background: #00FFFF; margin-top: 2px;"></div>
-                    <div style="font-size: 12px; font-weight: bold; color: #FFD700;">v4.5 STABLE</div>
-                </div>
-
             </div>
-            <div style="width: 80%; height: 2px; background: linear-gradient(90deg, transparent, #00FFFF, transparent); margin-top: 12px; opacity: 0.8; box-shadow: 0 0 5px #00FFFF;"></div>
         </div>
         <style>
             @keyframes floatLogo {
                 0%, 100% { transform: translateY(0px); }
                 50% { transform: translateY(-5px); }
             }
-            @keyframes pulse-green {
-                0% { box-shadow: 0 0 5px #00FF7F; }
-                50% { box-shadow: 0 0 15px #00FF7F; }
-                100% { box-shadow: 0 0 5px #00FF7F; }
-            }
-            @keyframes bar-pulse {
-                0% { height: 20%; opacity: 0.7; }
-                50% { height: 100%; opacity: 1; }
-                100% { height: 20%; opacity: 0.7; }
-            }
-            .data-bar {
-                animation: bar-pulse 1.5s ease-in-out infinite;
-            }
-            .data-bar:nth-child(2) { animation-delay: 0.2s; }
-            .data-bar:nth-child(3) { animation-delay: 0.5s; }
-            .data-bar:nth-child(4) { animation-delay: 0.3s; }
-            .data-bar:nth-child(5) { animation-delay: 0.6s; }
-            
             @keyframes holo-flicker {
-                0%, 100% { opacity: 1; filter: brightness(1) hue-rotate(0deg); }
-                2% { opacity: 0.5; filter: brightness(1.5) hue-rotate(90deg); transform: skewX(2deg); }
-                4% { opacity: 1; filter: brightness(1) hue-rotate(0deg); transform: skewX(0deg); }
-                25% { opacity: 0.8; }
-                26% { opacity: 0.4; filter: brightness(1.2); }
-                27% { opacity: 0.8; }
-                70% { filter: hue-rotate(0deg); }
-                72% { filter: hue-rotate(180deg) brightness(1.5); }
-                74% { filter: hue-rotate(0deg); }
+                0%, 100% { opacity: 0.8; }
+                50% { opacity: 0.4; transform: scale(1.02); }
             }
         </style>`;
         
@@ -2090,10 +2095,13 @@ function animateTitle() {
         if (mainLogo) {
             mainLogo.style.display = 'block';
             mainLogo.style.position = 'fixed';
-            mainLogo.style.top = '15px';
+            mainLogo.style.top = '22px'; // Disesuaikan agar sejajar tengah dengan teks
+            mainLogo.style.top = '45px'; // Digeser ke bawah (28px ticker + gap)
             mainLogo.style.left = '30px';
-            mainLogo.style.width = '60px';
-            mainLogo.style.height = '60px';
+            mainLogo.style.width = '48px'; // Sedikit lebih kecil dari 60px
+            mainLogo.style.height = '48px';
+            mainLogo.style.borderRadius = '50%'; // Membuat tampilan oval/lingkaran
+            mainLogo.style.objectFit = 'cover';
             mainLogo.style.zIndex = '101';
             mainLogo.style.filter = 'drop-shadow(0 0 8px rgba(0,255,255,0.6))';
         }
@@ -2101,7 +2109,8 @@ function animateTitle() {
         // --- POSISI JUDUL: POJOK KIRI ATAS (HUD STYLE) ---
         mainTitle.style.position = 'fixed';
         mainTitle.style.top = '25px';
-        mainTitle.style.left = '100px'; // Geser ke kanan (30px + 60px logo + 10px gap)
+        mainTitle.style.top = '48px'; // Digeser ke bawah mengikuti logo
+        mainTitle.style.left = '88px'; // Penyesuaian jarak (30px + 48px logo + 10px gap)
         mainTitle.style.zIndex = '100';
         mainTitle.style.margin = '0';
 
@@ -2282,7 +2291,7 @@ async function updatePersonnelRoster() {
         
         if (!data || data.length === 0) {
             personnelRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Belum ada data kehadiran hari ini.</div>';
-            if (dlPanel) dlPanel.classList.add('hidden');
+            if (dlRoster) dlRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data dinas luar.</div>';
             return;
         }
 
@@ -2362,13 +2371,10 @@ async function updatePersonnelRoster() {
 
         // [NEW] Update Panel DL
         if (dlRoster && dlPanel) {
-            dlRoster.appendChild(dlWrapper);
             if (hasDL) {
-                dlPanel.classList.remove('hidden');
-                dlPanel.style.display = 'flex'; // [FIX] Paksa tampil dengan inline style
+                dlRoster.appendChild(dlWrapper);
             } else {
-                dlPanel.classList.add('hidden');
-                dlPanel.style.display = 'none'; // [FIX] Paksa sembunyi dengan inline style
+                dlRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data dinas luar.</div>';
             }
         }
 
@@ -2653,6 +2659,19 @@ async function initializeApp() {
         logSystem('Neural Network Models Loaded.', 'text-green-500');
         setStatusVisual('Models Loaded. Starting Camera Stream...', 'text-cyan-400', true);
 
+        // [NEW] Inisialisasi ONNX Runtime sebagai Fallback Engine
+        // Mengatur thread WASM agar pemrosesan neural lebih cepat jika WebGL bermasalah
+        if (window.ort) {
+            // Memberitahu engine lokasi file .wasm pendukung
+            ort.env.wasm.wasmPaths = {
+                'ort-wasm-simd.wasm': './node_modules/onnxruntime-web/dist/ort-wasm-simd.wasm',
+                'ort-wasm.wasm': './node_modules/onnxruntime-web/dist/ort-wasm.wasm'
+            };
+            ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
+            ort.env.wasm.proxy = true; // Jalankan di web worker agar UI tidak freeze
+            logSystem('ENGINE: ONNX RUNTIME INITIALIZED (WASM READY)', 'text-blue-400');
+        }
+
         // Langsung mulai kamera default
         await startCamera(null); 
 
@@ -2661,6 +2680,7 @@ async function initializeApp() {
         if (configData && configData.success) {
             SoundFX.elevenLabs.apiKey = configData.config.elevenlabs_api_key || SoundFX.elevenLabs.apiKey;
             SoundFX.elevenLabs.voiceId = configData.config.elevenlabs_voice_id || SoundFX.elevenLabs.voiceId;
+            SoundFX.cfWorkerUrl = configData.config.cf_worker_tts_url || null;
             logSystem(`VOICE MODULE: Sync successful (Voice ID: ${SoundFX.elevenLabs.voiceId.substring(0, 6)}...)`, 'text-purple-400');
         }
 
@@ -2866,6 +2886,7 @@ async function detectFace() {
         // Hapus inline style lama jika ada agar class CSS berlaku
         videoContainer.style.border = ''; 
         videoContainer.style.boxShadow = '';
+        document.getElementById('alarm-overlay').style.opacity = '0';
     } else {
          // Jika tidak ada wajah terdeteksi, reset style ke semula (hilangkan border)
          videoContainer.classList.remove('scanning-border', 'scanning-border-error');
@@ -2876,6 +2897,10 @@ async function detectFace() {
     if(!isProcessing) videoContainer.classList.remove('scan-success');
 
     if (detections) {
+        // [NEW] Tampilkan panel data dengan animasi slide-in
+        const targetPanel = document.getElementById('target-data-panel');
+        if (targetPanel) targetPanel.classList.remove('panel-hidden');
+
         const resizedDetections = faceapi.resizeResults(detections, displaySize);
         const { box } = resizedDetections.detection;
         const { landmarks } = resizedDetections;
@@ -2898,14 +2923,6 @@ async function detectFace() {
 
         // --- GAMBAR EFEK CANGGIH BARU ---
 
-        // 1. Hexagonal Force Field di latar belakang wajah
-        // drawHexGridOverlay(context, box, '#00FFFF');
-        
-        // 2. Topographic Map (Garis Kontur)
-        // drawTopographicFeatures(context, landmarks, '#00FFFF');
-
-        // drawHolographicMesh(context, landmarks);
-        
         // GAMBAR KONEKTOR BIOMETRIK (NEW)
         // drawBiometricConnectors(context, box, landmarks, '#00FFFF');
 
@@ -3017,6 +3034,8 @@ async function detectFace() {
         });
 
         // Hanya anggap valid jika konsensus terpenuhi
+        const scanProgress = maxCount / MIN_CONSENSUS;
+        
         if (stabilizedLabel !== 'unknown' && maxCount >= MIN_CONSENSUS) {
             recognizedId = stabilizedLabel;
             
@@ -3147,25 +3166,25 @@ async function detectFace() {
                 userStatusDisplay.className = 'text-lg font-bold text-yellow-400';
                 // faceColor sudah diset kuning/cyan di logika filter sebelumnya
             } else {
-                // Mode Unknown: Benar-benar tidak dikenal (Merah)
-                videoContainer.classList.add('scanning-border-error'); // Ubah border jadi Merah
+                // Mode Unknown: Hilangkan efek merah, gunakan warna standar scanning (Cyan)
+                videoContainer.classList.remove('scanning-border-error'); 
+                document.getElementById('alarm-overlay').style.opacity = '0';
                 if (labeledDescriptors && labeledDescriptors.length > 0) {
                     // Unknown Face
-                    setStatusVisual('SCANNING..', 'text-red-500');
-                    userStatusDisplay.textContent = 'ACCESS DENIED';
+                    setStatusVisual('SCANNING..', 'text-cyan-500');
+                    userStatusDisplay.textContent = 'UNKNOWN TARGET';
                     faceLabel = 'UNKNOWN';
-                    faceColor = '#FF0055';
+                    faceColor = '#00FFFF';
                     
-                    // Efek Berkedip Merah
-                    if (Math.floor(Date.now() / 200) % 2 === 0) faceColor = '#FF0055'; 
-                    else faceColor = 'rgba(255, 0, 85, 0.1)';
+                    // Gunakan warna Cyan stabil untuk status Unknown
+                    faceColor = '#00FFFF'; 
 
                     // Trigger Glitch Effect on Unknown Face (Interference)
                     if (Math.random() < 0.15) triggerGlitch();
                 } else {
                     // DB Offline
-                    setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-red-500');
-                    userStatusDisplay.textContent = 'DB OFFLINE';
+                    setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-amber-500');
+                    userStatusDisplay.textContent = 'OFFLINE';
                 }
             }
             
@@ -3178,6 +3197,10 @@ async function detectFace() {
         // drawTacticalHUD(context, box, faceColor);
         // [UPDATE] Override HUD dengan status & warna terkini
         drawSciFiHUD(context, box, landmarks, faceColor, faceLabel, userStatusDisplay.textContent);
+        
+        // Draw Progress Ring (Visual Feedback Kunci)
+        drawBiometricProgress(context, box, scanProgress, faceColor);
+
         drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion, gender, age);
         drawHolographicMesh(context, landmarks);
         // [NEW] Draw Face Shape (Visualisasi Wajah)
@@ -3238,6 +3261,10 @@ async function detectFace() {
 function handleNoFace(context) {
     if (window.LivenessCheck) window.LivenessCheck.reset();
     resetTargetData();
+
+    // [NEW] Sembunyikan panel data dengan animasi slide-out
+    const targetPanel = document.getElementById('target-data-panel');
+    if (targetPanel) targetPanel.classList.add('panel-hidden');
 
     const ambStatus = document.getElementById('amb-status');
     if (ambStatus && ambStatus.textContent !== '') {
@@ -3465,20 +3492,16 @@ async function processAttendance(karyawanId) {
             
             // [UPDATE] Logika Pesan Suara Berbeda untuk Masuk vs Pulang
             if (result.result_code === 'CHECK_OUT_SUCCESS') {
-                await SoundFX.speak(`Sampai Jumpa ${display_name}. Terima kasih atas dedikasimu hari ini. Hati-hati di jalan.`);
                 SoundFX.speak(`Sampai Jumpa ${display_name}. Terima kasih atas dedikasimu hari ini. Hati-hati di jalan.`);
             } else {
                 // [MODIFIKASI] Pesan Khusus untuk ID H87
                 if (karyawanId === 'H87') {
-                    await SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet.`);
                     SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet.`);
                 } else if (result.telat_menit > 0) {
                     // [NEW] Sapaan Khusus Terlambat
-                    await SoundFX.speak(`Halo ${display_name}. Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
                     SoundFX.speak(`Halo ${display_name}. Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
                 } else {
                     // [UPDATE] Greeting lebih ramah dengan sapaan "Halo"
-                    await SoundFX.speak(`Halo, Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
                     SoundFX.speak(`Halo, Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
                 }
             }
@@ -5588,8 +5611,8 @@ function injectScanningStyles() {
     }
     @keyframes strobe-pulse {
         0% {
-            box-shadow: 0 0 15px #ff0000, inset 0 0 10px #ff0000;
-            border-color: #ff0000;
+            box-shadow: 0 0 15px #00FFFF, inset 0 0 10px #00FFFF;
+            border-color: #00FFFF;
         }
         15% {
             box-shadow: 0 0 30px #ff00ff, inset 0 0 20px #ff00ff;

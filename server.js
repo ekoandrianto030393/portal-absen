@@ -37,6 +37,8 @@ let JAM_PULANG_JUMAT       = formatTime(process.env.JAM_PULANG_JUMAT);
 let JAM_PULANG_SABTU       = formatTime(process.env.JAM_PULANG_SABTU);
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID;
+const CF_AIG_TOKEN = process.env.CF_AIG_TOKEN;
+const CF_WORKER_TTS_URL = process.env.CF_WORKER_TTS_URL;
 
 // Middleware untuk parsing JSON body (limit besar untuk upload foto)
 app.use(bodyParser.json({ limit: '50mb' }));
@@ -49,7 +51,7 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use(express.static(path.join(__dirname, '.'), {
     setHeaders: (res, path) => {
         if (path.endsWith('.bin') || path.endsWith('.json') || path.endsWith('.onnx') || path.endsWith('.wasm')) {
-            res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache 1 tahun (High Speed Load)
+            res.setHeader('Cache-Control', 'public, max-age=31536000');
         }
     }
 }));
@@ -1093,7 +1095,8 @@ app.get('/api/config', (req, res) => {
             auto_pulang_default: AUTO_PULANG_DEFAULT,
             potongan_lupa_pulang: POTONGAN_LUPA_PULANG,
             elevenlabs_api_key: ELEVENLABS_API_KEY,
-            elevenlabs_voice_id: ELEVENLABS_VOICE_ID
+            elevenlabs_voice_id: ELEVENLABS_VOICE_ID,
+            cf_worker_tts_url: CF_WORKER_TTS_URL
         }
     });
 });
@@ -1110,6 +1113,33 @@ app.post('/api/config', (req, res) => {
     console.log(`   - Jam Pulang Sabtu: ${JAM_PULANG_SABTU}`);
     
     res.json({ success: true, message: 'Konfigurasi waktu pulang berhasil diperbarui di server.' });
+});
+
+// [NEW] Endpoint untuk menjembatani request ke Cloudflare AI Gateway
+app.post('/api/ai/generate-greeting', async (req, res) => {
+    const { name, status } = req.body;
+    if (!CF_AIG_TOKEN) return res.status(500).json({ success: false, message: 'CF Token missing' });
+
+    try {
+        const response = await fetch("https://gateway.ai.cloudflare.com/v1/1099dc342c0da1b242e48e96046f5037/default/compat/chat/completions", {
+            method: "POST",
+            headers: {
+                "cf-aig-authorization": `Bearer ${CF_AIG_TOKEN}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+                messages: [
+                    { role: "system", content: "Anda adalah asisten ramah di Puskesmas Wana. Berikan sapaan penyemangat singkat (maksimal 10 kata)." },
+                    { role: "user", content: `Berikan sapaan untuk ${name} yang baru saja absen ${status}.` }
+                ]
+            })
+        });
+        const result = await response.json();
+        res.json({ success: true, text: result.choices[0].message.content });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
 });
 
 // --- SCHEDULER: AUTO FIX LUPA PULANG (Setiap 1 Jam) ---

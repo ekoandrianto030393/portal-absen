@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 
 <head>
@@ -22,6 +22,7 @@
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
     <script src="./models/blazeface.js"></script> <!-- Gunakan file lokal Anda -->
     <!-- FONT SCI-FI: Rajdhani -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
 
@@ -41,6 +42,7 @@
             background-color: #05050A;
             /* Dark Abyss */
             color: var(--hud-primary);
+            box-shadow: inset 0 0 100px rgba(0, 255, 255, 0.05); /* Soft ambient glow */
             cursor: crosshair;
             transition: color 0.5s ease;
         }
@@ -58,6 +60,12 @@
             z-index: 9999;
             opacity: 0.7;
             animation: scanlineMove 10s linear infinite;
+        }
+
+        /* [NEW] ALARM OVERLAY */
+        #alarm-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 0, 0, 0.2); z-index: 9997; pointer-events: none; opacity: 0; transition: opacity 0.2s;
         }
 
         /* EFEK NOISE / FILM GRAIN (NEW) */
@@ -78,6 +86,14 @@
         @keyframes gold-hologram-shimmer {
             0% { background-position: -200% 0; }
             100% { background-position: 200% 0; }
+        }
+        @keyframes chrono-glow {
+            0%, 100% { text-shadow: 0 0 10px rgba(0, 255, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.2); }
+            50% { text-shadow: 0 0 20px rgba(0, 255, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.4), 0 0 5px #fff; }
+        }
+        .chrono-text {
+            font-family: 'Rajdhani', sans-serif;
+            animation: chrono-glow 2s infinite ease-in-out;
         }
 
         /* --- 2. LAYOUT LAYERS --- */
@@ -111,29 +127,29 @@
         /* --- 3. WIDGET PANELS (KOTAK KIRI & KANAN) --- */
         .widget-panel {
             /* Tech Corners: Aksen siku di setiap sudut menggunakan Gradient */
-            background: rgba(6, 15, 20, 0.85);
+            background: linear-gradient(135deg, rgba(6, 20, 30, 0.9) 0%, rgba(3, 10, 15, 0.95) 100%);
             /* BORDER LEBIH TIPIS & HALUS (Base) */
-            border: 1px solid rgba(0, 255, 255, 0.2);
+            border: 1px solid rgba(0, 255, 255, 0.15);
             padding: 1rem;
             border-radius: 2px; /* Sudut lebih tajam */
             /* EFEK CAHAYA CANGGIH (Box Shadow Berlapis) */
             box-shadow: 
-                0 0 30px rgba(0, 0, 0, 0.8),
                 inset 0 0 20px rgba(0, 255, 255, 0.05);
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
             position: relative;
             overflow: hidden;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(12px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); /* Transisi lebih halus & profesional */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             animation: panel-pulse-glitch 4s infinite;
         }
 
         @keyframes panel-pulse-glitch {
             0%, 100% { 
                 border-color: rgba(0, 255, 255, 0.2); 
-                box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 255, 255, 0.05);
+                box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05);
             }
             50% {
                 border-color: rgba(0, 255, 255, 0.6);
@@ -208,24 +224,56 @@
         .widget-title {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #000; /* Teks Hitam agar kontras */
-            background: var(--hud-primary); /* Background Solid Cyan */
+            color: #fff; 
+            background: linear-gradient(90deg, rgba(0, 255, 255, 0.3), transparent);
+            border-left: 4px solid var(--hud-primary);
             padding: 0.2rem 0.8rem;
             margin-bottom: 0.8rem;
-            text-shadow: none;
+            text-shadow: 0 0 10px var(--hud-primary);
             letter-spacing: 3px;
             text-transform: uppercase;
             display: flex;
             align-items: center;
-            /* Potongan Sudut Header */
-            clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%);
-            box-shadow: 0 0 15px var(--hud-primary);
+            /* Shadow lebih halus */
+            box-shadow: -5px 0 15px rgba(0, 255, 255, 0.1);
             animation: title-pulse 3s infinite alternate;
+        }
+
+        /* --- NEW: FLOATING TELEMETRY LABELS --- */
+        .telemetry-label {
+            position: absolute;
+            font-size: 10px;
+            font-family: 'Rajdhani', monospace;
+            color: var(--hud-primary);
+            text-transform: uppercase;
+            background: rgba(0, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-left: 2px solid var(--hud-primary);
+            pointer-events: none;
+            z-index: 20;
+            opacity: 0.8;
+        }
+        .telemetry-node {
+            position: absolute;
+            width: 4px; height: 4px;
+            background: var(--hud-primary);
+            box-shadow: 0 0 10px var(--hud-primary);
+            border-radius: 50%;
+            z-index: 20;
         }
 
         @keyframes title-pulse {
             0% { box-shadow: 0 0 10px var(--hud-primary); }
             100% { box-shadow: 0 0 25px var(--hud-primary), 0 0 5px white; }
+        }
+
+        /* [NEW] TRANSISI PANEL DATA TARGET (HIDDEN STATE) */
+        .panel-hidden {
+            opacity: 0 !important;
+            transform: translateX(-50px) translateY(10px) rotate(-1deg) scale(0.95) !important;
+            filter: blur(15px);
+            pointer-events: none;
+            box-shadow: none !important;
         }
 
         @keyframes text-flicker {
@@ -458,6 +506,7 @@
         /* SCANNER BEAM TRACKING STATE (LOCKED) */
         .scanner-beam.tracking {
             animation: none; /* Hentikan animasi idle */
+            display: block !important;
             transition: top 0.1s ease-out, box-shadow 0.2s; /* Gerakan halus mengikuti wajah */
             height: 4px; /* Lebih tebal saat terkunci */
             background: rgba(0, 255, 255, 0.9);
@@ -480,12 +529,24 @@
             border-color: rgba(255, 0, 85, 0.6);
             box-shadow: 0 0 30px rgba(255, 0, 85, 0.2);
         }
-        body.global-alert .widget-title {
-            color: #FF0055;
-            border-left-color: #FF0055;
-            background: linear-gradient(90deg, rgba(255, 0, 85, 0.4), transparent);
-        }
 
+        /* [NEW] CYBER-FRAME (DEKORASI SUDUT LAYAR) */
+        .cyber-frame {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9995;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            margin: 10px;
+        }
+        .cyber-frame::before, .cyber-frame::after {
+            content: ''; position: absolute; width: 100px; height: 100px;
+            border: 2px solid var(--hud-primary); opacity: 0.5;
+        }
+        .cyber-frame::before { top: 0; left: 0; border-right: none; border-bottom: none; }
+        .cyber-frame::after { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+        /* --- VIDEO STYLING --- */
         .video-container video,
         .video-container canvas {
             position: absolute;
@@ -566,6 +627,17 @@
             box-shadow: 0 0 100px rgba(0, 255, 127, 0.9), inset 0 0 40px rgba(0, 255, 127, 0.4);
         }
 
+        /* [NEW] SCANNING PULSE ANIMATION */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.2); opacity: 0; }
+        }
+        .pulse-element {
+            position: absolute; border: 2px solid var(--hud-primary);
+            border-radius: 50%; pointer-events: none;
+            animation: pulse-ring 1.5s infinite;
+        }
+
         /* --- 5. TEXT GLITCH EFFECT --- */
         .glitch-text {
             color: #FF00FF;
@@ -628,7 +700,7 @@
         }
 
         .fancy-header {
-            position: relative;
+            position: sticky;
             padding: 0.5rem 0;
             margin-bottom: 0.5rem;
         }
@@ -1271,7 +1343,7 @@
         }
         #digitalCrack.active { opacity: 1; transform: scale(1); }
         #digitalCrack.crack-error {
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 500 500' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter id='glow'%3E%3CfeGaussianBlur stdDeviation='2' result='coloredBlur'/%3E%3CfeMerge%3E%3CfeMergeNode in='coloredBlur'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Cg stroke='%23FF0055' stroke-width='2' fill='none' filter='url(%23glow)'%3E%3Cpath d='M250 250 L150 80 M250 250 L350 80 M250 250 L450 250 M250 250 L350 420 M250 250 L150 420 M250 250 L50 250' stroke-linecap='round'/%3E%3Cpath d='M250 250 L200 180 L220 160 M250 250 L300 180 L280 160' stroke-width='1' opacity='0.7'/%3E%3Ccircle cx='250' cy='250' r='150' stroke-dasharray='10,30' opacity='0.3'/%3E%3C/g%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 500 500' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter id='glow'%3E%3CfeGaussianBlur stdDeviation='2' result='coloredBlur'/%3E%3CfeMerge%3E%3CfeMergeNode in='coloredBlur'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Cg stroke='%2300FFFF' stroke-width='2' fill='none' filter='url(%23glow)'%3E%3Cpath d='M250 250 L150 80 M250 250 L350 80 M250 250 L450 250 M250 250 L350 420 M250 250 L150 420 M250 250 L50 250' stroke-linecap='round'/%3E%3Cpath d='M250 250 L200 180 L220 160 M250 250 L300 180 L280 160' stroke-width='1' opacity='0.7'/%3E%3Ccircle cx='250' cy='250' r='150' stroke-dasharray='10,30' opacity='0.3'/%3E%3C/g%3E%3C/svg%3E");
         }
 
         /* --- 18. RUNNING TEXT (NEWS TICKER) --- */
@@ -1282,23 +1354,102 @@
             width: 100%;
             height: 32px;
             background: rgba(2, 6, 10, 0.95);
-            border-top: 1px solid var(--hud-primary);
+            border-top: 1px solid var(--hud-primary); /* Border ini tetap ada */
+            background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 15px 15px; /* Pola grid halus */
             display: flex;
+            perspective: 500px; /* Untuk efek 3D */
             align-items: center;
-            z-index: 9000;
+            z-index: 9996; /* Lebih tinggi dari cyber-frame */
             overflow: hidden;
             box-shadow: 0 -5px 20px rgba(0, 255, 255, 0.1);
+        }
+        /* --- [NEW] TOP NEWS TICKER STYLES (MOTTO) --- */
+        .news-ticker-top {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 36px;
+            background: linear-gradient(to bottom, rgba(10, 15, 25, 0.98), rgba(5, 10, 15, 0.9));
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #FFD700;
+            background-image: linear-gradient(rgba(255, 215, 0, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 215, 0, 0.03) 1px, transparent 1px);
+            background-size: 15px 15px; /* Pola grid halus */
+            display: flex;
+            align-items: center;
+            perspective: 500px; /* Untuk efek 3D */
+            z-index: 9996; /* Lebih tinggi dari cyber-frame */
+            overflow: hidden;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+        }
+        .news-ticker-top::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #FFD700, transparent);
+            animation: ticker-line-pulse 3s infinite;
+        }
+        @keyframes ticker-line-pulse {
+            0%, 100% { opacity: 0.3; transform: scaleX(0.8); }
+            50% { opacity: 1; transform: scaleX(1); }
+        }
+        .ticker-head-top {
+            background: linear-gradient(135deg, #B8860B 0%, #FFD700 50%, #B8860B 100%);
+            color: #000;
+            padding: 0 25px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            font-weight: 800;
+            font-size: 11px;
+            letter-spacing: 3px;
+            z-index: 11; /* Lebih tinggi dari after */
+            position: relative;
+            clip-path: polygon(0 0, 85% 0, 100% 100%, 0% 100%);
+            box-shadow: 5px 0 15px rgba(255,215,0,0.4);
+            font-family: 'Rajdhani', sans-serif;
+            padding-right: 35px;
+        }
+        .ticker-head-top::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+            transform: skewX(-20deg);
+            animation: label-shine 4s infinite;
+        } /* Efek kilauan pada label */
+        @keyframes label-shine {
+            0% { left: -100%; }
+            20%, 100% { left: 200%; }
+        }
+        .ticker-text-top {
+            position: absolute;
+            white-space: nowrap;
+            will-change: transform;
+            animation: ticker-top 70s linear infinite;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            line-height: 36px;
+            text-transform: uppercase;
+            color: #FFD700;
+            text-shadow: 2px 2px 0px rgba(0, 0, 0, 1), 0 0 10px rgba(255, 215, 0, 0.2);
         }
         .ticker-head {
             background: var(--hud-primary);
             color: #000;
             padding: 0 20px;
             height: 100%;
-            display: flex;
-            align-items: center;
-            font-weight: 800;
-            font-size: 12px;
-            letter-spacing: 1px;
+            display: flex; /* Tetap flex */
+            align-items: center; /* Tetap center */
+            font-weight: 800; /* Tetap bold */
+            font-size: 12px; /* Tetap 12px */
+            letter-spacing: 2px; /* Lebih lebar */
             z-index: 10;
             position: relative;
             clip-path: polygon(0 0, 100% 0, 90% 100%, 0% 100%);
@@ -1309,25 +1460,54 @@
             flex: 1;
             overflow: hidden;
             position: relative;
-            height: 100%;
+            height: 100%; /* Pastikan tinggi penuh */
             mask-image: linear-gradient(to right, transparent, black 20px, black 95%, transparent);
         }
         .ticker-text {
             position: absolute;
             white-space: nowrap;
-            will-change: transform;
-            animation: ticker 40s linear infinite;
-            color: var(--hud-primary);
-            font-size: 12px;
+            will-change: transform, text-shadow;
+            animation: ticker-bottom 40s linear infinite, glow-pulse-cyan 3s infinite alternate;
+            color: var(--hud-primary); /* Warna tetap */
+            font-size: 13px; /* Sedikit lebih besar */
             line-height: 32px;
             font-family: 'Rajdhani', monospace;
             text-shadow: 0 0 5px var(--hud-primary);
             font-weight: 600;
+            transform-style: preserve-3d; /* Untuk efek 3D */
+            transform: none; /* Hapus skew dan translate awal */
         }
-        @keyframes ticker {
+
+        /* [UPGRADE] PAUSE ON HOVER: Memudahkan user membaca pesan panjang */
+        .news-ticker:hover .ticker-text,
+        .news-ticker-top:hover .ticker-text-top {
+            animation-play-state: paused;
+            cursor: help;
+        }
+
+        /* Animasi Ticker Lebih Dinamis */
+        @keyframes ticker-top {
             0% { transform: translateX(100%); }
             100% { transform: translateX(-100%); }
         }
+        @keyframes ticker-bottom {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        /* Glow Pulsing */
+        @keyframes glow-pulse-gold {
+            /* Mengubah menjadi glow statis yang lebih lembut */
+            0%, 100% { text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
+        }
+        @keyframes glow-pulse-cyan {
+            /* Mengubah menjadi glow statis yang lebih lembut */
+            0%, 100% { text-shadow: 0 0 5px var(--hud-primary), 0 0 2px rgba(255, 255, 255, 0.1); }
+        }
+        /* Animasi ticker lama (dihapus karena diganti yang baru) */
+        /* @keyframes ticker {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        } */
 
         /* Mobile Responsiveness */
         @media (max-width: 768px) {
@@ -1380,8 +1560,32 @@
 
     <div class="noise-overlay"></div> <!-- Overlay Noise (NEW) -->
     <div id="screenFlash"></div> <!-- Efek Kilatan -->
+    <div id="alarm-overlay"></div> <!-- [NEW] Red Alert Overlay -->
+    <div class="cyber-frame"></div> <!-- [NEW] Cyber Corner Frame -->
     <div id="digitalCrack"></div> <!-- Efek Retakan Digital (NEW) -->
     <div class="satellite-scan"></div> <!-- Global Scan Effect -->
+
+    <!-- [UPGRADE] MANUAL VISION CONTROLS (Akses Cepat Mode Sensor) -->
+    <div class="sensor-control-panel print:hidden">
+        <div class="text-[9px] text-cyan-500 font-bold tracking-[0.2em] mb-1 opacity-50 uppercase pl-1">Optic Sensors</div>
+        <button onclick="setVisionMode('normal')" class="sensor-btn" title="Standard Spectrum">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+        <button onclick="setVisionMode('thermal')" class="sensor-btn" style="border-color: #FF0055; color: #FF0055;" title="Thermal Heatmap">
+            <i class="fa-solid fa-fire"></i>
+        </button>
+        <button onclick="setVisionMode('night')" class="sensor-btn" style="border-color: #00FF7F; color: #00FF7F;" title="Enhanced Night Vision">
+            <i class="fa-solid fa-moon"></i>
+        </button>
+    </div>
+
+    <!-- [NEW] RUNNING TEXT TICKER TOP: MOTTO PELAYANAN -->
+    <div class="news-ticker-top">
+        <div class="ticker-head-top">MOTTO PELAYANAN</div>
+        <div class="ticker-content-wrapper">
+            <div class="ticker-text-top">:: MELAYANI DENGAN SEPENUH HATI ADALAH PRIORITAS KAMI :: MEMBERIKAN PELAYANAN KESEHATAN TERBAIK DENGAN INTEGRITAS DAN PROFESIONALISME :: PUSKESMAS WANA, MITRA TERPERCAYA MENUJU HIDUP SEHAT :: KEPUASAN ANDA, KEBAHAGIAAN KAMI :: SENYUM, SAPA, SALAM ADALAH BUDAYA KERJA KAMI ::</div>
+        </div>
+    </div>
 
     <!-- BOOT SCREEN -->
     <div id="boot-screen">
@@ -1395,13 +1599,14 @@
         <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 mt-0 p-2">
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
-<!-- [NEW] PANEL KHUSUS DINAS LUAR (Hidden by default) -->
-<div id="dl-panel" class="widget-panel hidden border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+<!-- [NEW] PANEL KHUSUS DINAS LUAR (Always Visible) -->
+<div id="dl-panel" class="widget-panel border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
     <h2 class="widget-title" style="background: rgba(59, 130, 246, 0.8); color: white;">:: DINAS LUAR ::</h2>
     <div id="dlRoster" class="max-h-60 overflow-y-auto pr-1 flex flex-col gap-1"></div>
 </div>
 
-                <div class="widget-panel">
+                <!-- [MODIFIED] Menambahkan ID dan status awal tersembunyi -->
+                <div id="target-data-panel" class="widget-panel panel-hidden">
                     <h2 class="widget-title">:: DATA TARGET ::</h2>
                     <div class="space-y-3 text-center">
 
