@@ -3820,16 +3820,18 @@ async function processAttendance(karyawanId) {
                     </div>
                     <div class="id-card-content" style="border: 1px solid rgba(255, 215, 0, 0.2); box-shadow: 0 20px 60px rgba(0,0,0,0.8);">
                         
-                        <!-- Luxury Gold Chip -->
-                        <div class="absolute top-32 right-6 w-12 h-9 bg-gradient-to-br from-[#B8860B] via-[#FFD700] to-[#B8860B] rounded-md border border-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.3)] z-20 overflow-hidden">
+                        <!-- Luxury Prismatic Chip -->
+                        <div class="absolute top-32 right-6 w-12 h-9 bg-gradient-to-br from-[#B8860B] via-[#FFD700] to-[#B8860B] rounded-md border border-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.3)] z-20 overflow-hidden" style="background-image: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(0,0,0,0.2) 100%), linear-gradient(to right, #B8860B, #FFD700);">
                             <div class="absolute top-1/2 left-0 w-full h-[1px] bg-black/30"></div>
                             <div class="absolute left-1/3 top-0 w-[1px] h-full bg-black/30"></div>
                             <div class="absolute left-2/3 top-0 w-[1px] h-full bg-black/30"></div>
                             <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 border border-black/20 rounded-sm"></div>
                         </div>
 
-                        <!-- Header: Elegant Black & Gold -->
-                        <div class="relative h-28 flex items-center px-6 overflow-hidden border-b border-[#FFD700]/20" style="background: linear-gradient(90deg, #000 0%, #111 100%);">
+                        <!-- Header: Elegant Deep Emerald Brushed Metal -->
+                        <div class="relative h-28 flex items-center px-6 overflow-hidden border-b border-[#FFD700]/20" style="background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);">
+                            <!-- Brushed Metal Texture -->
+                            <div class="absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(0deg, transparent, transparent 1px, #000 1px, #000 2px); background-size: 100% 2px;"></div>
                             <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 50%); background-size: 8px 8px;"></div>
                             
                             <div class="w-14 h-14 rounded-full flex items-center justify-center border border-[#FFD700]/40 mr-5 shadow-[0_0_20px_rgba(255,215,0,0.15)] bg-black relative z-10">
@@ -3868,6 +3870,15 @@ async function processAttendance(karyawanId) {
                                     
                                     <p class="text-[9px] text-gray-400 uppercase tracking-widest mb-1 font-serif">Jabatan</p>
                                     <p class="text-sm font-bold text-[#FFD700] tracking-wider border-l-2 border-[#FFD700] pl-3">${display_jabatan}</p>
+                                </div>
+
+                                <!-- Digital Signature Overlay -->
+                                <div class="absolute bottom-10 right-0 opacity-40 pointer-events-none rotate-[-5deg]">
+                                    <svg width="100" height="40" viewBox="0 0 100 40" fill="none" stroke="#FFD700" stroke-width="1.5">
+                                        <path d="M10 30 Q30 5 50 25 T90 15" stroke-linecap="round" />
+                                        <path d="M20 35 Q40 15 60 30" stroke-linecap="round" opacity="0.5" />
+                                    </svg>
+                                    <p class="text-[6px] text-[#FFD700] text-center uppercase tracking-tighter">Verified Authority</p>
                                 </div>
                                 
                                 <div class="mt-auto pt-3 border-t border-white/10 flex justify-between items-end">
