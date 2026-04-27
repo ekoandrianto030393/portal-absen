@@ -1,10 +1,9 @@
-name = "biometrik-tts-worker" # Replace with a unique name for your worker
+name = "biometrik-ai-worker"
 main = "cloudflare-worker-tts.js"
-compatibility_date = "2024-05-18" # Update to today's date or a recent one
+compatibility_date = "2024-11-01"
 
-# Memastikan Wrangler tidak mencoba menggunakan Vite atau bundler lain secara otomatis
-minify = true
-node_compat = true
-
+# Menghubungkan Worker ke resource Workers AI
 [ai]
 binding = "AI"
+
+# Jika Anda ingin melakukan deployment, jalankan: npx wrangler deploy

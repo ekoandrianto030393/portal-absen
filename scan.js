@@ -35,6 +35,8 @@ const attendanceLog = document.getElementById('attendanceLog');
 const diagnosticList = document.getElementById('diagnosticList');
 const dlRoster = document.getElementById('dlRoster'); // [NEW]
 const dlPanel = document.getElementById('dl-panel');   // [NEW]
+const cutiRoster = document.getElementById('cutiRoster'); // [NEW]
+const cutiPanel = document.getElementById('cuti-panel');   // [NEW]
 let lastQuoteIndex = -1; // [NEW] Variabel global untuk mencegah pengulangan motivasi
 
 // CORNER CARD ELEMENTS
@@ -2288,10 +2290,12 @@ async function updatePersonnelRoster() {
 
         // [NEW] Reset DL Roster
         if (dlRoster) dlRoster.innerHTML = '';
+        if (cutiRoster) cutiRoster.innerHTML = '';
         
         if (!data || data.length === 0) {
             personnelRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Belum ada data kehadiran hari ini.</div>';
             if (dlRoster) dlRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data dinas luar.</div>';
+            if (cutiRoster) cutiRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data cuti.</div>';
             return;
         }
 
@@ -2301,7 +2305,11 @@ async function updatePersonnelRoster() {
         const dlWrapper = document.createElement('div');
         dlWrapper.className = 'w-full flex flex-col gap-1';
 
+        const cutiWrapper = document.createElement('div');
+        cutiWrapper.className = 'w-full flex flex-col gap-1';
+
         let hasDL = false;
+        let hasCuti = false;
 
         data.forEach(row => {
             // Ambil foto dari cache employeeMap jika ada, atau gunakan placeholder
@@ -2311,6 +2319,7 @@ async function updatePersonnelRoster() {
             // Tentukan status (Masuk/Pulang/DL)
             const statusRaw = row.status ? row.status.toUpperCase().trim() : '';
             const isDL = ['DL', 'DINAS_LUAR', 'DINAS LUAR'].includes(statusRaw);
+            const isCuti = ['CUTI'].includes(statusRaw);
             const isOut = !!row.jam_keluar;
             
             let timeDisplay, statusColor, statusText, borderColor, bgHover, statusLabelHtml;
@@ -2322,6 +2331,13 @@ async function updatePersonnelRoster() {
                 borderColor = 'border-blue-500/50';
                 bgHover = 'hover:bg-blue-900/20';
                 statusLabelHtml = '<span class="text-[9px] text-blue-400 font-bold">DL</span>';
+            } else if (isCuti) {
+                timeDisplay = 'SEDANG CUTI';
+                statusColor = 'bg-orange-500 shadow-[0_0_5px_#F97316]';
+                statusText = 'CUTI';
+                borderColor = 'border-orange-500/50';
+                bgHover = 'hover:bg-orange-900/20';
+                statusLabelHtml = '<span class="text-[9px] text-orange-400 font-bold">CUTI</span>';
             } else {
                 timeDisplay = isOut ? `OUT: ${row.jam_keluar ? row.jam_keluar.substring(0,5) : '--:--'}` : `IN: ${row.jam_masuk ? row.jam_masuk.substring(0,5) : '--:--'}`;
                 statusColor = isOut ? 'bg-amber-500 shadow-[0_0_5px_#F59E0B]' : 'bg-green-500 shadow-[0_0_5px_#00FF00]';
@@ -2333,6 +2349,7 @@ async function updatePersonnelRoster() {
 
             // [NEW] Icon Koper untuk DL
             const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-blue-400 ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
+            const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-day text-orange-400 ml-1.5 text-[10px] flex-shrink-0" title="Cuti"></i>' : '';
 
             const item = document.createElement('div');
             item.className = `flex items-center gap-3 p-2.5 border-b border-cyan-900/30 ${bgHover} transition-colors duration-200 animate-[fadeIn_0.5s_ease-out]`;
@@ -2346,6 +2363,7 @@ async function updatePersonnelRoster() {
                     <div class="flex items-center">
                         <p class="font-bold text-xs text-white truncate leading-tight">${row.nama}</p>
                         ${dlIcon}
+                        ${cutiIcon}
                     </div>
                     <p class="text-[10px] text-cyan-300 truncate opacity-80">${row.jabatan || '-'}</p>
                     <div class="flex justify-between items-center mt-1">
@@ -2359,6 +2377,9 @@ async function updatePersonnelRoster() {
             if (isDL && dlRoster) {
                 dlWrapper.appendChild(item);
                 hasDL = true;
+            } else if (isCuti && cutiRoster) {
+                cutiWrapper.appendChild(item);
+                hasCuti = true;
             } else {
                 regularWrapper.appendChild(item);
             }
@@ -2375,6 +2396,15 @@ async function updatePersonnelRoster() {
                 dlRoster.appendChild(dlWrapper);
             } else {
                 dlRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data dinas luar.</div>';
+            }
+        }
+
+        // [NEW] Update Panel Cuti
+        if (cutiRoster && cutiPanel) {
+            if (hasCuti) {
+                cutiRoster.appendChild(cutiWrapper);
+            } else {
+                cutiRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data cuti.</div>';
             }
         }
 

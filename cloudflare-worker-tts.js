@@ -15,11 +15,24 @@ export default {
     // Kita buat agar dia hanya merespon perintah POST (dari aplikasi absensi kamu)
     if (request.method === "POST") {
       try {
-        const { text } = await request.json();
+        const payload = await request.json();
 
-        // Memanggil mesin AI Cloudflare yang sudah kamu bind di wrangler.toml
+        // JIKA REQUEST ADALAH UNTUK GENERATE TEKS SAPAAN
+        if (payload.action === "greeting") {
+          const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+            messages: [
+              { role: "system", content: "Anda adalah asisten ramah Puskesmas Wana. Berikan sapaan semangat maksimal 10 kata." },
+              { role: "user", content: `Sapa ${payload.name} yang baru saja absen ${payload.status}.` }
+            ]
+          });
+          return new Response(JSON.stringify({ success: true, text: result.response }), {
+            headers: { ...corsHeaders, "content-type": "application/json" },
+          });
+        }
+
+        // JIKA REQUEST ADALAH UNTUK SUARA (TTS)
         const response = await env.AI.run("@cf/microsoft/speecht5-tts", {
-          text: text,
+          text: payload.text,
         });
 
         // Mengirim balik file suara ke laptop kamu
