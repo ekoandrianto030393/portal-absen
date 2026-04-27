@@ -1432,7 +1432,7 @@
             will-change: transform;
             animation: ticker-top 70s linear infinite;
             font-family: 'Rajdhani', sans-serif;
-            font-size: 18px;
+            font-size: 18px; /* Ukuran font tetap */
             font-weight: 700;
             letter-spacing: 2px;
             line-height: 36px;
@@ -1440,7 +1440,7 @@
             color: #FFD700;
             text-shadow: 2px 2px 0px rgba(0, 0, 0, 1), 0 0 10px rgba(255, 215, 0, 0.2);
         }
-        .ticker-head {
+        .ticker-head { /* Ticker bawah */
             background: var(--hud-primary);
             color: #000;
             padding: 0 20px;
@@ -1466,7 +1466,7 @@
         .ticker-text {
             position: absolute;
             white-space: nowrap;
-            will-change: transform, text-shadow;
+            will-change: transform; /* Hapus text-shadow dari will-change karena sudah diatur di glow-pulse-cyan */
             animation: ticker-bottom 40s linear infinite, glow-pulse-cyan 3s infinite alternate;
             color: var(--hud-primary); /* Warna tetap */
             font-size: 13px; /* Sedikit lebih besar */
@@ -1476,6 +1476,9 @@
             font-weight: 600;
             transform-style: preserve-3d; /* Untuk efek 3D */
             transform: none; /* Hapus skew dan translate awal */
+        }
+        .text-glow-white {
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
         }
 
         /* [UPGRADE] PAUSE ON HOVER: Memudahkan user membaca pesan panjang */
@@ -1488,7 +1491,7 @@
         /* Animasi Ticker Lebih Dinamis */
         @keyframes ticker-top {
             0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
+            100% { transform: translateX(-100%); } /* Durasi diatur di properti animation */
         }
         @keyframes ticker-bottom {
             0% { transform: translateX(100%); }
@@ -1583,7 +1586,7 @@
     <div class="news-ticker-top">
         <div class="ticker-head-top">MOTTO PELAYANAN</div>
         <div class="ticker-content-wrapper">
-            <div class="ticker-text-top">:: <span class="text-white">MELAYANI DENGAN SEPENUH HATI ADALAH PRIORITAS KAMI</span> :: MEMBERIKAN PELAYANAN KESEHATAN TERBAIK DENGAN INTEGRITAS DAN PROFESIONALISME :: <span class="text-white">PUSKESMAS WANA, MITRA TERPERCAYA MENUJU HIDUP SEHAT</span> :: KEPUASAN ANDA, KEBAHAGIAAN KAMI :: <span class="text-white">SENYUM, SAPA, SALAM ADALAH BUDAYA KERJA KAMI</span> ::</div>
+            <div class="ticker-text-top">:: <span class="text-white text-glow-white">MELAYANI DENGAN SEPENUH HATI ADALAH PRIORITAS KAMI</span> :: MEMBERIKAN PELAYANAN KESEHATAN TERBAIK DENGAN INTEGRITAS DAN PROFESIONALISME :: <span class="text-white text-glow-white">PUSKESMAS WANA, MITRA TERPERCAYA MENUJU HIDUP SEHAT</span> :: KEPUASAN ANDA, KEBAHAGIAAN KAMI :: <span class="text-white text-glow-white">SENYUM, SAPA, SALAM ADALAH BUDAYA KERJA KAMI</span> ::</div>
         </div>
     </div>
 
