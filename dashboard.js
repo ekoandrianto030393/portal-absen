@@ -651,6 +651,51 @@ async function loadMonthlyRecap(silent = false) {
             const dPsw = parseInt(config.dendaPsw) || 0;
             const dLupa = parseInt(config.dendaLupa) || 0;
 
+            // [NEW] Konfigurasi Poin Jaspel Terintegrasi
+            const jaspelPool = (parseInt(config.jaspelPool) || 0) * 0.6; // Langsung ambil 60% untuk Jasa Pelayanan
+            const getMap = (str) => {
+                const map = {};
+                if (str) str.split('\n').forEach(l => {
+                    const p = l.split('=');
+                    if (p.length === 2) map[p[0].trim().toLowerCase()] = parseFloat(p[1].trim());
+                });
+                return map;
+            };
+
+            const mapJabatan = getMap(config.poinJabatanStr);
+            const mapPendidikan = getMap(config.poinPendidikanStr);
+            const mapJenis = getMap(config.poinJenisKetenagaanStr);
+            const mapStatus = getMap(config.poinStatusKepegawaianStr);
+            const poinAdminPerHari = parseFloat(config.poinAdmin) || 0;
+
+            // Tahap 1: Hitung Total Seluruh Poin (Semua Pegawai) untuk Pembagi
+            let grandTotalPoinSeluruhPegawai = 0;
+            result.data.forEach(row => {
+                const pJabatan = mapJabatan[row.jabatan?.toLowerCase()] || 0;
+                const pPendidikan = mapPendidikan[row.pendidikan?.toLowerCase()] || 0;
+                const pJenis = mapJenis[row.jenis_ketenagaan?.toLowerCase()] || 0;
+                const pStatus = mapStatus[row.status_kepegawaian?.toLowerCase()] || 0;
+                
+                const poinVariabelKetenagaan = pJabatan + pPendidikan + pJenis + pStatus;
+                
+                const hMasuk = (parseInt(row.total_masuk) || 0);
+                const hAdmin = (parseInt(row.total_admin) || 0); // Hari tugas tambahan
+                const totalHariKerja = parseInt(row.total_hari_kerja) || 20;
+                
+                // Rumus Poin: (Poin Variabel * % Hadir) + (Hari Tugas Tambahan * Poin Admin)
+                const persentaseHadir = totalHariKerja > 0 ? hMasuk / totalHariKerja : 0;
+                const totalPoinIndividu = (poinVariabelKetenagaan * persentaseHadir) + (hAdmin * poinAdminPerHari);
+                grandTotalPoinSeluruhPegawai += totalPoinIndividu;
+            });
+
+            const nilaiPerSatuPoin = grandTotalPoinSeluruhPegawai > 0 ? jaspelPool / grandTotalPoinSeluruhPegawai : 0;
+
+            // Tampilkan Info Jaspel di Header Tabel
+            const jaspelInfo = document.getElementById('jaspel-summary-info');
+            if (jaspelInfo) {
+                jaspelInfo.innerHTML = `Total Jasa 60%: <b>${new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR'}).format(jaspelPool)}</b> | Nilai/Poin: <b>${new Intl.NumberFormat('id-ID').format(nilaiPerSatuPoin)}</b>`;
+            }
+
             result.data.forEach((row, index) => {
                 // Hitung total saat looping
                 tHadir += parseInt(row.total_masuk) || 0;
@@ -687,9 +732,22 @@ async function loadMonthlyRecap(silent = false) {
                         }
                     }
                 }
+                
+                // [NEW] Hitung Jaspel Individu (Detailed)
+                const pJabatan = mapJabatan[row.jabatan?.toLowerCase()] || 0;
+                const pPendidikan = mapPendidikan[row.pendidikan?.toLowerCase()] || 0;
+                const pJenis = mapJenis[row.jenis_ketenagaan?.toLowerCase()] || 0;
+                const pStatus = mapStatus[row.status_kepegawaian?.toLowerCase()] || 0;
+                const varKetenagaan = pJabatan + pPendidikan + pJenis + pStatus;
+
                 const h = (parseInt(row.total_masuk) || 0) + (parseInt(row.total_dl) || 0);
+                const totalHariKerja = parseInt(row.total_hari_kerja) || 20;
+                const persentaseHadir = totalHariKerja > 0 ? h / totalHariKerja : 0;
+                const totalPoinIndividu = (varKetenagaan * persentaseHadir) + ((parseInt(row.total_admin) || 0) * poinAdminPerHari);
+                const estimasiJaspel = totalPoinIndividu * nilaiPerSatuPoin;
+
                 const totalHarian = h * (uangMakan + uangTransport);
-                const totalPendapatan = gajiPokok + tunjanganJabatan + totalHarian;
+                const totalPendapatan = gajiPokok + tunjanganJabatan + totalHarian + estimasiJaspel;
                 const totalDenda = ((parseInt(row.telat_kali) || 0) * dTelat) + 
                                    ((parseInt(row.alpa) || 0) * dAlpa) + 
                                    ((parseInt(row.psw_kali) || 0) * dPsw) + 
@@ -698,7 +756,6 @@ async function loadMonthlyRecap(silent = false) {
                 totalGaji += Math.max(0, totalPendapatan - totalPotongan);
 
                 // Hitung Persentase Kehadiran
-                const totalHariKerja = parseInt(row.total_hari_kerja) || 20; // Default 20 jika null
                 // [FIX] Logika ini salah karena `total_masuk` dari view sudah mencakup DL.
                 // const persentase = Math.round(((parseInt(row.total_masuk) + parseInt(row.total_dl)) / totalHariKerja) * 100);
                 const persentase = totalHariKerja > 0 ? Math.round(((parseInt(row.total_masuk) || 0) / totalHariKerja) * 100) : 0; // [FIXED] Cukup hitung dari total_masuk.
@@ -1953,6 +2010,14 @@ async function saveSignatureConfig() {
         dendaAlpa: document.getElementById('conf-denda-alpa')?.value || 0,
         dendaPsw: document.getElementById('conf-denda-psw')?.value || 0, // [NEW]
         dendaLupa: document.getElementById('conf-denda-lupa')?.value || 0, // [NEW]
+        // NEW: Jaspel & Poin
+        jaspelPool: document.getElementById('conf-jaspel-pool')?.value || 0,
+        poinJabatanStr: document.getElementById('conf-poin-jabatan')?.value || '',
+        poinPendidikanStr: document.getElementById('conf-poin-pendidikan')?.value || '',
+        poinJenisKetenagaanStr: document.getElementById('conf-poin-jenis')?.value || '',
+        poinStatusKepegawaianStr: document.getElementById('conf-poin-status')?.value || '',
+        poinAdmin: document.getElementById('conf-poin-admin')?.value || 0,
+
         gajiJabatanStr: document.getElementById('conf-gaji-jabatan')?.value || '', 
         // [NEW] Konfigurasi Lokasi
         officeLat: document.getElementById('conf-lat')?.value || 0,
@@ -2006,6 +2071,14 @@ function loadSignatureConfig() {
         if(document.getElementById('conf-denda-telat')) document.getElementById('conf-denda-telat').value = config.dendaTelat || '';
         if(document.getElementById('conf-denda-alpa')) document.getElementById('conf-denda-alpa').value = config.dendaAlpa || '';
         if(document.getElementById('conf-denda-psw')) document.getElementById('conf-denda-psw').value = config.dendaPsw || ''; // [NEW]
+        // Load Jaspel Config
+        if(document.getElementById('conf-jaspel-pool')) document.getElementById('conf-jaspel-pool').value = config.jaspelPool || '';
+        if(document.getElementById('conf-poin-jabatan')) document.getElementById('conf-poin-jabatan').value = config.poinJabatanStr || '';
+        if(document.getElementById('conf-poin-pendidikan')) document.getElementById('conf-poin-pendidikan').value = config.poinPendidikanStr || '';
+        if(document.getElementById('conf-poin-jenis')) document.getElementById('conf-poin-jenis').value = config.poinJenisKetenagaanStr || '';
+        if(document.getElementById('conf-poin-status')) document.getElementById('conf-poin-status').value = config.poinStatusKepegawaianStr || '';
+        if(document.getElementById('conf-poin-admin')) document.getElementById('conf-poin-admin').value = config.poinAdmin || '';
+
         if(document.getElementById('conf-denda-lupa')) document.getElementById('conf-denda-lupa').value = config.dendaLupa || ''; // [NEW]
         if(document.getElementById('conf-gaji-jabatan')) document.getElementById('conf-gaji-jabatan').value = config.gajiJabatanStr || ''; // [NEW] Load mapping
         if (document.getElementById('conf-lat')) document.getElementById('conf-lat').value = config.officeLat || '';
@@ -2207,6 +2280,42 @@ function printSalarySlip(id) {
         }
     }
 
+    // [NEW] Hitung Jaspel Individu
+    const jaspelPool = (parseInt(config.jaspelPool) || 0) * 0.6;
+    const getMap = (str) => {
+        const map = {};
+        if (str) str.split('\n').forEach(l => {
+            const p = l.split('=');
+            if (p.length === 2) map[p[0].trim().toLowerCase()] = parseFloat(p[1].trim());
+        });
+        return map;
+    };
+
+    const mapJab = getMap(config.poinJabatanStr);
+    const mapPen = getMap(config.poinPendidikanStr);
+    const mapJen = getMap(config.poinJenisKetenagaanStr);
+    const mapSta = getMap(config.poinStatusKepegawaianStr);
+    const pAdmin = parseFloat(config.poinAdmin) || 0;
+
+    let poolPoinSeluruh = 0;
+    globalPerformanceData.forEach(row => {
+        const v = (mapJab[row.jabatan?.toLowerCase()] || 0) + (mapPen[row.pendidikan?.toLowerCase()] || 0) + (mapJen[row.jenis_ketenagaan?.toLowerCase()] || 0) + (mapSta[row.status_kepegawaian?.toLowerCase()] || 0);
+        const tk = parseInt(row.total_hari_kerja) || 20;
+        const prs = tk > 0 ? (parseInt(row.total_masuk) || 0) / tk : 0;
+        poolPoinSeluruh += (v * prs) + ((parseInt(row.total_admin) || 0) * pAdmin);
+    });
+
+    const pJab = mapJab[emp.jabatan?.toLowerCase()] || 0;
+    const pPen = mapPen[emp.pendidikan?.toLowerCase()] || 0;
+    const pJen = mapJen[emp.jenis_ketenagaan?.toLowerCase()] || 0;
+    const pSta = mapSta[emp.status_kepegawaian?.toLowerCase()] || 0;
+    const varKet = pJab + pPen + pJen + pSta;
+
+    const persenPegawai = (parseInt(emp.total_hari_kerja) || 20) > 0 ? (parseInt(emp.total_masuk) || 0) / (parseInt(emp.total_hari_kerja) || 20) : 0;
+    const poinIndividu = (varKet * persenPegawai) + ((parseInt(emp.total_admin) || 0) * pAdmin);
+    const nilaiSatuPoin = poolPoinSeluruh > 0 ? jaspelPool / poolPoinSeluruh : 0;
+    const estimasiJaspel = poinIndividu * nilaiSatuPoin;
+
     const tunjanganJabatan = parseInt(config.tunjanganJabatan) || 0;
     const uangMakan = parseInt(config.uangMakan) || 0;
     const uangTransport = parseInt(config.uangTransport) || 0;
@@ -2228,7 +2337,7 @@ function printSalarySlip(id) {
                        ((parseInt(emp.tanpa_absen_pulang) || 0) * dendaLupa);
     
     const totalPotongan = totalDenda + bpjs + pajak;
-    const totalPendapatan = gajiPokok + tunjanganJabatan + totalUangMakan + totalUangTransport;
+    const totalPendapatan = gajiPokok + tunjanganJabatan + totalUangMakan + totalUangTransport + estimasiJaspel;
     const totalDiterima = Math.max(0, totalPendapatan - totalPotongan);
 
     // Helper Format Rupiah
@@ -2313,6 +2422,14 @@ function printSalarySlip(id) {
             </div>
 
             <div class="section">
+                <div class="section-title">Komponen Poin Jaspel</div>
+                <div class="table-row"><span>Poin Variabel (Jab+Pend+Status+Jen)</span> <span>${varKet.toFixed(2)}</span></div>
+                <div class="table-row"><span>Poin Kehadiran (${(persenPegawai * 100).toFixed(1)}%)</span> <span>${(varKet * persenPegawai).toFixed(2)}</span></div>
+                <div class="table-row"><span>Poin Tugas Tambahan (Admin)</span> <span>${((parseInt(emp.total_admin) || 0) * pAdmin).toFixed(2)}</span></div>
+                <div class="table-row"><span><strong>Total Skor Akhir</strong></span> <span><strong>${poinIndividu.toFixed(2)} Poin</strong></span></div>
+            </div>
+
+            <div class="section">
                 <div class="section-title">Potongan & Disiplin</div>
                 <div class="table-row"><span>Keterlambatan</span> <span>${emp.telat_kali}x (${emp.telat_menit} Menit)</span></div>
                 <div class="table-row"><span>Pulang Sebelum Waktu (PSW)</span> <span>${emp.psw_kali || 0}x (${emp.psw_menit || 0} Menit)</span></div>
@@ -2325,6 +2442,7 @@ function printSalarySlip(id) {
                 <div class="table-row"><span>Gaji Pokok</span> <span>${formatRupiah(gajiPokok)}</span></div>
                 <div class="table-row"><span>Tunjangan Jabatan</span> <span>${formatRupiah(tunjanganJabatan)}</span></div>
                 <div class="table-row"><span>Uang Makan (${totalHadir} hari x ${formatRupiah(uangMakan)})</span> <span>${formatRupiah(totalUangMakan)}</span></div>
+                <div class="table-row"><span>Jasa Pelayanan (Jaspel)</span> <span>${formatRupiah(estimasiJaspel)}</span></div>
                 <div class="table-row"><span>Uang Transport (${totalHadir} hari x ${formatRupiah(uangTransport)})</span> <span>${formatRupiah(totalUangTransport)}</span></div>
                 <div class="table-row" style="margin-top:5px; border-top:1px solid #eee; padding-top:5px;"><span><strong>Total Pendapatan</strong></span> <span><strong>${formatRupiah(totalPendapatan)}</strong></span></div>
             </div>

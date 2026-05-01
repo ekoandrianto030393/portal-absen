@@ -30,14 +30,24 @@ export default {
           });
         }
 
-        // JIKA REQUEST ADALAH UNTUK SUARA (TTS)
-        const response = await env.AI.run("@cf/microsoft/speecht5-tts", {
-          text: payload.text,
-        });
+        // JIKA REQUEST ADALAH UNTUK SUARA (TTS) DENGAN FALLBACK
+        let audioResponse;
+        try {
+          // Percobaan 1: MeloTTS (Suara Paling Natural)
+          audioResponse = await env.AI.run("@cf/myshell-ai/melotts", {
+            text: payload.text,
+            lang: payload.lang || "en"
+          });
+        } catch (e) {
+          console.error("MeloTTS failed, trying Deepgram Aura...");
+          // Percobaan 2: Deepgram Aura
+          audioResponse = await env.AI.run("@cf/deepgram/aura-1", {
+            text: payload.text
+          });
+        }
 
-        // Mengirim balik file suara ke laptop kamu
-        return new Response(response, {
-          headers: { ...corsHeaders, "content-type": "audio/wav" },
+        return new Response(audioResponse, {
+          headers: { ...corsHeaders, "content-type": "audio/mpeg" },
         });
       } catch (err) {
         return new Response("Error nih: " + err.message, { status: 500, headers: corsHeaders });

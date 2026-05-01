@@ -242,11 +242,10 @@ btnRegister.addEventListener('click', async () => {
 
         successOverlay.innerHTML = `
             <style>
-                @keyframes scan-vertical { 0% { top: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
-                @keyframes hologram-flicker { 0%, 100% { opacity: 0.95; } 5% { opacity: 0.8; } 10% { opacity: 0.9; } 15% { opacity: 0.5; transform: skewX(2deg); } 20% { opacity: 0.95; transform: skewX(0deg); } }
+                @keyframes scan-vertical { 0% { top: 0%; opacity: 0; } 10% { opacity: 0.5; } 90% { opacity: 0.5; } 100% { top: 100%; opacity: 0; } }
+                @keyframes subtle-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
                 @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
                 @keyframes shimmer { 0% { transform: translateX(-150%) skewX(-15deg); } 50%, 100% { transform: translateX(150%) skewX(-15deg); } }
-                @keyframes float-particle { 0% { transform: translateY(0) scale(1); opacity: 0; } 20% { opacity: 0.8; } 100% { transform: translateY(-80px) scale(0); opacity: 0; } }
             </style>
             <div class="relative group perspective-[1000px]">
                 <!-- Digital Particles Container -->
@@ -255,111 +254,90 @@ btnRegister.addEventListener('click', async () => {
                 </div>
 
                 <!-- Holographic Card Container -->
-                <div class="bg-gray-900/95 text-cyan-400 p-0 rounded-xl shadow-[0_0_50px_rgba(6,182,212,0.3)] max-w-xl w-full mx-4 border border-cyan-500/40 relative overflow-hidden font-mono backdrop-blur-xl transform transition-all duration-500 hover:scale-[1.02] hover:rotate-y-12 animate-[fadeIn_0.5s_ease-out] z-10">
+                <div class="bg-slate-950/95 text-slate-200 p-0 rounded-2xl shadow-[0_40px_100px_rgba(0,0,0,0.8)] max-w-xl w-full mx-4 border border-slate-800/50 relative overflow-hidden font-sans backdrop-blur-2xl transform transition-all duration-700 hover:scale-[1.01] animate-[fadeIn_0.5s_ease-out] z-10">
                     
                     <!-- Animated Scanline -->
-                    <div class="absolute left-0 w-full h-1 bg-cyan-400/50 shadow-[0_0_15px_rgba(34,211,238,1)] z-20" style="animation: scan-vertical 2s linear infinite;"></div>
+                    <div class="absolute left-0 w-full h-1 bg-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.5)] z-20" style="animation: scan-vertical 3s linear infinite;"></div>
 
                     <!-- Shimmer Effect -->
-                    <div class="absolute inset-0 z-30 pointer-events-none bg-gradient-to-r from-transparent via-cyan-400/10 to-transparent -skew-x-12 animate-[shimmer_3s_infinite_ease-in-out]"></div>
+                    <div class="absolute inset-0 z-30 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 animate-[shimmer_4s_infinite_ease-in-out]"></div>
 
                     <!-- Decorative Background Grid -->
                     <div class="absolute inset-0 opacity-10 pointer-events-none z-0" 
-                        style="background-image: linear-gradient(0deg, transparent 24%, #22d3ee 25%, #22d3ee 26%, transparent 27%, transparent 74%, #22d3ee 75%, #22d3ee 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, #22d3ee 25%, #22d3ee 26%, transparent 27%, transparent 74%, #22d3ee 75%, #22d3ee 76%, transparent 77%, transparent); background-size: 30px 30px;">
+                        style="background-image: radial-gradient(circle, #475569 1px, transparent 1px); background-size: 20px 20px;">
                     </div>
                     
                     <div class="p-8 relative z-10">
                         <!-- Header -->
-                        <div class="flex justify-between items-start mb-8 border-b border-cyan-800/50 pb-6">
+                        <div class="flex justify-between items-start mb-8 border-b border-slate-800 pb-6">
                             <div>
                                 <div class="flex items-center gap-4">
                                     <!-- Smart Card Chip -->
-                                    <div class="w-14 h-10 bg-yellow-600/80 rounded-md relative overflow-hidden border border-yellow-400/50 shadow-inner">
-                                        <div class="absolute top-1/2 left-0 w-full h-[1px] bg-black/40"></div>
-                                        <div class="absolute left-1/3 top-0 w-[1px] h-full bg-black/40"></div>
-                                        <div class="absolute left-2/3 top-0 w-[1px] h-full bg-black/40"></div>
+                                    <div class="w-12 h-9 bg-gradient-to-br from-amber-200 via-amber-500 to-amber-700 rounded-md relative overflow-hidden border border-amber-400/30 shadow-lg">
+                                        <div class="absolute top-1/2 left-0 w-full h-[1px] bg-black/20"></div>
+                                        <div class="absolute left-1/3 top-0 w-[1px] h-full bg-black/20"></div>
+                                        <div class="absolute left-2/3 top-0 w-[1px] h-full bg-black/20"></div>
                                     </div>
-                                    <h2 class="text-5xl font-black tracking-tighter text-white italic drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" style="animation: hologram-flicker 3s infinite;">IDENTITY</h2>
+                                    <h2 class="text-4xl font-serif font-black tracking-widest text-slate-100 italic">PERSONNEL</h2>
                                 </div>
                                 <div class="flex items-center gap-2 mt-1">
-                                    <div class="h-2 w-2 bg-green-500 rounded-full animate-ping"></div>
-                                    <p class="text-sm text-cyan-500 font-bold tracking-[0.3em] uppercase">PUSKESMAS WANA</p>
+                                    <div class="h-1.5 w-1.5 bg-amber-500 rounded-full"></div>
+                                    <p class="text-xs text-amber-500/80 font-bold tracking-[0.4em] uppercase">UPTD PUSKESMAS WANA</p>
                                 </div>
                             </div>
-                            <!-- Rotating Logo -->
-                            <div class="w-14 h-14 border border-cyan-500/30 rounded-full flex items-center justify-center bg-cyan-950/30 relative">
-                                <div class="absolute inset-0 border-t-2 border-cyan-400 rounded-full animate-spin"></div>
-                                <div class="absolute inset-2 border-b-2 border-cyan-600 rounded-full animate-spin" style="animation-direction: reverse; animation-duration: 2s;"></div>
-                                <span class="text-[10px] font-bold text-cyan-300">ID</span>
+                            <!-- Professional Emblem -->
+                            <div class="w-12 h-12 border border-slate-700 rounded-lg flex items-center justify-center bg-slate-900 relative">
+                                <img src="logo.jpg" class="w-8 h-8 object-contain opacity-80">
                             </div>
                         </div>
                         
                         <!-- Main Content: Horizontal Layout -->
                         <div class="flex flex-row gap-8 items-center mb-8">
                             <!-- Photo Frame -->
-                            <div class="relative w-36 h-36 flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
-                                <div class="absolute inset-0 border border-cyan-500/50 rounded-lg"></div>
-                                <!-- Tech Corners -->
-                                <div class="absolute -top-0.5 -left-0.5 w-2 h-2 border-t-2 border-l-2 border-cyan-300"></div>
-                                <div class="absolute -top-0.5 -right-0.5 w-2 h-2 border-t-2 border-r-2 border-cyan-300"></div>
-                                <div class="absolute -bottom-0.5 -left-0.5 w-2 h-2 border-b-2 border-l-2 border-cyan-300"></div>
-                                <div class="absolute -bottom-0.5 -right-0.5 w-2 h-2 border-b-2 border-r-2 border-cyan-300"></div>
-                                
-                                <img src="${photoData}" class="w-full h-full object-cover rounded-lg opacity-90 grayscale-[20%] contrast-125">
-                                <div class="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/10 to-transparent animate-pulse"></div>
+                            <div class="relative w-40 h-40 flex-shrink-0">
+                                <div class="absolute -inset-1 bg-gradient-to-br from-amber-500/20 to-transparent rounded-2xl blur-sm"></div>
+                                <img src="${photoData}" class="w-full h-full object-cover rounded-xl border border-slate-700 shadow-2xl relative z-10">
                             </div>
                             
                             <!-- Info Section -->
                             <div class="flex-1 overflow-hidden">
-                                <h1 id="card-name" class="text-3xl font-bold text-white mb-2 tracking-tight truncate drop-shadow-md min-h-[40px]"></h1>
+                                <h1 id="card-name" class="text-3xl font-bold text-white mb-1 tracking-tight truncate min-h-[40px]"></h1>
                                 <div class="flex items-center mb-4">
-                                    <p id="card-role" class="text-lg font-mono text-cyan-300 tracking-widest bg-cyan-900/40 px-3 py-1 rounded border border-cyan-500/20 min-h-[28px]"></p>
+                                    <p id="card-role" class="text-lg text-amber-500 font-medium tracking-wide min-h-[28px] uppercase"></p>
                                 </div>
                                 
-                                <div class="w-full bg-gray-800/50 h-2 rounded-full overflow-hidden mt-2">
-                                    <div class="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 w-full animate-[progress-indeterminate_2s_ease-in-out_infinite]"></div>
+                                <div class="w-full bg-slate-900 h-1 rounded-full overflow-hidden mt-2">
+                                    <div class="h-full bg-amber-500 w-1/3"></div>
                                 </div>
-                                <p class="text-xs text-cyan-600 font-mono mt-2 text-right">BIOMETRIC VERIFIED</p>
+                                <p class="text-[10px] text-slate-500 font-mono mt-2 tracking-widest uppercase">Biometric Authenticated</p>
                             </div>
                         </div>
                         
                         <!-- Data Grid -->
-                        <div class="grid grid-cols-3 gap-4 bg-black/40 p-4 rounded border border-cyan-900/50 mb-6 relative overflow-hidden">
-                            <div class="absolute top-0 left-0 w-1 h-full bg-cyan-500"></div>
+                        <div class="grid grid-cols-3 gap-4 bg-slate-900/50 p-5 rounded-xl border border-slate-800 mb-6 relative overflow-hidden">
                             <div class="col-span-2">
-                                <p class="text-xs text-gray-500 uppercase font-bold">ID Reference</p>
-                                <p class="font-mono text-2xl text-white tracking-widest leading-none mt-1 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">${id}</p>
+                                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Registration ID</p>
+                                <p class="font-mono text-2xl text-slate-100 tracking-[0.2em] leading-none mt-1">${id}</p>
                             </div>
-                            <div class="text-right border-l border-cyan-900/50 pl-2 flex flex-col justify-center">
-                                <p class="text-xs text-gray-500 uppercase font-bold">Status</p>
-                                <p class="font-mono text-sm text-green-400 font-bold mt-1 bg-green-900/20 px-2 py-0.5 rounded">ACTIVE</p>
+                            <div class="text-right border-l border-slate-800 pl-4 flex flex-col justify-center">
+                                <p class="text-[10px] text-slate-500 uppercase font-bold">Access</p>
+                                <p class="text-sm text-emerald-500 font-bold mt-1 uppercase tracking-widest">Verified</p>
                             </div>
                         </div>
 
                         <!-- Footer / Barcode & QR -->
-                        <div class="flex justify-between items-end pt-4 border-t border-cyan-900/30">
+                        <div class="flex justify-between items-end pt-4 border-t border-slate-800">
                             <div class="flex flex-col gap-1">
-                                <div class="flex gap-0.5 h-8 items-end opacity-60">
-                                    <div class="w-0.5 h-full bg-cyan-400"></div>
-                                    <div class="w-0.5 h-3/4 bg-cyan-400"></div>
-                                    <div class="w-0.5 h-1/2 bg-cyan-400"></div>
-                                    <div class="w-1 h-full bg-cyan-400"></div>
-                                    <div class="w-0.5 h-2/3 bg-cyan-400"></div>
-                                    <div class="w-1 h-1/3 bg-cyan-400"></div>
-                                    <div class="w-0.5 h-full bg-cyan-400"></div>
-                                    <div class="w-0.5 h-3/4 bg-cyan-400"></div>
-                                    <div class="w-1 h-1/2 bg-cyan-400"></div>
-                                    <div class="w-0.5 h-full bg-cyan-400"></div>
-                                    <div class="w-0.5 h-2/3 bg-cyan-400"></div>
-                                    <div class="w-1 h-full bg-cyan-400"></div>
+                                <div class="flex gap-0.5 h-6 items-end opacity-30">
+                                    ${Array(15).fill(0).map(() => `<div class="w-0.5 bg-slate-400" style="height: ${Math.random()*100}%"></div>`).join('')}
                                 </div>
-                                <p class="text-[10px] text-cyan-700 font-mono tracking-widest">SECURE ENCRYPTED ID // ${new Date().getFullYear()}</p>
+                                <p class="text-[9px] text-slate-600 font-mono tracking-[0.3em]">AETHER-SYSTEM-CORE v4.5</p>
                             </div>
                             
                             <!-- Simulated QR -->
-                            <div class="w-14 h-14 border border-cyan-500/30 p-0.5 bg-black/50">
+                            <div class="w-12 h-12 border border-slate-800 p-1 bg-white/[0.03]">
                                 <div class="grid grid-cols-5 gap-0.5 w-full h-full">
-                                    ${qrBlocks}
+                                    ${Array(25).fill(0).map(() => `<div class="w-full h-full ${Math.random() > 0.5 ? 'bg-amber-500/40' : 'bg-transparent'}"></div>`).join('')}
                                 </div>
                             </div>
                         </div>

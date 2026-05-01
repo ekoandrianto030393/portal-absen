@@ -303,41 +303,19 @@ const SoundFX = {
     elevenLabs: {
         // PERINGATAN: Pastikan API Key di bawah ini valid dari Dashboard ElevenLabs
         apiKey: "12d381ffd65727d06fc3f0dd0c704ad6b8d80b19ff742e577ab3b59994234c06",
-        voiceId: "21m00Tcm4TlvDq8ikWAM" // Menggunakan ID Suara standar "George" (Pre-made) yang lebih stabil
+        voiceId: "21m00Tcm4TlvDq8ikWAM", // Menggunakan ID Suara standar "George" (Pre-made) yang lebih stabil
+        quotaExceeded: false // [FIX] Flag untuk skip ElevenLabs setelah error 402
     },
     cfWorkerUrl: null, // [NEW] Endpoint Cloudflare Worker TTS
     speak: async (text) => {
         if (isStealthMode) return; // Mute jika Stealth Mode aktif
 
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-            // [NEW] Coba gunakan Cloudflare Worker TTS terlebih dahulu (Gratis & Cepat)
-            if (SoundFX.cfWorkerUrl) {
-                try {
-                    const response = await fetch(SoundFX.cfWorkerUrl, {
-                        method: 'POST',
-                        signal: controller.signal,
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: text })
-                    });
-                    clearTimeout(timeoutId);
-                    if (response.ok) {
-                        const arrayBuffer = await response.arrayBuffer();
-                        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                        const source = audioCtx.createBufferSource();
-                        source.buffer = audioBuffer;
-                        source.connect(audioAnalyser);
-                        source.start(0);
-                        return; // Sukses, tidak perlu lanjut ke ElevenLabs
-                    }
-                } catch (cfErr) {
-                    console.warn("Cloudflare TTS failed, falling back to ElevenLabs...");
-                }
-            }
-
-            // --- FALLBACK KE ELEVENLABS ---
+            // [FIX] Langsung gunakan Browser TTS (Cloudflare Worker & ElevenLabs dinonaktifkan)
+            // Cloudflare Worker: Error 500 (server rusak)
+            // ElevenLabs: Error 402 (quota habis)
+            // Solusi: Gunakan browser speech synthesis yang gratis dan offline
+            throw new Error('Direct to browser TTS');
             const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${SoundFX.elevenLabs.voiceId}`, {
                 method: 'POST',
                 signal: controller.signal,
@@ -371,10 +349,13 @@ const SoundFX = {
 
         } catch (e) {
             // Log error to system HUD instead of crashing console
-            console.warn("ElevenLabs TTS unavailable:", e.message);
-            logSystem(`VOICE MODULE: Communication link failed (${e.message})`, 'text-red-400');
-            console.warn("ElevenLabs unavailable, using browser fallback:", e.message);
-            logSystem(`TTS FALLBACK: Using System Voice`, 'text-amber-400');
+            if (e.message.includes('402') || e.message.includes('quota')) {
+                SoundFX.elevenLabs.quotaExceeded = true; // [FIX] Tandai agar tidak coba lagi
+                logSystem(`VOICE MODULE: Quota Exceeded. Menggunakan Browser TTS.`, 'text-amber-400');
+            } else {
+                logSystem(`VOICE MODULE: Link failed (${e.message})`, 'text-red-400');
+            }
+            console.warn("TTS fallback engaged:", e.message);
 
             // --- FALLBACK: Browser Web Speech API ---
             if ('speechSynthesis' in window) {
@@ -2453,17 +2434,78 @@ const api = {
             return null;
         }
     },
-    postAttendance: async (karyawanId) => {
+    postAttendance: async (karyawanId, imageBase64) => {
+        // =================================================================
+        // ALUR HYBRID: Python InsightFace + Node.js Attendance
+        // 1. Kirim gambar ke Python untuk verifikasi InsightFace
+        // 2. Jika terverifikasi, catat absensi via Node.js
+        // 3. Jika Python mati, langsung ke Node.js (fallback)
+        // =================================================================
+        let pythonVerified = false;
+        let pythonScore = 0;
+        let pythonEngine = 'none';
+
+        // --- STEP 1: Verifikasi InsightFace (Python Server) ---
+        try {
+            const pyResponse = await fetch('http://localhost:5000/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    id_karyawan: karyawanId,
+                    image: imageBase64 
+                }),
+                signal: AbortSignal.timeout(10000) // Timeout 10 detik
+            });
+
+            if (pyResponse.ok) {
+                const pyResult = await pyResponse.json();
+                pythonVerified = pyResult.verified;
+                pythonScore = pyResult.score || 0;
+                pythonEngine = pyResult.engine || 'insightface';
+
+                console.log(`🐍 [PYTHON] Verifikasi ${karyawanId}: ${pythonVerified ? '✅ COCOK' : '❌ TIDAK COCOK'} (Score: ${pythonScore}, Engine: ${pythonEngine})`);
+                logSystem(`AI VERIFY: ${pythonVerified ? 'MATCH' : 'NO MATCH'} [Score: ${pythonScore}] Engine: ${pythonEngine}`, 
+                    pythonVerified ? 'text-green-400' : 'text-red-400');
+
+                // Jika InsightFace menolak (wajah tidak cocok), TOLAK absensi
+                if (!pythonVerified) {
+                    return {
+                        success: false,
+                        message: `⚠️ Verifikasi AI GAGAL: Wajah tidak cocok dengan data biometrik (Score: ${pythonScore})`,
+                        statusColor: 'red',
+                        result_code: 'PYTHON_VERIFY_FAILED',
+                        nama: pyResult.nama || karyawanId,
+                        jabatan: pyResult.jabatan || ''
+                    };
+                }
+            }
+        } catch (pyErr) {
+            // Python server tidak tersedia - lanjut ke Node.js saja
+            console.warn('🐍 [PYTHON] Server tidak tersedia, menggunakan Node.js saja:', pyErr.message);
+            logSystem('AI ENGINE: Python offline, fallback Node.js', 'text-amber-400');
+            pythonEngine = 'fallback_nodejs';
+        }
+
+        // --- STEP 2: Catat Absensi via Node.js ---
         try {
             const response = await fetch('/api/absensi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_karyawan: karyawanId })
+                body: JSON.stringify({ 
+                    id_karyawan: karyawanId
+                })
             });
             if (!response.ok) throw new Error(`Server Error (${response.status})`);
-            return await response.json();
+            const result = await response.json();
+
+            // Tambahkan info verifikasi Python ke hasil
+            result.python_verified = pythonVerified;
+            result.python_score = pythonScore;
+            result.python_engine = pythonEngine;
+
+            console.log(`📋 [NODE.JS] Absensi ${karyawanId}: ${result.result_code} (Python: ${pythonEngine}, Score: ${pythonScore})`);
+            return result;
         } catch (e) {
-            // Tangani error jaringan (ECONNRESET / Server Down)
             if (e.name === 'TypeError' || e.message.includes('fetch')) {
                 throw new Error("CONNECTION LOST: Server tidak merespon (ECONNRESET).");
             }
@@ -3151,14 +3193,16 @@ async function detectFace() {
                 setSystemTheme('SUCCESS');
 
                 if (!isProcessing) { 
-                    setStatusVisual(`LIVENESS CONFIRMED. AUTHORIZING ${employee.nama}...`, 'text-cyan-400', true);
                     setStatusVisual(`AUTHORIZING ${employee.nama}...`, 'text-cyan-400', true);
                     isProcessing = true;
                     // Simpan match terakhir sebelum proses absensi
                     lastKnownMatch = { id: recognizedId, box: resizedDetections.detection.box, landmarks: resizedDetections.landmarks, faceLabel: faceLabel, faceColor: faceColor };
                     
+                    // Tangkap gambar dari offscreenCanvas (yang sudah dinormalisasi cahayanya)
+                    const imageBase64 = offscreenCanvas.toDataURL('image/jpeg', 0.9);
+
                     if(window.LivenessCheck) window.LivenessCheck.reset(); // Reset status liveness
-                    await processAttendance(recognizedId);
+                    await processAttendance(recognizedId, imageBase64);
                 }
             } else {
                 // BELUM BERGERAK -> MINTA GERAKAN (TAPI NAMA SUDAH MUNCUL)
@@ -3335,7 +3379,7 @@ document.addEventListener('mousemove', (e) => {
 // 4. PROSES ABSENSI (Koneksi ke /absensi) - PERBAIKAN OVERLAY
 // =============================================================================
 
-async function processAttendance(karyawanId) {
+async function processAttendance(karyawanId, imageBase64) {
     logSystem(`Sending attendance request for ID: ${karyawanId}`, 'text-amber-500');
 
     if(successOverlay) {
@@ -3362,7 +3406,7 @@ async function processAttendance(karyawanId) {
     }
 
     try {
-        const result = await api.postAttendance(karyawanId);
+        const result = await api.postAttendance(karyawanId, imageBase64);
         
         // [NEW] LOGIKA COUNTER SCAN (UX TWEAK)
         if (!userScanCounters[karyawanId]) userScanCounters[karyawanId] = 0;
@@ -5601,7 +5645,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(updatePersonnelRoster, 2000);
 
     // [NEW] Auto-refresh roster setiap 10 detik agar status DL/Manual muncul otomatis tanpa reload
-    setInterval(updatePersonnelRoster, 10000);
+    setInterval(() => {
+        // Only attempt refresh if network is detected to reduce log spam
+        if (navigator.onLine) updatePersonnelRoster();
+    }, 10000);
 
     // [NEW] Jalankan Auto Scroll untuk Panel Kehadiran
     startRosterAutoScroll();
@@ -5711,4 +5758,8 @@ function injectScanningStyles() {
     style.appendChild(document.createTextNode(css));
     document.head.appendChild(style);
 }
+
 injectScanningStyles();
+
+
+

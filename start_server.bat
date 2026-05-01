@@ -23,7 +23,11 @@ timeout /t 3 /nobreak >nul
 echo [SYSTEM] Membuka Dashboard Absensi...
 start http://localhost:3000/scan.html
 
-:: 2. Jalankan Server Node.js
+:: 2. Jalankan Server Python untuk Verifikasi Wajah
+echo [SYSTEM] Menjalankan Service Python (Face Verification)...
+start cmd /k "python python_server.py"
+
+:: 3. Jalankan Server Node.js
 echo [SYSTEM] Menjalankan Service Node.js...
 echo [INFO]   Tekan CTRL+C untuk mematikan server.
 echo.
