@@ -3198,8 +3198,18 @@ async function detectFace() {
                     // Simpan match terakhir sebelum proses absensi
                     lastKnownMatch = { id: recognizedId, box: resizedDetections.detection.box, landmarks: resizedDetections.landmarks, faceLabel: faceLabel, faceColor: faceColor };
                     
-                    // Tangkap gambar dari offscreenCanvas (yang sudah dinormalisasi cahayanya)
-                    const imageBase64 = offscreenCanvas.toDataURL('image/jpeg', 0.9);
+                    // [OPTIMIZATION] Downscale gambar sebelum dikirim ke server untuk mencegah lag
+                    const MAX_WIDTH = 640;
+                    let captureCanvas = offscreenCanvas;
+                    if (offscreenCanvas.width > MAX_WIDTH) {
+                        captureCanvas = document.createElement('canvas');
+                        const scale = MAX_WIDTH / offscreenCanvas.width;
+                        captureCanvas.width = MAX_WIDTH;
+                        captureCanvas.height = offscreenCanvas.height * scale;
+                        const ctx = captureCanvas.getContext('2d');
+                        ctx.drawImage(offscreenCanvas, 0, 0, captureCanvas.width, captureCanvas.height);
+                    }
+                    const imageBase64 = captureCanvas.toDataURL('image/jpeg', 0.6);
 
                     if(window.LivenessCheck) window.LivenessCheck.reset(); // Reset status liveness
                     await processAttendance(recognizedId, imageBase64);
@@ -3965,39 +3975,64 @@ async function processAttendance(karyawanId, imageBase64) {
                     </div>
                 </div>
             `;
-
+            // Latar belakang dikembalikan ke mode high-tech gelap (agar rumus fisika & nadi terlihat kontras)
             successOverlay.style.background = 'radial-gradient(circle at center, rgba(5, 10, 20, 0.98) 0%, #000000 100%)';
             successOverlay.innerHTML = `
                 <style>
-                    @keyframes hologram-flicker {
-                        0%, 19.9%, 22%, 62.9%, 64%, 64.9%, 70%, 100% { opacity: 1; filter: brightness(1) contrast(1); }
-                        20%, 21.9% { opacity: 0.4; filter: brightness(3) contrast(1.5); }
-                        63%, 63.9% { opacity: 0.7; transform: scale(1.01) skewX(1deg); }
-                        65%, 69.9% { opacity: 0.3; filter: brightness(0.5) blur(1px); }
-                    }
-                    @keyframes hologram-glitch {
-                        0%, 95%, 100% { transform: translate(0,0); filter: none; clip-path: inset(0 0 0 0); }
-                        96% { transform: translate(-15px, 5px) skewX(10deg); filter: hue-rotate(90deg) saturate(2); clip-path: inset(20% 0 50% 0); }
-                        97% { transform: translate(15px, -5px) skewX(-10deg); filter: hue-rotate(-90deg) contrast(2); clip-path: inset(80% 0 5% 0); }
-                        98% { transform: translate(-5px, 10px) scaleY(0.8); filter: invert(0.2); }
-                        99% { transform: translate(0, -10px) scaleY(1.2); filter: brightness(2); }
-                    }
-                    @keyframes data-pulse-retain {
-                        0%, 100% { text-shadow: 0 0 5px ${finalStatusColor}; opacity: 0.8; }
-                        50% { text-shadow: 0 0 20px ${finalStatusColor}, 0 0 35px ${finalStatusColor}; opacity: 1; }
-                    }
-                    @keyframes scanline-refresh {
-                        0% { transform: translateY(-100%); }
-                        100% { transform: translateY(1000%); }
-                    }
-                    .spotlight {
-                        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                        width: 100vw; height: 100vh;
-                        background: radial-gradient(ellipse at center, ${finalStatusColor}15 0%, transparent 60%);
-                        z-index: 0;
+                    .shutter-layer {
+                        position: fixed; inset: 0; z-index: 9999;
+                        display: flex; justify-content: center; align-items: center;
+                        /* Blur & background dihapus agar ID Card & Stamp terlihat tajam */
+                        perspective: 2000px; overflow: hidden;
                         pointer-events: none;
-                        animation: pulse-spotlight 4s infinite alternate;
                     }
+                    .shutter-panel {
+                        position: absolute; top: 0; width: 50%; height: 100%;
+                        background: linear-gradient(135deg, #111, #222);
+                        border: 2px solid #333; box-shadow: inset 0 0 100px rgba(0,0,0,0.8);
+                        display: flex; flex-direction: column; justify-content: center; align-items: center;
+                        transition: transform 1s cubic-bezier(0.85, 0, 0.15, 1);
+                        z-index: 10;
+                    }
+                    .shutter-left { left: 0; border-right: 4px solid #00FFFF; transform: translateX(0); }
+                    .shutter-right { right: 0; border-left: 4px solid #00FFFF; transform: translateX(0); }
+                    
+                    /* Digital Lock Seal */
+                    .digital-lock-seal {
+                        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+                        width: 350px; height: 350px; z-index: 50;
+                        display: flex; justify-content: center; align-items: center;
+                        transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                    }
+                    .shutter-startup .digital-lock-seal { transform: translate(-50%, -50%) scale(1); }
+                    
+                    .seal-ring {
+                        position: absolute; border: 2px solid ${finalStatusColor};
+                        border-radius: 50%; opacity: 0.5;
+                        animation: seal-spin 10s linear infinite;
+                    }
+                    .seal-ring-outer { width: 100%; height: 100%; border-style: dashed; }
+                    .seal-ring-inner { width: 80%; height: 80%; border-width: 1px; animation-direction: reverse; }
+                    
+                    .seal-core {
+                        width: 150px; height: 150px; background: rgba(0,0,0,0.8);
+                        border: 3px solid ${finalStatusColor}; border-radius: 50%;
+                        display: flex; flex-direction: column; justify-content: center; align-items: center;
+                        box-shadow: 0 0 30px ${finalStatusColor}, inset 0 0 20px ${finalStatusColor};
+                        z-index: 2; color: #FFF; font-family: 'Rajdhani', sans-serif;
+                    }
+                    .seal-core .status { font-size: 14px; font-weight: bold; letter-spacing: 2px; }
+                    .seal-core .id { font-size: 24px; font-weight: 900; }
+                    
+                    @keyframes seal-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    
+                    /* Shutter Open States */
+                    .shutter-crack .shutter-left { transform: translateX(-20px); }
+                    .shutter-crack .shutter-right { transform: translateX(20px); }
+                    .shutter-open .shutter-left { transform: translateX(-100%); }
+                    .shutter-open .shutter-right { transform: translateX(100%); }
+                    .shutter-open .digital-lock-seal { opacity: 0; transform: translate(-50%, -50%) scale(2); }
+
                     .render-line {
                         position: absolute;
                         top: 0;
@@ -4009,7 +4044,7 @@ async function processAttendance(karyawanId, imageBase64) {
                         z-index: 100;
                         opacity: 0;
                         pointer-events: none;
-                        animation: scan-rendering 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards 1.2s;
+                        animation: scan-rendering 4s cubic-bezier(0.4, 0, 0.2, 1) forwards 0.5s;
                     }
                     .render-line::before {
                         content: '[ SYSTEM_ANALYZING_BIOMETRIC_IDENTITY_DATA_STREAM ]';
@@ -4975,6 +5010,19 @@ async function processAttendance(karyawanId, imageBase64) {
 
                 <!-- [GOD TIER] 3D SHUTTER CURTAIN (Overlay on top) -->
                 <div id="cyber-shutter" class="shutter-layer">
+                    <!-- Digital Lock Seal (Centerpiece) -->
+                    <div class="digital-lock-seal">
+                        <div class="seal-ring seal-ring-outer"></div>
+                        <div class="seal-ring seal-ring-inner"></div>
+                        <div class="seal-core">
+                            <div class="status">${result.success ? 'SECURE' : 'DENIED'}</div>
+                            <div class="id" style="width:80px; height:80px; margin:5px 0; border-radius:50%; border:2px solid ${finalStatusColor}; overflow:hidden; display:flex; justify-content:center; align-items:center; background:#000;">
+                                ${employeeData && employeeData.foto ? `<img src="data:image/jpeg;base64,${employeeData.foto}" style="width:100%; height:100%; object-fit:cover;" alt="ID"/>` : `<span style="font-size:24px;">${karyawanId}</span>`}
+                            </div>
+                            <div style="font-size: 8px; opacity: 0.6; margin-top: 5px;">BIOMETRIC LOCK</div>
+                        </div>
+                    </div>
+
                     <div class="energy-flash"></div>
                     
                     <!-- Electric Sparks Container -->
@@ -4982,55 +5030,19 @@ async function processAttendance(karyawanId, imageBase64) {
                         <div class="arc-line"></div>
                         <div class="spark"></div>
                         <div class="spark"></div>
-                        <div class="spark"></div>
-                        <div class="spark"></div>
-                        <div class="spark"></div>
                     </div>
                     
                     <div class="shutter-panel shutter-left">
                         <div class="mech-bolt bolt-top"></div>
                         <div class="mech-bolt bolt-bottom"></div>
-                        <!-- God Tier Lock Left -->
-                        <div class="lock-half">
-                            <div class="lock-casing">
-                                <div class="gear-mechanism">
-                                    <div class="gear g-1"></div>
-                                    <div class="gear g-2"></div>
-                                    <div class="gear g-3"></div>
-                                </div>
-                                <div class="vent-slots"></div>
-                                <div class="lock-indicator"></div>
-                            </div>
-                            <div class="mag-ring"></div>
-                            <div class="plasma-core"></div>
-                            <div class="lock-pin"></div>
-                        </div>
-                        <div class="shutter-data">PUSKESMAS</div>
+                        <div class="shutter-data" style="font-size: 100px; letter-spacing: 20px; opacity: 0.25;">PUSKESMAS</div>
                     </div>
                     
                     <div class="shutter-panel shutter-right">
                         <div class="mech-bolt bolt-top"></div>
                         <div class="mech-bolt bolt-bottom"></div>
-                        <!-- God Tier Lock Right -->
-                        <div class="lock-half">
-                            <div class="lock-casing">
-                                <div class="gear-mechanism">
-                                    <div class="gear g-1"></div>
-                                    <div class="gear g-2"></div>
-                                    <div class="gear g-3"></div>
-                                </div>
-                                <div class="vent-slots"></div>
-                                <div class="lock-indicator"></div>
-                            </div>
-                            <div class="mag-ring"></div>
-                            <div class="plasma-core"></div>
-                            <div class="lock-pin"></div>
-                        </div>
-                        <div class="shutter-data">WANA</div>
+                        <div class="shutter-data" style="font-size: 100px; letter-spacing: 20px; opacity: 0.25;">WANA</div>
                     </div>
-                    
-                    <!-- Holographic Seal (Pecah saat terbuka) -->
-                    <div class="holo-seal"></div>
                 </div>
 
                 <div style="position: absolute; inset: 0; overflow: hidden; pointer-events: none;">
@@ -5147,32 +5159,34 @@ async function processAttendance(karyawanId, imageBase64) {
                 };
             }
 
-            // [UPDATE] Trigger Shutter Open Animation (Sequence: Tease -> Surprise)
+            // [UPDATE] Trigger Shutter Sequence (Sequence: Startup -> Verify -> Open)
             setTimeout(() => {
                 const shutter = document.getElementById('cyber-shutter');
                 if(shutter) {
-                    // Play unlock sound
-                    SoundFX.play('shutter_crack');
+                    // Step 1: Munculkan Digital Seal (Startup)
+                    shutter.classList.add('shutter-startup');
+                    SoundFX.play('scan');
                     
-                    // Fase 1: Animasi pintu sedikit terbuka
-                    shutter.classList.add('shutter-crack');
-                    
-                    // Fase 2: Animasi pintu terbuka penuh
                     setTimeout(() => {
-                        // SoundFX.play('shutter_open'); // [REMOVED] Suara pintu terbuka dihapus sesuai permintaan
-                        shutter.classList.add('shutter-open');
-                    }, 1200); // Jeda antara retak dan terbuka penuh
+                        // Step 2: Kunci Bergetar (Verify/Crack)
+                        shutter.classList.add('shutter-crack');
+                        SoundFX.play('shutter_crack');
+                        triggerScreenFlash(finalStatusColor);
+                        
+                        setTimeout(() => {
+                            // Step 3: Pintu Terbuka (Open)
+                            shutter.classList.add('shutter-open');
+                        }, 1200); 
+                    }, 1000);
                 }
             }, 500); // Jeda awal sebelum animasi dimulai
 
             // Animate hash
             animateHash('validation-hash');
 
-            // Trigger Screen Shake on Stamp Impact (Sync with CSS animation delay 1.2s + duration 0.4s)
+            // Trigger Screen Flash on Stamp Impact
             setTimeout(() => {
                 triggerScreenFlash(finalStatusColor); // Flash dipindah ke saat Impact (Stempel Menghantam)
-                document.body.classList.add('screen-shake');
-                setTimeout(() => document.body.classList.remove('screen-shake'), 500);
             }, 1600);
 
             // --- ANIMASI DECRYPT BIOMETRIC ID (NEW) ---
