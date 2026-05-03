@@ -3610,13 +3610,13 @@ async function processAttendance(karyawanId, imageBase64) {
                     // [UPDATE] Logika Tepat Waktu vs Terlambat
                     if (result.telat_menit > 0) {
                         finalStatusText = `TERLAMBAT`;
-                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi masuk tetap dicatat.</div><span style="color:#FFD700; font-weight:950; font-size: 2.8rem; line-height: 1.1; display:block; margin-top:10px; text-shadow: 0 1px 0 #886600, 0 2px 0 #775500, 0 3px 0 #664400, 0 4px 0 #553300, 0 10px 20px rgba(0,0,0,0.5), 0 0 25px #FFD700; transform: perspective(500px) rotateX(15deg); letter-spacing: 2px;">+ ${result.telat_menit} MENIT</span>`;
+                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi masuk tetap dicatat.</div><span style="font-weight:950; font-size: 2.8rem; line-height: 1.1; display:block; margin-top:10px; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5); transform: perspective(500px) rotateX(15deg); letter-spacing: 2px;">+ ${result.telat_menit} MENIT</span>`;
                         finalStatusColor = '#FFD700'; // Kuning Emas
                         finalBackground = `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
                     } else {
                         finalStatusText = 'TEPAT WAKTU';
                         finalStatusText = 'ABSEN MASUK BERHASIL';
-                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi MASUK Terkonfirmasi.</div><span style="color:#00FF7F; font-weight:950; font-size: 2.2rem; display:block; margin-top:10px; text-shadow: 0 1px 0 #008844, 0 2px 0 #007733, 0 3px 0 #006622, 0 4px 0 #005511, 0 8px 15px rgba(0,0,0,0.5), 0 0 20px #00FF7F; transform: perspective(500px) rotateX(15deg); letter-spacing: 4px;">SELAMAT BEKERJA</span>`;
+                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi MASUK Terkonfirmasi.</div><span style="font-weight:950; font-size: 2.2rem; display:block; margin-top:10px; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5); transform: perspective(500px) rotateX(15deg); letter-spacing: 4px;">SELAMAT BEKERJA</span>`;
                         finalBackground = ABSEN_NORMAL_BG;
                         finalStatusColor = '#00FF7F'; // Hijau Spring
                     }
@@ -3630,12 +3630,12 @@ async function processAttendance(karyawanId, imageBase64) {
                     if (statusColor === 'yellow') {
                         finalStatusText = 'PULANG CEPAT (PSW)';
                         // Gunakan pesan dari server yang berisi detail menit PSW
-                        finalMessageHTML = `<span style="color:#FFD700; font-weight:bold; text-shadow: 0 0 15px #FFD700;">${cleanMessage}</span>`;
+                        finalMessageHTML = `<span style="font-weight:bold; text-shadow: 0 0 15px rgba(255,255,255,0.3);">${cleanMessage}</span>`;
                         finalStatusColor = '#FFD700'; // Kuning Emas
                         finalBackground = `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
                     } else {
                         finalStatusText = 'CHECK-OUT BERHASIL';
-                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi PULANG Terkonfirmasi.</div><span style="color:#00FF7F; font-weight:900; font-size: 1.8rem; text-shadow: 0 1px 0 #008844, 0 2px 0 #007733, 0 10px 20px rgba(0,0,0,0.5);">Hati-hati di jalan.</span>`;
+                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi PULANG Terkonfirmasi.</div><span style="font-weight:900; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">Hati-hati di jalan.</span>`;
                         finalStatusColor = '#00FF7F'; // Hijau Spring (Sama seperti Check-In)
                         finalBackground = ABSEN_NORMAL_BG;
                     }
@@ -3643,7 +3643,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     break;
                 case 'ALREADY_IN_CONFIRMATION':
                     finalStatusText = 'SUDAH ABSEN MASUK';
-                    finalMessageHTML = `<span style="color:#00FF7F; font-weight:950; font-size: 2rem; text-shadow: 0 1px 0 #008844, 0 2px 0 #007733, 0 10px 20px rgba(0,0,0,0.5);">DATA TERKONFIRMASI</span><br><span style="font-size: 1.1rem; opacity: 0.8;">Anda sudah melakukan absen masuk.</span>`;
+                    finalMessageHTML = `<span style="font-weight:950; font-size: 2rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">DATA TERKONFIRMASI</span><br><span style="font-size: 1.1rem; opacity: 0.8;">Anda sudah melakukan absen masuk.</span>`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = '#00FF7F';
                     break;
@@ -3687,23 +3687,23 @@ async function processAttendance(karyawanId, imageBase64) {
                 case 'OUT_OF_TIME_IN':
                     finalStatusText = 'DILUAR JAM MASUK';
                     // Pesan dari server sudah mengandung jam dari .env (misal: "Waktu diizinkan: 07:00 s/d 11:00")
-                    finalMessageHTML = `<span style="color:#FF0055;">${cleanMessage}</span>`; 
+                    finalMessageHTML = `<span>${cleanMessage}</span>`; 
                     break;
                 case 'TOO_EARLY_OUT':
                     finalStatusText = 'DILUAR JAM PULANG';
-                    finalMessageHTML = `<span style="color:#FF0055; font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #880022, 0 2px 0 #770011, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`; 
+                    finalMessageHTML = `<span style="font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`; 
                     break;
                 case 'ALREADY_CHECKED_IN':
                     finalStatusText = 'MOHON TUNGGU'; // Cooldown
-                    finalMessageHTML = `<span style="color:#FFD700; font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #886600, 0 2px 0 #775500, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`;
+                    finalMessageHTML = `<span style="font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`;
                     break;
                 case 'ALREADY_CHECKED_OUT':
                     finalStatusText = 'SUDAH PULANG';
-                    finalMessageHTML = `<span style="color:#FFD700; font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #886600, 0 2px 0 #775500, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`;
+                    finalMessageHTML = `<span style="font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`;
                     break;
                 default:
                     finalStatusText = isWarning ? 'PERINGATAN' : 'AKSES DITOLAK';
-                    finalMessageHTML = `<span style="color:${isWarning ? '#FFD700' : '#FF0055'}; font-weight:950; font-size: 2rem; display:block; margin-top:10px; text-shadow: 0 1px 0 ${isWarning ? '#886600' : '#880022'}, 0 2px 0 ${isWarning ? '#775500' : '#770011'}, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`;
+                    finalMessageHTML = `<span style="font-weight:950; font-size: 2rem; display:block; margin-top:10px; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`;
             }
 
             // VISUAL UPDATES (Dipindahkan ke sini agar override isWarning di switch berlaku)
@@ -4201,8 +4201,13 @@ async function processAttendance(karyawanId, imageBase64) {
                         position: relative;
                         width: 450px;
                         padding: 30px;
-                        /* Glassmorphism Elegant */
-                        background: rgba(20, 20, 20, 0.6);
+                        /* Luxury Carbon Fiber Shutter Material */
+                        background: 
+                            radial-gradient(circle, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                            repeating-linear-gradient(60deg, rgba(20, 20, 20, 0.8) 0, rgba(20, 20, 20, 0.8) 1px, transparent 1px, transparent 15px),
+                            repeating-linear-gradient(-60deg, rgba(20, 20, 20, 0.8) 0, rgba(20, 20, 20, 0.8) 1px, transparent 1px, transparent 15px),
+                            linear-gradient(to bottom, #0a0a0a 0%, #000 50%, #0a0a0a 100%);
+                        background-size: 20px 20px, 30px 52px, 30px 52px, 100% 100%;
                         backdrop-filter: blur(20px);
                         -webkit-backdrop-filter: blur(20px);
                         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -4257,14 +4262,14 @@ async function processAttendance(karyawanId, imageBase64) {
                     .emblem img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
                     .emblem-text { text-align: left; }
                     .emblem-text span { display: block; text-transform: uppercase; font-weight: 900; background: linear-gradient(to bottom, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.9)); border-bottom: 4px double ${finalStatusColor}; padding-bottom: 2px; }
-                    .emblem-text span { font-size: 24px; letter-spacing: 1px; }
+                    .emblem-text span { font-size: 24px; letter-spacing: 1px; background: linear-gradient(to bottom, #E0E0E0, #A0A0A0, #C0C0C0, #808080, #E0E0E0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent; filter: drop-shadow(0 0 2px rgba(255,255,255,0.3)); }
                     .stamp-status {
                         font-size: 3rem; font-weight: 900; letter-spacing: 2px;
                         text-transform: uppercase; color: ${finalStatusColor};
-                        text-shadow: 0 0 10px ${finalStatusColor}, 0 0 20px ${finalStatusColor}, 0 0 40px ${finalStatusColor}; margin: 15px 0; line-height: 1;
+                        background: linear-gradient(to bottom, #F0F0F0, #B0B0B0, #D0D0D0, #909090, #F0F0F0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent; text-shadow: 0 0 15px rgba(255,255,255,0.5), 0 0 30px rgba(255,255,255,0.3); margin: 15px 0; line-height: 1;
                     }
                     .stamp-details {
-                        font-size: 12px; color: #DDD;
+                        font-size: 12px; color: #C0C0C0; /* Chrome-like gray */
                         border-top: 1px solid ${finalStatusColor}40;
                         border-bottom: 1px solid ${finalStatusColor}40;
                         padding: 10px 0; margin-bottom: 15px;
@@ -4272,9 +4277,9 @@ async function processAttendance(karyawanId, imageBase64) {
                     .stamp-details > div { display: flex; justify-content: space-between; padding: 2px 5px; }
                     .stamp-details > div span:first-child { font-weight: bold; opacity: 0.8; }
                     .stamp-footer {
-                        font-family: 'Courier New', monospace; font-size: 10px;
-                        background: rgba(0,0,0,0.3); padding: 8px; border: 1px solid ${finalStatusColor}30;
-                        word-break: break-all; color: ${finalStatusColor}CC;
+                        font-family: 'Courier New', monospace; font-size: 10px; color: #C0C0C0; /* Chrome-like gray */
+                        background: rgba(0,0,0,0.3); padding: 8px; border: 1px solid #606060; /* Darker border for contrast */
+                        word-break: break-all;
                         position: relative; overflow: hidden;
                     }
                     
@@ -4499,16 +4504,20 @@ async function processAttendance(karyawanId, imageBase64) {
                         position: relative;
                         width: 480px;
                         padding: 40px;
-                        /* Best Material: Ultra-Realistic Holographic Glass */
-                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(0, 0, 0, 0.2) 100%),
-                                    radial-gradient(circle at top left, rgba(35, 35, 40, 0.95) 0%, rgba(5, 5, 10, 0.98) 100%);
+                        /* Hyper-Black Carbon Fiber Shutter Material */
+                        background: 
+                            radial-gradient(circle, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                            repeating-linear-gradient(60deg, rgba(20, 20, 20, 0.8) 0, rgba(20, 20, 20, 0.8) 1px, transparent 1px, transparent 15px),
+                            repeating-linear-gradient(-60deg, rgba(20, 20, 20, 0.8) 0, rgba(20, 20, 20, 0.8) 1px, transparent 1px, transparent 15px),
+                            linear-gradient(to bottom, #050505 0%, #000 50%, #050505 100%);
+                        background-size: 20px 20px, 30px 52px, 30px 52px, 100% 100%;
                         backdrop-filter: blur(30px);
                         -webkit-backdrop-filter: blur(30px);
-                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        border: 2px solid #333;
                         outline: 2px solid ${finalStatusColor}88;
                         box-shadow: 
                             0 40px 120px rgba(0,0,0,0.95),
-                            inset 0 0 0 1px rgba(255,255,255,0.1),
+                            inset 0 0 100px rgba(0,0,0,0.8),
                             inset 0 0 80px ${finalStatusColor}25;
                         border-radius: 4px;
                         font-family: 'Rajdhani', sans-serif;
@@ -4564,7 +4573,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     }
                     .stamp-status {
                         font-size: 4.5rem; font-weight: 950; letter-spacing: 10px;
-                        text-transform: uppercase;
+                        text-transform: uppercase; /* Chrome text applied below */
                         color: #FFF;
                         /* 4D Depth Shadow Effect */
                         text-shadow:
@@ -4572,13 +4581,14 @@ async function processAttendance(karyawanId, imageBase64) {
                             0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.1), 0 0 5px rgba(0,0,0,.1),
                             0 1px 3px rgba(0,0,0,.3), 0 3px 5px rgba(0,0,0,.2), 0 5px 10px rgba(0,0,0,.25),
                             0 10px 10px rgba(0,0,0,.2), 0 20px 20px rgba(0,0,0,.15),
-                            0 0 30px ${finalStatusColor}, 0 0 60px ${finalStatusColor}66;
+                            0 0 30px rgba(255,255,255,0.5), 0 0 60px rgba(255,255,255,0.3); /* Chrome glow */
                         margin: 30px 0; line-height: 0.8;
                         transform: perspective(800px) rotateX(15deg);
                         filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
+                        background: linear-gradient(to bottom, #F0F0F0, #B0B0B0, #D0D0D0, #909090, #F0F0F0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent;
                     }
                     .stamp-details {
-                        font-size: 13px; color: rgba(255,255,255,0.9);
+                        font-size: 13px; color: #C0C0C0; /* Chrome-like gray */
                         border-top: 1px solid ${finalStatusColor}44;
                         border-bottom: 1px solid ${finalStatusColor}44;
                         padding: 15px 0; margin-bottom: 20px;
@@ -4588,9 +4598,9 @@ async function processAttendance(karyawanId, imageBase64) {
                     .stamp-details > div { display: flex; justify-content: space-between; padding: 2px 5px; }
                     .stamp-details > div span:first-child { font-weight: bold; opacity: 0.8; }
                     .stamp-footer {
-                        font-family: 'Courier New', monospace; font-size: 10px;
-                        background: rgba(0,0,0,0.3); padding: 8px; border: 1px solid ${finalStatusColor}30;
-                        word-break: break-all; color: ${finalStatusColor}CC;
+                        font-family: 'Courier New', monospace; font-size: 10px; color: #C0C0C0; /* Chrome-like gray */
+                        background: rgba(0,0,0,0.3); padding: 8px; border: 1px solid #606060; /* Darker border for contrast */
+                        word-break: break-all;
                     }
                     
                     /* --- ID CARD STYLES --- */
@@ -5120,7 +5130,7 @@ async function processAttendance(karyawanId, imageBase64) {
                              <div class="stamp-status">
                                 ${finalStatusText}
                             </div>
-                            <div class="text-base text-white mt-3 mb-4 text-center" style="line-height: 1.4; min-height: 50px;">
+                            <div class="text-base mt-3 mb-4 text-center" style="line-height: 1.4; min-height: 50px; background: linear-gradient(to bottom, #F0F0F0, #B0B0B0, #D0D0D0, #909090, #F0F0F0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent; font-weight: 800; filter: drop-shadow(0 0 5px rgba(255,255,255,0.3));">
                                 ${finalMessageHTML}
                             </div>
                             <div class="stamp-details">
@@ -5774,6 +5784,3 @@ function injectScanningStyles() {
 }
 
 injectScanningStyles();
-
-
-
