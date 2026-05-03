@@ -62,7 +62,7 @@ const offCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
 // turunkan jadi 80, namun jangan dibawah itu
 const DETECTION_INTERVAL_MS = 80; // Interval scan dalam milidetik
 const DEFAULT_PHOTO = ''; // Path ke foto default/placeholder jika diperlukan
-const SUCCESS_COOLDOWN_MS = 10000; // Jeda 10 detik setelah berhasil scan (Mencegah spam)
+const SUCCESS_COOLDOWN_MS = 10000; // Jeda 10 detik setelah berhasil scan (Sesuai Permintaan User)
 
 // VARS UNTUK EFEK DECRYPT TEXT
 let targetLabel = '';
@@ -3416,7 +3416,11 @@ async function processAttendance(karyawanId, imageBase64) {
     }
 
     try {
-        const result = await api.postAttendance(karyawanId, imageBase64);
+        // [MODIFIKASI] Buat jeda minimal 3 detik untuk animasi "MEMPROSES BIOMETRIK"
+        const [result] = await Promise.all([
+            api.postAttendance(karyawanId, imageBase64),
+            new Promise(r => setTimeout(r, 3000))
+        ]);
         
         // [NEW] LOGIKA COUNTER SCAN (UX TWEAK)
         if (!userScanCounters[karyawanId]) userScanCounters[karyawanId] = 0;
@@ -4502,34 +4506,124 @@ async function processAttendance(karyawanId, imageBase64) {
                     /* --- HIGH-TECH STAMP & CARD STYLES --- */
                     .academic-stamp {
                         position: relative;
-                        width: 480px;
-                        padding: 40px;
-                        /* Hyper-Black Carbon Fiber Shutter Material */
+                        width: 560px;
+                        padding: 60px;
+                        /* [ULTRA-PREMIUM STEALTH] JET BLACK CARBON & DIAMOND GLOSS */
                         background: 
-                            radial-gradient(circle, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                            repeating-linear-gradient(60deg, rgba(20, 20, 20, 0.8) 0, rgba(20, 20, 20, 0.8) 1px, transparent 1px, transparent 15px),
-                            repeating-linear-gradient(-60deg, rgba(20, 20, 20, 0.8) 0, rgba(20, 20, 20, 0.8) 1px, transparent 1px, transparent 15px),
-                            linear-gradient(to bottom, #050505 0%, #000 50%, #050505 100%);
-                        background-size: 20px 20px, 30px 52px, 30px 52px, 100% 100%;
-                        backdrop-filter: blur(30px);
-                        -webkit-backdrop-filter: blur(30px);
-                        border: 2px solid #333;
-                        outline: 2px solid ${finalStatusColor}88;
+                            linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.4) 100%),
+                            url('carbon_fiber.png'),
+                            #000;
+                        background-size: 100% 100%, 200px 200px, 100% 100%;
+                        background-blend-mode: screen, overlay, normal;
+
+                        /* Sharp Glowing White Hairlines */
                         box-shadow: 
-                            0 40px 120px rgba(0,0,0,0.95),
-                            inset 0 0 100px rgba(0,0,0,0.8),
-                            inset 0 0 80px ${finalStatusColor}25;
-                        border-radius: 4px;
-                        font-family: 'Rajdhani', sans-serif;
+                            0 80px 150px rgba(0,0,0,1),
+                            inset 0 0 0 1px rgba(255,255,255,0.9), /* Crisp White Border */
+                            inset 0 0 20px rgba(255,255,255,0.1), /* Soft Glow */
+                            0 0 0 8px #000,                      /* Black Gap */
+                            0 0 0 9px rgba(255,255,255,0.8);      /* Outer White Border */
+                        
+                        border: none;
+                        border-radius: 2px;
+                        font-family: 'Playfair Display', serif;
                         color: #FFF;
                         overflow: hidden;
-                        transform: translateY(-600px) scale(2);
+                        transform: translateY(100px);
                         opacity: 0;
-                        animation: 
-                            stampDescend 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards 1.2s,
-                            hologram-flicker 5s infinite ease-in-out,
-                            hologram-glitch 10s infinite step-end;
-                        clip-path: polygon(40px 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%, 0 40px);
+                        animation: stampPowerEntry 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards 1s;
+                    }
+                    @keyframes stampPowerEntry {
+                        0% { opacity: 0; transform: translateY(80px) scale(0.95); }
+                        100% { opacity: 1; transform: translateY(0) scale(1); }
+                    }
+
+                    /* Diamond Glint (Moving Light Beam) */
+                    .academic-stamp::before {
+                        content: '';
+                        position: absolute;
+                        top: -150%; left: -150%;
+                        width: 400%; height: 400%;
+                        background: linear-gradient(
+                            45deg,
+                            transparent 45%,
+                            rgba(255, 255, 255, 0) 47%,
+                            rgba(255, 255, 255, 0.6) 50%,
+                            rgba(255, 255, 255, 0) 53%,
+                            transparent 55%
+                        );
+                        transform: rotate(-20deg);
+                        animation: diamond-glint 5s infinite ease-in-out;
+                        pointer-events: none;
+                        z-index: 5;
+                    }
+                    @keyframes diamond-glint {
+                        0% { transform: translate(-30%, -30%) rotate(-20deg); }
+                        30%, 100% { transform: translate(30%, 30%) rotate(-20deg); }
+                    }
+               pointer-events: none;
+                    }
+                    @keyframes silk-shine { 
+                        0% { background-position: -100% 0; }
+                        100% { background-position: 200% 0; }
+                    }
+
+                    /* God-Level Light Sweep (Anamorphic Flare) */
+                    .academic-stamp::after {
+                        content: '';
+                        position: absolute;
+                        top: -100%; left: -100%;
+                        width: 300%; height: 300%;
+                        background: linear-gradient(
+                            45deg,
+                            transparent 45%,
+                            rgba(255, 255, 255, 0.1) 48%,
+                            rgba(255, 255, 255, 0.4) 50%,
+                            rgba(255, 255, 255, 0.1) 52%,
+                            transparent 55%
+                        );
+                        transform: rotate(-25deg);
+                        animation: sweep 6s infinite;
+                        pointer-events: none;
+                        z-index: 6;
+                    }
+                    @keyframes sweep {
+                        0% { transform: translate(-50%, -50%) rotate(-25deg); }
+                        20%, 100% { transform: translate(50%, 50%) rotate(-25deg); }
+                    }
+
+                    .academic-stamp:hover::before {
+                        opacity: 1;
+                    }
+
+                    /* Holographic Security Seal */
+                    .security-seal {
+                        position: absolute;
+                        top: 25px; right: 25px;
+                        width: 60px; height: 60px;
+                        background: conic-gradient(from 0deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+                        border-radius: 50%;
+                        opacity: 0.5;
+                        mix-blend-mode: color-dodge;
+                        animation: rotate-seal 10s linear infinite;
+                        z-index: 10;
+                        border: 1px solid rgba(255,255,255,0.3);
+                        box-shadow: 0 0 15px rgba(255,255,255,0.2);
+                    }
+                    @keyframes rotate-seal { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                    
+                    .micro-text-border {
+                        position: absolute;
+                        inset: 5px;
+                        border: 1px solid rgba(255,255,255,0.05);
+                        pointer-events: none;
+                        z-index: 10;
+                    }
+                    .micro-text-border::before {
+                        content: 'VERIFIED_SECURE_AETHER_BIOMETRIC_ENCRYPTION_PROTOCOL_v4.5_AUTHORIZED_ONLY_';
+                        position: absolute; top: 2px; left: 0; width: 100%;
+                        font-size: 5px; color: rgba(255,255,255,0.2);
+                        letter-spacing: 2px; white-space: nowrap; overflow: hidden;
                     }
                     .guilloche-bg {
                         position: absolute; inset: 0; opacity: 0.3;
@@ -4548,9 +4642,17 @@ async function processAttendance(karyawanId, imageBase64) {
                     .stamp-content {
                         position: relative;
                         z-index: 3;
-                        border: 4px double ${finalStatusColor}80;
-                        padding: 15px;
+                        border: 2px solid ${finalStatusColor};
+                        outline: 10px solid rgba(255,255,255,0.02);
+                        padding: 20px;
                         text-align: center;
+                        background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0%, transparent 80%);
+                    }
+                    .stamp-content::after {
+                        content: '';
+                        position: absolute; inset: 5px;
+                        border: 1px solid ${finalStatusColor}44;
+                        pointer-events: none;
                     }
                     .stamp-header {
                         display: flex; align-items: center; justify-content: center;
@@ -4558,49 +4660,62 @@ async function processAttendance(karyawanId, imageBase64) {
                         border-bottom: 1px solid ${finalStatusColor}40;
                     }
                     .emblem {
-                        width: 60px; height: 60px; border-radius: 50%;
-                        border: 2px solid ${finalStatusColor}; padding: 4px; background: #000;
+                        width: 100px; height: 100px; border-radius: 0;
+                        border: 2px solid #D4AF37; padding: 10px; background: #FFF;
+                        box-shadow: 0 15px 30px rgba(0,0,0,0.8);
                     }
-                    .emblem img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+                    .emblem img { width: 100%; height: 100%; object-fit: contain; }
                     .emblem-text { text-align: left; }
                     .emblem-text span {
-                        display: block; text-transform: uppercase; font-weight: 900;
-                        background: linear-gradient(to bottom, #FFF, ${finalStatusColor});
+                        display: block; text-transform: uppercase; font-weight: 800;
+                        font-family: 'Playfair Display', serif;
+                        /* Combination: Gold + White Shine */
+                        background: linear-gradient(to bottom, #FFF 0%, #D4AF37 50%, #B8860B 100%);
                         -webkit-background-clip: text; background-clip: text; color: transparent; 
-                        filter: drop-shadow(0 0 10px ${finalStatusColor}44); 
-                        border-bottom: 3px double ${finalStatusColor}aa; padding-bottom: 4px;
-                        font-size: 28px; letter-spacing: 3px;
+                        border-bottom: 2px solid #D4AF37; padding-bottom: 10px;
+                        font-size: 38px; letter-spacing: 6px; line-height: 1;
                     }
                     .stamp-status {
-                        font-size: 4.5rem; font-weight: 950; letter-spacing: 10px;
-                        text-transform: uppercase; /* Chrome text applied below */
+                        /* [ADJUSTED] Smaller for long text like 'ABSEN MASUK BERHASIL' */
+                        font-size: 3.2rem; font-weight: 900; letter-spacing: 6px;
+                        text-transform: uppercase;
+                        font-family: 'Playfair Display', serif;
+                        /* Combined Platinum & Gold */
                         color: #FFF;
-                        /* 4D Depth Shadow Effect */
-                        text-shadow:
-                            0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9,
-                            0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.1), 0 0 5px rgba(0,0,0,.1),
-                            0 1px 3px rgba(0,0,0,.3), 0 3px 5px rgba(0,0,0,.2), 0 5px 10px rgba(0,0,0,.25),
-                            0 10px 10px rgba(0,0,0,.2), 0 20px 20px rgba(0,0,0,.15),
-                            0 0 30px rgba(255,255,255,0.5), 0 0 60px rgba(255,255,255,0.3); /* Chrome glow */
-                        margin: 30px 0; line-height: 0.8;
-                        transform: perspective(800px) rotateX(15deg);
-                        filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
-                        background: linear-gradient(to bottom, #F0F0F0, #B0B0B0, #D0D0D0, #909090, #F0F0F0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent;
+                        text-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+                        margin: 30px 0; line-height: 1.1;
+                        position: relative;
+                        background: linear-gradient(to bottom, #FFFFFF 0%, #D4AF37 50%, #B8860B 100%);
+                        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                        max-width: 100%; word-wrap: break-word;
+                    }
+                    .stamp-status::after {
+                        content: '';
+                        position: absolute; bottom: -20px; left: 25%; right: 25%;
+                        height: 3px; background: linear-gradient(90deg, transparent, #D4AF37, #FFF, #D4AF37, transparent);
+                        box-shadow: 0 0 15px #D4AF37;
+                    }
+                    @keyframes status-pulse {
+                        0%, 100% { filter: drop-shadow(0 0 15px rgba(255,255,255,0.4)); transform: perspective(1000px) rotateX(15deg) translateZ(50px) scale(1); }
+                        50% { filter: drop-shadow(0 0 25px ${finalStatusColor}88); transform: perspective(1000px) rotateX(15deg) translateZ(70px) scale(1.02); }
                     }
                     .stamp-details {
-                        font-size: 13px; color: #C0C0C0; /* Chrome-like gray */
-                        border-top: 1px solid ${finalStatusColor}44;
-                        border-bottom: 1px solid ${finalStatusColor}44;
+                        font-size: 15px; color: #FFF;
+                        border-top: 1px solid rgba(212, 175, 55, 0.4);
+                        border-bottom: 1px solid rgba(212, 175, 55, 0.4);
                         padding: 15px 0; margin-bottom: 20px;
-                        background: rgba(255,255,255,0.03);
-                        animation: data-pulse-retain 3s infinite ease-in-out;
+                        font-family: 'Montserrat', sans-serif;
+                        text-transform: uppercase;
                     }
-                    .stamp-details > div { display: flex; justify-content: space-between; padding: 2px 5px; }
-                    .stamp-details > div span:first-child { font-weight: bold; opacity: 0.8; }
+                    .stamp-details > div { display: flex; justify-content: space-between; padding: 6px 0; }
+                    .stamp-details > div span:first-child { font-weight: bold; color: #D4AF37; } /* Combined Label Color */
+                    .stamp-details > div span:last-child { font-weight: normal; color: #FFF; }
+                    
                     .stamp-footer {
-                        font-family: 'Courier New', monospace; font-size: 10px; color: #C0C0C0; /* Chrome-like gray */
-                        background: rgba(0,0,0,0.3); padding: 8px; border: 1px solid #606060; /* Darker border for contrast */
-                        word-break: break-all;
+                        font-family: 'Arial', sans-serif; font-size: 9px; color: rgba(255,255,255,0.4);
+                        text-align: center;
+                        padding-top: 10px;
+                        letter-spacing: 2px;
                     }
                     
                     /* --- ID CARD STYLES --- */
@@ -5099,26 +5214,10 @@ async function processAttendance(karyawanId, imageBase64) {
                     </div>
 
                     <div class="academic-stamp">
-                        <div class="stamp-scanline"></div>
-                        <!-- Stamp Drop Shadow -->
-                        <div style="
-                            position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); width: 80%; height: 30px; 
-                            background: radial-gradient(ellipse at center, rgba(0,0,0,0.9) 0%, transparent 70%); 
-                            filter: blur(15px); z-index: -1; opacity: 0; animation: cardShadowEntry 0.8s ease-out forwards 1.2s;
-                        "></div>
-                        <div class="hologram-scanline-v"></div>
-                        <div class="hologram-noise-overlay"></div>
-                        <div class="prismatic-layer"></div>
-                        <!-- Decor corners -->
-                        <div style="position:absolute; top:15px; left:15px; width:30px; height:30px; border-top:2px solid ${finalStatusColor}; border-left:2px solid ${finalStatusColor}; opacity:0.4;"></div>
-                        <div style="position:absolute; top:15px; right:15px; width:30px; height:30px; border-top:2px solid ${finalStatusColor}; border-right:2px solid ${finalStatusColor}; opacity:0.4;"></div>
-                        <div style="position:absolute; bottom:15px; left:15px; width:30px; height:30px; border-bottom:2px solid ${finalStatusColor}; border-left:2px solid ${finalStatusColor}; opacity:0.4;"></div>
-                        <div style="position:absolute; bottom:15px; right:15px; width:30px; height:30px; border-bottom:2px solid ${finalStatusColor}; border-right:2px solid ${finalStatusColor}; opacity:0.4;"></div>
-                        <!-- [IDE BARU] Latar Belakang DNA Helix Animasi 3D -->
-                        ${dnaHelixStampHTML}
-                        <div class="guilloche-bg"></div>
-                        <div class="watermark-bg"></div>
+                        <!-- No Futuristic Overlays in Classic Design -->
                         <div class="stamp-content">
+                            <!-- Minimalist Line -->
+                            <div style="width: 60px; height: 1px; background: rgba(255,255,255,0.8); margin: 0 auto 30px;"></div>
                             <div class="stamp-header">
                                 <div class="emblem">
                                     <img src="logo.jpg" alt="Logo" onerror="this.style.display='none'">
@@ -5130,15 +5229,21 @@ async function processAttendance(karyawanId, imageBase64) {
                              <div class="stamp-status">
                                 ${finalStatusText}
                             </div>
-                            <div class="text-base mt-3 mb-4 text-center" style="line-height: 1.4; min-height: 50px; background: linear-gradient(to bottom, #F0F0F0, #B0B0B0, #D0D0D0, #909090, #F0F0F0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent; font-weight: 800; filter: drop-shadow(0 0 5px rgba(255,255,255,0.3));">
+                            <div class="text-sm mt-1 mb-4 text-center" style="line-height: 1.4; min-height: 30px; background: linear-gradient(to bottom, #F0F0F0, #B0B0B0, #D0D0D0, #909090, #F0F0F0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent; font-weight: 700; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); max-width: 90%; margin-left: auto; margin-right: auto; font-size: 1.1rem; letter-spacing: 1px;">
                                 ${finalMessageHTML}
                             </div>
                             <div class="stamp-details">
-                                <div><span>Nama Pegawai</span><span>${display_name}</span></div>
-                                <div><span>Tanggal Verifikasi</span><span>${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
-                                <div><span>Waktu Verifikasi</span><span>${serverTimestamp}</span></div>
-                                <div><span>Data Integrity</span><span style="color:#00FF7F; font-weight:bold; animation: blink 1s infinite;">100% SECURE</span></div>
-                                <div><span>Petugas Sistem</span><span>AETHER BIOMETRIC v4.5</span></div>
+                                <div style="position: absolute; top: -15px; left: 20px; background: #000; padding: 0 10px; font-size: 9px; color: ${finalStatusColor};">DATA_INTEGRITY_CHECK</div>
+                                <div><span>Personnel Name</span><span>${display_name}</span></div>
+                                <div><span>Verification Date</span><span>${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
+                                <div><span>Verification Time</span><span>${serverTimestamp}</span></div>
+                                <div><span>Security Protocol</span><span style="color:#00FF7F; font-weight:bold; animation: blink 1s infinite;">100% SECURE</span></div>
+                                <div><span>System Kernel</span><span>AETHER BIOMETRIC v4.5</span></div>
+                                
+                                <!-- NEW: Digital Barcode Decoration -->
+                                <div style="margin-top: 15px; height: 30px; display: flex; gap: 2px; align-items: flex-end; justify-content: center; opacity: 0.6;">
+                                    ${Array.from({length: 40}, () => `<div style="width: ${Math.random() * 4 + 1}px; height: ${Math.random() * 100}%; background: ${finalStatusColor};"></div>`).join('')}
+                                </div>
                             </div>
                             <div class="stamp-footer">
                                 <div style="font-size: 8px; opacity: 0.7; margin-bottom: 2px;">Kunci Validasi Digital (SHA-256)</div>
@@ -5166,6 +5271,21 @@ async function processAttendance(karyawanId, imageBase64) {
                     const rotateY = -x / 40; // Sensitivitas
                     const rotateX = y / 40;
                     container.style.transform = `rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
+
+                     // NEW: Elegant Layered Parallax
+                     const content = stamp.querySelector('.stamp-content');
+                     if (content) {
+                        content.style.transform = `translateZ(50px) rotateY(${rotateY * 0.4}deg) rotateX(${rotateX * 0.4}deg)`;
+                     }
+                     const seal = stamp.querySelector('.security-seal');
+                     if (seal) {
+                        seal.style.transform = `translateZ(80px) rotate(${Date.now() / 60}deg)`;
+                     }
+                     
+                     // Fresnel Angle Update
+                     const angle = Math.atan2(y, x) * (180 / Math.PI);
+                     stamp.style.setProperty('--angle', `${angle}deg`);
+                     stamp.style.setProperty('--fresnel-opacity', Math.min(0.5, Math.hypot(x, y) / 400));
                 };
             }
 
