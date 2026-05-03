@@ -3416,10 +3416,10 @@ async function processAttendance(karyawanId, imageBase64) {
     }
 
     try {
-        // [MODIFIKASI] Buat jeda minimal 3 detik untuk animasi "MEMPROSES BIOMETRIK"
+        // [MODIFIKASI] Buat jeda minimal 1 detik untuk animasi "MEMPROSES BIOMETRIK"
         const [result] = await Promise.all([
             api.postAttendance(karyawanId, imageBase64),
-            new Promise(r => setTimeout(r, 3000))
+            new Promise(r => setTimeout(r, 500)) // Reduced to 0.5 seconds to accelerate the "MEMPROSES BIOMETRIK" screen.
         ]);
         
         // [NEW] LOGIKA COUNTER SCAN (UX TWEAK)
@@ -3917,6 +3917,7 @@ async function processAttendance(karyawanId, imageBase64) {
                                 </div>
                                 <div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-black border border-[#FFD700] px-3 py-0.5 rounded-full shadow-lg z-20">
                                     <span class="text-[8px] font-bold text-[#FFD700] tracking-widest">VERIFIED</span>
+                                    <span class="text-[8px] font-bold text-[#FFD700] tracking-widest">TERVERIFIKASI</span>
                                 </div>
                             </div>
 
@@ -3940,7 +3941,7 @@ async function processAttendance(karyawanId, imageBase64) {
                                 </div>
                                 
                                 <div class="mt-auto pt-3 border-t border-white/10 flex justify-between items-end">
-                                    <div>
+                                    <div> 
                                         <p class="text-[8px] text-gray-500 uppercase tracking-wider">ID Number</p>
                                         <p class="text-lg font-mono text-white tracking-widest">${karyawanId}</p>
                                     </div>
@@ -3969,7 +3970,7 @@ async function processAttendance(karyawanId, imageBase64) {
 
                         <!-- Footer -->
                         <div class="h-6 bg-[#050505] border-t border-[#FFD700]/20 flex items-center justify-between px-6">
-                            <span class="text-[8px] text-[#FFD700] tracking-[0.2em] opacity-70">SECURE BIOMETRIC ID</span>
+                            <span class="text-[8px] text-[#FFD700] tracking-[0.2em] opacity-70">ID BIOMETRIK AMAN</span>
                             <div class="flex gap-1">
                                 <div class="w-1 h-1 rounded-full bg-[#FFD700]"></div>
                                 <div class="w-1 h-1 rounded-full bg-[#FFD700] opacity-50"></div>
@@ -4676,18 +4677,22 @@ async function processAttendance(karyawanId, imageBase64) {
                         font-size: 38px; letter-spacing: 6px; line-height: 1;
                     }
                     .stamp-status {
-                        /* [ADJUSTED] Smaller for long text like 'ABSEN MASUK BERHASIL' */
+                        /* [ULTRA-SHARP CONTRAST] Higher brightness & Sharp shadows */
                         font-size: 3.2rem; font-weight: 900; letter-spacing: 6px;
                         text-transform: uppercase;
                         font-family: 'Playfair Display', serif;
-                        /* Combined Platinum & Gold */
-                        color: #FFF;
-                        text-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
-                        margin: 30px 0; line-height: 1.1;
-                        position: relative;
-                        background: linear-gradient(to bottom, #FFFFFF 0%, #D4AF37 50%, #B8860B 100%);
+                        /* Pure Platinum & High-Glow Gold */
+                        background: linear-gradient(to bottom, #FFF 0%, #FFF 40%, #D4AF37 100%);
                         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                        
+                        /* Sharp 'Stroke' Effect for Maximum Visibility */
+                        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.9));
+                        text-shadow: 0 0 1px rgba(0,0,0,1); 
+                        
+                        margin: 25px 0; line-height: 1;
+                        position: relative;
                         max-width: 100%; word-wrap: break-word;
+                        z-index: 10;
                     }
                     .stamp-status::after {
                         content: '';
@@ -4701,15 +4706,17 @@ async function processAttendance(karyawanId, imageBase64) {
                     }
                     .stamp-details {
                         font-size: 15px; color: #FFF;
-                        border-top: 1px solid rgba(212, 175, 55, 0.4);
-                        border-bottom: 1px solid rgba(212, 175, 55, 0.4);
+                        border-top: 1px solid rgba(255, 255, 255, 0.2);
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
                         padding: 15px 0; margin-bottom: 20px;
                         font-family: 'Montserrat', sans-serif;
                         text-transform: uppercase;
+                        background: rgba(0,0,0,0.4); /* Text Shield */
+                        border-radius: 4px;
                     }
-                    .stamp-details > div { display: flex; justify-content: space-between; padding: 6px 0; }
-                    .stamp-details > div span:first-child { font-weight: bold; color: #D4AF37; } /* Combined Label Color */
-                    .stamp-details > div span:last-child { font-weight: normal; color: #FFF; }
+                    .stamp-details > div { display: flex; justify-content: space-between; padding: 6px 15px; }
+                    .stamp-details > div span:first-child { font-weight: 900; color: #FFD700; text-shadow: 0 1px 2px #000; } /* Vivid Gold */
+                    .stamp-details > div span:last-child { font-weight: 600; color: #FFF; text-shadow: 0 1px 2px #000; }
                     
                     .stamp-footer {
                         font-family: 'Arial', sans-serif; font-size: 9px; color: rgba(255,255,255,0.4);
@@ -5138,13 +5145,13 @@ async function processAttendance(karyawanId, imageBase64) {
                     <!-- Digital Lock Seal (Centerpiece) -->
                     <div class="digital-lock-seal">
                         <div class="seal-ring seal-ring-outer"></div>
-                        <div class="seal-ring seal-ring-inner"></div>
+                        <div class="seal-ring seal-ring-inner"></div> 
                         <div class="seal-core">
-                            <div class="status">${result.success ? 'SECURE' : 'DENIED'}</div>
+                            <div class="status">${result.success ? 'AMAN' : 'DITOLAK'}</div>
                             <div class="id" style="width:80px; height:80px; margin:5px 0; border-radius:50%; border:2px solid ${finalStatusColor}; overflow:hidden; display:flex; justify-content:center; align-items:center; background:#000;">
                                 ${employeeData && employeeData.foto ? `<img src="data:image/jpeg;base64,${employeeData.foto}" style="width:100%; height:100%; object-fit:cover;" alt="ID"/>` : `<span style="font-size:24px;">${karyawanId}</span>`}
                             </div>
-                            <div style="font-size: 8px; opacity: 0.6; margin-top: 5px;">BIOMETRIC LOCK</div>
+                            <div style="font-size: 8px; opacity: 0.6; margin-top: 5px;">KUNCI BIOMETRIK</div>
                         </div>
                     </div>
 
@@ -5227,18 +5234,18 @@ async function processAttendance(karyawanId, imageBase64) {
                                 </div>
                             </div>
                              <div class="stamp-status">
-                                ${finalStatusText}
+                                ${finalStatusText} 
                             </div>
-                            <div class="text-sm mt-1 mb-4 text-center" style="line-height: 1.4; min-height: 30px; background: linear-gradient(to bottom, #F0F0F0, #B0B0B0, #D0D0D0, #909090, #F0F0F0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent; font-weight: 700; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); max-width: 90%; margin-left: auto; margin-right: auto; font-size: 1.1rem; letter-spacing: 1px;">
+                            <div class="text-sm mt-1 mb-4 text-center" style="line-height: 1.4; min-height: 30px; background: #FFF; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent; font-weight: 900; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.8)); max-width: 90%; margin-left: auto; margin-right: auto; font-size: 1.2rem; letter-spacing: 1px; text-shadow: 0 0 1px rgba(0,0,0,1);">
                                 ${finalMessageHTML}
                             </div>
                             <div class="stamp-details">
-                                <div style="position: absolute; top: -15px; left: 20px; background: #000; padding: 0 10px; font-size: 9px; color: ${finalStatusColor};">DATA_INTEGRITY_CHECK</div>
-                                <div><span>Personnel Name</span><span>${display_name}</span></div>
-                                <div><span>Verification Date</span><span>${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
-                                <div><span>Verification Time</span><span>${serverTimestamp}</span></div>
-                                <div><span>Security Protocol</span><span style="color:#00FF7F; font-weight:bold; animation: blink 1s infinite;">100% SECURE</span></div>
-                                <div><span>System Kernel</span><span>AETHER BIOMETRIC v4.5</span></div>
+                                <div style="position: absolute; top: -15px; left: 20px; background: #000; padding: 0 10px; font-size: 9px; color: ${finalStatusColor};">CEK INTEGRITAS DATA</div>
+                                <div><span>Nama Personel</span><span>${display_name}</span></div>
+                                <div><span>Tanggal Verifikasi</span><span>${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
+                                <div><span>Waktu Verifikasi</span><span>${serverTimestamp}</span></div>
+                                <div><span>Protokol Keamanan</span><span style="color:#00FF7F; font-weight:bold; animation: blink 1s infinite;">100% AMAN</span></div>
+                                <div><span>Kernel Sistem</span><span>AETHER BIOMETRIC v4.5</span></div>
                                 
                                 <!-- NEW: Digital Barcode Decoration -->
                                 <div style="margin-top: 15px; height: 30px; display: flex; gap: 2px; align-items: flex-end; justify-content: center; opacity: 0.6;">
@@ -5247,7 +5254,7 @@ async function processAttendance(karyawanId, imageBase64) {
                             </div>
                             <div class="stamp-footer">
                                 <div style="font-size: 8px; opacity: 0.7; margin-bottom: 2px;">Kunci Validasi Digital (SHA-256)</div>
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;"> 
                                     <div style="font-size: 8px; opacity: 0.7;">Kunci Validasi Digital (SHA-256)</div>
                                     <div style="font-size: 8px; color:#00FF7F; font-weight:bold; letter-spacing:1px; animation:blink 1s infinite;">[ DATA_RETAINED ]</div>
                                 </div>
