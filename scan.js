@@ -3808,7 +3808,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     <div class="id-card-glare"></div>
                     <div class="id-card-bg-layers">
                         <!-- Elegant Dark Texture -->
-                        <div class="id-card-bg-layer" style="background-color: #0a0a0a; background-image: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #050505 100%); opacity: 1;"></div>
+                        <div class="id-card-bg-layer" style="background-color: #1A1C20; background-image: radial-gradient(circle at 50% 0%, #2A2D34 0%, #0D0E10 100%); opacity: 1;"></div>
                         <div class="id-card-bg-layer" style="background-image: url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(hexGridSvg)}'); animation: hex-pan 60s linear infinite; opacity: 0.05;"></div>
                     </div>
                     <div class="id-card-content" style="border: 1px solid rgba(255, 215, 0, 0.2); box-shadow: 0 20px 60px rgba(0,0,0,0.8);">
@@ -3821,11 +3821,10 @@ async function processAttendance(karyawanId, imageBase64) {
                             <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 border border-black/20 rounded-sm"></div>
                         </div>
 
-                        <!-- Header: Elegant Deep Navy Brushed Metal -->
-                        <div class="relative h-28 flex items-center px-6 overflow-hidden border-b border-[#FFD700]/20" style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);">
-                            <!-- Brushed Metal Texture -->
-                            <div class="absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(0deg, transparent, transparent 1px, #000 1px, #000 2px); background-size: 100% 2px;"></div>
-                            <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 50%); background-size: 8px 8px;"></div>
+                        <!-- Header: Carbon Black Metallic -->
+                        <div class="relative h-28 flex items-center px-6 overflow-hidden border-b-2 border-[#FFD700]/50" style="background: linear-gradient(to bottom, #000000, #0a0a0a); box-shadow: inset 0 -5px 10px rgba(0,0,0,0.8);">
+                            <!-- Subtle carbon pattern for header -->
+                            <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 5px); background-size: 10px 10px;"></div>
                             
                             <!-- [NEW] Siger Lampung Watermark Silhouette (7 Bukit, 6 Lembah) -->
                             <div class="absolute right-6 top-1/2 transform -translate-y-1/2 opacity-[0.15] pointer-events-none z-0">
@@ -3885,10 +3884,10 @@ async function processAttendance(karyawanId, imageBase64) {
                             <!-- Info -->
                             <div class="flex-1 flex flex-col justify-between h-40 py-1">
                                 <div>
-                                    <p class="text-[10px] text-cyan-300 uppercase tracking-widest mb-1 font-bold font-serif" style="text-shadow: 1px 1px 2px #000;">Nama Pegawai</p>
-                                    <h1 class="text-3xl font-extrabold text-white leading-tight mb-3 tracking-wide font-serif" style="text-shadow: 2px 2px 4px #000, 0 0 15px rgba(0,255,255,0.4);">${display_name}</h1>
+                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-bold font-serif" style="text-shadow: 1px 1px 2px #000;">Nama Pegawai</p>
+                                    <h1 class="text-3xl font-extrabold text-white leading-tight mb-3 tracking-wide font-serif" style="text-shadow: 2px 2px 4px #000, 0 0 15px rgba(255,215,0,0.2);">${display_name}</h1>
                                     
-                                    <p class="text-[10px] text-cyan-300 uppercase tracking-widest mb-1 font-bold font-serif" style="text-shadow: 1px 1px 2px #000;">Jabatan</p>
+                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-bold font-serif" style="text-shadow: 1px 1px 2px #000;">Jabatan</p>
                                     <p class="text-base font-extrabold text-[#FFD700] tracking-wider border-l-2 border-[#FFD700] pl-3" style="text-shadow: 1px 1px 3px #000;">${display_jabatan}</p>
                                 </div>
 
@@ -3903,7 +3902,7 @@ async function processAttendance(karyawanId, imageBase64) {
                                 
                                 <div class="mt-auto pt-3 border-t border-white/10 flex justify-between items-end">
                                     <div> 
-                                        <p class="text-[10px] text-cyan-300 uppercase tracking-wider font-bold" style="text-shadow: 1px 1px 2px #000;">ID Number</p>
+                                        <p class="text-[10px] text-gray-400 uppercase tracking-wider font-bold" style="text-shadow: 1px 1px 2px #000;">ID Number</p>
                                         <p class="text-3xl font-mono text-white tracking-widest font-extrabold" style="text-shadow: 2px 2px 4px #000, 0 0 10px rgba(255,255,255,0.5);">${karyawanId}</p>
                                     </div>
                                     <!-- Realistic Barcode -->
@@ -3930,12 +3929,11 @@ async function processAttendance(karyawanId, imageBase64) {
                         </div>
 
                         <!-- Footer -->
-                        <div class="h-8 flex items-center justify-between px-6 overflow-hidden relative border-t border-[#FFD700]/30" style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);">
-                            <!-- Brushed Metal Texture -->
-                            <div class="absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(0deg, transparent, transparent 1px, #000 1px, #000 2px); background-size: 100% 2px;"></div>
-                            <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 50%); background-size: 8px 8px;"></div>
+                        <div class="h-10 flex items-center justify-center px-6 overflow-hidden relative border-t-2 border-[#FFD700]/50" style="background: linear-gradient(to bottom, #0a0a0a, #000000); box-shadow: inset 0 5px 10px rgba(0,0,0,0.8);">
+                            <!-- Subtle carbon pattern for footer -->
+                            <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 5px); background-size: 10px 10px;"></div>
                             
-                            <span class="text-[9px] text-[#FFD700] tracking-[0.2em] font-serif uppercase relative z-10 font-bold drop-shadow-md">KARTU INI ADALAH MILIK UPTD PUSKESMAS WANA</span>
+                            <span class="text-[10px] text-[#FFD700] tracking-[0.25em] font-serif uppercase relative z-10 font-extrabold" style="text-shadow: 0 0 8px rgba(255,215,0,0.6), 1px 1px 2px #000;">KARTU INI MILIK UPTD PUSKESMAS WANA</span>
                         </div>
                     </div>
                 </div>
