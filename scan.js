@@ -59,8 +59,8 @@ let employeeMap = {};
 let currentStream = null; // Variabel untuk stream kamera aktif
 const offscreenCanvas = document.createElement('canvas'); // [NEW] Canvas tersembunyi untuk pre-processing
 const offCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
-// turunkan jadi 80, namun jangan dibawah itu
-const DETECTION_INTERVAL_MS = 80; // Interval scan dalam milidetik
+// [OPTIMIZED] Naikkan interval untuk hemat CPU. 150ms = ~7fps deteksi, cukup untuk Absensi.
+const DETECTION_INTERVAL_MS = 150; // Interval scan dalam milidetik
 const DEFAULT_PHOTO = ''; // Path ke foto default/placeholder jika diperlukan
 const SUCCESS_COOLDOWN_MS = 10000; // Jeda 10 detik setelah berhasil scan (Sesuai Permintaan User)
 
@@ -1770,19 +1770,18 @@ async function runBootSequence() {
 }
 
 // --- NEW FEATURE: SMART HUD LABEL ---
-function drawSmartHUD(ctx, box, label, color, confidence, emotion = 'ANALYZING', gender = '-', age = '-') {
-    const padding = 10;
-    const tagX = box.x + box.width + 30; // Posisi di kanan wajah
+function drawSmartHUD(ctx, box, label, color, confidence, emotion = '-', gender = '-', age = '-') {
+    const tagX = box.x + box.width + 30;
     const tagY = box.y;
     const hudWidth = 180;
-    const hudHeight = 90; // [UPDATE] Dipertinggi agar muat info Gender/Umur
+    const hudHeight = 70;
 
     // 1. Garis Penghubung (Connector Line)
     ctx.beginPath();
-    ctx.moveTo(box.x + box.width, box.y + (box.height * 0.2)); // Dari sisi kanan bracket
-    ctx.lineTo(tagX - 10, box.y + (box.height * 0.2)); // Horizontal
-    ctx.lineTo(tagX, tagY); // Miring ke sudut HUD
-    ctx.lineTo(tagX + hudWidth, tagY); // Garis atas HUD
+    ctx.moveTo(box.x + box.width, box.y + (box.height * 0.2));
+    ctx.lineTo(tagX - 10, box.y + (box.height * 0.2));
+    ctx.lineTo(tagX, tagY);
+    ctx.lineTo(tagX + hudWidth, tagY);
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.5;
     ctx.stroke();
@@ -1795,35 +1794,25 @@ function drawSmartHUD(ctx, box, label, color, confidence, emotion = 'ANALYZING',
     ctx.fillStyle = color;
     ctx.fillRect(tagX, tagY, 4, hudHeight);
 
-    // 4. Teks Informasi
+    // 4. Teks Informasi (Nama/Label)
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 16px "Rajdhani", sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(label.length > 15 ? label.substring(0, 15) + '...' : label, tagX + 15, tagY + 25);
 
-    // 5. Sub-info (ID & Confidence)
+    // 5. Sub-info — ID statis per session (tidak Math.random() setiap frame)
     ctx.fillStyle = '#00FFFF';
     ctx.font = '11px "Courier New", monospace';
-    ctx.fillText(`ID-SIG: ${Math.floor(Math.random() * 99999)}`, tagX + 15, tagY + 45);
+    ctx.fillText(`MATCH-CONF: ${Math.min(100, Math.max(0, confidence)).toFixed(0)}%`, tagX + 15, tagY + 45);
 
     // 6. Confidence Bar Mini
     const confVal = Math.min(100, Math.max(0, confidence));
     ctx.fillStyle = '#333';
-    ctx.fillRect(tagX + 15, tagY + 55, 100, 4); // Track
+    ctx.fillRect(tagX + 15, tagY + 55, 100, 4);
     ctx.fillStyle = confVal > 70 ? '#00FF7F' : (confVal > 40 ? '#FFD700' : '#FF0055');
-    ctx.fillRect(tagX + 15, tagY + 55, confVal, 4); // Fill
-    
-    ctx.fillStyle = '#AAAAAA';
-    ctx.fillText(`${confVal.toFixed(0)}%`, tagX + 125, tagY + 60);
+    ctx.fillRect(tagX + 15, tagY + 55, confVal, 4);
 
-    // 7. Emotion Readout (NEW)
-    ctx.fillStyle = '#00FFFF';
-    ctx.font = '10px "Courier New", monospace';
-    ctx.fillText(`PSYCHE: ${emotion.toUpperCase()}`, tagX + 15, tagY + 75);
-
-    // 8. Gender & Age Readout (NEW)
-    ctx.fillStyle = '#FFD700'; // Warna Emas
-    ctx.fillText(`BIO: ${gender.toUpperCase()} / ${age} YRS`, tagX + 15, tagY + 87);
+    // [DISABLED] Emotion & Bio readout dinonaktifkan (AgeGenderNet & FaceExpressionNet off)
 }
 
 // =============================================================================
@@ -2710,12 +2699,12 @@ async function initializeApp() {
 
     try {
         // Memuat Model Face-API.js
+        // [OPTIMIZED] Hanya load model yang diperlukan untuk Absensi Biometrik.
+        // AgeGenderNet & FaceExpressionNet dinonaktifkan untuk performa lebih cepat.
         await Promise.all([
             faceapi.nets.tinyFaceDetector.loadFromUri('./models'),
             faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
-            faceapi.nets.faceRecognitionNet.loadFromUri('./models'),
-            faceapi.nets.faceExpressionNet.loadFromUri('./models'), // NEW: Load Emotion Model
-            faceapi.nets.ageGenderNet.loadFromUri('./models') // [NEW] Load Age & Gender Model
+            faceapi.nets.faceRecognitionNet.loadFromUri('./models')
         ]);
         
         // [NEW] Load BlazeFace Model dengan error handling
@@ -2939,15 +2928,11 @@ async function detectFace() {
         // inputSize diatur ke 160 untuk kecepatan maksimal tanpa mengorbankan akurasi identitas
         detections = await faceapi.detectSingleFace(aiInput, new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.45 }))
             .withFaceLandmarks()
-            .withFaceExpressions()
-            .withAgeAndGender()
             .withFaceDescriptor();
     } else {
         // Fallback jika BlazeFace gagal
         detections = await faceapi.detectSingleFace(aiInput, new faceapi.TinyFaceDetectorOptions({ inputSize: 256, scoreThreshold: 0.5 }))
             .withFaceLandmarks()
-            .withFaceExpressions()
-            .withAgeAndGender()
             .withFaceDescriptor();
     }
 
@@ -2977,17 +2962,10 @@ async function detectFace() {
         const { box } = resizedDetections.detection;
         const { landmarks } = resizedDetections;
 
-        // --- ANALISIS EMOSI (NEW) ---
-        const expressions = resizedDetections.expressions; // Retrieve expressions
-        let dominantEmotion = 'NEUTRAL'; // Declare with 'let' and initialize default value
-        if (expressions) {
-            const sortedEmotions = Object.keys(expressions).sort((a, b) => expressions[b] - expressions[a]);
-            dominantEmotion = sortedEmotions[0] || 'NEUTRAL';
-        }
-
-        // [NEW] Extract Gender & Age
-        const gender = resizedDetections.gender || '-';
-        const age = Math.round(resizedDetections.age) || 0;
+        // [DISABLED] AgeGenderNet & FaceExpressionNet dinonaktifkan untuk performa Absensi.
+        const dominantEmotion = '-';
+        const gender = '-';
+        const age = '-';
 
         // --- FITUR: STABILISASI KAMERA (NO ZOOM) ---
         // Zoom dihapus agar resolusi tajam & orientasi stabil seperti HUD Taktis.
@@ -3182,8 +3160,8 @@ async function detectFace() {
                 }
             }
 
-            // Update Emosi
-            if(userEmotionDisplay) userEmotionDisplay.textContent = dominantEmotion.toUpperCase();
+            // [DISABLED] Emotion display dinonaktifkan (AgeGenderNet & FaceExpressionNet off)
+            if(userEmotionDisplay) userEmotionDisplay.textContent = '-';
 
             // CEK LIVENESS UNTUK EKSEKUSI
             if (isLive) {
@@ -3272,7 +3250,7 @@ async function detectFace() {
                 }
             }
             
-            if(userEmotionDisplay) userEmotionDisplay.textContent = 'UNKNOWN';
+            if(userEmotionDisplay) userEmotionDisplay.textContent = '-';
             targetLabel = '';
             lastKnownMatch = null;
         }
@@ -3286,55 +3264,12 @@ async function detectFace() {
         drawBiometricProgress(context, box, scanProgress, faceColor);
 
         drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion, gender, age);
-        drawHolographicMesh(context, landmarks);
-        // [NEW] Draw Face Shape (Visualisasi Wajah)
-        const isVerifying = faceLabel.includes('VERIFYING') || (userStatusDisplay && userStatusDisplay.textContent.includes('VERIFYING'));
-        drawFaceShape(context, landmarks, faceColor, isVerifying);
 
-        // --- DETEKSI KEDIPAN & PARTIKEL DIGITAL ---
-        const leftEyePts = landmarks.getLeftEye();
-        const rightEyePts = landmarks.getRightEye();
-        const avgEAR = (getEAR(leftEyePts) + getEAR(rightEyePts)) / 2;
-
-        if (avgEAR < 0.22) { // Threshold kedipan (mata tertutup)
-            if (!isBlinking) {
-                isBlinking = true;
-                // Emit Digital Particles (Burst)
-                const emitParticles = (points) => {
-                    let cx=0, cy=0;
-                    points.forEach(p=>{cx+=p.x; cy+=p.y});
-                    cx/=points.length; cy/=points.length;
-                    
-                    for(let i=0; i<8; i++) {
-                        eyeParticles.push({ x: cx, y: cy, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 1) * 6 - 2, life: 1.0, color: '#00FFFF', char: Math.random() > 0.5 ? '1' : '0' });
-                    }
-                };
-                emitParticles(leftEyePts);
-                emitParticles(rightEyePts);
-            }
-        } else {
-            isBlinking = false;
-        }
-        drawEyeParticles(context);
-        
-        // [NEW] Gambar Siku-Siku Layar yang Bergerak (Dynamic Corners)
-        // drawDynamicScreenCorners(context, canvas.width, canvas.height, box, faceColor);
-
-        // drawARDataPoints(context, box, faceColor); // Panggil fungsi AR Data Points
-        
-        // Gambar Grafik Live di bawah HUD
-        // drawLiveGraph(context, box.x + box.width + 30, box.y + 80, 180, 40, confidenceHistory, faceColor);
-
-        // Gambar Aliran Data ke Panel Kiri (NEW)
-        // drawDataStream(context, box, faceColor);
-        
-        // drawDataWaterfall(context, box.x - 40, box.y, box.height, faceColor); // Matrix rain di kiri wajah
-
-        // NEW: Digital Particles (Efek Menguap)
-        // drawDigitalParticles(context, box, faceColor);
-
-        // Random Ambient Glitch (Signal Noise)
-        if (Math.random() < 0.005) triggerGlitch();
+        // [DISABLED - CPU OPTIMIZATION] Efek berat dinonaktifkan untuk performa Absensi:
+        // drawHolographicMesh  -> 68-titik triangulasi, sangat berat
+        // drawFaceShape        -> gambar ulang outline wajah tiap frame
+        // drawEyeParticles     -> sistem partikel aktif setiap frame
+        // triggerGlitch random -> overhead tidak perlu
 
     } else {
         handleNoFace(context);
@@ -3365,7 +3300,7 @@ function handleNoFace(context) {
     setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
     confidenceHistory = [];
     faceParticles = [];
-    if (userEmotionDisplay) userEmotionDisplay.textContent = 'SCANNING...';
+    if (userEmotionDisplay) userEmotionDisplay.textContent = '-';
     targetLabel = '';
     setSystemTheme('IDLE');
     lastKnownMatch = null; 
@@ -3886,12 +3821,38 @@ async function processAttendance(karyawanId, imageBase64) {
                             <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 border border-black/20 rounded-sm"></div>
                         </div>
 
-                        <!-- Header: Elegant Deep Emerald Brushed Metal -->
-                        <div class="relative h-28 flex items-center px-6 overflow-hidden border-b border-[#FFD700]/20" style="background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);">
+                        <!-- Header: Elegant Deep Navy Brushed Metal -->
+                        <div class="relative h-28 flex items-center px-6 overflow-hidden border-b border-[#FFD700]/20" style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);">
                             <!-- Brushed Metal Texture -->
                             <div class="absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(0deg, transparent, transparent 1px, #000 1px, #000 2px); background-size: 100% 2px;"></div>
                             <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 50%); background-size: 8px 8px;"></div>
                             
+                            <!-- [NEW] Siger Lampung Watermark Silhouette (7 Bukit, 6 Lembah) -->
+                            <div class="absolute right-6 top-1/2 transform -translate-y-1/2 opacity-[0.15] pointer-events-none z-0">
+                                <svg width="140" height="55" viewBox="0 0 120 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M 60 4 
+                                             C 62 18, 64 25, 66 28 
+                                             C 68 22, 72 15, 76 12
+                                             C 78 20, 80 26, 82 29
+                                             C 84 24, 88 19, 92 18
+                                             C 94 24, 96 28, 98 30
+                                             C 100 28, 104 25, 106 25
+                                             C 108 32, 110 38, 112 40
+                                             L 8 40
+                                             C 10 38, 12 32, 14 25
+                                             C 16 25, 20 28, 22 30
+                                             C 24 28, 26 24, 28 18
+                                             C 32 19, 36 24, 38 29
+                                             C 40 26, 42 20, 44 12
+                                             C 48 15, 52 22, 54 28
+                                             C 56 25, 58 18, 60 4 Z" 
+                                          fill="#FFD700" />
+                                    <!-- Decorative Academic Base -->
+                                    <path d="M 5 44 L 115 44" stroke="#FFD700" stroke-width="2"/>
+                                    <path d="M 15 48 L 105 48" stroke="#FFD700" stroke-width="1.5"/>
+                                </svg>
+                            </div>
+
                             <div class="w-14 h-14 rounded-full flex items-center justify-center border border-[#FFD700]/40 mr-5 shadow-[0_0_20px_rgba(255,215,0,0.15)] bg-black relative z-10">
                                 <img src="logo.jpg" class="w-full h-full object-cover rounded-full opacity-90">
                             </div>
@@ -3924,11 +3885,11 @@ async function processAttendance(karyawanId, imageBase64) {
                             <!-- Info -->
                             <div class="flex-1 flex flex-col justify-between h-40 py-1">
                                 <div>
-                                    <p class="text-[9px] text-gray-400 uppercase tracking-widest mb-1 font-serif">Nama Personel</p>
-                                    <h1 class="text-2xl font-bold text-white leading-tight mb-3 tracking-wide font-serif" style="text-shadow: 0 0 10px rgba(255,255,255,0.2);">${display_name}</h1>
+                                    <p class="text-[10px] text-cyan-300 uppercase tracking-widest mb-1 font-bold font-serif" style="text-shadow: 1px 1px 2px #000;">Nama Pegawai</p>
+                                    <h1 class="text-3xl font-extrabold text-white leading-tight mb-3 tracking-wide font-serif" style="text-shadow: 2px 2px 4px #000, 0 0 15px rgba(0,255,255,0.4);">${display_name}</h1>
                                     
-                                    <p class="text-[9px] text-gray-400 uppercase tracking-widest mb-1 font-serif">Jabatan</p>
-                                    <p class="text-sm font-bold text-[#FFD700] tracking-wider border-l-2 border-[#FFD700] pl-3">${display_jabatan}</p>
+                                    <p class="text-[10px] text-cyan-300 uppercase tracking-widest mb-1 font-bold font-serif" style="text-shadow: 1px 1px 2px #000;">Jabatan</p>
+                                    <p class="text-base font-extrabold text-[#FFD700] tracking-wider border-l-2 border-[#FFD700] pl-3" style="text-shadow: 1px 1px 3px #000;">${display_jabatan}</p>
                                 </div>
 
                                 <!-- Digital Signature Overlay -->
@@ -3942,8 +3903,8 @@ async function processAttendance(karyawanId, imageBase64) {
                                 
                                 <div class="mt-auto pt-3 border-t border-white/10 flex justify-between items-end">
                                     <div> 
-                                        <p class="text-[8px] text-gray-500 uppercase tracking-wider">ID Number</p>
-                                        <p class="text-lg font-mono text-white tracking-widest">${karyawanId}</p>
+                                        <p class="text-[10px] text-cyan-300 uppercase tracking-wider font-bold" style="text-shadow: 1px 1px 2px #000;">ID Number</p>
+                                        <p class="text-3xl font-mono text-white tracking-widest font-extrabold" style="text-shadow: 2px 2px 4px #000, 0 0 10px rgba(255,255,255,0.5);">${karyawanId}</p>
                                     </div>
                                     <!-- Realistic Barcode -->
                                     <div class="flex flex-col items-end opacity-90">
@@ -3969,13 +3930,12 @@ async function processAttendance(karyawanId, imageBase64) {
                         </div>
 
                         <!-- Footer -->
-                        <div class="h-6 bg-[#050505] border-t border-[#FFD700]/20 flex items-center justify-between px-6">
-                            <span class="text-[8px] text-[#FFD700] tracking-[0.2em] opacity-70">ID BIOMETRIK AMAN</span>
-                            <div class="flex gap-1">
-                                <div class="w-1 h-1 rounded-full bg-[#FFD700]"></div>
-                                <div class="w-1 h-1 rounded-full bg-[#FFD700] opacity-50"></div>
-                                <div class="w-1 h-1 rounded-full bg-[#FFD700] opacity-25"></div>
-                            </div>
+                        <div class="h-8 flex items-center justify-between px-6 overflow-hidden relative border-t border-[#FFD700]/30" style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);">
+                            <!-- Brushed Metal Texture -->
+                            <div class="absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(0deg, transparent, transparent 1px, #000 1px, #000 2px); background-size: 100% 2px;"></div>
+                            <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 50%); background-size: 8px 8px;"></div>
+                            
+                            <span class="text-[9px] text-[#FFD700] tracking-[0.2em] font-serif uppercase relative z-10 font-bold drop-shadow-md">KARTU INI ADALAH MILIK UPTD PUSKESMAS WANA</span>
                         </div>
                     </div>
                 </div>
@@ -4279,8 +4239,10 @@ async function processAttendance(karyawanId, imageBase64) {
                         border-bottom: 1px solid ${finalStatusColor}40;
                         padding: 10px 0; margin-bottom: 15px;
                     }
-                    .stamp-details > div { display: flex; justify-content: space-between; padding: 2px 5px; }
-                    .stamp-details > div span:first-child { font-weight: bold; opacity: 0.8; }
+                    .stamp-details > div { display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+                    .stamp-details > div:last-child { border-bottom: none; }
+                    .stamp-details > div span:first-child { font-weight: 800; color: #00FFFF; text-shadow: 1px 1px 2px #000; letter-spacing: 1px; }
+                    .stamp-details > div span:last-child { font-weight: 800; color: #FFF; text-shadow: 1px 1px 2px #000; letter-spacing: 1px; }
                     .stamp-footer {
                         font-family: 'Courier New', monospace; font-size: 10px; color: #C0C0C0; /* Chrome-like gray */
                         background: rgba(0,0,0,0.3); padding: 8px; border: 1px solid #606060; /* Darker border for contrast */
@@ -4705,18 +4667,22 @@ async function processAttendance(karyawanId, imageBase64) {
                         50% { filter: drop-shadow(0 0 25px ${finalStatusColor}88); transform: perspective(1000px) rotateX(15deg) translateZ(70px) scale(1.02); }
                     }
                     .stamp-details {
-                        font-size: 15px; color: #FFF;
-                        border-top: 1px solid rgba(255, 255, 255, 0.2);
-                        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                        font-size: 16px; color: #FFF;
+                        border-top: 1px solid rgba(0, 255, 255, 0.4);
+                        border-bottom: 1px solid rgba(0, 255, 255, 0.4);
                         padding: 15px 0; margin-bottom: 20px;
                         font-family: 'Montserrat', sans-serif;
                         text-transform: uppercase;
-                        background: rgba(0,0,0,0.4); /* Text Shield */
+                        background: rgba(0,0,0,0.7); /* Text Shield */
                         border-radius: 4px;
+                        box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+                        backdrop-filter: blur(5px);
+                        -webkit-backdrop-filter: blur(5px);
                     }
-                    .stamp-details > div { display: flex; justify-content: space-between; padding: 6px 15px; }
-                    .stamp-details > div span:first-child { font-weight: 900; color: #FFD700; text-shadow: 0 1px 2px #000; } /* Vivid Gold */
-                    .stamp-details > div span:last-child { font-weight: 600; color: #FFF; text-shadow: 0 1px 2px #000; }
+                    .stamp-details > div { display: flex; justify-content: space-between; padding: 6px 15px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+                    .stamp-details > div:last-child { border-bottom: none; }
+                    .stamp-details > div span:first-child { font-weight: 900; color: #00FFFF; text-shadow: 1px 1px 2px #000, 0 0 8px rgba(0,255,255,0.5); letter-spacing: 1px; } /* Cyan Glow */
+                    .stamp-details > div span:last-child { font-weight: 800; color: #FFF; text-shadow: 1px 1px 3px #000, 0 0 10px rgba(255,255,255,0.4); letter-spacing: 1px; }
                     
                     .stamp-footer {
                         font-family: 'Arial', sans-serif; font-size: 9px; color: rgba(255,255,255,0.4);
@@ -5241,7 +5207,7 @@ async function processAttendance(karyawanId, imageBase64) {
                             </div>
                             <div class="stamp-details">
                                 <div style="position: absolute; top: -15px; left: 20px; background: #000; padding: 0 10px; font-size: 9px; color: ${finalStatusColor};">CEK INTEGRITAS DATA</div>
-                                <div><span>Nama Personel</span><span>${display_name}</span></div>
+                                <div><span>Nama Pegawai</span><span>${display_name}</span></div>
                                 <div><span>Tanggal Verifikasi</span><span>${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
                                 <div><span>Waktu Verifikasi</span><span>${serverTimestamp}</span></div>
                                 <div><span>Protokol Keamanan</span><span style="color:#00FF7F; font-weight:bold; animation: blink 1s infinite;">100% AMAN</span></div>
