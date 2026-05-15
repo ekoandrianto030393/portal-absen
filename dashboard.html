@@ -143,15 +143,18 @@
                 position: relative !important;
             }
             
-            /* Optimasi Tabel Panjang & Lebar */
+            /* Optimasi Tabel Rekap untuk Cetak Skala Besar */
             #print-table-container { width: 100%; overflow: visible !important; display: block !important; }
             #print-table-container table {
-                table-layout: auto; width: 100% !important; border-collapse: collapse !important; 
+                table-layout: auto; width: 100% !important; border-collapse: collapse !important;
                 overflow: visible !important; page-break-inside: auto !important;
             }
-            #print-table-container th, #print-table-container td { font-size: 7px !important; padding: 1px !important; word-wrap: break-word; }
+            /* Memperbesar Font dan Baris agar memenuhi 4-5 lembar kertas */
+            #print-table-container th { font-size: 11pt !important; padding: 15px 5px !important; border: 2px solid black !important; }
+            #print-table-container td { font-size: 13pt !important; padding: 25px 10px !important; border: 1px solid black !important; line-height: 1.4; }
+            
             thead { display: table-header-group !important; } 
-            tr { break-inside: avoid !important; page-break-inside: avoid !important; page-break-after: auto !important; } 
+            tr { break-inside: avoid !important; page-break-inside: avoid !important; page-break-after: auto !important; border-bottom: 2px solid black !important; } 
             
             /* Perbaikan Footer: Ubah dari FIXED ke RELATIVE agar tidak menutupi baris terakhir */
             .print\:hidden { display: none !important; }

@@ -1712,12 +1712,12 @@ function printReport() {
         const tableClone = sourceTable.cloneNode(true);
         
         // Hapus class Tailwind yang tidak cocok untuk cetak resmi
-        tableClone.className = 'border-collapse border border-black text-[7px] font-serif leading-tight w-full';
+        tableClone.className = 'border-collapse border-2 border-black text-[12pt] font-serif leading-relaxed w-full';
         
         // Styling Header (Hitam Putih, Tegas)
         const thead = tableClone.querySelector('thead');
         if (thead) {
-            thead.className = 'bg-gray-100 text-black font-bold border-b-2 border-black';
+            thead.className = 'bg-gray-200 text-black font-bold border-b-4 border-black';
             const ths = thead.querySelectorAll('th');
             ths.forEach(th => {
                 // [FIX] Hapus kolom Aksi agar tidak terpotong saat dicetak
@@ -1726,7 +1726,7 @@ function printReport() {
                     return;
                 }
 
-                th.className = 'border border-black px-1 py-1 text-center align-middle uppercase';
+                th.className = 'border-2 border-black px-4 py-6 text-center align-middle uppercase font-bold bg-gray-200';
                 th.style.position = 'static'; // Hapus sticky
                 // Hapus ikon sort
                 const icon = th.querySelector('i');
@@ -1752,7 +1752,13 @@ function printReport() {
                         return;
                     }
 
-                    cell.className = 'border border-black px-1 py-1 align-middle text-black';
+                    // Kolom Nama (idx 2) dan ID (idx 1) dibuat lebih tebal dan besar
+                    let extraStyle = '';
+                    if (cell.cellIndex === 1 || cell.cellIndex === 2) {
+                        extraStyle = ' font-black text-[14pt]'; 
+                    }
+
+                    cell.className = 'border border-black px-4 py-8 align-middle text-black' + extraStyle;
                     cell.style.backgroundColor = 'transparent';
                     cell.style.color = 'black';
                     cell.style.position = 'static';

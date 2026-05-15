@@ -3826,31 +3826,6 @@ async function processAttendance(karyawanId, imageBase64) {
                             <!-- Subtle carbon pattern for header -->
                             <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 5px); background-size: 10px 10px;"></div>
                             
-                            <!-- [NEW] Siger Lampung Watermark Silhouette (7 Bukit, 6 Lembah) -->
-                            <div class="absolute right-6 top-1/2 transform -translate-y-1/2 opacity-[0.15] pointer-events-none z-0">
-                                <svg width="140" height="55" viewBox="0 0 120 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M 60 4 
-                                             C 62 18, 64 25, 66 28 
-                                             C 68 22, 72 15, 76 12
-                                             C 78 20, 80 26, 82 29
-                                             C 84 24, 88 19, 92 18
-                                             C 94 24, 96 28, 98 30
-                                             C 100 28, 104 25, 106 25
-                                             C 108 32, 110 38, 112 40
-                                             L 8 40
-                                             C 10 38, 12 32, 14 25
-                                             C 16 25, 20 28, 22 30
-                                             C 24 28, 26 24, 28 18
-                                             C 32 19, 36 24, 38 29
-                                             C 40 26, 42 20, 44 12
-                                             C 48 15, 52 22, 54 28
-                                             C 56 25, 58 18, 60 4 Z" 
-                                          fill="#FFD700" />
-                                    <!-- Decorative Academic Base -->
-                                    <path d="M 5 44 L 115 44" stroke="#FFD700" stroke-width="2"/>
-                                    <path d="M 15 48 L 105 48" stroke="#FFD700" stroke-width="1.5"/>
-                                </svg>
-                            </div>
 
                             <div class="w-14 h-14 rounded-full flex items-center justify-center border border-[#FFD700]/40 mr-5 shadow-[0_0_20px_rgba(255,215,0,0.15)] bg-black relative z-10">
                                 <img src="logo.jpg" class="w-full h-full object-cover rounded-full opacity-90">
