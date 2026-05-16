@@ -2332,25 +2332,61 @@ async function updatePersonnelRoster() {
             const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-orange-500 ml-1.5 text-sm flex-shrink-0 shadow-[0_0_10px_rgba(249,115,22,0.6)]" title="Cuti"></i>' : '';
 
             const item = document.createElement('div');
-            item.className = `flex items-center gap-3 p-2.5 border-b border-cyan-900/30 ${bgHover} transition-colors duration-200 animate-[fadeIn_0.5s_ease-out]`;
+            item.className = `group flex items-center gap-4 p-3 border-b border-cyan-900/20 ${bgHover} transition-all duration-300 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden`;
             
+            // Tambahkan gradasi latar belakang halus untuk kesan premium
+            if (isCuti) {
+                item.style.background = 'linear-gradient(90deg, rgba(249,115,22,0.15) 0%, transparent 100%)';
+            } else if (isOut) {
+                item.style.background = 'linear-gradient(90deg, rgba(245,158,11,0.08) 0%, transparent 100%)';
+            } else {
+                item.style.background = 'linear-gradient(90deg, rgba(0,255,127,0.05) 0%, transparent 100%)';
+            }
+
+            // Percantik Badge Status
+            const badgeStyle = isOut ? 
+                'bg-amber-500/10 text-amber-500 border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.2)]' : 
+                'bg-green-500/10 text-green-500 border-green-500/30 shadow-[0_0_8px_rgba(0,255,127,0.2)]';
+            
+            const badgeText = isOut ? 'PULANG' : 'HADIR'; 
+            if (isCuti) {
+                statusLabelHtml = `<span class="text-[9px] px-2 py-0.5 rounded-full border bg-orange-500/10 text-orange-400 border-orange-500/30 font-black tracking-tighter uppercase">CUTI</span>`;
+            } else if (isDL) {
+                statusLabelHtml = `<span class="text-[9px] px-2 py-0.5 rounded-full border bg-blue-500/10 text-blue-400 border-blue-500/30 font-black tracking-tighter uppercase">DINAS LUAR</span>`;
+            } else {
+                statusLabelHtml = `<span class="text-[9px] px-2 py-0.5 rounded-full border ${badgeStyle} font-black tracking-tighter uppercase">${badgeText}</span>`;
+            }
+
             item.innerHTML = `
-                <div class="relative w-12 h-12 flex-shrink-0">
-                    <img src="${photoSrc}" class="w-full h-full rounded-md object-cover border ${borderColor} bg-gray-800">
-                    <div class="absolute -bottom-1 -right-1 w-3 h-3 ${statusColor} rounded-full border border-black animate-pulse" title="${statusText}"></div>
+                <!-- AVATAR SECTION -->
+                <div class="relative w-14 h-14 flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
+                    <div class="absolute inset-0 rounded-lg border-2 ${borderColor} opacity-30 group-hover:opacity-100 transition-opacity"></div>
+                    <img src="${photoSrc}" class="w-full h-full rounded-lg object-cover border border-cyan-500/20 bg-gray-900 shadow-lg" style="filter: brightness(1.1) contrast(1.1); image-rendering: -webkit-optimize-contrast;">
+                    <div class="absolute -bottom-1 -right-1 w-4 h-4 ${statusColor} rounded-full border-2 border-[#05050A] shadow-[0_0_10px_inherit]" title="${statusText}"></div>
                 </div>
+
+                <!-- INFO SECTION -->
                 <div class="flex-grow min-w-0">
-                    <div class="flex items-center">
-                        <p class="font-bold text-xs text-white truncate leading-tight">${row.nama}</p>
-                        ${dlIcon}
-                        ${cutiIcon}
+                    <div class="flex items-center justify-between mb-0.5">
+                        <p class="font-bold text-[13px] text-white truncate leading-none tracking-wide group-hover:text-cyan-300 transition-colors">${row.nama}</p>
+                        ${dlIcon || cutiIcon || ''}
                     </div>
-                    <p class="text-[10px] text-cyan-300 truncate ${isCuti ? 'opacity-100 font-semibold' : 'opacity-80'}">${row.jabatan || '-'}</p>
-                    <div class="flex justify-between items-center mt-1">
-                        <p class="text-[10px] text-gray-400 font-mono bg-black/30 px-1 rounded">${timeDisplay}</p>
-                        ${statusLabelHtml}
+                    <p class="text-[10px] text-cyan-500/70 truncate font-medium mb-1.5 uppercase tracking-widest">${row.jabatan || '-'}</p>
+                    
+                    <div class="flex justify-between items-end">
+                        <div class="flex flex-col">
+                            <span class="text-[8px] text-gray-500 uppercase font-bold tracking-tighter mb-0.5">Timestamp</span>
+                            <p class="text-[11px] text-cyan-400 font-mono bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-500/10 shadow-inner">${timeDisplay}</p>
+                        </div>
+                        <div class="flex flex-col items-end">
+                             <span class="text-[8px] text-gray-500 uppercase font-bold tracking-tighter mb-0.5">Status</span>
+                             ${statusLabelHtml}
+                        </div>
                     </div>
                 </div>
+
+                <!-- DECORATIVE EDGE -->
+                <div class="absolute right-0 top-1/4 bottom-1/4 w-[2px] ${isOut ? 'bg-amber-500/30' : 'bg-green-500/30'} rounded-l"></div>
             `;
             
             if (isDL && dlRoster) {

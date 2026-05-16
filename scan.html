@@ -141,8 +141,6 @@
             position: relative;
             overflow: hidden;
             transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); /* Transisi lebih halus & profesional */
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             animation: panel-pulse-glitch 4s infinite;
         }
 
@@ -1609,9 +1607,9 @@
 </div>
 
 <!-- [NEW] PANEL KHUSUS CUTI PEGAWAI -->
-<div id="cuti-panel" class="widget-panel border-orange-500/80 shadow-[0_0_20px_rgba(249,115,22,0.4)]" style="backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); background: rgba(10, 5, 0, 0.95);">
+<div id="cuti-panel" class="widget-panel border-orange-500/80 shadow-[0_0_20px_rgba(249,115,22,0.4)]" style="background: rgba(10, 5, 0, 0.98); overflow: visible;">
     <h2 class="widget-title" style="background: linear-gradient(90deg, #F97316 0%, #EA580C 100%); color: white; text-shadow: 0 0 10px rgba(255,255,255,0.5);">:: CUTI PEGAWAI ::</h2>
-    <div id="cutiRoster" class="max-h-60 overflow-y-auto pr-1 flex flex-col gap-1"></div>
+    <div id="cutiRoster" class="flex flex-col gap-1"></div>
 </div>
 
                 <!-- [MODIFIED] Menambahkan ID dan status awal tersembunyi -->
@@ -1682,7 +1680,7 @@
 
             <div class="col-span-1 flex flex-col gap-4 order-3">
                 <!-- PANEL WAVEFORM DIGANTI DENGAN PERSONNEL ROSTER -->
-                <div class="widget-panel flex-grow min-h-0">
+                <div class="widget-panel flex-grow min-h-0" style="background: rgba(5, 10, 15, 0.98);">
                     <h2 class="widget-title">:: STATUS KEHADIRAN ::</h2>
                     <!-- Container untuk daftar personel -->
                     <div id="personnelRoster" class="h-full overflow-y-auto pr-1">
@@ -1690,9 +1688,9 @@
                     </div>
                 </div>
 
-                <div class="widget-panel h-64 flex-shrink-0">
+                <div class="widget-panel h-64 flex-shrink-0" style="background: rgba(5, 10, 15, 0.98);">
                     <h2 class="widget-title">:: LOG KEHADIRAN ::</h2>
-                    <div id="attendanceLog" class="h-full overflow-y-auto font-mono text-xs opacity-90 space-y-1">
+                    <div id="attendanceLog" class="h-full overflow-y-auto font-mono text-xs opacity-100 space-y-1">
                         <p class="text-gray-600 italic">> Waiting for check-in...</p>
                     </div>
                 </div>
