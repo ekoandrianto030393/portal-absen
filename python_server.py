@@ -30,6 +30,7 @@ import numpy as np
 import mysql.connector
 import os
 import traceback
+from models.anti_spoofing.anti_spoof_predict import AntiSpoofPredict
 
 # Muat konfigurasi dari file .env (sama seperti Node.js)
 load_dotenv()
@@ -45,13 +46,15 @@ db_config = {
     'database': os.getenv('DB_NAME', 'biometrik_absensi_wajah_db')
 }
 
-# --- INISIALISASI MODEL INSIGHTFACE ---
+# --- INISIALISASI MODEL ---
 face_app = None
+anti_spoof_model = None
 MODEL_LOADED = False
+ANTISPOOF_ENABLED = False
 
 def init_model():
-    """Inisialisasi model InsightFace (buffalo_l) saat startup"""
-    global face_app, MODEL_LOADED
+    """Inisialisasi model InsightFace dan Anti-Spoofing"""
+    global face_app, anti_spoof_model, MODEL_LOADED, ANTISPOOF_ENABLED
     try:
         from insightface.app import FaceAnalysis
         print("🔄 Memuat model InsightFace (buffalo_l)... Mohon tunggu...")
@@ -59,12 +62,25 @@ def init_model():
         face_app.prepare(ctx_id=0, det_size=(640, 640))
         MODEL_LOADED = True
         print("✅ Model InsightFace berhasil dimuat!")
+
+        # Inisialisasi Anti-Spoofing
+        print("🔄 Memeriksa model Anti-Spoofing...")
+        anti_spoof_model = AntiSpoofPredict(0)
+        model_path = "models/anti_spoofing/2.7_80x80_MiniFASNetV2.pth"
+        if os.path.exists(model_path):
+            ANTISPOOF_ENABLED = True
+            print("✅ Model Anti-Spoofing AKTIF!")
+        else:
+            print("⚠️ Model Anti-Spoofing TIDAK DITEMUKAN (weights missing).")
+            print(f"   Harap letakkan file weights di: {model_path}")
+            ANTISPOOF_ENABLED = False
+
     except ImportError:
         print("❌ ERROR: Library 'insightface' belum terinstal!")
         print("   Jalankan: pip install insightface onnxruntime")
         MODEL_LOADED = False
     except Exception as e:
-        print(f"❌ ERROR memuat model InsightFace: {str(e)}")
+        print(f"❌ ERROR memuat model: {str(e)}")
         MODEL_LOADED = False
 
 
@@ -166,6 +182,55 @@ def verify_face():
                 "message": "Wajah tidak terdeteksi oleh InsightFace (kamera)",
                 "engine": "insightface"
             })
+
+        # --- STEP 1.5: Anti-Spoofing Check (Deteksi HP/Foto) ---
+        if ANTISPOOF_ENABLED:
+            face = camera_faces[0]
+            bbox = face.bbox.astype(int)
+            # Pastikan bbox valid
+            # Logic Crop Persegi Sempurna untuk Anti-Spoofing
+            w = bbox[2] - bbox[0]
+            h = bbox[3] - bbox[1]
+            side = max(w, h) # Gunakan sisi terpanjang agar tetap square
+            
+            center_x = bbox[0] + w/2
+            center_y = bbox[1] + h/2
+            
+            # Skala 2.7x dari sisi terpanjang
+            scale = 2.7
+            new_side = side * scale
+            
+            x1 = int(max(0, center_x - new_side/2))
+            y1 = int(max(0, center_y - new_side/2))
+            x2 = int(min(camera_img.shape[1], center_x + new_side/2))
+            y2 = int(min(camera_img.shape[0], center_y + new_side/2))
+            
+            face_img = camera_img[y1:y2, x1:x2]
+            
+            # Tambahkan padding jika potongan di pinggir layar tidak square
+            if face_img.shape[0] != face_img.shape[1] and face_img.size > 0:
+                fh, fw = face_img.shape[:2]
+                diff = abs(fh - fw)
+                if fh < fw:
+                    face_img = cv2.copyMakeBorder(face_img, diff//2, diff-diff//2, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
+                else:
+                    face_img = cv2.copyMakeBorder(face_img, 0, 0, diff//2, diff-diff//2, cv2.BORDER_CONSTANT, value=[0,0,0])
+            
+            if face_img.size > 0:
+                model_path = "models/anti_spoofing/2.7_80x80_MiniFASNetV2.pth"
+                prediction = anti_spoof_model.predict(face_img, model_path)
+                # Ambil 5 nilai tertinggi
+                top_indices = np.argsort(prediction[0])[-5:][::-1]
+                top_values = [f"Idx{i}:{prediction[0][i]:.2f}" for i in top_indices]
+                
+                # Hitung L2 Norm (Panjang Vektor)
+                vector_norm = np.linalg.norm(prediction[0])
+                
+                print(f"🔍 DEBUG Anti-Spoof: Norm={vector_norm:.4f} | Top {top_values}")
+                
+                # SEMENTARA: Kita biarkan lewat dulu (Skip Reject)
+                if False and vector_norm < 0.1: # Contoh threshold norm
+                    print(f"⚠️ REJECTED: Norm {vector_norm:.4f}")
 
         camera_embedding = camera_faces[0].embedding.astype(np.float32)
 

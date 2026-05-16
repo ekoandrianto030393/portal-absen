@@ -1914,6 +1914,7 @@ function logAttendance(name, time) {
     `;
     
     attendanceLog.prepend(entry);
+    attendanceLog.scrollTop = 0; // [NEW] Auto-scroll ke atas
     
     // Batasi log agar tidak terlalu panjang
     if (attendanceLog.children.length > 50) {
@@ -2248,9 +2249,6 @@ function startRosterAutoScroll() {
 async function updatePersonnelRoster() {
     if (!personnelRoster) return;
     
-    // [FIX] Simpan posisi scroll sebelum update agar tidak reset ke atas
-    const previousScroll = personnelRoster.scrollTop;
-
     try {
         // Ambil data absensi hari ini dari server
         const data = await api.getTodayAttendance();
@@ -2269,6 +2267,20 @@ async function updatePersonnelRoster() {
             return;
         }
 
+        // [UPDATE] Sorting Super Prioritas: Siapa yang barusan absen (Masuk/Pulang) naik ke paling atas
+        data.sort((a, b) => {
+            // Ambil waktu aktivitas terakhir
+            const timeA = a.jam_keluar || a.jam_masuk || '00:00:00';
+            const timeB = b.jam_keluar || b.jam_masuk || '00:00:00';
+            
+            // Jika salah satu punya jam_keluar dan yang lain tidak, yang punya jam_keluar (Pulang) di atas
+            if (a.jam_keluar && !b.jam_keluar) return -1;
+            if (!a.jam_keluar && b.jam_keluar) return 1;
+
+            // Jika sama-sama sudah pulang atau sama-sama baru masuk, urutkan jam terbaru
+            return timeB.localeCompare(timeA);
+        });
+
         const regularWrapper = document.createElement('div');
         regularWrapper.className = 'w-full flex flex-col gap-1';
         
@@ -2282,11 +2294,10 @@ async function updatePersonnelRoster() {
         let hasCuti = false;
 
         data.forEach(row => {
-            // Ambil foto dari cache employeeMap jika ada, atau gunakan placeholder
+            // ... (logika rendering tetap sama)
             const empData = employeeMap[row.id_karyawan] || {};
             const photoSrc = empData.foto ? `data:image/jpeg;base64,${empData.foto}` : 'logo.jpg';
             
-            // Tentukan status (Masuk/Pulang/DL)
             const statusRaw = row.status ? row.status.toUpperCase().trim() : '';
             const isDL = ['DL', 'DINAS_LUAR', 'DINAS LUAR'].includes(statusRaw);
             const isCuti = ['CUTI'].includes(statusRaw);
@@ -2303,11 +2314,11 @@ async function updatePersonnelRoster() {
                 statusLabelHtml = '<span class="text-[9px] text-blue-400 font-bold">DL</span>';
             } else if (isCuti) {
                 timeDisplay = 'SEDANG CUTI';
-                statusColor = 'bg-orange-500 shadow-[0_0_5px_#F97316]';
+                statusColor = 'bg-orange-500 shadow-[0_0_8px_#F97316]';
                 statusText = 'CUTI';
-                borderColor = 'border-orange-500/50';
-                bgHover = 'hover:bg-orange-900/20';
-                statusLabelHtml = '<span class="text-[9px] text-orange-400 font-bold">CUTI</span>';
+                borderColor = 'border-orange-500/80';
+                bgHover = 'bg-orange-900/10 hover:bg-orange-900/30'; // Selalu ada bg tipis agar jelas
+                statusLabelHtml = '<span class="text-[10px] text-orange-400 font-bold" style="text-shadow: 0 0 5px rgba(249,115,22,0.5);">CUTI</span>';
             } else {
                 timeDisplay = isOut ? `OUT: ${row.jam_keluar ? row.jam_keluar.substring(0,5) : '--:--'}` : `IN: ${row.jam_masuk ? row.jam_masuk.substring(0,5) : '--:--'}`;
                 statusColor = isOut ? 'bg-amber-500 shadow-[0_0_5px_#F59E0B]' : 'bg-green-500 shadow-[0_0_5px_#00FF00]';
@@ -2317,9 +2328,8 @@ async function updatePersonnelRoster() {
                 statusLabelHtml = isOut ? '<span class="text-[9px] text-amber-500 font-bold">PULANG</span>' : '<span class="text-[9px] text-green-500 font-bold">AKTIF</span>';
             }
 
-            // [NEW] Icon Koper untuk DL
             const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-blue-400 ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
-            const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-day text-orange-400 ml-1.5 text-[10px] flex-shrink-0" title="Cuti"></i>' : '';
+            const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-orange-500 ml-1.5 text-sm flex-shrink-0 shadow-[0_0_10px_rgba(249,115,22,0.6)]" title="Cuti"></i>' : '';
 
             const item = document.createElement('div');
             item.className = `flex items-center gap-3 p-2.5 border-b border-cyan-900/30 ${bgHover} transition-colors duration-200 animate-[fadeIn_0.5s_ease-out]`;
@@ -2335,7 +2345,7 @@ async function updatePersonnelRoster() {
                         ${dlIcon}
                         ${cutiIcon}
                     </div>
-                    <p class="text-[10px] text-cyan-300 truncate opacity-80">${row.jabatan || '-'}</p>
+                    <p class="text-[10px] text-cyan-300 truncate ${isCuti ? 'opacity-100 font-semibold' : 'opacity-80'}">${row.jabatan || '-'}</p>
                     <div class="flex justify-between items-center mt-1">
                         <p class="text-[10px] text-gray-400 font-mono bg-black/30 px-1 rounded">${timeDisplay}</p>
                         ${statusLabelHtml}
@@ -2343,7 +2353,6 @@ async function updatePersonnelRoster() {
                 </div>
             `;
             
-            // [NEW] Pisahkan ke panel DL jika statusnya DL
             if (isDL && dlRoster) {
                 dlWrapper.appendChild(item);
                 hasDL = true;
@@ -2356,9 +2365,7 @@ async function updatePersonnelRoster() {
         });
         
         personnelRoster.appendChild(regularWrapper);
-
-        // [FIX] Restore posisi scroll setelah konten diperbarui
-        if (previousScroll > 0) personnelRoster.scrollTop = previousScroll;
+        personnelRoster.scrollTop = 0; // [NEW] Auto-scroll ke atas setelah update
 
         // [NEW] Update Panel DL
         if (dlRoster && dlPanel) {
@@ -2467,6 +2474,20 @@ const api = {
                         jabatan: pyResult.jabatan || ''
                     };
                 }
+            } else if (pyResponse.status === 403) {
+                // KASUS KHUSUS: Anti-Spoofing (Deteksi HP/Foto)
+                const pyResult = await pyResponse.json();
+                console.error("🐍 [PYTHON] Anti-Spoofing Rejection:", pyResult.message);
+                logSystem(`SECURITY ALERT: SPOOFING DETECTED!`, 'text-red-500');
+                
+                return {
+                    success: false,
+                    message: pyResult.message || "⚠️ TERDETEKSI SPOOFING! Gunakan wajah asli.",
+                    statusColor: 'red',
+                    result_code: 'SPOOFING_DETECTED',
+                    nama: 'SECURITY ALERT',
+                    jabatan: 'REJECTED'
+                };
             }
         } catch (pyErr) {
             // Python server tidak tersedia - lanjut ke Node.js saja
@@ -3578,6 +3599,7 @@ async function processAttendance(karyawanId, imageBase64) {
                         finalStatusColor = '#00FF7F'; // Hijau Spring (Sama seperti Check-In)
                         finalBackground = ABSEN_NORMAL_BG;
                     }
+                    logAttendance(display_name, serverTimestamp); // Log ke panel kanan
                     updatePersonnelRoster(); // Refresh Roster Visual
                     break;
                 case 'ALREADY_IN_CONFIRMATION':
