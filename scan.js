@@ -2219,31 +2219,38 @@ function animateTitle() {
 
 // --- NEW: PERSONNEL ROSTER ---
 let rosterScrollInterval = null;
+let cutiScrollInterval = null; // [NEW] Untuk panel Cuti
 
-// [NEW] Fungsi Auto Scroll Panel Kehadiran
+// [NEW] Fungsi Auto Scroll Panel Kehadiran & Cuti
 function startRosterAutoScroll() {
-    if (!personnelRoster) return;
-    
-    // Reset interval jika sudah ada agar tidak tumpang tindih
-    if (rosterScrollInterval) clearInterval(rosterScrollInterval);
-
     const speed = 1; // Kecepatan scroll (pixel per tick)
-    const delay = 50; // Interval waktu (ms) - Semakin kecil semakin halus
+    const delay = 50; // Interval waktu (ms)
 
-    rosterScrollInterval = setInterval(() => {
-        // 1. Pause otomatis jika mouse sedang berada di atas panel (Hover)
-        if (personnelRoster.matches(':hover')) return;
-
-        // 2. Cek apakah konten lebih panjang dari container (perlu di-scroll)
-        if (personnelRoster.scrollHeight > personnelRoster.clientHeight) {
-            personnelRoster.scrollTop += speed; // Gerakkan ke bawah
-
-            // 3. Jika sudah mentok paling bawah, kembali ke atas (Looping)
-            if (Math.ceil(personnelRoster.scrollTop + personnelRoster.clientHeight) >= personnelRoster.scrollHeight) {
-                personnelRoster.scrollTop = 0;
+    if (personnelRoster) {
+        if (rosterScrollInterval) clearInterval(rosterScrollInterval);
+        rosterScrollInterval = setInterval(() => {
+            if (personnelRoster.matches(':hover')) return;
+            if (personnelRoster.scrollHeight > personnelRoster.clientHeight) {
+                personnelRoster.scrollTop += speed;
+                if (Math.ceil(personnelRoster.scrollTop + personnelRoster.clientHeight) >= personnelRoster.scrollHeight) {
+                    personnelRoster.scrollTop = 0;
+                }
             }
-        }
-    }, delay);
+        }, delay);
+    }
+
+    if (cutiRoster) {
+        if (cutiScrollInterval) clearInterval(cutiScrollInterval);
+        cutiScrollInterval = setInterval(() => {
+            if (cutiRoster.matches(':hover')) return;
+            if (cutiRoster.scrollHeight > cutiRoster.clientHeight) {
+                cutiRoster.scrollTop += speed;
+                if (Math.ceil(cutiRoster.scrollTop + cutiRoster.clientHeight) >= cutiRoster.scrollHeight) {
+                    cutiRoster.scrollTop = 0;
+                }
+            }
+        }, delay);
+    }
 }
 
 async function updatePersonnelRoster() {
@@ -2307,86 +2314,112 @@ async function updatePersonnelRoster() {
 
             if (isDL) {
                 timeDisplay = 'DINAS LUAR';
-                statusColor = 'bg-blue-500 shadow-[0_0_5px_#3B82F6]';
+                statusColor = 'bg-[#00D2D3] shadow-[0_0_15px_#00D2D3]';
                 statusText = 'DINAS LUAR';
-                borderColor = 'border-blue-500/50';
-                bgHover = 'hover:bg-blue-900/20';
-                statusLabelHtml = '<span class="text-[9px] text-blue-400 font-bold">DL</span>';
+                borderColor = 'border-[#00D2D3]/60';
+                bgHover = '';
             } else if (isCuti) {
                 timeDisplay = 'SEDANG CUTI';
-                statusColor = 'bg-orange-500 shadow-[0_0_8px_#F97316]';
+                statusColor = 'bg-[#FF6B00] shadow-[0_0_15px_#FF6B00]';
                 statusText = 'CUTI';
-                borderColor = 'border-orange-500/80';
-                bgHover = 'bg-orange-900/10 hover:bg-orange-900/30'; // Selalu ada bg tipis agar jelas
-                statusLabelHtml = '<span class="text-[10px] text-orange-400 font-bold" style="text-shadow: 0 0 5px rgba(249,115,22,0.5);">CUTI</span>';
+                borderColor = 'border-[#FF6B00]/60';
+                bgHover = '';
             } else {
                 timeDisplay = isOut ? `OUT: ${row.jam_keluar ? row.jam_keluar.substring(0,5) : '--:--'}` : `IN: ${row.jam_masuk ? row.jam_masuk.substring(0,5) : '--:--'}`;
-                statusColor = isOut ? 'bg-amber-500 shadow-[0_0_5px_#F59E0B]' : 'bg-green-500 shadow-[0_0_5px_#00FF00]';
+                statusColor = isOut ? 'bg-[#FFB703] shadow-[0_2px_10px_rgba(255,183,3,0.5)]' : 'bg-[#00A3FF] shadow-[0_2px_10px_rgba(0,163,255,0.5)]';
                 statusText = isOut ? 'SUDAH PULANG' : 'HADIR';
-                borderColor = isOut ? 'border-amber-500/50' : 'border-green-500/50';
-                bgHover = isOut ? 'hover:bg-amber-900/20' : 'hover:bg-green-900/20';
-                statusLabelHtml = isOut ? '<span class="text-[9px] text-amber-500 font-bold">PULANG</span>' : '<span class="text-[9px] text-green-500 font-bold">AKTIF</span>';
+                borderColor = isOut ? 'border-[#FFB703]/40' : 'border-[#00A3FF]/40';
+                bgHover = '';
             }
 
-            const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-blue-400 ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
-            const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-orange-500 ml-1.5 text-sm flex-shrink-0 shadow-[0_0_10px_rgba(249,115,22,0.6)]" title="Cuti"></i>' : '';
+            const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-[#00D2D3] ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
+            const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-[#FF6B00] ml-1.5 text-sm flex-shrink-0 shadow-[0_2px_8px_rgba(255,107,0,0.4)]" title="Cuti"></i>' : '';
 
             const item = document.createElement('div');
-            item.className = `group flex items-center gap-4 p-3 border-b border-cyan-900/20 ${bgHover} transition-all duration-300 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden`;
+            item.className = `group flex items-center gap-4 p-3 rounded-xl border border-white/10 transition-all duration-500 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden backdrop-blur-xl shadow-[0_4px_25px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_35px_rgba(0,0,0,0.6)] hover:-translate-y-1`;
             
-            // Tambahkan gradasi latar belakang halus untuk kesan premium
-            if (isCuti) {
-                item.style.background = 'linear-gradient(90deg, rgba(249,115,22,0.15) 0%, transparent 100%)';
-            } else if (isOut) {
-                item.style.background = 'linear-gradient(90deg, rgba(245,158,11,0.08) 0%, transparent 100%)';
-            } else {
-                item.style.background = 'linear-gradient(90deg, rgba(0,255,127,0.05) 0%, transparent 100%)';
-            }
-
-            // Percantik Badge Status
-            const badgeStyle = isOut ? 
-                'bg-amber-500/10 text-amber-500 border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.2)]' : 
-                'bg-green-500/10 text-green-500 border-green-500/30 shadow-[0_0_8px_rgba(0,255,127,0.2)]';
+            // Latar Belakang Elegan & Cerah (Frosted Glass)
+            let bgGradient = '';
+            let glowColor = '';
+            let badgeGradient = '';
+            let timeGradient = '';
             
-            const badgeText = isOut ? 'PULANG' : 'HADIR'; 
             if (isCuti) {
-                statusLabelHtml = `<span class="text-[9px] px-2 py-0.5 rounded-full border bg-orange-500/10 text-orange-400 border-orange-500/30 font-black tracking-tighter uppercase">CUTI</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(255,107,0,0.12) 0%, rgba(255,107,0,0.03) 50%, rgba(10,15,20,0.8) 100%)';
+                glowColor = 'rgba(255,107,0,0.5)';
+                badgeGradient = 'from-[#FF6B00]/20 to-[#CC5500]/10 text-[#FF6B00] border-[#FF6B00]/30';
+                timeGradient = 'text-[#FF6B00] bg-[#FF6B00]/10 border-[#FF6B00]/20';
+                statusLabelHtml = `<span class="text-[9px] px-2.5 py-0.5 rounded-md border bg-gradient-to-r ${badgeGradient} shadow-[0_2px_8px_rgba(255,107,0,0.3)] font-extrabold tracking-[0.2em] uppercase" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">CUTI</span>`;
             } else if (isDL) {
-                statusLabelHtml = `<span class="text-[9px] px-2 py-0.5 rounded-full border bg-blue-500/10 text-blue-400 border-blue-500/30 font-black tracking-tighter uppercase">DINAS LUAR</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(0,210,211,0.12) 0%, rgba(0,210,211,0.03) 50%, rgba(10,15,20,0.8) 100%)';
+                glowColor = 'rgba(0,210,211,0.5)';
+                badgeGradient = 'from-[#00D2D3]/20 to-[#01A3A4]/10 text-[#00D2D3] border-[#00D2D3]/30';
+                timeGradient = 'text-[#00D2D3] bg-[#00D2D3]/10 border-[#00D2D3]/20';
+                statusLabelHtml = `<span class="text-[9px] px-2.5 py-0.5 rounded-md border bg-gradient-to-r ${badgeGradient} shadow-[0_2px_8px_rgba(0,210,211,0.3)] font-extrabold tracking-[0.2em] uppercase" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">DINAS LUAR</span>`;
+            } else if (isOut) {
+                bgGradient = 'linear-gradient(135deg, rgba(255,183,3,0.12) 0%, rgba(255,183,3,0.03) 50%, rgba(10,15,20,0.8) 100%)';
+                glowColor = 'rgba(255,183,3,0.5)';
+                badgeGradient = 'from-[#FFB703]/20 to-[#E0A800]/10 text-[#FFB703] border-[#FFB703]/30';
+                timeGradient = 'text-[#FFB703] bg-[#FFB703]/10 border-[#FFB703]/20';
+                statusLabelHtml = `<span class="text-[9px] px-2.5 py-0.5 rounded-md border bg-gradient-to-r ${badgeGradient} shadow-[0_2px_8px_rgba(255,183,3,0.3)] font-extrabold tracking-[0.2em] uppercase" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">PULANG</span>`;
             } else {
-                statusLabelHtml = `<span class="text-[9px] px-2 py-0.5 rounded-full border ${badgeStyle} font-black tracking-tighter uppercase">${badgeText}</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(0,163,255,0.12) 0%, rgba(0,163,255,0.03) 50%, rgba(10,15,20,0.8) 100%)';
+                glowColor = 'rgba(0,163,255,0.5)';
+                badgeGradient = 'from-[#00A3FF]/20 to-[#0077CC]/10 text-[#00A3FF] border-[#00A3FF]/30';
+                timeGradient = 'text-[#00A3FF] bg-[#00A3FF]/10 border-[#00A3FF]/20';
+                statusLabelHtml = `<span class="text-[9px] px-2.5 py-0.5 rounded-md border bg-gradient-to-r ${badgeGradient} shadow-[0_2px_8px_rgba(0,163,255,0.3)] font-extrabold tracking-[0.2em] uppercase" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">HADIR</span>`;
             }
+            
+            item.style.background = bgGradient;
+
+            // Aksen highlight saat hover
+            const hoverGlowClass = isCuti ? 'group-hover:text-[#FF6B00]' : isDL ? 'group-hover:text-[#00D2D3]' : isOut ? 'group-hover:text-[#FFB703]' : 'group-hover:text-[#00A3FF]';
+            const nameColor = isOut ? 'text-gray-200' : 'text-white';
 
             item.innerHTML = `
+                <!-- HOVER LIGHT EFFECT (Crystal Shine) -->
+                <div class="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-all pointer-events-none transform -translate-x-full group-hover:translate-x-full ease-in-out" style="transition-duration: 1s;"></div>
+                
                 <!-- AVATAR SECTION -->
-                <div class="relative w-14 h-14 flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
-                    <div class="absolute inset-0 rounded-lg border-2 ${borderColor} opacity-30 group-hover:opacity-100 transition-opacity"></div>
-                    <img src="${photoSrc}" class="w-full h-full rounded-lg object-cover border border-cyan-500/20 bg-gray-900 shadow-lg" style="filter: brightness(1.1) contrast(1.1); image-rendering: -webkit-optimize-contrast;">
-                    <div class="absolute -bottom-1 -right-1 w-4 h-4 ${statusColor} rounded-full border-2 border-[#05050A] shadow-[0_0_10px_inherit]" title="${statusText}"></div>
+                <div class="relative w-[68px] h-[68px] flex-shrink-0 group-hover:scale-110 transition-transform duration-500 z-10">
+                    <!-- Outer Glass Plate (Bingkai Kaca) -->
+                    <div class="absolute -inset-1 rounded-xl border border-white/20 bg-gradient-to-br from-white/10 to-transparent shadow-[0_8px_20px_rgba(0,0,0,0.8)] z-0 pointer-events-none backdrop-blur-sm"></div>
+                    
+                    <!-- Inner Neon Glow Frame (Bingkai Cahaya) -->
+                    <div class="absolute inset-0 rounded-lg border-[2px] ${borderColor} opacity-90 group-hover:opacity-100 transition-opacity shadow-[inset_0_0_15px_rgba(255,255,255,0.4)] mix-blend-screen z-20 pointer-events-none"></div>
+                    
+                    <!-- Sci-Fi Tech Corners (Siku Futuristik) -->
+                    <div class="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-[3px] border-l-[3px] ${borderColor} rounded-tl-xl z-30 opacity-90 shadow-[0_0_10px_inherit]"></div>
+                    <div class="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-[3px] border-r-[3px] ${borderColor} rounded-br-xl z-30 opacity-90 shadow-[0_0_10px_inherit]"></div>
+                    
+                    <img src="${photoSrc}" class="w-full h-full rounded-lg object-cover bg-[#02050A] relative z-10" style="filter: brightness(1.1) contrast(1.1) saturate(1.05); image-rendering: high-quality; -webkit-backface-visibility: hidden; transform: translateZ(0);">
+                    
+                    <!-- Status Indicator Dot -->
+                    <div class="absolute -bottom-1 -right-1 w-[18px] h-[18px] ${statusColor} rounded-full border-[3px] border-[#0A0F14] shadow-[0_0_15px_inherit] z-40 animate-pulse" title="${statusText}"></div>
                 </div>
 
                 <!-- INFO SECTION -->
-                <div class="flex-grow min-w-0">
-                    <div class="flex items-center justify-between mb-0.5">
-                        <p class="font-bold text-[13px] text-white truncate leading-none tracking-wide group-hover:text-cyan-300 transition-colors">${row.nama}</p>
+                <div class="flex-grow min-w-0 z-10 ml-3">
+                    <div class="flex items-center justify-between mb-1">
+                        <p class="font-extrabold text-[15px] ${nameColor} truncate leading-tight tracking-wider ${hoverGlowClass} transition-colors" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${row.nama}</p>
                         ${dlIcon || cutiIcon || ''}
                     </div>
-                    <p class="text-[10px] text-cyan-500/70 truncate font-medium mb-1.5 uppercase tracking-widest">${row.jabatan || '-'}</p>
+                    <p class="text-[10px] text-gray-300/80 truncate font-medium mb-2 uppercase tracking-[0.2em] drop-shadow-md">${row.jabatan || '-'}</p>
                     
                     <div class="flex justify-between items-end">
                         <div class="flex flex-col">
-                            <span class="text-[8px] text-gray-500 uppercase font-bold tracking-tighter mb-0.5">Timestamp</span>
-                            <p class="text-[11px] text-cyan-400 font-mono bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-500/10 shadow-inner">${timeDisplay}</p>
+                            <span class="text-[7px] text-gray-400 uppercase font-bold tracking-[0.2em] mb-0.5 opacity-80">Timestamp</span>
+                            <p class="text-[11px] font-mono px-2 py-0.5 rounded border ${timeGradient} shadow-[inset_0_0_10px_inherit] font-bold tracking-widest">${timeDisplay}</p>
                         </div>
                         <div class="flex flex-col items-end">
-                             <span class="text-[8px] text-gray-500 uppercase font-bold tracking-tighter mb-0.5">Status</span>
+                             <span class="text-[7px] text-gray-400 uppercase font-bold tracking-[0.2em] mb-0.5 opacity-80">Status</span>
                              ${statusLabelHtml}
                         </div>
                     </div>
                 </div>
 
-                <!-- DECORATIVE EDGE -->
-                <div class="absolute right-0 top-1/4 bottom-1/4 w-[2px] ${isOut ? 'bg-amber-500/30' : 'bg-green-500/30'} rounded-l"></div>
+                <!-- DECORATIVE EDGE BAR (Soft Glow) -->
+                <div class="absolute right-0 top-1/4 bottom-1/4 w-[3px] rounded-l-full opacity-80 group-hover:opacity-100 transition-all group-hover:top-0 group-hover:bottom-0 group-hover:w-[5px]" style="background-color: ${glowColor.replace(/,[\d.]+\)/, ')').replace('rgba', 'rgb')}; box-shadow: 0 0 15px ${glowColor}, 0 0 30px ${glowColor};"></div>
             `;
             
             if (isDL && dlRoster) {
@@ -2416,6 +2449,7 @@ async function updatePersonnelRoster() {
         if (cutiRoster && cutiPanel) {
             if (hasCuti) {
                 cutiRoster.appendChild(cutiWrapper);
+                cutiRoster.scrollTop = 0; // [NEW] Auto-scroll ke atas setelah update
             } else {
                 cutiRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data cuti.</div>';
             }

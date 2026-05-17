@@ -1628,9 +1628,13 @@
 </div>
 
 <!-- [NEW] PANEL KHUSUS CUTI PEGAWAI -->
-<div id="cuti-panel" class="widget-panel border-orange-500/80 shadow-[0_0_20px_rgba(249,115,22,0.4)]" style="background: rgba(10, 5, 0, 0.98); overflow: visible;">
-    <h2 class="widget-title" style="background: linear-gradient(90deg, #F97316 0%, #EA580C 100%); color: white; text-shadow: 0 0 10px rgba(255,255,255,0.5);">:: CUTI PEGAWAI ::</h2>
-    <div id="cutiRoster" class="flex flex-col gap-1"></div>
+<div id="cuti-panel" class="widget-panel border border-[#FF6B00]/60 shadow-[0_0_30px_rgba(255,107,0,0.3),inset_0_0_20px_rgba(255,107,0,0.1)] rounded-lg overflow-hidden backdrop-blur-xl relative" style="background: linear-gradient(160deg, rgba(20,5,0,0.95) 0%, rgba(30,10,0,0.9) 100%); overflow: visible;">
+    <!-- Glass highlight -->
+    <div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none rounded-lg"></div>
+    <h2 class="widget-title text-xl tracking-[0.3em] font-black relative z-10" style="background: linear-gradient(90deg, rgba(255, 107, 0, 0.4) 0%, transparent 100%); border-left: 6px solid #FF6B00; color: #FFF; text-shadow: 0 0 15px #FF6B00, 0 0 30px #FF6B00, 0 0 5px #FFF; padding-top: 10px; padding-bottom: 10px; box-shadow: -10px 0 20px rgba(255, 107, 0, 0.3);">
+        <span class="text-[#FFB703]">::</span> CUTI PEGAWAI <span class="text-[#FFB703]">::</span>
+    </h2>
+    <div id="cutiRoster" class="max-h-60 overflow-y-auto pr-1 flex flex-col gap-1 relative z-10 mt-2"></div>
 </div>
 
                 <!-- [MODIFIED] Menambahkan ID dan status awal tersembunyi -->
@@ -1701,14 +1705,15 @@
 
             <div class="col-span-1 flex flex-col gap-4 order-3">
                 <!-- PANEL WAVEFORM DIGANTI DENGAN PERSONNEL ROSTER -->
-                <div class="widget-panel flex-grow min-h-0" style="background: rgba(5, 10, 15, 0.98);">
-                    <h2 class="widget-title">:: STATUS KEHADIRAN ::</h2>
-                    <!-- Container untuk daftar personel -->
-                    <div id="personnelRoster" class="h-full overflow-y-auto pr-1">
-                        <div class="text-gray-500 text-xs italic text-center py-4">Memuat data kehadiran...</div>
-                    <div class="h-full roster-ticker-container pr-1">
-                        <div id="personnelRoster" class="py-4">
-                            <div class="text-gray-500 text-xs italic text-center">Memuat data kehadiran...</div>
+                <div class="widget-panel flex-grow min-h-0 relative border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.6)] rounded-lg overflow-hidden backdrop-blur-xl" style="background: linear-gradient(160deg, rgba(10,15,25,0.95) 0%, rgba(2,5,10,0.95) 100%);">
+                    <!-- Glass highlight -->
+                    <div class="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
+                    <h2 class="widget-title text-xl tracking-[0.2em] font-bold relative z-10" style="background: linear-gradient(90deg, rgba(0, 163, 255, 0.15) 0%, transparent 100%); border-left: 4px solid #00A3FF; color: #E2E8F0; text-shadow: 0 2px 4px rgba(0,0,0,0.8); padding-top: 10px; padding-bottom: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.5);">
+                        <span class="text-[#00A3FF] opacity-80">::</span> STATUS KEHADIRAN <span class="text-[#00A3FF] opacity-80">::</span>
+                    </h2>
+                    <div class="h-full roster-ticker-container pr-1 mt-2 relative z-10">
+                        <div id="personnelRoster" class="py-2 flex flex-col gap-2">
+                            <div class="text-[#00A3FF] text-sm font-semibold tracking-widest text-center py-6 animate-pulse" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">MEMUAT DATA KEHADIRAN...</div>
                         </div>
                     </div>
                 </div>
