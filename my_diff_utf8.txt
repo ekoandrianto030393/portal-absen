@@ -1,0 +1,269 @@
+﻿diff --git a/scan.js b/scan.js
+index b919eb5..b678a64 100644
+--- a/scan.js
++++ b/scan.js
+@@ -2218,41 +2218,30 @@ function animateTitle() {
+ }
+ 
+ // --- NEW: PERSONNEL ROSTER ---
+-let rosterScrollInterval = null;
+-
+-// [NEW] Fungsi Auto Scroll Panel Kehadiran
+-function startRosterAutoScroll() {
+-    if (!personnelRoster) return;
+-    
+-    // Reset interval jika sudah ada agar tidak tumpang tindih
+-    if (rosterScrollInterval) clearInterval(rosterScrollInterval);
+-
+-    const speed = 1; // Kecepatan scroll (pixel per tick)
+-    const delay = 50; // Interval waktu (ms) - Semakin kecil semakin halus
+-
+-    rosterScrollInterval = setInterval(() => {
+-        // 1. Pause otomatis jika mouse sedang berada di atas panel (Hover)
+-        if (personnelRoster.matches(':hover')) return;
+-
+-        // 2. Cek apakah konten lebih panjang dari container (perlu di-scroll)
+-        if (personnelRoster.scrollHeight > personnelRoster.clientHeight) {
+-            personnelRoster.scrollTop += speed; // Gerakkan ke bawah
+-
+-            // 3. Jika sudah mentok paling bawah, kembali ke atas (Looping)
+-            if (Math.ceil(personnelRoster.scrollTop + personnelRoster.clientHeight) >= personnelRoster.scrollHeight) {
+-                personnelRoster.scrollTop = 0;
+-            }
+-        }
+-    }, delay);
+-}
++// (Fungsi scroll lama yang lambat telah dihapus secara permanen untuk menghindari konflik)
+ 
+ async function updatePersonnelRoster() {
++    const personnelRoster = document.getElementById('personnelRoster');
+     if (!personnelRoster) return;
++
++    const dlRoster = document.getElementById('dlRoster');
++    const cutiRoster = document.getElementById('cutiRoster');
+     
+     try {
+         // Ambil data absensi hari ini dari server
+         const data = await api.getTodayAttendance();
+         
++        // [DATA HASHING FIX] Mencegah macet akibat render ulang
++        // Buat 'sidik jari' unik dari data yang diterima
++        const currentDataHash = JSON.stringify(data.map(row => `${row.id_karyawan}_${row.status}_${row.jam_masuk}_${row.jam_keluar}`));
++        
++        // Jika data dari server 100% sama dengan yang ada di layar, batalkan semua proses ini
++        // Biarkan mesin animasi (ticker) bekerja dengan tenang!
++        if (window.lastRosterDataHash === currentDataHash) {
++            return;
++        }
++        window.lastRosterDataHash = currentDataHash;
++        
+         personnelRoster.innerHTML = '';
+         personnelRoster.style.overflow = 'auto';
+ 
+@@ -2332,26 +2321,59 @@ async function updatePersonnelRoster() {
+             const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-orange-500 ml-1.5 text-sm flex-shrink-0 shadow-[0_0_10px_rgba(249,115,22,0.6)]" title="Cuti"></i>' : '';
+ 
+             const item = document.createElement('div');
+-            item.className = `flex items-center gap-3 p-2.5 border-b border-cyan-900/30 ${bgHover} transition-colors duration-200 animate-[fadeIn_0.5s_ease-out]`;
++            item.className = `group flex items-center gap-4 p-3 border-b border-cyan-900/20 ${bgHover} transition-all duration-300 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden`;
++                       // [RESTORASI LOGIKA] Mendefinisikan warna dan label status
++            let accentColor = isOut ? '#FFFF00' : (isCuti ? '#FF5500' : '#00FF00');
++            statusLabelHtml = '';
+             
++            if (isCuti) {
++                statusLabelHtml = `<span class="text-[9px] px-2 py-0.5 bg-[#FF5500] text-black font-black uppercase tracking-tighter">CUTI</span>`;
++            } else if (isDL) {
++                accentColor = '#00FFFF';
++                statusLabelHtml = `<span class="text-[9px] px-2 py-1 bg-[#00FFFF] text-black font-black uppercase tracking-tighter">DINAS</span>`;
++            } else if (isOut) {
++                statusLabelHtml = `<span class="text-[9px] px-2 py-0.5 bg-[#FFFF00] text-black font-black uppercase tracking-tighter">PULANG</span>`;
++            } else {
++                statusLabelHtml = `<span class="text-[9px] px-2 py-0.5 bg-[#00FF00] text-black font-black uppercase tracking-tighter">HADIR</span>`;
++            }
++
++            // Gaya Item Roster
++            item.style.background = '#050505';
++            item.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
++            item.style.borderLeft = `3px solid ${accentColor}`;
++            item.style.padding = '0.75rem';
++            item.style.marginBottom = '2px';
++
+             item.innerHTML = `
+-                <div class="relative w-12 h-12 flex-shrink-0">
+-                    <img src="${photoSrc}" class="w-full h-full rounded-md object-cover border ${borderColor} bg-gray-800">
+-                    <div class="absolute -bottom-1 -right-1 w-3 h-3 ${statusColor} rounded-full border border-black animate-pulse" title="${statusText}"></div>
++                <!-- CYBER-FRAME AVATAR (ENLARGED & SHARPENED) -->
++                <div class="relative w-20 h-20 flex-shrink-0">
++                    <div class="absolute inset-0 border-[3px]" style="border-color: ${accentColor}; box-shadow: 0 0 20px ${accentColor}66;"></div>
++                    <img src="${photoSrc}" class="w-full h-full rounded-none object-cover bg-black border border-white/40 p-[2px]" 
++                         style="filter: contrast(1.15) brightness(1.05); image-rendering: -webkit-optimize-contrast; position: relative; z-index: 1;">
++                    <div class="absolute -bottom-1.5 -right-1.5 w-4.5 h-4.5 rounded-full border-2 border-black z-10" 
++                         style="background-color: ${accentColor}; box-shadow: 0 0 12px ${accentColor};"></div>
+                 </div>
+-                <div class="flex-grow min-w-0">
+-                    <div class="flex items-center">
+-                        <p class="font-bold text-xs text-white truncate leading-tight">${row.nama}</p>
+-                        ${dlIcon}
+-                        ${cutiIcon}
++
++                <!-- DATA BLOCK -->
++                <div class="flex-grow min-w-0 flex flex-col justify-center gap-1 ml-3">
++                    <div class="flex items-start justify-between gap-3">
++                        <div class="flex-grow">
++                            <span class="text-[15px] font-black text-white tracking-wide uppercase block leading-tight">
++                                ${row.nama}
++                            </span>
++                        </div>
++                        <div class="flex-shrink-0">
++                            ${statusLabelHtml}
++                        </div>
+                     </div>
+-                    <p class="text-[10px] text-cyan-300 truncate ${isCuti ? 'opacity-100 font-semibold' : 'opacity-80'}">${row.jabatan || '-'}</p>
+-                    <div class="flex justify-between items-center mt-1">
+-                        <p class="text-[10px] text-gray-400 font-mono bg-black/30 px-1 rounded">${timeDisplay}</p>
+-                        ${statusLabelHtml}
++
++                    <div class="flex items-center justify-between mt-2">
++                        <p class="text-[11px] text-cyan-400 font-bold uppercase tracking-[0.1em] truncate">${row.jabatan || 'PEGAWAI'}</p>
++                        <span class="text-[11px] font-mono text-white font-bold px-2 border border-white/20 bg-white/10">${timeDisplay}</span>
+                     </div>
+                 </div>
+             `;
++;
+             
+             if (isDL && dlRoster) {
+                 dlWrapper.appendChild(item);
+@@ -2363,33 +2385,125 @@ async function updatePersonnelRoster() {
+                 regularWrapper.appendChild(item);
+             }
+         });
+-        
++        // Kembalikan ke struktur aslinya (Bungkus wadah foto dipertahankan)
++        const currentScroll = personnelRoster.scrollTop;
++        personnelRoster.innerHTML = '';
+         personnelRoster.appendChild(regularWrapper);
+-        personnelRoster.scrollTop = 0; // [NEW] Auto-scroll ke atas setelah update
++        personnelRoster.scrollTop = currentScroll;
+ 
+-        // [NEW] Update Panel DL
+-        if (dlRoster && dlPanel) {
++        // Update Panel DL
++        if (dlRoster) {
+             if (hasDL) {
++                const currentDLScroll = dlRoster.scrollTop;
++                dlRoster.innerHTML = '';
+                 dlRoster.appendChild(dlWrapper);
++                dlRoster.scrollTop = currentDLScroll;
+             } else {
+                 dlRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data dinas luar.</div>';
+             }
+         }
+ 
+-        // [NEW] Update Panel Cuti
+-        if (cutiRoster && cutiPanel) {
++        // Update Panel Cuti
++        if (cutiRoster) {
+             if (hasCuti) {
++                const currentCutiScroll = cutiRoster.scrollTop;
++                cutiRoster.innerHTML = '';
+                 cutiRoster.appendChild(cutiWrapper);
++                cutiRoster.scrollTop = currentCutiScroll;
+             } else {
+                 cutiRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data cuti.</div>';
+             }
+         }
+ 
+-    } catch (e) {
+-        console.error("Roster update failed", e);
++        // Jalankan Ticker (Aman dipanggil berulang karena ada proteksi 'scrollInitialized')
++        startKehadiranTicker();
++        startCutiTicker('cutiRoster');
++        if (hasDL) startCutiTicker('dlRoster');
++
++    } catch (error) {
++        console.error("Error updating personnel roster:", error);
+     }
+ }
+ 
++// ==========================================
++// 1. MESIN KHUSUS STATUS KEHADIRAN (DATA BESAR)
++// ==========================================
++function startKehadiranTicker() {
++    const container = document.getElementById('personnelRoster');
++    if (!container || container.dataset.scrollInitialized === 'true') return;
++    
++    if (container.scrollHeight <= container.clientHeight + 10) return;
++
++    container.dataset.scrollInitialized = 'true';
++    let isPaused = false;
++    container.onmouseenter = () => isPaused = true;
++    container.onmouseleave = () => isPaused = false;
++
++    let exactScroll = container.scrollTop;
++
++    function step() {
++        if (!isPaused && !window.isRosterUpdating) {
++            // [DIUBAH] Menghapus pergerakan lambat/halus. 
++            // Dibuat Jauh Lebih Cepat & Tegas agar lancar.
++            exactScroll += 3.0; 
++            container.scrollTop = exactScroll;
++            
++            // Cek Batas Bawah Pasti
++            if (Math.ceil(container.scrollTop + container.clientHeight) >= container.scrollHeight - 3) {
++                isPaused = true;
++                setTimeout(() => {
++                    exactScroll = 0;
++                    container.scrollTop = 0;
++                    isPaused = false;
++                }, 3000); // Jeda 3 detik di bawah
++            }
++        }
++        requestAnimationFrame(step);
++    }
++    requestAnimationFrame(step);
++}
++
++// ==========================================
++// 2. MESIN KHUSUS CUTI PEGAWAI (DATA SEDIKIT)
++// ==========================================
++function startCutiTicker(containerId) {
++    const container = document.getElementById(containerId);
++    if (!container || container.dataset.scrollInitialized === 'true') return;
++    
++    if (container.scrollHeight <= container.clientHeight + 10) {
++        container.scrollTop = 0;
++        return; 
++    }
++
++    container.dataset.scrollInitialized = 'true';
++    let isPaused = false;
++    container.onmouseenter = () => isPaused = true;
++    container.onmouseleave = () => isPaused = false;
++
++    let exactScroll = container.scrollTop;
++
++    function step() {
++        if (!isPaused && !window.isRosterUpdating) {
++            // [DIUBAH] Dibuat lebih cepat dan lancar
++            exactScroll += 2.0; 
++            container.scrollTop = exactScroll;
++            
++            if (Math.ceil(container.scrollTop + container.clientHeight) >= container.scrollHeight - 3) {
++                isPaused = true;
++                setTimeout(() => {
++                    exactScroll = 0;
++                    container.scrollTop = 0;
++                    isPaused = false;
++                }, 2000);
++            }
++        }
++        requestAnimationFrame(step);
++    }
++    requestAnimationFrame(step);
++}
++
++
++
+ 
+ const api = {
+     getDescriptors: async () => {

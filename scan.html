@@ -958,6 +958,27 @@
             100% { left: 150%; opacity: 0; }
         }
 
+        /* [NEW] AUTO-SCROLL ANIMATION FOR PERSONNEL ROSTER (STATUS KEHADIRAN) */
+        .roster-ticker-container {
+            overflow: hidden !important;
+            mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+            position: relative;
+            height: 100%;
+        }
+        #personnelRoster {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            animation: rosterTickerVertical 25s linear infinite;
+        }
+        #personnelRoster:hover {
+            animation-play-state: paused; /* Berhenti sejenak saat kursor di atas agar mudah dibaca */
+        }
+        @keyframes rosterTickerVertical {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-100%); }
+        }
+
         /* --- 13. NEW HOLOGRAPHIC CARD OVERLAY --- */
         .holo-card {
             position: relative;
@@ -1685,6 +1706,10 @@
                     <!-- Container untuk daftar personel -->
                     <div id="personnelRoster" class="h-full overflow-y-auto pr-1">
                         <div class="text-gray-500 text-xs italic text-center py-4">Memuat data kehadiran...</div>
+                    <div class="h-full roster-ticker-container pr-1">
+                        <div id="personnelRoster" class="py-4">
+                            <div class="text-gray-500 text-xs italic text-center">Memuat data kehadiran...</div>
+                        </div>
                     </div>
                 </div>
 
