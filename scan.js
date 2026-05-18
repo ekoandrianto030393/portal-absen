@@ -2246,7 +2246,7 @@ function startRosterAutoScroll() {
             if (cutiRoster.scrollHeight > cutiRoster.clientHeight) {
                 cutiRoster.scrollTop += speed;
                 if (Math.ceil(cutiRoster.scrollTop + cutiRoster.clientHeight) >= cutiRoster.scrollHeight) {
-                    cutiRoster.scrollTop = 0;
+                cutiRoster.scrollTop = 0;
                 }
             }
         }, delay);
@@ -2271,6 +2271,14 @@ async function updatePersonnelRoster() {
             personnelRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Belum ada data kehadiran hari ini.</div>';
             if (dlRoster) dlRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data dinas luar.</div>';
             if (cutiRoster) cutiRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data cuti.</div>';
+            
+            // Reset counter badges
+            const hadirBadge = document.getElementById('hadir-counter-badge');
+            if (hadirBadge) hadirBadge.textContent = '0';
+            const cutiBadge = document.getElementById('cuti-counter-badge');
+            if (cutiBadge) cutiBadge.textContent = '0';
+            const dlBadge = document.getElementById('dl-counter-badge');
+            if (dlBadge) dlBadge.textContent = '0';
             return;
         }
 
@@ -2299,6 +2307,9 @@ async function updatePersonnelRoster() {
 
         let hasDL = false;
         let hasCuti = false;
+        let cutiCount = 0;
+        let dlCount = 0;
+        let hadirCount = 0;
 
         data.forEach(row => {
             // ... (logika rendering tetap sama)
@@ -2310,71 +2321,69 @@ async function updatePersonnelRoster() {
             const isCuti = ['CUTI'].includes(statusRaw);
             const isOut = !!row.jam_keluar;
             
-            let timeDisplay, statusColor, statusText, borderColor, bgHover, statusLabelHtml;
+            let timeDisplay, statusColor, statusText, borderColor, bgHover, statusLabelHtml, bgGradient, glowColor, badgeStyle, timeGradient;
+            let cardBorderClass = '';
 
             if (isDL) {
                 timeDisplay = 'DINAS LUAR';
-                statusColor = 'bg-[#00D2D3] shadow-[0_0_15px_#00D2D3]';
+                statusColor = 'bg-[#00FFD2] shadow-[0_0_12px_#00FFD2]';
                 statusText = 'DINAS LUAR';
-                borderColor = 'border-[#00D2D3]/60';
+                borderColor = 'border-[#00FFD2]';
+                cardBorderClass = 'border-[#00FFD2]';
                 bgHover = '';
             } else if (isCuti) {
                 timeDisplay = 'SEDANG CUTI';
-                statusColor = 'bg-[#FF6B00] shadow-[0_0_15px_#FF6B00]';
+                statusColor = 'bg-[#FF5E00] shadow-[0_0_12px_#FF5E00]';
                 statusText = 'CUTI';
-                borderColor = 'border-[#FF6B00]/60';
+                borderColor = 'border-[#FF5E00]';
+                cardBorderClass = 'border-[#FF5E00]';
                 bgHover = '';
             } else {
                 timeDisplay = isOut ? `OUT: ${row.jam_keluar ? row.jam_keluar.substring(0,5) : '--:--'}` : `IN: ${row.jam_masuk ? row.jam_masuk.substring(0,5) : '--:--'}`;
-                statusColor = isOut ? 'bg-[#FFB703] shadow-[0_2px_10px_rgba(255,183,3,0.5)]' : 'bg-[#00A3FF] shadow-[0_2px_10px_rgba(0,163,255,0.5)]';
+                statusColor = isOut ? 'bg-[#FFB703] shadow-[0_0_12px_#FFB703]' : 'bg-[#00E5FF] shadow-[0_0_12px_#00E5FF]';
                 statusText = isOut ? 'SUDAH PULANG' : 'HADIR';
-                borderColor = isOut ? 'border-[#FFB703]/40' : 'border-[#00A3FF]/40';
+                borderColor = isOut ? 'border-[#FFB703]' : 'border-[#00E5FF]';
+                cardBorderClass = isOut ? 'border-[#FFB703]' : 'border-[#00E5FF]';
                 bgHover = '';
             }
 
-            const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-[#00D2D3] ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
-            const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-[#FF6B00] ml-1.5 text-sm flex-shrink-0 shadow-[0_2px_8px_rgba(255,107,0,0.4)]" title="Cuti"></i>' : '';
+            const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-[#00FFD2] ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
+            const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-[#FF5E00] ml-1.5 text-sm flex-shrink-0 shadow-[0_2px_8px_rgba(255,94,0,0.5)]" title="Cuti"></i>' : '';
 
             const item = document.createElement('div');
-            item.className = `group flex items-center gap-4 p-3 rounded-xl border border-white/10 transition-all duration-500 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden backdrop-blur-xl shadow-[0_4px_25px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_35px_rgba(0,0,0,0.6)] hover:-translate-y-1`;
-            
-            // Latar Belakang Elegan & Cerah (Frosted Glass)
-            let bgGradient = '';
-            let glowColor = '';
-            let badgeGradient = '';
-            let timeGradient = '';
+            item.className = `group flex items-center gap-4 p-3 rounded-xl border-[2px] ${cardBorderClass} transition-all duration-500 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden shadow-[0_4px_25px_rgba(0,0,0,0.4)] hover:shadow-[0_8px_35px_rgba(0,0,0,0.7)] hover:-translate-y-1`;
             
             if (isCuti) {
-                bgGradient = 'linear-gradient(135deg, rgba(255,107,0,0.12) 0%, rgba(255,107,0,0.03) 50%, rgba(10,15,20,0.8) 100%)';
-                glowColor = 'rgba(255,107,0,0.5)';
-                badgeGradient = 'from-[#FF6B00]/20 to-[#CC5500]/10 text-[#FF6B00] border-[#FF6B00]/30';
-                timeGradient = 'text-[#FF6B00] bg-[#FF6B00]/10 border-[#FF6B00]/20';
-                statusLabelHtml = `<span class="text-[9px] px-2.5 py-0.5 rounded-md border bg-gradient-to-r ${badgeGradient} shadow-[0_2px_8px_rgba(255,107,0,0.3)] font-extrabold tracking-[0.2em] uppercase" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">CUTI</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(255,94,0,0.25) 0%, rgba(255,94,0,0.05) 50%, rgba(15,8,3,1) 100%)';
+                glowColor = '#FF5E00';
+                badgeStyle = 'bg-[#FF5E00] text-black border-[#FF5E00]';
+                timeGradient = 'text-[#FF9000] bg-black/75 border-[#FF5E00]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(255,94,0,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">CUTI</span>`;
             } else if (isDL) {
-                bgGradient = 'linear-gradient(135deg, rgba(0,210,211,0.12) 0%, rgba(0,210,211,0.03) 50%, rgba(10,15,20,0.8) 100%)';
-                glowColor = 'rgba(0,210,211,0.5)';
-                badgeGradient = 'from-[#00D2D3]/20 to-[#01A3A4]/10 text-[#00D2D3] border-[#00D2D3]/30';
-                timeGradient = 'text-[#00D2D3] bg-[#00D2D3]/10 border-[#00D2D3]/20';
-                statusLabelHtml = `<span class="text-[9px] px-2.5 py-0.5 rounded-md border bg-gradient-to-r ${badgeGradient} shadow-[0_2px_8px_rgba(0,210,211,0.3)] font-extrabold tracking-[0.2em] uppercase" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">DINAS LUAR</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(0,255,210,0.25) 0%, rgba(0,255,210,0.05) 50%, rgba(3,12,15,1) 100%)';
+                glowColor = '#00FFD2';
+                badgeStyle = 'bg-[#00FFD2] text-black border-[#00FFD2]';
+                timeGradient = 'text-[#00FFD2] bg-black/75 border-[#00FFD2]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(0,255,210,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">DINAS LUAR</span>`;
             } else if (isOut) {
-                bgGradient = 'linear-gradient(135deg, rgba(255,183,3,0.12) 0%, rgba(255,183,3,0.03) 50%, rgba(10,15,20,0.8) 100%)';
-                glowColor = 'rgba(255,183,3,0.5)';
-                badgeGradient = 'from-[#FFB703]/20 to-[#E0A800]/10 text-[#FFB703] border-[#FFB703]/30';
-                timeGradient = 'text-[#FFB703] bg-[#FFB703]/10 border-[#FFB703]/20';
-                statusLabelHtml = `<span class="text-[9px] px-2.5 py-0.5 rounded-md border bg-gradient-to-r ${badgeGradient} shadow-[0_2px_8px_rgba(255,183,3,0.3)] font-extrabold tracking-[0.2em] uppercase" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">PULANG</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(255,183,3,0.25) 0%, rgba(255,183,3,0.05) 50%, rgba(15,12,3,1) 100%)';
+                glowColor = '#FFB703';
+                badgeStyle = 'bg-[#FFB703] text-black border-[#FFB703]';
+                timeGradient = 'text-[#FFB703] bg-black/75 border-[#FFB703]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(255,183,3,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">PULANG</span>`;
             } else {
-                bgGradient = 'linear-gradient(135deg, rgba(0,163,255,0.12) 0%, rgba(0,163,255,0.03) 50%, rgba(10,15,20,0.8) 100%)';
-                glowColor = 'rgba(0,163,255,0.5)';
-                badgeGradient = 'from-[#00A3FF]/20 to-[#0077CC]/10 text-[#00A3FF] border-[#00A3FF]/30';
-                timeGradient = 'text-[#00A3FF] bg-[#00A3FF]/10 border-[#00A3FF]/20';
-                statusLabelHtml = `<span class="text-[9px] px-2.5 py-0.5 rounded-md border bg-gradient-to-r ${badgeGradient} shadow-[0_2px_8px_rgba(0,163,255,0.3)] font-extrabold tracking-[0.2em] uppercase" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">HADIR</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(0,229,255,0.25) 0%, rgba(0,229,255,0.05) 50%, rgba(3,12,20,1) 100%)';
+                glowColor = '#00E5FF';
+                badgeStyle = 'bg-[#00E5FF] text-black border-[#00E5FF]';
+                timeGradient = 'text-[#00E5FF] bg-black/75 border-[#00E5FF]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(0,229,255,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">HADIR</span>`;
             }
             
             item.style.background = bgGradient;
 
             // Aksen highlight saat hover
-            const hoverGlowClass = isCuti ? 'group-hover:text-[#FF6B00]' : isDL ? 'group-hover:text-[#00D2D3]' : isOut ? 'group-hover:text-[#FFB703]' : 'group-hover:text-[#00A3FF]';
-            const nameColor = isOut ? 'text-gray-200' : 'text-white';
+            const hoverGlowClass = isCuti ? 'group-hover:text-[#FF9000]' : isDL ? 'group-hover:text-[#00FFD2]' : isOut ? 'group-hover:text-[#FFD000]' : 'group-hover:text-[#00E5FF]';
+            const nameColor = 'text-white';
 
             item.innerHTML = `
                 <!-- HOVER LIGHT EFFECT (Crystal Shine) -->
@@ -2382,8 +2391,8 @@ async function updatePersonnelRoster() {
                 
                 <!-- AVATAR SECTION -->
                 <div class="relative w-[68px] h-[68px] flex-shrink-0 group-hover:scale-110 transition-transform duration-500 z-10">
-                    <!-- Outer Glass Plate (Bingkai Kaca) -->
-                    <div class="absolute -inset-1 rounded-xl border border-white/20 bg-gradient-to-br from-white/10 to-transparent shadow-[0_8px_20px_rgba(0,0,0,0.8)] z-0 pointer-events-none backdrop-blur-sm"></div>
+                    <!-- Outer Plate (Bingkai Tajam) -->
+                    <div class="absolute -inset-1 rounded-xl border border-white/10 bg-gradient-to-br from-[#0c1424] to-[#040812] shadow-[0_8px_20px_rgba(0,0,0,0.8)] z-0 pointer-events-none"></div>
                     
                     <!-- Inner Neon Glow Frame (Bingkai Cahaya) -->
                     <div class="absolute inset-0 rounded-lg border-[2px] ${borderColor} opacity-90 group-hover:opacity-100 transition-opacity shadow-[inset_0_0_15px_rgba(255,255,255,0.4)] mix-blend-screen z-20 pointer-events-none"></div>
@@ -2401,40 +2410,53 @@ async function updatePersonnelRoster() {
                 <!-- INFO SECTION -->
                 <div class="flex-grow min-w-0 z-10 ml-3">
                     <div class="flex items-center justify-between mb-1">
-                        <p class="font-extrabold text-[15px] ${nameColor} truncate leading-tight tracking-wider ${hoverGlowClass} transition-colors" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${row.nama}</p>
+                        <p class="font-black text-[16px] ${nameColor} truncate leading-tight tracking-wider ${hoverGlowClass} transition-colors" style="text-shadow: 0 2px 4px rgba(0,0,0,0.9);">${row.nama}</p>
                         ${dlIcon || cutiIcon || ''}
                     </div>
-                    <p class="text-[10px] text-gray-300/80 truncate font-medium mb-2 uppercase tracking-[0.2em] drop-shadow-md">${row.jabatan || '-'}</p>
+                    <p class="text-[11px] text-cyan-300 font-extrabold truncate mb-2 uppercase tracking-[0.2em] drop-shadow-md">${row.jabatan || '-'}</p>
                     
                     <div class="flex justify-between items-end">
                         <div class="flex flex-col">
-                            <span class="text-[7px] text-gray-400 uppercase font-bold tracking-[0.2em] mb-0.5 opacity-80">Timestamp</span>
+                            <span class="text-[8px] text-gray-300 uppercase font-black tracking-[0.2em] mb-0.5">Timestamp</span>
                             <p class="text-[11px] font-mono px-2 py-0.5 rounded border ${timeGradient} shadow-[inset_0_0_10px_inherit] font-bold tracking-widest">${timeDisplay}</p>
                         </div>
                         <div class="flex flex-col items-end">
-                             <span class="text-[7px] text-gray-400 uppercase font-bold tracking-[0.2em] mb-0.5 opacity-80">Status</span>
+                             <span class="text-[8px] text-gray-300 uppercase font-black tracking-[0.2em] mb-0.5">Status</span>
                              ${statusLabelHtml}
                         </div>
                     </div>
                 </div>
 
-                <!-- DECORATIVE EDGE BAR (Soft Glow) -->
-                <div class="absolute right-0 top-1/4 bottom-1/4 w-[3px] rounded-l-full opacity-80 group-hover:opacity-100 transition-all group-hover:top-0 group-hover:bottom-0 group-hover:w-[5px]" style="background-color: ${glowColor.replace(/,[\d.]+\)/, ')').replace('rgba', 'rgb')}; box-shadow: 0 0 15px ${glowColor}, 0 0 30px ${glowColor};"></div>
+                <!-- DECORATIVE EDGE BAR (Solid Glow) -->
+                <div class="absolute right-0 top-1/4 bottom-1/4 w-[3px] rounded-l-full opacity-80 group-hover:opacity-100 transition-all group-hover:top-0 group-hover:bottom-0 group-hover:w-[5px]" style="background-color: ${glowColor}; box-shadow: 0 0 15px ${glowColor}, 0 0 30px ${glowColor};"></div>
             `;
             
             if (isDL && dlRoster) {
                 dlWrapper.appendChild(item);
                 hasDL = true;
+                dlCount++;
             } else if (isCuti && cutiRoster) {
                 cutiWrapper.appendChild(item);
                 hasCuti = true;
+                cutiCount++;
             } else {
                 regularWrapper.appendChild(item);
+                hadirCount++;
             }
         });
         
         personnelRoster.appendChild(regularWrapper);
         personnelRoster.scrollTop = 0; // [NEW] Auto-scroll ke atas setelah update
+
+        // Update counter badges
+        const hadirBadge = document.getElementById('hadir-counter-badge');
+        if (hadirBadge) hadirBadge.textContent = hadirCount;
+
+        const cutiBadge = document.getElementById('cuti-counter-badge');
+        if (cutiBadge) cutiBadge.textContent = cutiCount;
+
+        const dlBadge = document.getElementById('dl-counter-badge');
+        if (dlBadge) dlBadge.textContent = dlCount;
 
         // [NEW] Update Panel DL
         if (dlRoster && dlPanel) {
