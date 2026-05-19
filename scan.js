@@ -2226,18 +2226,8 @@ function startRosterAutoScroll() {
     const speed = 1; // Kecepatan scroll (pixel per tick)
     const delay = 50; // Interval waktu (ms)
 
-    if (personnelRoster) {
-        if (rosterScrollInterval) clearInterval(rosterScrollInterval);
-        rosterScrollInterval = setInterval(() => {
-            if (personnelRoster.matches(':hover')) return;
-            if (personnelRoster.scrollHeight > personnelRoster.clientHeight) {
-                personnelRoster.scrollTop += speed;
-                if (Math.ceil(personnelRoster.scrollTop + personnelRoster.clientHeight) >= personnelRoster.scrollHeight) {
-                    personnelRoster.scrollTop = 0;
-                }
-            }
-        }, delay);
-    }
+    // Kami menonaktifkan JS Scroll untuk Kehadiran karena sudah menggunakan CSS Animation GPU-Accelerated yang jauh lebih mulus.
+    // Ini menghilangkan konflik rendering (tersendat-sendat) di browser.
 
     if (cutiRoster) {
         if (cutiScrollInterval) clearInterval(cutiScrollInterval);
@@ -2274,11 +2264,11 @@ async function updatePersonnelRoster() {
             
             // Reset counter badges
             const hadirBadge = document.getElementById('hadir-counter-badge');
-            if (hadirBadge) hadirBadge.textContent = '0';
+            if (hadirBadge) hadirBadge.textContent = '0 ORANG';
             const cutiBadge = document.getElementById('cuti-counter-badge');
-            if (cutiBadge) cutiBadge.textContent = '0';
+            if (cutiBadge) cutiBadge.textContent = '0 ORANG';
             const dlBadge = document.getElementById('dl-counter-badge');
-            if (dlBadge) dlBadge.textContent = '0';
+            if (dlBadge) dlBadge.textContent = '0 ORANG';
             return;
         }
 
@@ -2350,8 +2340,7 @@ async function updatePersonnelRoster() {
             const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-[#00FFD2] ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
             const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-[#FF5E00] ml-1.5 text-sm flex-shrink-0 shadow-[0_2px_8px_rgba(255,94,0,0.5)]" title="Cuti"></i>' : '';
 
-            const item = document.createElement('div');
-            item.className = `group flex items-center gap-4 p-3 rounded-xl border-[2px] ${cardBorderClass} transition-all duration-500 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden shadow-[0_4px_25px_rgba(0,0,0,0.4)] hover:shadow-[0_8px_35px_rgba(0,0,0,0.7)] hover:-translate-y-1`;
+
             
             if (isCuti) {
                 bgGradient = 'linear-gradient(135deg, rgba(255,94,0,0.25) 0%, rgba(255,94,0,0.05) 50%, rgba(15,8,3,1) 100%)';
@@ -2378,6 +2367,11 @@ async function updatePersonnelRoster() {
                 timeGradient = 'text-[#00E5FF] bg-black/75 border-[#00E5FF]';
                 statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(0,229,255,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">HADIR</span>`;
             }
+
+            const solidStatusBg = isDL ? 'bg-[#00FFD2]' : isCuti ? 'bg-[#FF5E00]' : isOut ? 'bg-[#FFB703]' : 'bg-[#00E5FF]';
+
+            const item = document.createElement('div');
+            item.className = `group flex items-center p-3 rounded-lg border border-white/10 transition-all duration-300 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden bg-[#070b12]/90 hover:bg-[#0c1424]/90 hover:-translate-y-0.5 select-none cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.6)] hover:border-white/20`;
             
             item.style.background = bgGradient;
 
@@ -2386,49 +2380,54 @@ async function updatePersonnelRoster() {
             const nameColor = 'text-white';
 
             item.innerHTML = `
+                <!-- Left Accent Status Bar (Solid Glow) -->
+                <div class="absolute left-0 top-0 bottom-0 w-[4px] z-20" style="background-color: ${glowColor}; box-shadow: 0 0 10px ${glowColor};"></div>
+
                 <!-- HOVER LIGHT EFFECT (Crystal Shine) -->
-                <div class="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-all pointer-events-none transform -translate-x-full group-hover:translate-x-full ease-in-out" style="transition-duration: 1s;"></div>
+                <div class="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-all pointer-events-none transform -translate-x-full group-hover:translate-x-full ease-in-out z-20" style="transition-duration: 1.2s;"></div>
                 
                 <!-- AVATAR SECTION -->
-                <div class="relative w-[68px] h-[68px] flex-shrink-0 group-hover:scale-110 transition-transform duration-500 z-10">
+                <div class="relative w-[68px] h-[68px] flex-shrink-0 group-hover:scale-105 transition-transform duration-500 z-10 ml-2">
                     <!-- Outer Plate (Bingkai Tajam) -->
-                    <div class="absolute -inset-1 rounded-xl border border-white/10 bg-gradient-to-br from-[#0c1424] to-[#040812] shadow-[0_8px_20px_rgba(0,0,0,0.8)] z-0 pointer-events-none"></div>
+                    <div class="absolute -inset-1 rounded-xl border border-white/5 bg-gradient-to-br from-[#0c1424] to-[#040812] shadow-[0_4px_10px_rgba(0,0,0,0.8)] z-0 pointer-events-none"></div>
                     
                     <!-- Inner Neon Glow Frame (Bingkai Cahaya) -->
-                    <div class="absolute inset-0 rounded-lg border-[2px] ${borderColor} opacity-90 group-hover:opacity-100 transition-opacity shadow-[inset_0_0_15px_rgba(255,255,255,0.4)] mix-blend-screen z-20 pointer-events-none"></div>
+                    <div class="absolute inset-0 rounded-lg border-[2px] ${borderColor} opacity-90 group-hover:opacity-100 transition-opacity shadow-[inset_0_0_10px_rgba(255,255,255,0.2)] mix-blend-screen z-20 pointer-events-none"></div>
                     
-                    <!-- Sci-Fi Tech Corners (Siku Futuristik) -->
-                    <div class="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-[3px] border-l-[3px] ${borderColor} rounded-tl-xl z-30 opacity-90 shadow-[0_0_10px_inherit]"></div>
-                    <div class="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-[3px] border-r-[3px] ${borderColor} rounded-br-xl z-30 opacity-90 shadow-[0_0_10px_inherit]"></div>
+                    <img src="${photoSrc}" class="w-full h-full rounded-lg object-cover bg-[#02050A] relative z-10" style="filter: brightness(1.1) contrast(1.15) saturate(1.1); image-rendering: high-quality;">
                     
-                    <img src="${photoSrc}" class="w-full h-full rounded-lg object-cover bg-[#02050A] relative z-10" style="filter: brightness(1.1) contrast(1.1) saturate(1.05); image-rendering: high-quality; -webkit-backface-visibility: hidden; transform: translateZ(0);">
-                    
-                    <!-- Status Indicator Dot -->
-                    <div class="absolute -bottom-1 -right-1 w-[18px] h-[18px] ${statusColor} rounded-full border-[3px] border-[#0A0F14] shadow-[0_0_15px_inherit] z-40 animate-pulse" title="${statusText}"></div>
+                    <!-- Status Indicator Dot with Breathing Aura Ring -->
+                    <div class="absolute -bottom-1 -right-1 w-[18px] h-[18px] ${solidStatusBg} rounded-full border-[3px] border-[#0A0F14] shadow-[0_0_15px_${glowColor}] z-40" title="${statusText}">
+                        <span class="absolute -inset-[3px] rounded-full ${solidStatusBg} opacity-75 animate-ping z-0"></span>
+                    </div>
                 </div>
 
                 <!-- INFO SECTION -->
-                <div class="flex-grow min-w-0 z-10 ml-3">
+                <div class="flex-grow min-w-0 z-10 ml-4">
                     <div class="flex items-center justify-between mb-1">
-                        <p class="font-black text-[16px] ${nameColor} truncate leading-tight tracking-wider ${hoverGlowClass} transition-colors" style="text-shadow: 0 2px 4px rgba(0,0,0,0.9);">${row.nama}</p>
+                        <p class="font-extrabold text-[15px] ${nameColor} truncate leading-tight tracking-wider ${hoverGlowClass} transition-colors" style="text-shadow: 0 1px 3px rgba(0,0,0,0.9);">${row.nama}</p>
                         ${dlIcon || cutiIcon || ''}
                     </div>
-                    <p class="text-[11px] text-cyan-300 font-extrabold truncate mb-2 uppercase tracking-[0.2em] drop-shadow-md">${row.jabatan || '-'}</p>
+                    <p class="text-[10px] text-cyan-400 font-extrabold truncate mb-2.5 uppercase tracking-[0.2em] drop-shadow-sm">${row.jabatan || '-'}</p>
                     
-                    <div class="flex justify-between items-end">
-                        <div class="flex flex-col">
-                            <span class="text-[8px] text-gray-300 uppercase font-black tracking-[0.2em] mb-0.5">Timestamp</span>
-                            <p class="text-[11px] font-mono px-2 py-0.5 rounded border ${timeGradient} shadow-[inset_0_0_10px_inherit] font-bold tracking-widest">${timeDisplay}</p>
+                    <!-- Pocket Data Container -->
+                    <div class="grid grid-cols-2 gap-2 bg-[#02050a]/90 p-2 rounded border border-white/5">
+                        <!-- Timestamp Box -->
+                        <div class="flex flex-col justify-center">
+                            <span class="text-[7.5px] text-gray-400 uppercase font-black tracking-widest mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-clock text-gray-500"></i> Waktu
+                            </span>
+                            <p class="text-[10.5px] font-mono font-black ${isDL || isCuti ? 'text-gray-400' : isOut ? 'text-[#FFB703]' : 'text-[#00E5FF]'} tracking-widest leading-none">${timeDisplay}</p>
                         </div>
-                        <div class="flex flex-col items-end">
-                             <span class="text-[8px] text-gray-300 uppercase font-black tracking-[0.2em] mb-0.5">Status</span>
-                             ${statusLabelHtml}
+                        <!-- Status Box -->
+                        <div class="flex flex-col justify-center items-end">
+                            <span class="text-[7.5px] text-gray-400 uppercase font-black tracking-widest mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-shield-halved text-gray-500"></i> Status
+                            </span>
+                            ${statusLabelHtml}
                         </div>
                     </div>
                 </div>
-
-                <!-- DECORATIVE EDGE BAR (Solid Glow) -->
-                <div class="absolute right-0 top-1/4 bottom-1/4 w-[3px] rounded-l-full opacity-80 group-hover:opacity-100 transition-all group-hover:top-0 group-hover:bottom-0 group-hover:w-[5px]" style="background-color: ${glowColor}; box-shadow: 0 0 15px ${glowColor}, 0 0 30px ${glowColor};"></div>
             `;
             
             if (isDL && dlRoster) {
@@ -2450,13 +2449,13 @@ async function updatePersonnelRoster() {
 
         // Update counter badges
         const hadirBadge = document.getElementById('hadir-counter-badge');
-        if (hadirBadge) hadirBadge.textContent = hadirCount;
+        if (hadirBadge) hadirBadge.textContent = `${hadirCount} `;
 
         const cutiBadge = document.getElementById('cuti-counter-badge');
-        if (cutiBadge) cutiBadge.textContent = cutiCount;
+        if (cutiBadge) cutiBadge.textContent = `${cutiCount} `;
 
         const dlBadge = document.getElementById('dl-counter-badge');
-        if (dlBadge) dlBadge.textContent = dlCount;
+        if (dlBadge) dlBadge.textContent = `${dlCount} `;
 
         // [NEW] Update Panel DL
         if (dlRoster && dlPanel) {

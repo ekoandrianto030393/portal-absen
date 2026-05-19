@@ -68,16 +68,7 @@
             background: rgba(255, 0, 0, 0.2); z-index: 9997; pointer-events: none; opacity: 0; transition: opacity 0.2s;
         }
 
-        /* EFEK NOISE / FILM GRAIN (NEW) */
-        .noise-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 9990;
-            opacity: 0.04;
-            /* SVG Noise Pattern */
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-        }
+
 
         @keyframes scanlineMove {
             0% { background-position: 0 0; }
@@ -968,7 +959,7 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            animation: rosterTickerVertical 25s linear infinite;
+            animation: rosterTickerVertical 38s linear infinite;
         }
         #personnelRoster:hover {
             animation-play-state: paused; /* Berhenti sejenak saat kursor di atas agar mudah dibaca */
@@ -1579,7 +1570,7 @@
         </defs>
     </svg>
 
-    <div class="noise-overlay"></div> <!-- Overlay Noise (NEW) -->
+
     <div id="screenFlash"></div> <!-- Efek Kilatan -->
     <div id="alarm-overlay"></div> <!-- [NEW] Red Alert Overlay -->
     <div class="cyber-frame"></div> <!-- [NEW] Cyber Corner Frame -->
@@ -1621,17 +1612,17 @@
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
 <!-- [NEW] PANEL KHUSUS DINAS LUAR (Always Visible) -->
-<div id="dl-panel" class="widget-panel border border-[#00FFD2]/60 shadow-[0_0_30px_rgba(0,255,210,0.3),inset_0_0_20px_rgba(0,255,210,0.1)] rounded-lg overflow-hidden relative" style="background: linear-gradient(160deg, #051412 0%, #010807 100%); overflow: visible;">
+<div id="dl-panel" class="widget-panel border border-[#00FFD2]/60 shadow-[0_0_30px_rgba(0,255,210,0.3),inset_0_0_20px_rgba(0,255,210,0.1)] rounded-lg overflow-hidden relative" style="background: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(160deg, #051412 0%, #010807 100%); background-size: 16px 16px, auto; overflow: visible;">
     <h2 class="widget-title text-xl tracking-[0.3em] font-black relative z-10" style="background: linear-gradient(90deg, rgba(0, 255, 210, 0.25) 0%, rgba(0, 0, 0, 0.8) 100%); border-left: 6px solid #00FFD2; color: #FFF; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9); padding-top: 10px; padding-bottom: 10px; box-shadow: -10px 0 20px rgba(0, 255, 210, 0.25);">
-        <span class="text-[#00FFD2]">::</span> DINAS LUAR <span id="dl-counter-badge" class="ml-3 px-3.5 py-0.5 text-2xl bg-[#00FFD2] text-black border-[3px] border-[#00FFD2] rounded-md font-black align-middle select-none inline-block font-mono shadow-[0_0_20px_rgba(0,255,210,0.65)]" style="text-shadow: none; letter-spacing: normal;">0</span> <span class="text-[#00FFD2]">::</span>
+        <span class="text-[#00FFD2]">::</span> DINAS LUAR <span id="dl-counter-badge" class="ml-3 px-4 py-0.5 text-2xl text-[#00FFD2] bg-black/90 border-2 border-[#00FFD2] rounded-lg font-black align-middle select-none inline-block font-mono shadow-[0_0_15px_rgba(0,255,210,0.4),inset_0_0_10px_rgba(0,255,210,0.2)]" style="text-shadow: 0 0 10px rgba(0,255,210,0.8); letter-spacing: normal;">0</span> <span class="text-[#00FFD2]">::</span>
     </h2>
     <div id="dlRoster" class="max-h-60 overflow-y-auto pr-1 flex flex-col gap-1 relative z-10 mt-2"></div>
 </div>
 
 <!-- [NEW] PANEL KHUSUS CUTI PEGAWAI -->
-<div id="cuti-panel" class="widget-panel border border-[#FF6B00]/60 shadow-[0_0_30px_rgba(255,107,0,0.3),inset_0_0_20px_rgba(255,107,0,0.1)] rounded-lg overflow-hidden relative" style="background: linear-gradient(160deg, #140500 0%, #1e0a00 100%); overflow: visible;">
+<div id="cuti-panel" class="widget-panel border border-[#FF6B00]/60 shadow-[0_0_30px_rgba(255,107,0,0.3),inset_0_0_20px_rgba(255,107,0,0.1)] rounded-lg overflow-hidden relative" style="background: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(160deg, #140500 0%, #1e0a00 100%); background-size: 16px 16px, auto; overflow: visible;">
     <h2 class="widget-title text-xl tracking-[0.3em] font-black relative z-10" style="background: linear-gradient(90deg, rgba(255, 107, 0, 0.25) 0%, rgba(0, 0, 0, 0.8) 100%); border-left: 6px solid #FF6B00; color: #FFF; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9); padding-top: 10px; padding-bottom: 10px; box-shadow: -10px 0 20px rgba(255, 107, 0, 0.3);">
-        <span class="text-[#FFB703]">::</span> CUTI PEGAWAI <span id="cuti-counter-badge" class="ml-3 px-3.5 py-0.5 text-2xl bg-[#FF5E00] text-black border-[3px] border-[#FF5E00] rounded-md font-black align-middle select-none inline-block font-mono shadow-[0_0_20px_rgba(255,94,0,0.65)]" style="text-shadow: none; letter-spacing: normal;">0</span> <span class="text-[#FFB703]">::</span>
+        <span class="text-[#FFB703]">::</span> CUTI PEGAWAI <span id="cuti-counter-badge" class="ml-3 px-4 py-0.5 text-2xl text-[#FF5E00] bg-black/90 border-2 border-[#FF5E00] rounded-lg font-black align-middle select-none inline-block font-mono shadow-[0_0_15px_rgba(255,94,0,0.4),inset_0_0_10px_rgba(255,94,0,0.2)]" style="text-shadow: 0 0 10px rgba(255,94,0,0.8); letter-spacing: normal;">0</span> <span class="text-[#FFB703]">::</span>
     </h2>
     <div id="cutiRoster" class="max-h-60 overflow-y-auto pr-1 flex flex-col gap-1 relative z-10 mt-2"></div>
 </div>
@@ -1704,9 +1695,9 @@
 
             <div class="col-span-1 flex flex-col gap-4 order-3">
                 <!-- PANEL WAVEFORM DIGANTI DENGAN PERSONNEL ROSTER -->
-                <div class="widget-panel flex-grow min-h-0 relative border border-[#00E5FF]/40 shadow-[0_8px_30px_rgba(0,0,0,0.75),inset_0_0_20px_rgba(0,229,255,0.1)] rounded-lg overflow-hidden relative" style="background: linear-gradient(160deg, #051020 0%, #010308 100%); overflow: visible;">
+                <div class="widget-panel flex-grow min-h-0 relative border border-[#00E5FF]/40 shadow-[0_8px_30px_rgba(0,0,0,0.75),inset_0_0_20px_rgba(0,229,255,0.1)] rounded-lg overflow-hidden relative" style="background: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(160deg, #051020 0%, #010308 100%); background-size: 16px 16px, auto; overflow: visible;">
                     <h2 class="widget-title text-xl tracking-[0.3em] font-black relative z-10" style="background: linear-gradient(90deg, rgba(0, 229, 255, 0.25) 0%, rgba(0, 0, 0, 0.8) 100%); border-left: 6px solid #00E5FF; color: #FFF; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9); padding-top: 10px; padding-bottom: 10px; box-shadow: -10px 0 20px rgba(0, 229, 255, 0.25);">
-                        <span class="text-[#00E5FF]">::</span> STATUS KEHADIRAN <span id="hadir-counter-badge" class="ml-3 px-3.5 py-0.5 text-2xl bg-[#00E5FF] text-black border-[3px] border-[#00E5FF] rounded-md font-black align-middle select-none inline-block font-mono shadow-[0_0_20px_rgba(0,229,255,0.65)]" style="text-shadow: none; letter-spacing: normal;">0</span> <span class="text-[#00E5FF]">::</span>
+                        <span class="text-[#00E5FF]">::</span> STATUS KEHADIRAN <span id="hadir-counter-badge" class="ml-3 px-4 py-0.5 text-2xl text-[#00E5FF] bg-black/90 border-2 border-[#00E5FF] rounded-lg font-black align-middle select-none inline-block font-mono shadow-[0_0_15px_rgba(0,229,255,0.4),inset_0_0_10px_rgba(0,229,255,0.2)]" style="text-shadow: 0 0 10px rgba(0,229,255,0.8); letter-spacing: normal;">0</span> <span class="text-[#00E5FF]">::</span>
                     </h2>
                     <div class="h-full roster-ticker-container pr-1 mt-2 relative z-10">
                         <div id="personnelRoster" class="py-2 flex flex-col gap-2">
