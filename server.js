@@ -818,8 +818,9 @@ app.post('/api/absensi', (req, res) => {
                             message: `Anda baru saja Check-In. Tunggu 1 menit untuk Check-Out.`,
                             nama: k.nama,
                             jabatan: k.jabatan,
-                        result_code: 'ALREADY_CHECKED_IN',
-                            statusColor: 'yellow'
+                            result_code: 'ALREADY_CHECKED_IN',
+                            statusColor: 'yellow',
+                            jam_masuk: dataAbsen.jam_masuk
                         });
                     }
 
@@ -831,7 +832,8 @@ app.post('/api/absensi', (req, res) => {
                             nama: k.nama,
                             jabatan: k.jabatan,
                             result_code: 'ALREADY_CHECKED_IN',
-                            statusColor: 'yellow'
+                            statusColor: 'yellow',
+                            jam_masuk: dataAbsen.jam_masuk
                         });
                     }
 
@@ -852,7 +854,8 @@ app.post('/api/absensi', (req, res) => {
                             nama: k.nama,
                             jabatan: k.jabatan,
                             result_code: 'CHECK_OUT_SUCCESS',
-                            statusColor: finalStatusColor
+                            statusColor: finalStatusColor,
+                            psw_menit: pswMenit // Kirim data PSW ke frontend untuk TTS
                         });
                     });
                 }

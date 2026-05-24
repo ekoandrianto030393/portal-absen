@@ -3481,7 +3481,7 @@ async function processAttendance(karyawanId, imageBase64) {
 
         // [NEW] INTERCEPT: UBAH WARNING JADI KONFIRMASI (SCAN KE-2)
         // Jika scan ke-2 dan server menolak karena "Sudah Masuk/Belum Jam Pulang", ubah jadi Konfirmasi Hijau.
-        if (!result.success && (result.result_code === 'TOO_EARLY_OUT' || result.result_code === 'ALREADY_CHECKED_IN')) {
+        if (!result.success && result.result_code === 'TOO_EARLY_OUT') {
             if (userScanCounters[karyawanId] <= 2) {
                 result.success = true;
                 result.result_code = 'ALREADY_IN_CONFIRMATION';
@@ -3627,7 +3627,21 @@ async function processAttendance(karyawanId, imageBase64) {
             
             // [UPDATE] Logika Pesan Suara Berbeda untuk Masuk vs Pulang
             if (result.result_code === 'CHECK_OUT_SUCCESS') {
-                SoundFX.speak(`Sampai Jumpa ${display_name}. Terima kasih atas dedikasimu hari ini. Hati-hati di jalan.`);
+                // Cek apakah PSW (Pulang Sebelum Waktunya)
+                const pswMenit = result.psw_menit || 0;
+                if (pswMenit > 0) {
+                    // [PSW] Pesan tegas namun sopan, menyebut nama & menit
+                    const pswPhrases = [
+                        `Perhatian, ${display_name}. Anda tercatat pulang lebih awal ${pswMenit} menit dari jadwal yang seharusnya. Mohon diperhatikan kedisiplinan jam kerja. Tetap jaga keselamatan di jalan.`,
+                        `${display_name}, Anda pulang sebelum waktunya, lebih cepat ${pswMenit} menit dari jadwal. Data Anda telah dicatat sebagai PSW. Hati-hati di jalan, dan semoga besok lebih tepat waktu.`,
+                        `Kepada ${display_name}, Anda tercatat meninggalkan kantor ${pswMenit} menit lebih awal dari jadwal pulang. Kedisiplinan adalah kunci pelayanan prima. Sampai jumpa besok, hati-hati di jalan.`,
+                    ];
+                    const pswMsg = pswPhrases[Math.floor(Math.random() * pswPhrases.length)];
+                    SoundFX.speak(pswMsg);
+                } else {
+                    // Checkout normal, tepat waktu atau setelah jam pulang
+                    SoundFX.speak(`Sampai jumpa, ${display_name}. Terima kasih atas dedikasi dan pelayanan Anda hari ini. Istirahat yang cukup, hati-hati di jalan.`);
+                }
             } else {
                 // [MODIFIKASI] Pesan Khusus untuk ID H87
                 if (karyawanId === 'H87') {
@@ -3746,8 +3760,21 @@ async function processAttendance(karyawanId, imageBase64) {
                     finalMessageHTML = `<span style="font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`; 
                     break;
                 case 'ALREADY_CHECKED_IN':
-                    finalStatusText = 'MOHON TUNGGU'; // Cooldown
-                    finalMessageHTML = `<span style="font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">${cleanMessage}</span>`;
+                    finalStatusText = 'SUDAH ABSEN MASUK';
+                    // Ambil data absen yang sudah ada jam berapa
+                    let jamMasuk = result.jam_masuk || '';
+                    if (!jamMasuk && result.message) {
+                        const match = result.message.match(/pukul\s+([0-9:]+)/);
+                        if (match) jamMasuk = match[1];
+                    }
+                    if (!jamMasuk && result.message) {
+                        const match2 = result.message.match(/jam\s+([0-9:]+)/);
+                        if (match2) jamMasuk = match2[1];
+                    }
+                    if (!jamMasuk) {
+                        jamMasuk = '--:--';
+                    }
+                    finalMessageHTML = `<span style="font-weight:950; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">Peringatan!<br>Anda sudah absen masuk jam ${jamMasuk}</span>`;
                     break;
                 case 'ALREADY_CHECKED_OUT':
                     finalStatusText = 'SUDAH PULANG';
@@ -3760,8 +3787,24 @@ async function processAttendance(karyawanId, imageBase64) {
 
             // VISUAL UPDATES (Dipindahkan ke sini agar override isWarning di switch berlaku)
             SoundFX.play('error');
-            await SoundFX.speak(isWarning ? `Peringatan, ${display_name}` : `Akses Ditolak, ${display_name}`);
-            SoundFX.speak(isWarning ? `Peringatan, ${display_name}` : `Akses Ditolak, ${display_name}`);
+            let warningSpeakText = isWarning ? `Peringatan, ${display_name}` : `Akses Ditolak, ${display_name}`;
+            if (result.result_code === 'ALREADY_CHECKED_IN') {
+                let jamMasukSpeech = result.jam_masuk || '';
+                if (!jamMasukSpeech && result.message) {
+                    const match = result.message.match(/pukul\s+([0-9:]+)/);
+                    if (match) jamMasukSpeech = match[1];
+                }
+                if (!jamMasukSpeech && result.message) {
+                    const match2 = result.message.match(/jam\s+([0-9:]+)/);
+                    if (match2) jamMasukSpeech = match2[1];
+                }
+                if (jamMasukSpeech) {
+                    warningSpeakText = `Peringatan, ${display_name}. Anda sudah absen masuk jam ${jamMasukSpeech}`;
+                } else {
+                    warningSpeakText = `Peringatan, ${display_name}. Anda sudah absen masuk.`;
+                }
+            }
+            await SoundFX.speak(warningSpeakText);
             setSystemTheme('ERROR'); 
 
             setStatusVisual(`${display_name}: ${cleanMessage}`, isWarning ? 'text-amber-500' : 'text-red-500');
@@ -5322,6 +5365,7 @@ async function processAttendance(karyawanId, imageBase64) {
 
             // [NEW] Parallax Mouse Move Effect
             const container = successOverlay.querySelector('.holographic-container > div');
+            const stamp = successOverlay.querySelector('.academic-stamp');
             if (container) {
                 successOverlay.onmousemove = (e) => {
                     const rect = container.getBoundingClientRect();
