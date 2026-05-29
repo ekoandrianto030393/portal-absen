@@ -363,5 +363,11 @@ if __name__ == '__main__':
     print(f"   Verification: POST http://localhost:5000/verify")
     print("=" * 60)
 
-    # Jalankan server Flask pada port 5000
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    # Gunakan Waitress sebagai server produksi yang lebih stabil daripada app.run()
+    try:
+        from waitress import serve
+        serve(app, host='0.0.0.0', port=5000)
+    except ImportError:
+        print("⚠️ Waitress tidak ditemukan. Jalankan: pip install waitress")
+        # Fallback ke flask dev server jika waitress tidak ada
+        app.run(host='0.0.0.0', port=5000, debug=False)

@@ -722,7 +722,8 @@ app.post('/api/absensi', (req, res) => {
                         nama: k.nama,
                         jabatan: k.jabatan,
                         result_code: 'OUT_OF_TIME_IN',
-                        statusColor: 'red'
+                        statusColor: 'red',
+                        jam_masuk_start: JAM_MASUK_START
                     });
                 }
 
@@ -833,7 +834,8 @@ app.post('/api/absensi', (req, res) => {
                             jabatan: k.jabatan,
                             result_code: 'ALREADY_CHECKED_IN',
                             statusColor: 'yellow',
-                            jam_masuk: dataAbsen.jam_masuk
+                            jam_masuk: dataAbsen.jam_masuk,
+                            batas_min_pulang: batasMinPulangEfektif
                         });
                     }
 
@@ -1229,6 +1231,17 @@ setInterval(() => {
     const now = new Date();
     if (now.getHours() === 2 && now.getMinutes() === 0) runBackup();
 }, 60000);
+
+// --- GLOBAL ERROR HANDLER (Mencegah server mati total) ---
+process.on('uncaughtException', (err) => {
+    console.error('❌ FATAL: Uncaught Exception:', err.message);
+    console.error(err.stack);
+    // Server tetap berjalan meskipun ada error fatal di satu thread
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ FATAL: Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // Jalankan Server
 app.listen(port, () => {

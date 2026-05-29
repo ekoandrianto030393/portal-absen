@@ -3640,7 +3640,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     SoundFX.speak(pswMsg);
                 } else {
                     // Checkout normal, tepat waktu atau setelah jam pulang
-                    SoundFX.speak(`Sampai jumpa, ${display_name}. Terima kasih atas dedikasi dan pelayanan Anda hari ini. Istirahat yang cukup, hati-hati di jalan.`);
+                    SoundFX.speak(`Sampai jumpa, ${display_name}. Terima kasih atas dedikasi dan pelayanan Anda hari ini. Hati-hati di jalan.`);
                 }
             } else {
                 // [MODIFIKASI] Pesan Khusus untuk ID H87
@@ -3799,9 +3799,21 @@ async function processAttendance(karyawanId, imageBase64) {
                     if (match2) jamMasukSpeech = match2[1];
                 }
                 if (jamMasukSpeech) {
-                    warningSpeakText = `Peringatan, ${display_name}. Anda sudah absen masuk jam ${jamMasukSpeech}`;
+                    let jamMasukPendek = jamMasukSpeech.substring(0, 5);
+                    warningSpeakText = `${display_name}, Anda sudah absen masuk pada jam ${jamMasukPendek}.`;
                 } else {
-                    warningSpeakText = `Peringatan, ${display_name}. Anda sudah absen masuk.`;
+                    warningSpeakText = `${display_name}, Anda sudah absen masuk.`;
+                }
+                
+                if (result.batas_min_pulang) {
+                    let jamPulang = result.batas_min_pulang.substring(0, 5);
+                    warningSpeakText += ` Dan untuk absen pulang cepat baru dibuka jam ${jamPulang}.`;
+                }
+            } else if (result.result_code === 'OUT_OF_TIME_IN') {
+                warningSpeakText = `Maaf ${display_name} absen masuk ditolak karena diluar jam operasional,`;
+                if (result.jam_masuk_start) {
+                    let jamMasukBuka = result.jam_masuk_start.substring(0, 5);
+                    warningSpeakText += ` absen masuk dibuka jam ${jamMasukBuka}.`;
                 }
             }
             await SoundFX.speak(warningSpeakText);
