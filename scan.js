@@ -3789,25 +3789,29 @@ async function processAttendance(karyawanId, imageBase64) {
             SoundFX.play('error');
             let warningSpeakText = isWarning ? `Peringatan, ${display_name}` : `Akses Ditolak, ${display_name}`;
             if (result.result_code === 'ALREADY_CHECKED_IN') {
-                let jamMasukSpeech = result.jam_masuk || '';
-                if (!jamMasukSpeech && result.message) {
-                    const match = result.message.match(/pukul\s+([0-9:]+)/);
-                    if (match) jamMasukSpeech = match[1];
-                }
-                if (!jamMasukSpeech && result.message) {
-                    const match2 = result.message.match(/jam\s+([0-9:]+)/);
-                    if (match2) jamMasukSpeech = match2[1];
-                }
-                if (jamMasukSpeech) {
-                    let jamMasukPendek = jamMasukSpeech.substring(0, 5);
-                    warningSpeakText = `${display_name}, Anda sudah absen masuk pada jam ${jamMasukPendek}.`;
-                } else {
-                    warningSpeakText = `${display_name}, Anda sudah absen masuk.`;
-                }
+                // [UPDATE] Logika Dinamis sebelum dan sesudah jam 11:00
+                const currentHour = new Date().getHours();
                 
-                if (result.batas_min_pulang) {
-                    let jamPulang = result.batas_min_pulang.substring(0, 5);
-                    warningSpeakText += ` Dan untuk absen pulang cepat baru dibuka jam ${jamPulang}.`;
+                if (currentHour < 11) {
+                    // Sebelum jam 11:00
+                    let jamMasukPendek = result.jam_masuk ? result.jam_masuk.substring(0, 5) : '';
+                    if (!jamMasukPendek && result.message) {
+                        const match = result.message.match(/pukul\s+([0-9:]+)/);
+                        if (match) jamMasukPendek = match[1].substring(0, 5);
+                    }
+                    if (jamMasukPendek) {
+                        warningSpeakText = `Maaf ${display_name}, Anda sudah absen masuk pada jam ${jamMasukPendek}.`;
+                    } else {
+                        warningSpeakText = `Maaf ${display_name}, Anda sudah absen masuk.`;
+                    }
+                } else {
+                    // Lewat jam 11:00 tapi masih sebelum BATAS_MIN_PULANG
+                    if (result.batas_min_pulang) {
+                        let jamPulangBuka = result.batas_min_pulang.substring(0, 5);
+                        warningSpeakText = `Maaf ${display_name}, absen pulang cepat atau PSW dibuka jam ${jamPulangBuka}.`;
+                    } else {
+                        warningSpeakText = `${display_name}, Anda sudah absen masuk.`;
+                    }
                 }
             } else if (result.result_code === 'OUT_OF_TIME_IN') {
                 warningSpeakText = `Maaf ${display_name} absen masuk ditolak karena diluar jam operasional,`;
