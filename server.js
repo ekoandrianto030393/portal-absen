@@ -896,7 +896,8 @@ app.post('/api/absensi/manual', (req, res) => {
         // Pastikan format waktu lengkap HH:MM:SS
         finalJamMasuk = jam_masuk ? (jam_masuk.length === 5 ? jam_masuk + ':00' : jam_masuk) : null;
         finalJamKeluar = jam_keluar ? (jam_keluar.length === 5 ? jam_keluar + ':00' : jam_keluar) : null;
-        finalStatus = 'HADIR'; // [FIX] Ubah status jadi HADIR agar dianggap hadir normal
+        // [FIX] Biarkan status tetap HADIR_MANUAL agar dashboard bisa menampilkannya dengan badge khusus
+        finalStatus = 'HADIR_MANUAL'; 
 
         // [FIX] Hitung Keterlambatan Manual
         if (finalJamMasuk && finalJamMasuk > BATAS_TELAT) {

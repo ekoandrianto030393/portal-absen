@@ -414,7 +414,7 @@ function initAudioVisualizer() {
             total += dataArray[i];
             
             // Warna Gradient Cyan ke Ungu
-            ctx.fillStyle = `rgba(0, 255, 255, ${barHeight / 100})`;
+            ctx.fillStyle = `rgba(251, 191, 36, ${barHeight / 100})`;
             ctx.fillRect(x, (canvas.height - barHeight) / 2, barWidth, barHeight); // Center vertical
             x += barWidth + 1;
         }
@@ -432,9 +432,9 @@ function drawIdleRadar(ctx, x, y, radius) {
     // Rotating Radar Sweep
     ctx.rotate(time);
     const gradient = ctx.createConicGradient(0, 0, 0);
-    gradient.addColorStop(0, 'rgba(0, 255, 255, 0)');
-    gradient.addColorStop(0.8, 'rgba(0, 255, 255, 0)');
-    gradient.addColorStop(1, 'rgba(0, 255, 255, 0.1)');
+    gradient.addColorStop(0, 'rgba(251, 191, 36, 0)');
+    gradient.addColorStop(0.8, 'rgba(251, 191, 36, 0)');
+    gradient.addColorStop(1, 'rgba(251, 191, 36, 0.1)');
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -458,18 +458,18 @@ if (stealthToggle) {
         } else {
             // MODE NORMAL
             stealthToggle.textContent = '[ OFF ]';
-            stealthToggle.className = 'bg-transparent border border-cyan-500/50 text-cyan-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all duration-300';
+            stealthToggle.className = 'bg-transparent border border-amber-500/50 text-amber-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all duration-300';
             if(stealthIcon) stealthIcon.className = 'w-2 h-2 rounded-full bg-gray-600';
-            logSystem('STEALTH MODE: DISENGAGED. Audio Online.', 'text-cyan-500');
+            logSystem('STEALTH MODE: DISENGAGED. Audio Online.', 'text-amber-500');
         }
     });
 }
 
 let FACE_MATCHING_THRESHOLD = 0.45; // [UPDATE] Diperketat ke 0.40 untuk Akurasi Tinggi (Anti-Acak)
 // --- DEFINISI WARNA (Futuristik) ---
-const PROFESSIONAL_STATUS_COLOR = '#00FF7F'; 
+const PROFESSIONAL_STATUS_COLOR = '#F59E0B'; 
 const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
-const HEADER_COLOR = '#00FFFF'; 
+const HEADER_COLOR = '#FBBF24'; 
 const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(204,133,0,0.95) 100%)'; 
 const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(0,255,127,0.8) 0%, rgba(0,100,0,0.95) 100%)';
 const AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
@@ -481,16 +481,16 @@ function setSystemTheme(status) {
     
     switch(status) {
         case 'SUCCESS': 
-            primary = '#00FF7F'; secondary = '#008800'; glow = 'rgba(0, 255, 127, 0.6)'; 
+            primary = '#F59E0B'; secondary = '#008800'; glow = 'rgba(245, 158, 11, 0.6)'; 
             break;
         case 'ERROR': 
             primary = '#FF0055'; secondary = '#880000'; glow = 'rgba(255, 0, 85, 0.6)'; 
             break;
         case 'SCANNING': 
-            primary = '#00FFFF'; secondary = '#0088FF'; glow = 'rgba(0, 255, 255, 0.6)'; 
+            primary = '#FBBF24'; secondary = '#0088FF'; glow = 'rgba(251, 191, 36, 0.6)'; 
             break;
         default: // IDLE
-            primary = '#00FFFF'; secondary = '#0088FF'; glow = 'rgba(0, 255, 255, 0.3)';
+            primary = '#FBBF24'; secondary = '#0088FF'; glow = 'rgba(251, 191, 36, 0.3)';
     }
     root.style.setProperty('--hud-primary', primary);
     root.style.setProperty('--hud-secondary', secondary);
@@ -515,7 +515,7 @@ window.setVisionMode = (mode) => {
         v.style.filter = 'url(#night-vision) brightness(1.2) contrast(1.1)';
         logSystem('SENSOR: NIGHT VISION ENGAGED', 'text-green-500');
     } else {
-        logSystem('SENSOR: STANDARD OPTICS RESTORED', 'text-cyan-500');
+        logSystem('SENSOR: STANDARD OPTICS RESTORED', 'text-amber-500');
     }
     SoundFX.play('comms_open');
 };
@@ -707,13 +707,13 @@ function drawHolographicMesh(ctx, landmarks) {
             // Putih terang memudar ke Cyan
             const intensity = 1 - (dist / 25);
             ctx.strokeStyle = `rgba(255, 255, 255, ${intensity})`; 
-            ctx.fillStyle = `rgba(0, 255, 255, ${intensity * 0.6})`;
+            ctx.fillStyle = `rgba(251, 191, 36, ${intensity * 0.6})`;
             ctx.fill();
             ctx.lineWidth = 1.5;
         } else {
             // Sudah stabil (Cyan redup)
-            ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.02)'; 
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)';
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.02)'; 
             ctx.lineWidth = 0.5;
         }
         ctx.stroke();
@@ -753,7 +753,7 @@ function drawHolographicMesh(ctx, landmarks) {
                 ctx.lineTo(p2.x, p2.y);
             }
         }
-        ctx.strokeStyle = `rgba(0, 255, 255, 0.5)`;
+        ctx.strokeStyle = `rgba(251, 191, 36, 0.5)`;
         ctx.stroke();
     });
 
@@ -772,7 +772,7 @@ function drawHolographicMesh(ctx, landmarks) {
              ctx.shadowBlur = 8;
              ctx.shadowColor = '#FFFFFF';
         } else {
-             ctx.fillStyle = '#00FFFF';
+             ctx.fillStyle = '#FBBF24';
              ctx.shadowBlur = 0;
         }
         ctx.fill();
@@ -782,9 +782,9 @@ function drawHolographicMesh(ctx, landmarks) {
     ctx.beginPath();
     ctx.moveTo(points[0].x - 25, scanY);
     ctx.lineTo(points[16].x + 25, scanY);
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.9)';
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
     ctx.lineWidth = 2;
-    ctx.shadowColor = '#00FFFF';
+    ctx.shadowColor = '#FBBF24';
     ctx.shadowBlur = 15;
     ctx.stroke();
     
@@ -951,8 +951,8 @@ function drawGuideOverlay(ctx, w, h, isCentered = false) {
     const cy = h / 2;
     const radius = Math.min(w, h) * 0.28; // Ukuran target (sesuai area deteksi optimal)
 
-    // [UPDATE] Logika Warna Dinamis (Cyan = Standby, Hijau = Pas)
-    const baseColor = isCentered ? '0, 255, 127' : '0, 255, 255'; // RGB: SpringGreen vs Cyan
+    // [UPDATE] Logika Warna Dinamis (Amber = Standby, Emerald = Pas)
+    const baseColor = isCentered ? '16, 185, 129' : '251, 191, 36'; // RGB: Emerald vs Amber
     const strokeStyle = `rgba(${baseColor}, ${isCentered ? 0.8 : 0.15})`; // Lebih terang jika pas
 
     ctx.save();
@@ -966,7 +966,7 @@ function drawGuideOverlay(ctx, w, h, isCentered = false) {
 
     // 2. Crosshair Tengah
     ctx.setLineDash([]);
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.3)';
     ctx.beginPath();
     ctx.moveTo(cx - 15, cy); ctx.lineTo(cx + 15, cy);
     ctx.moveTo(cx, cy - 15); ctx.lineTo(cx, cy + 15);
@@ -990,7 +990,7 @@ function drawGuideOverlay(ctx, w, h, isCentered = false) {
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
     
     // [UPDATE] Warna Teks: Hijau jika pas, Kuning jika belum
-    ctx.fillStyle = isCentered ? `rgba(0, 255, 127, ${blinkAlpha})` : `rgba(255, 255, 0, ${blinkAlpha})`;
+    ctx.fillStyle = isCentered ? `rgba(245, 158, 11, ${blinkAlpha})` : `rgba(255, 255, 0, ${blinkAlpha})`;
     ctx.textAlign = 'center';
     ctx.fillText(text, cx, cy + radius + 35);
 
@@ -1013,7 +1013,7 @@ function drawGuideOverlay(ctx, w, h, isCentered = false) {
         ctx.lineTo(arrowSize, -arrowSize * 1.5); 
         ctx.closePath();
         // [UPDATE] Warna Panah mengikuti status (Hijau/Kuning)
-        ctx.fillStyle = isCentered ? `rgba(0, 255, 127, ${blinkAlpha})` : `rgba(255, 255, 0, ${blinkAlpha})`;
+        ctx.fillStyle = isCentered ? `rgba(245, 158, 11, ${blinkAlpha})` : `rgba(255, 255, 0, ${blinkAlpha})`;
         ctx.fill();
         ctx.restore();
     };
@@ -1078,7 +1078,7 @@ function drawTargetLock(ctx, x, y, radius) {
     ctx.rotate(time * 1.5);
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 1.5); // Lingkaran tidak penuh
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
     ctx.lineWidth = 2;
     ctx.stroke();
     
@@ -1280,13 +1280,13 @@ function drawHolographicMesh(ctx, landmarks) {
             // Putih terang memudar ke Cyan
             const intensity = 1 - (dist / 25);
             ctx.strokeStyle = `rgba(255, 255, 255, ${intensity})`; 
-            ctx.fillStyle = `rgba(0, 255, 255, ${intensity * 0.6})`;
+            ctx.fillStyle = `rgba(251, 191, 36, ${intensity * 0.6})`;
             ctx.fill();
             ctx.lineWidth = 1.5;
         } else {
             // Sudah stabil (Cyan redup)
-            ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.02)'; 
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)';
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.02)'; 
             ctx.lineWidth = 0.5;
         }
         ctx.stroke();
@@ -1700,8 +1700,8 @@ function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     
     let bgColor = 'bg-slate-800/80';
-    let borderColor = 'border-cyan-500';
-    let textColor = 'text-cyan-300';
+    let borderColor = 'border-amber-500';
+    let textColor = 'text-amber-300';
     let icon = '<i class="fa-solid fa-circle-info"></i>';
 
     if (type === 'success') {
@@ -1801,7 +1801,7 @@ function drawSmartHUD(ctx, box, label, color, confidence, emotion = '-', gender 
     ctx.fillText(label.length > 15 ? label.substring(0, 15) + '...' : label, tagX + 15, tagY + 25);
 
     // 5. Sub-info — ID statis per session (tidak Math.random() setiap frame)
-    ctx.fillStyle = '#00FFFF';
+    ctx.fillStyle = '#FBBF24';
     ctx.font = '11px "Courier New", monospace';
     ctx.fillText(`MATCH-CONF: ${Math.min(100, Math.max(0, confidence)).toFixed(0)}%`, tagX + 15, tagY + 45);
 
@@ -1809,7 +1809,7 @@ function drawSmartHUD(ctx, box, label, color, confidence, emotion = '-', gender 
     const confVal = Math.min(100, Math.max(0, confidence));
     ctx.fillStyle = '#333';
     ctx.fillRect(tagX + 15, tagY + 55, 100, 4);
-    ctx.fillStyle = confVal > 70 ? '#00FF7F' : (confVal > 40 ? '#FFD700' : '#FF0055');
+    ctx.fillStyle = confVal > 70 ? '#F59E0B' : (confVal > 40 ? '#FFD700' : '#FF0055');
     ctx.fillRect(tagX + 15, tagY + 55, confVal, 4);
 
     // [DISABLED] Emotion & Bio readout dinonaktifkan (AgeGenderNet & FaceExpressionNet off)
@@ -1836,28 +1836,26 @@ function logSystem(message, color = 'text-green-500') {
 function setStatusVisual(message, colorClass, isPulsing = false) {
     if (!statusMessage) return;
     statusMessage.textContent = message;
-    statusMessage.classList.remove('glitch-text');
+    statusMessage.className = "text-xl lg:text-2xl font-bold transition-colors duration-300";
     
     // Gunakan font-black, uppercase, dan tracking-wide untuk tampilan lebih futuristik
     statusMessage.className = 'text-xl lg:text-2xl font-black transition-colors duration-300 uppercase tracking-wide';
-    statusMessage.classList.add(colorClass);
+    
 
     // Tentukan warna shadow berdasarkan colorClass untuk efek glow
-    let shadowColor = '#00FFFF'; // Default untuk text-cyan-500
-    if (colorClass.includes('text-green-500')) shadowColor = '#00FF7F';
+    let shadowColor = '#FBBF24'; // Default untuk text-amber-500
+    if (colorClass.includes('text-green-500')) shadowColor = '#F59E0B';
     else if (colorClass.includes('text-red-500')) shadowColor = '#FF0055';
     else if (colorClass.includes('text-amber-500') || colorClass.includes('text-yellow-400')) shadowColor = '#FFD700';
     else if (colorClass.includes('text-gray-300')) shadowColor = '#CCCCCC';
 
     // Terapkan font-family dan text-shadow untuk kedalaman dan glow
-    statusMessage.style.fontFamily = '"Rajdhani", sans-serif';
-    statusMessage.style.textShadow = `0 0 15px ${shadowColor}, 0 0 30px ${shadowColor}80`;
-    statusMessage.style.filter = `drop-shadow(0 0 8px ${shadowColor}60)`; // Tambahan drop-shadow untuk efek lebih tebal
+            statusMessage.style.filter = `drop-shadow(0 0 8px ${shadowColor}60)`; // Tambahan drop-shadow untuk efek lebih tebal
 
     if (isPulsing) {
-        statusMessage.classList.add('animate-pulse');
+        
     } else {
-        statusMessage.classList.remove('animate-pulse');
+        statusMessage.className = "text-xl lg:text-2xl font-bold transition-colors duration-300";
     }
 }
 
@@ -1879,7 +1877,7 @@ function resizeCanvas() {
 
         // PENTING: Untuk Face-API
         faceapi.matchDimensions(canvas, { width: W, height: videoH});
-        logSystem(`Canvas resized to ${W}x${videoH}.`, 'text-cyan-500');
+        logSystem(`Canvas resized to ${W}x${videoH}.`, 'text-amber-500');
     }
 }
 
@@ -1904,9 +1902,9 @@ function logAttendance(name, time) {
     if (placeholder) placeholder.remove();
 
     const entry = document.createElement('div');
-    entry.className = 'flex justify-between items-center border-b border-cyan-900/30 pb-1 mb-1 animate-[fadeIn_0.5s_ease-out]';
+    entry.className = 'flex justify-between items-center border-b border-amber-900/30 pb-1 mb-1 animate-[fadeIn_0.5s_ease-out]';
     entry.innerHTML = `
-        <span class="text-cyan-400 font-bold truncate w-2/3 flex items-center gap-2">
+        <span class="text-amber-400 font-bold truncate w-2/3 flex items-center gap-2">
             <span class="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_5px_#00FF00]"></span>
             ${name}
         </span>
@@ -1989,44 +1987,44 @@ function animateTitle() {
             align-items: center; 
             justify-content: center; 
             width: 100%; 
-            max-width: 800px; /* Diperbesar dari 640px */
+            max-width: 800px; 
             margin: 0 auto; 
-            padding: 16px; /* Tambah padding */
-            border: 1px solid rgba(0, 255, 255, 0.8); 
-            background: linear-gradient(135deg, rgba(6, 20, 30, 0.9) 0%, rgba(3, 10, 15, 0.95) 100%);
+            padding: 16px; 
+            border: 1px solid rgba(251, 191, 36, 0.5); 
+            background: linear-gradient(135deg, rgba(2, 44, 34, 0.9) 0%, rgba(2, 44, 34, 0.95) 100%);
             backdrop-filter: blur(20px);
-            box-shadow: 0 0 40px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(251, 191, 36, 0.05);
             position: relative;
-            clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+            border-radius: 12px;
         ">
             <div style="display: flex; flex-direction: row; align-items: stretch; justify-content: center; width: 100%; gap: 15px;">
                 
-                <!-- CHRONO MODULE -->
-                <div style="flex: 1.6; border: 1px solid rgba(0,255,255,0.3); padding: 15px; background: rgba(0,0,0,0.5); position: relative; display: flex; align-items: center; gap: 20px;">
+                <!-- CHRONO MODULE (ACADEMIC) -->
+                <div style="flex: 1.6; border: 1px solid rgba(251, 191, 36, 0.3); padding: 15px; background: rgba(0,0,0,0.3); position: relative; display: flex; align-items: center; gap: 20px; border-radius: 8px;">
                     <div style="width: 90px; height: 90px; position: relative;">
                         <svg viewBox="0 0 100 100" style="width: 100%; height: 100%; transform: rotate(-90deg);">
-                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,255,255,0.1)" stroke-width="2" />
-                            <circle id="clock-ring-sec" cx="50" cy="50" r="45" fill="none" stroke="#00FFFF" stroke-width="4" stroke-dasharray="0 283" style="transition: stroke-dasharray 0.1s linear;" stroke-linecap="round" />
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(251,191,36,0.1)" stroke-width="2" />
+                            <circle id="clock-ring-sec" cx="50" cy="50" r="45" fill="none" stroke="#FBBF24" stroke-width="4" stroke-dasharray="0 283" style="transition: stroke-dasharray 0.1s linear;" stroke-linecap="round" />
                         </svg>
                         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; pointer-events: none;">
-                            <span id="clock-s" style="font-size: 30px; font-weight: 900; color: #FFD700; font-family: 'Rajdhani';">--</span>
-                            <span id="clock-ms-soph" style="font-size: 11px; color: #00FFFF; margin-top: -5px; font-family: 'Share Tech Mono';">.00</span>
+                            <span id="clock-s" style="font-size: 30px; font-weight: 700; color: #FBBF24; font-family: 'Inter', sans-serif;">--</span>
+                            <span id="clock-ms-soph" style="font-size: 11px; color: #FBBF24; margin-top: -5px; font-family: 'Inter', sans-serif; opacity: 0.7;">.00</span>
                         </div>
                     </div>
                     
                     <div style="display: flex; flex-direction: column;">
-                        <div style="font-size: 10px; color: #00FF7F; letter-spacing: 2px; font-family: 'Share Tech Mono';">MASTER_CLOCK [SYNCED]</div>
-                        <div style="display: flex; align-items: baseline; font-family: 'Rajdhani'; font-weight: 900; color: #FFF; text-shadow: 0 0 20px #00FFFF;">
+                        <div style="font-size: 11px; color: #FBBF24; letter-spacing: 2px; font-family: 'Inter', sans-serif; opacity: 0.8; margin-bottom: 4px;">WAKTU SISTEM</div>
+                        <div style="display: flex; align-items: baseline; font-family: 'Lora', serif; font-weight: 700; color: #FFF; text-shadow: 0 0 15px rgba(251,191,36,0.4);">
                             <span id="clock-h" style="font-size: 58px; line-height: 1;">--</span>
-                            <span style="font-size: 42px; margin: 0 2px; animation: blink 1s infinite;">:</span>
+                            <span style="font-size: 42px; margin: 0 4px; animation: blink 1s infinite; opacity: 0.8;">:</span>
                             <span id="clock-m" style="font-size: 58px; line-height: 1;">--</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- TELEMETRY & IMAGE (CLEAN VIEW) -->
-                <div style="flex: 2.2; height: 125px; position: relative; border: 1px solid rgba(0,255,255,0.5); overflow: hidden; background: #000; border-radius: 4px;">
-                    <img src="pkm.jpg" alt="PKM" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.95; filter: contrast(1.15) brightness(1.05);">
+                <!-- TELEMETRY & IMAGE (ACADEMIC) -->
+                <div style="flex: 2.2; height: 125px; position: relative; border: 1px solid rgba(251,191,36,0.5); overflow: hidden; background: #022c22; border-radius: 8px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
+                    <img src="pkm.jpg" alt="PKM" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.85; filter: contrast(1.1) sepia(0.2) hue-rotate(-10deg);">
                 </div>
             </div>
         </div>
@@ -2053,21 +2051,19 @@ function animateTitle() {
         if (mainLogo) {
             mainLogo.style.display = 'block';
             mainLogo.style.position = 'fixed';
-            mainLogo.style.top = '22px'; // Disesuaikan agar sejajar tengah dengan teks
-            mainLogo.style.top = '45px'; // Digeser ke bawah (28px ticker + gap)
+            mainLogo.style.top = '65px'; // Digeser ke bawah agar tidak tertutup ticker Motto
             mainLogo.style.left = '30px';
-            mainLogo.style.width = '48px'; // Sedikit lebih kecil dari 60px
+            mainLogo.style.width = '48px'; 
             mainLogo.style.height = '48px';
-            mainLogo.style.borderRadius = '50%'; // Membuat tampilan oval/lingkaran
+            mainLogo.style.borderRadius = '50%'; 
             mainLogo.style.objectFit = 'cover';
             mainLogo.style.zIndex = '101';
-            mainLogo.style.filter = 'drop-shadow(0 0 8px rgba(0,255,255,0.6))';
+            mainLogo.style.filter = 'drop-shadow(0 0 8px rgba(251,191,36,0.6))';
         }
 
         // --- POSISI JUDUL: POJOK KIRI ATAS (HUD STYLE) ---
         mainTitle.style.position = 'fixed';
-        mainTitle.style.top = '25px';
-        mainTitle.style.top = '48px'; // Digeser ke bawah mengikuti logo
+        mainTitle.style.top = '68px'; // Digeser ke bawah mengikuti logo
         mainTitle.style.left = '88px'; // Penyesuaian jarak (30px + 48px logo + 10px gap)
         mainTitle.style.zIndex = '100';
         mainTitle.style.margin = '0';
@@ -2101,8 +2097,8 @@ function animateTitle() {
             }
             
             // Style dasar span
-            span.style.color = '#00FFFF'; 
-            span.style.textShadow = '0 0 10px rgba(0, 255, 255, 0.5)';
+            span.style.color = '#FBBF24'; 
+            span.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
             span.style.color = '#FFD700'; 
             span.style.textShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
             span.style.transition = 'transform 0.1s, color 0.1s, text-shadow 0.1s';
@@ -2133,8 +2129,8 @@ function animateTitle() {
             if (original === ' ') continue;
 
             let char = original;
-            let color = '#00FFFF'; // Base: Cyan Neon
-            let textShadow = '0 0 8px rgba(0, 255, 255, 0.6)';
+            let color = '#FBBF24'; // Base: Cyan Neon
+            let textShadow = '0 0 8px rgba(251, 191, 36, 0.6)';
             let transform = 'scale(1) translateZ(0px)';
             let opacity = 0.8 + (Math.sin(time * 3 + i) * 0.1); // Breathing effect
 
@@ -2144,7 +2140,7 @@ function animateTitle() {
             // Efek Highlight (Passing Beam)
             if (dist < 1.5) {
                 color = '#FFFFFF'; // White Hot
-                textShadow = '0 0 20px #FFFFFF, 0 0 40px #00FFFF, 0 0 60px #0088FF';
+                textShadow = '0 0 20px #FFFFFF, 0 0 40px #FBBF24, 0 0 60px #0088FF';
                 textShadow = '0 0 20px #FFFFFF, 0 0 40px #FFD700, 0 0 60px #FF4500';
                 transform = 'scale(1.2) translateZ(20px)';
                 opacity = '1';
@@ -2161,7 +2157,7 @@ function animateTitle() {
                 const glitchChars = "X@#$%=+<>?01";
                 char = glitchChars[Math.floor(Math.random() * glitchChars.length)];
                 color = '#FF0055'; // Error Red
-                textShadow = '2px 0 0 #00FFFF, -2px 0 0 #FF0055'; // Chromatic Aberration
+                textShadow = '2px 0 0 #FBBF24, -2px 0 0 #FF0055'; // Chromatic Aberration
                 transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
                 opacity = '1';
             }
@@ -2285,62 +2281,60 @@ async function updatePersonnelRoster() {
 
             if (isDL) {
                 timeDisplay = 'DINAS LUAR';
-                statusColor = 'bg-[#00FFD2] shadow-[0_0_12px_#00FFD2]';
+                statusColor = 'bg-[#3b82f6] shadow-[0_0_12px_#3b82f6]';
                 statusText = 'DINAS LUAR';
-                borderColor = 'border-[#00FFD2]';
-                cardBorderClass = 'border-[#00FFD2]';
+                borderColor = 'border-[#3b82f6]';
+                cardBorderClass = 'border-[#3b82f6]';
                 bgHover = '';
             } else if (isCuti) {
                 timeDisplay = 'SEDANG CUTI';
-                statusColor = 'bg-[#FF5E00] shadow-[0_0_12px_#FF5E00]';
+                statusColor = 'bg-[#f97316] shadow-[0_0_12px_#f97316]';
                 statusText = 'CUTI';
-                borderColor = 'border-[#FF5E00]';
-                cardBorderClass = 'border-[#FF5E00]';
+                borderColor = 'border-[#f97316]';
+                cardBorderClass = 'border-[#f97316]';
                 bgHover = '';
             } else {
                 timeDisplay = isOut ? `OUT: ${row.jam_keluar ? row.jam_keluar.substring(0,5) : '--:--'}` : `IN: ${row.jam_masuk ? row.jam_masuk.substring(0,5) : '--:--'}`;
-                statusColor = isOut ? 'bg-[#FFB703] shadow-[0_0_12px_#FFB703]' : 'bg-[#00E5FF] shadow-[0_0_12px_#00E5FF]';
+                statusColor = isOut ? 'bg-[#f43f5e] shadow-[0_0_12px_#f43f5e]' : 'bg-[#FBBF24] shadow-[0_0_12px_#FBBF24]';
                 statusText = isOut ? 'SUDAH PULANG' : 'HADIR';
-                borderColor = isOut ? 'border-[#FFB703]' : 'border-[#00E5FF]';
-                cardBorderClass = isOut ? 'border-[#FFB703]' : 'border-[#00E5FF]';
+                borderColor = isOut ? 'border-[#f43f5e]' : 'border-[#FBBF24]';
+                cardBorderClass = isOut ? 'border-[#f43f5e]' : 'border-[#FBBF24]';
                 bgHover = '';
             }
 
-            const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-[#00FFD2] ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
-            const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-[#FF5E00] ml-1.5 text-sm flex-shrink-0 shadow-[0_2px_8px_rgba(255,94,0,0.5)]" title="Cuti"></i>' : '';
-
-
+            const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-[#3b82f6] ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
+            const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-[#f97316] ml-1.5 text-sm flex-shrink-0 shadow-[0_2px_8px_rgba(249,115,22,0.5)]" title="Cuti"></i>' : '';
             
             if (isCuti) {
-                bgGradient = 'linear-gradient(135deg, rgba(255,94,0,0.25) 0%, rgba(255,94,0,0.05) 50%, rgba(15,8,3,1) 100%)';
-                glowColor = '#FF5E00';
-                badgeStyle = 'bg-[#FF5E00] text-black border-[#FF5E00]';
-                timeGradient = 'text-[#FF9000] bg-black/75 border-[#FF5E00]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(255,94,0,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">CUTI</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(249,115,22,0.05) 50%, rgba(15,8,3,1) 100%)';
+                glowColor = '#f97316';
+                badgeStyle = 'bg-[#f97316] text-white border-[#f97316]';
+                timeGradient = 'text-[#f97316] bg-black/75 border-[#f97316]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(249,115,22,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">CUTI</span>`;
             } else if (isDL) {
-                bgGradient = 'linear-gradient(135deg, rgba(0,255,210,0.25) 0%, rgba(0,255,210,0.05) 50%, rgba(3,12,15,1) 100%)';
-                glowColor = '#00FFD2';
-                badgeStyle = 'bg-[#00FFD2] text-black border-[#00FFD2]';
-                timeGradient = 'text-[#00FFD2] bg-black/75 border-[#00FFD2]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(0,255,210,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">DINAS LUAR</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.05) 50%, rgba(3,12,15,1) 100%)';
+                glowColor = '#3b82f6';
+                badgeStyle = 'bg-[#3b82f6] text-white border-[#3b82f6]';
+                timeGradient = 'text-[#3b82f6] bg-black/75 border-[#3b82f6]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(59,130,246,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">DINAS LUAR</span>`;
             } else if (isOut) {
-                bgGradient = 'linear-gradient(135deg, rgba(255,183,3,0.25) 0%, rgba(255,183,3,0.05) 50%, rgba(15,12,3,1) 100%)';
-                glowColor = '#FFB703';
-                badgeStyle = 'bg-[#FFB703] text-black border-[#FFB703]';
-                timeGradient = 'text-[#FFB703] bg-black/75 border-[#FFB703]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(255,183,3,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">PULANG</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(244,63,94,0.15) 0%, rgba(244,63,94,0.05) 50%, rgba(15,12,3,1) 100%)';
+                glowColor = '#f43f5e';
+                badgeStyle = 'bg-[#f43f5e] text-white border-[#f43f5e]';
+                timeGradient = 'text-[#f43f5e] bg-black/75 border-[#f43f5e]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(244,63,94,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">PULANG</span>`;
             } else {
-                bgGradient = 'linear-gradient(135deg, rgba(0,229,255,0.25) 0%, rgba(0,229,255,0.05) 50%, rgba(3,12,20,1) 100%)';
-                glowColor = '#00E5FF';
-                badgeStyle = 'bg-[#00E5FF] text-black border-[#00E5FF]';
-                timeGradient = 'text-[#00E5FF] bg-black/75 border-[#00E5FF]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(0,229,255,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">HADIR</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(251,191,36,0.15) 0%, rgba(251,191,36,0.05) 50%, rgba(2,44,34,1) 100%)';
+                glowColor = '#FBBF24';
+                badgeStyle = 'bg-[#FBBF24] text-black border-[#FBBF24]';
+                timeGradient = 'text-[#FBBF24] bg-black/75 border-[#FBBF24]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(251,191,36,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">HADIR</span>`;
             }
 
-            const solidStatusBg = isDL ? 'bg-[#00FFD2]' : isCuti ? 'bg-[#FF5E00]' : isOut ? 'bg-[#FFB703]' : 'bg-[#00E5FF]';
+            const solidStatusBg = isDL ? 'bg-[#3b82f6]' : isCuti ? 'bg-[#f97316]' : isOut ? 'bg-[#f43f5e]' : 'bg-[#FBBF24]';
 
             const item = document.createElement('div');
-            item.className = `group flex items-center p-3 rounded-lg border border-white/10 transition-all duration-300 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden bg-[#070b12]/90 hover:bg-[#0c1424]/90 hover:-translate-y-0.5 select-none cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.6)] hover:border-white/20`;
+            item.className = `group flex items-center p-3 rounded-lg border border-amber-500/10 transition-all duration-300 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden bg-black/40 hover:bg-black/60 hover:-translate-y-0.5 select-none cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.6)] hover:border-amber-500/30`;
             
             item.style.background = bgGradient;
 
@@ -2377,7 +2371,7 @@ async function updatePersonnelRoster() {
                         <p class="font-extrabold text-[15px] ${nameColor} truncate leading-tight tracking-wider ${hoverGlowClass} transition-colors" style="text-shadow: 0 1px 3px rgba(0,0,0,0.9);">${row.nama}</p>
                         ${dlIcon || cutiIcon || ''}
                     </div>
-                    <p class="text-[10px] text-cyan-400 font-extrabold truncate mb-2.5 uppercase tracking-[0.2em] drop-shadow-sm">${row.jabatan || '-'}</p>
+                    <p class="text-[10px] text-amber-400 font-extrabold truncate mb-2.5 uppercase tracking-[0.2em] drop-shadow-sm">${row.jabatan || '-'}</p>
                     
                     <!-- Pocket Data Container -->
                     <div class="grid grid-cols-2 gap-2 bg-[#02050a]/90 p-2 rounded border border-white/5">
@@ -2599,17 +2593,17 @@ const api = {
 };
 
 async function loadLabeledImages() {
-    setStatusVisual('BOOT SEQUENCE: Memuat Database Wajah...', 'text-cyan-500', true);
+    setStatusVisual('BOOT SEQUENCE: Memuat Database Wajah...', 'text-amber-500', true);
     if(dbStatus) {
         dbStatus.textContent = 'LOADING...';
         dbStatus.className = 'text-amber-500 font-bold';
     }
-    logSystem('Database Sync Initiated.', 'text-cyan-500');
+    logSystem('Database Sync Initiated.', 'text-amber-500');
     
     try {
         const descriptorsData = await api.getDescriptors();
         // console.log("DEBUG SERVER DATA:", descriptorsData);
-        logSystem(`DIAGNOSTIK: Diterima ${descriptorsData ? descriptorsData.length : 0} data dari server.`, 'text-cyan-400');
+        logSystem(`DIAGNOSTIK: Diterima ${descriptorsData ? descriptorsData.length : 0} data dari server.`, 'text-amber-400');
         
         if (!descriptorsData || descriptorsData.length === 0) {
             setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-amber-500');
@@ -2708,7 +2702,7 @@ function stopCamera() {
 async function startCamera(deviceId = null) {
     stopCamera(); 
     
-    logSystem('Camera stream starting...', 'text-cyan-500');
+    logSystem('Camera stream starting...', 'text-amber-500');
 
     try {
         const constraints = {
@@ -2746,7 +2740,7 @@ async function loadTodayAttendance() {
     try {
         const data = await api.getTodayAttendance();
         if (data && data.length > 0) {
-            logSystem(`KERNEL DIAGNOSTIC: Loading ${data.length} records...`, 'text-cyan-500');
+            logSystem(`KERNEL DIAGNOSTIC: Loading ${data.length} records...`, 'text-amber-500');
             // Loop data (Asumsi urut waktu ASC dari server)
             // logAttendance melakukan prepend, jadi data terakhir akan muncul paling atas
             data.forEach(row => {
@@ -2769,8 +2763,8 @@ async function initializeApp() {
     if (isAppInitialized) return;
     isAppInitialized = true;
 
-    setStatusVisual('BOOT SEQUENCE: Loading Neural Engine...', 'text-cyan-500', true);
-    logSystem('Application boot sequence initiated.', 'text-cyan-500');
+    setStatusVisual('BOOT SEQUENCE: Loading Neural Engine...', 'text-amber-500', true);
+    logSystem('Application boot sequence initiated.', 'text-amber-500');
 
     // [FIX] Suppress TensorFlow.js Backend/Platform Overwrite Warnings
     if (window.faceapi && faceapi.tf) {
@@ -2799,7 +2793,7 @@ async function initializeApp() {
         }
 
         logSystem('Neural Network Models Loaded.', 'text-green-500');
-        setStatusVisual('Models Loaded. Starting Camera Stream...', 'text-cyan-400', true);
+        setStatusVisual('Models Loaded. Starting Camera Stream...', 'text-amber-400', true);
 
         // [NEW] Inisialisasi ONNX Runtime sebagai Fallback Engine
         // Mengatur thread WASM agar pemrosesan neural lebih cepat jika WebGL bermasalah
@@ -3024,7 +3018,6 @@ async function detectFace() {
         // Hapus inline style lama jika ada agar class CSS berlaku
         videoContainer.style.border = ''; 
         videoContainer.style.boxShadow = '';
-        document.getElementById('alarm-overlay').style.opacity = '0';
     } else {
          // Jika tidak ada wajah terdeteksi, reset style ke semula (hilangkan border)
          videoContainer.classList.remove('scanning-border', 'scanning-border-error');
@@ -3055,14 +3048,14 @@ async function detectFace() {
         // --- GAMBAR EFEK CANGGIH BARU ---
 
         // GAMBAR KONEKTOR BIOMETRIK (NEW)
-        // drawBiometricConnectors(context, box, landmarks, '#00FFFF');
+        // drawBiometricConnectors(context, box, landmarks, '#FBBF24');
 
         // GAMBAR RETINAL SCAN (NEW)
-        // drawRetinalScan(context, landmarks, '#00FFFF');
+        // drawRetinalScan(context, landmarks, '#FBBF24');
 
         // --- GAMBAR EFEK BARU ---
         // [UPDATE] Gunakan HUD Sci-Fi Baru yang lebih canggih
-        drawSciFiHUD(context, box, landmarks, '#00FFFF', '', 'SCANNING');
+        drawSciFiHUD(context, box, landmarks, '#FBBF24', '', 'SCANNING');
         
         // const nose = landmarks.getNose()[3]; // Titik tengah hidung
         // drawTargetLock(context, nose.x, nose.y, box.width * 0.3); // Diganti Sci-Fi HUD
@@ -3176,7 +3169,7 @@ async function detectFace() {
             
             employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
             faceLabel = employee.nama;
-            faceColor = '#00FF7F'; // Hijau (Match)
+            faceColor = '#F59E0B'; // Hijau (Match)
         } else {
             // [NEW] Grace Period Logic (Anti-Acak)
             // Jika hasil jadi unknown tapi kita punya lock baru-baru ini, pertahankan hasil lama sebentar
@@ -3186,7 +3179,7 @@ async function detectFace() {
                 
                 employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
                 faceLabel = employee.nama; // Tetap tampilkan nama (Stabil)
-                faceColor = '#00FF7F';
+                faceColor = '#F59E0B';
             } else {
                 // Benar-benar unknown atau grace period habis
                 recognizedId = null;
@@ -3194,7 +3187,7 @@ async function detectFace() {
                 
                 if (maxCount > 1) {
                     faceLabel = "VERIFYING...";
-                    faceColor = "#00FFFF"; 
+                    faceColor = "#FBBF24"; 
                 }
             }
         }
@@ -3226,7 +3219,7 @@ async function detectFace() {
                 const ambStatus = document.getElementById('amb-status');
                 if (ambStatus) {
                     ambStatus.textContent = 'DISPATCHED';
-                    ambStatus.style.color = '#00FF7F';
+                    ambStatus.style.color = '#F59E0B';
                     ambStatus.style.textShadow = '0 0 10px #00FF00';
                 }
 
@@ -3252,7 +3245,7 @@ async function detectFace() {
                 setSystemTheme('SUCCESS');
 
                 if (!isProcessing) { 
-                    setStatusVisual(`AUTHORIZING ${employee.nama}...`, 'text-cyan-400', true);
+                    setStatusVisual(`AUTHORIZING ${employee.nama}...`, 'text-amber-400', true);
                     isProcessing = true;
                     // Simpan match terakhir sebelum proses absensi
                     lastKnownMatch = { id: recognizedId, box: resizedDetections.detection.box, landmarks: resizedDetections.landmarks, faceLabel: faceLabel, faceColor: faceColor };
@@ -3310,17 +3303,16 @@ async function detectFace() {
                 // faceColor sudah diset kuning/cyan di logika filter sebelumnya
             } else {
                 // Mode Unknown: Hilangkan efek merah, gunakan warna standar scanning (Cyan)
-                videoContainer.classList.remove('scanning-border-error'); 
-                document.getElementById('alarm-overlay').style.opacity = '0';
+                videoContainer.classList.remove('scanning-border-error');
                 if (labeledDescriptors && labeledDescriptors.length > 0) {
                     // Unknown Face
-                    setStatusVisual('SCANNING..', 'text-cyan-500');
+                    setStatusVisual('SCANNING..', 'text-amber-500');
                     userStatusDisplay.textContent = 'UNKNOWN TARGET';
                     faceLabel = 'UNKNOWN';
-                    faceColor = '#00FFFF';
+                    faceColor = '#FBBF24';
                     
                     // Gunakan warna Cyan stabil untuk status Unknown
-                    faceColor = '#00FFFF'; 
+                    faceColor = '#FBBF24'; 
 
                     // Trigger Glitch Effect on Unknown Face (Interference)
                     if (Math.random() < 0.15) triggerGlitch();
@@ -3417,12 +3409,12 @@ async function processAttendance(karyawanId, imageBase64) {
         successOverlay.innerHTML = `
             <div class="holo-card" style="border-color: ${HEADER_COLOR}; text-align: center; justify-content: center;">
                 <div class="holo-header" style="justify-content: center;">
-                    <span class="text-cyan-400 font-mono tracking-[0.5em] text-2xl animate-pulse">MENGHUBUNGKAN SERVER...</span>
+                    <span class="text-amber-400 font-mono tracking-[0.5em] text-2xl animate-pulse">MENGHUBUNGKAN SERVER...</span>
                 </div>
                 <div class="p-20 flex flex-col items-center justify-center h-full">
                     <h1 class="text-6xl font-black text-white mb-8 tracking-widest glitch-text">MEMPROSES BIOMETRIK</h1>
                     <div class="w-full bg-gray-800 h-1 mt-4 rounded overflow-hidden">
-                        <div class="h-full bg-cyan-400 animate-[loading_1s_infinite]"></div>
+                        <div class="h-full bg-amber-400 animate-[loading_1s_infinite]"></div>
                     </div>
                 </div>
             </div>
@@ -3487,7 +3479,7 @@ async function processAttendance(karyawanId, imageBase64) {
             if (cornerId) cornerId.textContent = karyawanId;
             if (cornerStatus) cornerStatus.textContent = result.success ? 'AUTHORIZED' : 'DENIED';
             if (cornerStatus) cornerStatus.className = `text-[10px] font-bold text-black px-2 py-0.5 rounded ${result.success ? 'bg-green-500' : 'bg-red-500'}`;
-            cornerProfileCard.style.borderColor = result.success ? '#00FF7F' : '#FF0055';
+            cornerProfileCard.style.borderColor = result.success ? '#F59E0B' : '#FF0055';
         }
 
         // const coloredName = ... (Tidak dipakai lagi di layout baru)
@@ -3652,7 +3644,7 @@ async function processAttendance(karyawanId, imageBase64) {
                         finalStatusText = 'ABSEN MASUK BERHASIL';
                         finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi MASUK Terkonfirmasi.</div><span style="font-weight:950; font-size: 2.2rem; display:block; margin-top:10px; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5); transform: perspective(500px) rotateX(15deg); letter-spacing: 4px;">SELAMAT BEKERJA</span>`;
                         finalBackground = ABSEN_NORMAL_BG;
-                        finalStatusColor = '#00FF7F'; // Hijau Spring
+                        finalStatusColor = '#F59E0B'; // Hijau Spring
                     }
                     // Tambahkan pesan selamat datang setelah warna ditentukan
                     welcomeMessage = `<div id="welcomeMessageTarget" class="text-lg font-semibold tracking-wider mb-1" style="color: ${finalStatusColor}CC; text-shadow: 0 0 5px ${finalStatusColor}; min-height: 28px;"></div>`;
@@ -3670,7 +3662,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     } else {
                         finalStatusText = 'CHECK-OUT BERHASIL';
                         finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi PULANG Terkonfirmasi.</div><span style="font-weight:900; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">Hati-hati di jalan.</span>`;
-                        finalStatusColor = '#00FF7F'; // Hijau Spring (Sama seperti Check-In)
+                        finalStatusColor = '#F59E0B'; // Hijau Spring (Sama seperti Check-In)
                         finalBackground = ABSEN_NORMAL_BG;
                     }
                     logAttendance(display_name, serverTimestamp); // Log ke panel kanan
@@ -3680,7 +3672,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     finalStatusText = 'SUDAH ABSEN MASUK';
                     finalMessageHTML = `<span style="font-weight:950; font-size: 2rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">DATA TERKONFIRMASI</span><br><span style="font-size: 1.1rem; opacity: 0.8;">Anda sudah melakukan absen masuk.</span>`;
                     finalBackground = ABSEN_NORMAL_BG;
-                    finalStatusColor = '#00FF7F';
+                    finalStatusColor = '#F59E0B';
                     break;
                 case 'STATUS_CONFIRMED':
                 default: // Fallback untuk kasus sukses lainnya
@@ -3699,7 +3691,7 @@ async function processAttendance(karyawanId, imageBase64) {
                 diagItem.className = 'flex justify-between items-center bg-gray-800/50 p-2 rounded border-l-2 border-green-500 animate-[fadeIn_0.5s_ease-out]';
                 diagItem.innerHTML = `
                     <div class="flex flex-col overflow-hidden">
-                        <span class="text-cyan-300 font-bold text-xs break-words leading-tight" title="${display_name}">${display_name}</span>
+                        <span class="text-amber-300 font-bold text-xs break-words leading-tight" title="${display_name}">${display_name}</span>
                         <span class="text-[9px] text-gray-400 mt-0.5">${display_jabatan}</span>
                     </div>
                     <span class="text-[10px] font-mono text-green-400 ml-2 whitespace-nowrap font-bold bg-green-900/20 px-1 rounded">${result.result_code.includes('IN') ? 'IN' : 'OUT'}</span>
@@ -3807,7 +3799,7 @@ async function processAttendance(karyawanId, imageBase64) {
         // --- GENERATE VISUAL EFFECTS (From Admin ID Card) ---
         // Generate random QR blocks
         const qrBlocks = Array(25).fill(0).map(() => 
-            `<div class="w-full h-full bg-cyan-900 ${Math.random() > 0.5 ? 'bg-cyan-400' : 'opacity-20'}"></div>`
+            `<div class="w-full h-full bg-amber-900/50 ${Math.random() > 0.5 ? 'bg-amber-400' : 'opacity-20'}"></div>`
         ).join('');
 
         // Generate floating digital particles
@@ -3817,13 +3809,13 @@ async function processAttendance(karyawanId, imageBase64) {
             const delay = Math.random() * 5;
             const duration = Math.random() * 3 + 2;
             const size = Math.random() * 3 + 1;
-            return `<div class="absolute bg-cyan-400 rounded-sm opacity-0" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation: float-particle ${duration}s linear infinite; animation-delay: -${delay}s; box-shadow: 0 0 4px cyan;"></div>`;
+            return `<div class="absolute bg-amber-400 rounded-sm opacity-0" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation: float-particle ${duration}s linear infinite; animation-delay: -${delay}s; box-shadow: 0 0 4px #FBBF24;"></div>`;
         }).join('');
 
         // --- NEW: LOGIKA WARNA & ICON STATUS (CUSTOMIZATION) ---
         // Membedakan warna Nama & Box berdasarkan hasil
         // FIX: Jika statusColor kuning (PSW), nama juga ikut kuning meskipun success=true
-        let finalNameColor = statusColor === 'green' ? '#00FF7F' : (statusColor === 'yellow' ? '#FFD700' : '#FF0055');
+        let finalNameColor = statusColor === 'green' ? '#F59E0B' : (statusColor === 'yellow' ? '#FFD700' : '#FF0055');
         
         let statusIconSVG = '';
         let statusBoxStyle = '';
@@ -4073,8 +4065,8 @@ async function processAttendance(karyawanId, imageBase64) {
                         transition: transform 1s cubic-bezier(0.85, 0, 0.15, 1);
                         z-index: 10;
                     }
-                    .shutter-left { left: 0; border-right: 4px solid #00FFFF; transform: translateX(0); }
-                    .shutter-right { right: 0; border-left: 4px solid #00FFFF; transform: translateX(0); }
+                    .shutter-left { left: 0; border-right: 4px solid #FBBF24; transform: translateX(0); }
+                    .shutter-right { right: 0; border-left: 4px solid #FBBF24; transform: translateX(0); }
                     
                     /* Digital Lock Seal */
                     .digital-lock-seal {
@@ -4355,7 +4347,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     }
                     .stamp-details > div { display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
                     .stamp-details > div:last-child { border-bottom: none; }
-                    .stamp-details > div span:first-child { font-weight: 800; color: #00FFFF; text-shadow: 1px 1px 2px #000; letter-spacing: 1px; }
+                    .stamp-details > div span:first-child { font-weight: 800; color: #FBBF24; text-shadow: 1px 1px 2px #000; letter-spacing: 1px; }
                     .stamp-details > div span:last-child { font-weight: 800; color: #FFF; text-shadow: 1px 1px 2px #000; letter-spacing: 1px; }
                     .stamp-footer {
                         font-family: 'Courier New', monospace; font-size: 10px; color: #C0C0C0; /* Chrome-like gray */
@@ -4782,8 +4774,8 @@ async function processAttendance(karyawanId, imageBase64) {
                     }
                     .stamp-details {
                         font-size: 16px; color: #FFF;
-                        border-top: 1px solid rgba(0, 255, 255, 0.4);
-                        border-bottom: 1px solid rgba(0, 255, 255, 0.4);
+                        border-top: 1px solid rgba(251, 191, 36, 0.4);
+                        border-bottom: 1px solid rgba(251, 191, 36, 0.4);
                         padding: 15px 0; margin-bottom: 20px;
                         font-family: 'Montserrat', sans-serif;
                         text-transform: uppercase;
@@ -4795,7 +4787,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     }
                     .stamp-details > div { display: flex; justify-content: space-between; padding: 6px 15px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
                     .stamp-details > div:last-child { border-bottom: none; }
-                    .stamp-details > div span:first-child { font-weight: 900; color: #00FFFF; text-shadow: 1px 1px 2px #000, 0 0 8px rgba(0,255,255,0.5); letter-spacing: 1px; } /* Cyan Glow */
+                    .stamp-details > div span:first-child { font-weight: 900; color: #FBBF24; text-shadow: 1px 1px 2px #000, 0 0 8px rgba(0,255,255,0.5); letter-spacing: 1px; } /* Cyan Glow */
                     .stamp-details > div span:last-child { font-weight: 800; color: #FFF; text-shadow: 1px 1px 3px #000, 0 0 10px rgba(255,255,255,0.4); letter-spacing: 1px; }
                     
                     .stamp-footer {
@@ -5181,7 +5173,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     .spark {
                         position: absolute; left: 50%; top: 50%; width: 4px; height: 4px;
                         background: #fff; border-radius: 50%;
-                        box-shadow: 0 0 10px #fff, 0 0 20px #00FFFF;
+                        box-shadow: 0 0 10px #fff, 0 0 20px #FBBF24;
                         opacity: 0;
                     }
                     .shutter-crack .spark { animation: spark-fly 0.4s ease-out forwards; }
@@ -5200,7 +5192,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     /* Electric Arc Line (Kilatan Tengah) */
                     .arc-line {
                         position: absolute; top: 10%; bottom: 10%; left: 50%; width: 2px;
-                        background: linear-gradient(to bottom, transparent, #00FFFF, #FFF, #00FFFF, transparent);
+                        background: linear-gradient(to bottom, transparent, #FBBF24, #FFF, #FBBF24, transparent);
                         opacity: 0; transform: translateX(-50%);
                         filter: blur(1px);
                     }
@@ -5324,7 +5316,7 @@ async function processAttendance(karyawanId, imageBase64) {
                                 <div><span>Nama Pegawai</span><span>${display_name}</span></div>
                                 <div><span>Tanggal Verifikasi</span><span>${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
                                 <div><span>Waktu Verifikasi</span><span>${serverTimestamp}</span></div>
-                                <div><span>Protokol Keamanan</span><span style="color:#00FF7F; font-weight:bold; animation: blink 1s infinite;">100% AMAN</span></div>
+                                <div><span>Protokol Keamanan</span><span style="color:#F59E0B; font-weight:bold; animation: blink 1s infinite;">100% AMAN</span></div>
                                 <div><span>Kernel Sistem</span><span>AETHER BIOMETRIC v4.5</span></div>
                                 
                                 <!-- NEW: Digital Barcode Decoration -->
@@ -5336,7 +5328,7 @@ async function processAttendance(karyawanId, imageBase64) {
                                 <div style="font-size: 8px; opacity: 0.7; margin-bottom: 2px;">Kunci Validasi Digital (SHA-256)</div>
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;"> 
                                     <div style="font-size: 8px; opacity: 0.7;">Kunci Validasi Digital (SHA-256)</div>
-                                    <div style="font-size: 8px; color:#00FF7F; font-weight:bold; letter-spacing:1px; animation:blink 1s infinite;">[ DATA_RETAINED ]</div>
+                                    <div style="font-size: 8px; color:#F59E0B; font-weight:bold; letter-spacing:1px; animation:blink 1s infinite;">[ DATA_RETAINED ]</div>
                                 </div>
                                 <div id="validation-hash">GENERATING...</div>
                             </div>
@@ -5652,7 +5644,7 @@ function initMatrixRain() {
         for (let i = 0; i < drops.length; i++) {
             const text = chars[Math.floor(Math.random() * chars.length)];
             // Randomly brighter characters (White hot)
-            ctx.fillStyle = Math.random() > 0.95 ? '#FFF' : '#00FF7F';
+            ctx.fillStyle = Math.random() > 0.95 ? '#FFF' : '#F59E0B';
             
             ctx.fillText(text, i * fontSize, drops[i] * fontSize);
 
@@ -5931,8 +5923,8 @@ function injectScanningStyles() {
     }
     @keyframes strobe-pulse {
         0% {
-            box-shadow: 0 0 15px #00FFFF, inset 0 0 10px #00FFFF;
-            border-color: #00FFFF;
+            box-shadow: 0 0 15px #FBBF24, inset 0 0 10px #FBBF24;
+            border-color: #FBBF24;
         }
         15% {
             box-shadow: 0 0 30px #ff00ff, inset 0 0 20px #ff00ff;

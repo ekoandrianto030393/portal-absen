@@ -21,1524 +21,129 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
     <script src="./models/blazeface.js"></script> <!-- Gunakan file lokal Anda -->
-    <!-- FONT SCI-FI: Rajdhani -->
+    <!-- FONT SCI-FI: Rajdhani & Lora -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
 
     <style>
-        /* --- 1. GLOBAL STYLES & FONTS --- */
-        :root {
-            --hud-primary: #00FFFF;
-            --hud-secondary: #0088FF;
-            --hud-glow: rgba(0, 255, 255, 0.6);
-        }
-
-        body {
-            margin: 0;
-            overflow: hidden;
-            /* Mencegah scrollbar ganda */
-            font-family: 'Rajdhani', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            background-color: #05050A;
-            /* Dark Abyss */
-            color: var(--hud-primary);
-            box-shadow: inset 0 0 100px rgba(0, 255, 255, 0.05); /* Soft ambient glow */
-            cursor: crosshair;
-            transition: color 0.5s ease;
-        }
-
-        /* EFEK CRT SCANLINE (Garis TV Tabung) */
-        .scanlines {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.15) 50%, rgba(0, 0, 0, 0.15));
-            background-size: 100% 4px;
-            pointer-events: none;
-            z-index: 9999;
-            opacity: 0.7;
-            animation: scanlineMove 10s linear infinite;
-        }
-
-        /* [NEW] ALARM OVERLAY */
-        #alarm-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 0, 0, 0.2); z-index: 9997; pointer-events: none; opacity: 0; transition: opacity 0.2s;
-        }
-
-
-
-        @keyframes scanlineMove {
-            0% { background-position: 0 0; }
-            100% { background-position: 0 100%; }
-        }
-        @keyframes gold-hologram-shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-        @keyframes chrono-glow {
-            0%, 100% { text-shadow: 0 0 10px rgba(0, 255, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.2); }
-            50% { text-shadow: 0 0 20px rgba(0, 255, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.4), 0 0 5px #fff; }
-        }
-        .chrono-text {
-            font-family: 'Rajdhani', sans-serif;
-            animation: chrono-glow 2s infinite ease-in-out;
-        }
-
-        /* --- 2. LAYOUT LAYERS --- */
-        /* Layer Belakang: Babylon.js Canvas */
-        #renderCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            outline: none;
-            touch-action: none;
-        }
-
-        /* Layer Depan: UI Utama */
-        #main-content {
-            position: relative;
-            z-index: 10;
-            min-height: 100vh;
-            background-color: rgba(5, 5, 10, 0.2);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-
-            /* PERBAIKAN POSISI: Konten didorong ke atas */
-            justify-content: flex-start;
-            padding-top: 1rem;
-        }
-
-        /* --- 3. WIDGET PANELS (KOTAK KIRI & KANAN) --- */
-        .widget-panel {
-            /* Tech Corners: Aksen siku di setiap sudut menggunakan Gradient */
-            background: linear-gradient(135deg, rgba(6, 20, 30, 0.9) 0%, rgba(3, 10, 15, 0.95) 100%);
-            /* BORDER LEBIH TIPIS & HALUS (Base) */
-            border: 1px solid rgba(0, 255, 255, 0.15);
-            padding: 1rem;
-            border-radius: 2px; /* Sudut lebih tajam */
-            /* EFEK CAHAYA CANGGIH (Box Shadow Berlapis) */
-            box-shadow: 
-                inset 0 0 20px rgba(0, 255, 255, 0.05);
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            position: relative;
-            overflow: hidden;
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); /* Transisi lebih halus & profesional */
-            animation: panel-pulse-glitch 4s infinite;
-        }
-
-        @keyframes panel-pulse-glitch {
-            0%, 100% { 
-                border-color: rgba(0, 255, 255, 0.2); 
-                box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05);
-            }
-            50% {
-                border-color: rgba(0, 255, 255, 0.6);
-                box-shadow: 0 0 25px rgba(0, 255, 255, 0.2), inset 0 0 10px rgba(0, 255, 255, 0.1);
-            }
-            92% { transform: translate(0,0); }
-            93% { transform: translate(-2px, 1px); border-color: rgba(255, 0, 85, 0.5); box-shadow: 0 0 10px rgba(255, 0, 85, 0.4); }
-            94% { transform: translate(2px, -1px); border-color: rgba(0, 255, 255, 0.8); }
-            95% { transform: translate(0,0); }
-        }
-
-        /* 1. CORNER BRACKETS (Siku Taktis Tebal di 4 Sudut) */
-        .widget-panel::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 10;
-            pointer-events: none;
-            
-            /* Gradient Borders for Corners (Thick 3px) */
-            background:
-                linear-gradient(to right, var(--hud-primary) 3px, transparent 3px) 0 0,
-                linear-gradient(to bottom, var(--hud-primary) 3px, transparent 3px) 0 0,
-                linear-gradient(to left, var(--hud-primary) 3px, transparent 3px) 100% 0,
-                linear-gradient(to bottom, var(--hud-primary) 3px, transparent 3px) 100% 0,
-                linear-gradient(to right, var(--hud-primary) 3px, transparent 3px) 0 100%,
-                linear-gradient(to top, var(--hud-primary) 3px, transparent 3px) 0 100%,
-                linear-gradient(to left, var(--hud-primary) 3px, transparent 3px) 100% 100%,
-                linear-gradient(to top, var(--hud-primary) 3px, transparent 3px) 100% 100%;
-                
-            background-size: 20px 20px; /* Ukuran Siku */
-            background-repeat: no-repeat;
-            
-            animation: bracket-pulse 2s infinite alternate;
-        }
-        
-        @keyframes bracket-pulse {
-            0% {
-                filter: drop-shadow(0 0 2px var(--hud-primary)); opacity: 0.5;
-            }
-            100% {
-                filter: drop-shadow(0 0 8px var(--hud-primary)); opacity: 1;
-            }
-        }
-
-        /* 2. MOVING GRID BACKGROUND (Latar Belakang Grid Bergerak) */
-        .widget-panel::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 30px 30px; /* Grid lebih besar */
-            transform: rotate(15deg);
-            animation: grid-pan 20s linear infinite;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        @keyframes grid-pan {
-            0% {
-                transform: rotate(15deg) translateY(0);
-            }
-
-            100% {
-                transform: rotate(15deg) translateY(-30px);
-            }
-        }
-
-        .widget-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #fff; 
-            background: linear-gradient(90deg, rgba(0, 255, 255, 0.3), transparent);
-            border-left: 4px solid var(--hud-primary);
-            padding: 0.2rem 0.8rem;
-            margin-bottom: 0.8rem;
-            text-shadow: 0 0 10px var(--hud-primary);
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            display: flex;
-            align-items: center;
-            /* Shadow lebih halus */
-            box-shadow: -5px 0 15px rgba(0, 255, 255, 0.1);
-            animation: title-pulse 3s infinite alternate;
-        }
-
-        /* --- NEW: FLOATING TELEMETRY LABELS --- */
-        .telemetry-label {
-            position: absolute;
-            font-size: 10px;
-            font-family: 'Rajdhani', monospace;
-            color: var(--hud-primary);
-            text-transform: uppercase;
-            background: rgba(0, 255, 255, 0.1);
-            padding: 2px 6px;
-            border-left: 2px solid var(--hud-primary);
-            pointer-events: none;
-            z-index: 20;
-            opacity: 0.8;
-        }
-        .telemetry-node {
-            position: absolute;
-            width: 4px; height: 4px;
-            background: var(--hud-primary);
-            box-shadow: 0 0 10px var(--hud-primary);
-            border-radius: 50%;
-            z-index: 20;
-        }
-
-        @keyframes title-pulse {
-            0% { box-shadow: 0 0 10px var(--hud-primary); }
-            100% { box-shadow: 0 0 25px var(--hud-primary), 0 0 5px white; }
-        }
-
-        /* [NEW] TRANSISI PANEL DATA TARGET (HIDDEN STATE) */
-        .panel-hidden {
-            opacity: 0 !important;
-            transform: translateX(-50px) translateY(10px) rotate(-1deg) scale(0.95) !important;
-            filter: blur(15px);
-            pointer-events: none;
-            box-shadow: none !important;
-        }
-
-        @keyframes text-flicker {
-
-            0%,
-            5%,
-            52%,
-            54%,
-            100% {
-                opacity: 0.6;
-            }
-
-            51%,
-            53% {
-                opacity: 1;
-            }
-        }
-
-        /* Animasi untuk Jam Digital */
-        .digit-flicker {
-            animation: text-flicker 3s infinite alternate;
-        }
-
-        /* Animasi untuk Judul */
-        #mainTitle {
-            position: relative;
-            overflow: hidden;
-            min-height: 1.2em;
-            /* Sesuaikan dengan ukuran font h1 */
-            line-height: 1.2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            white-space: nowrap;
-            /* Mencegah teks melipat */
-        }
-
-        #mainTitle .title-char {
-            display: inline-block;
-            position: relative;
-            opacity: 0;
-            animation: title-waterfall 3s ease-in-out infinite;
-            /* Durasi total siklus animasi */
-            font-size: inherit;
-            font-weight: inherit;
-            letter-spacing: inherit;
-            color: inherit;
-            text-shadow: inherit;
-        }
-
-        @keyframes title-waterfall {
-            0% {
-                opacity: 0;
-                transform: translateY(-100%);
-            }
-
-            10% {
-                opacity: 1;
-            }
-
-            40% {
-                opacity: 1;
-                transform: translateY(0%);
-            }
-
-            70% {
-                opacity: 0;
-                transform: translateY(0%);
-            }
-
-            100% {
-                opacity: 0;
-                transform: translateY(-100%);
-            }
-        }
-
-        /* --- 4. VIDEO CONTAINER & HUD EFFECTS (INTI VISUAL) --- */
-        .video-container {
-            position: relative;
-            width: 100%;
-            max-width: 900px;
-            padding-top: 48%;
-            /* Rasio Aspek Lebih Lebar/Pendek agar tidak nabrak header */
-            box-shadow: 0 0 60px var(--hud-glow), inset 0 0 20px rgba(0, 255, 255, 0.2);
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            background: #000;
-            overflow: hidden;
-            border-radius: 10px;
-            transition: all 0.5s ease-in-out;
-            filter: contrast(1.1) saturate(1.1);
-            /* Sedikit boost warna agar lebih pop */
-        }
-        
-        /* [NEW] VIEWFINDER OVERLAY (EFEK KAMERA CANGGIH) */
-        .viewfinder-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 8;
-            background:
-                linear-gradient(to right, rgba(0,255,255,0.1) 1px, transparent 1px) center/33% 100%,
-                linear-gradient(to bottom, rgba(0,255,255,0.1) 1px, transparent 1px) center/100% 33%;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.8); /* Vignette */
-            border: 1px solid rgba(0,255,255,0.1);
-        }
-        .viewfinder-crosshair {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 20px; height: 20px;
-            border: 1px solid rgba(0,255,255,0.3);
-            opacity: 0.5;
-        }
-
-        /* Efek Grid Overlay Halus pada Video */
-        .video-container::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px), 
-                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
-            background-size: 20px 20px;
-            /* Penting: pointer-events harus non-aktif agar bisa klik di bawahnya */
-            pointer-events: none;
-            z-index: 5;
-            animation: grid-flicker 15s infinite step-end;
-        }
-
-        @keyframes grid-flicker {
-
-            0%,
-            40%,
-            44%,
-            100% {
-                opacity: 1;
-            }
-
-            41%,
-            43% {
-                opacity: 0.8;
-            }
-        }
-
-        /* Garis Laser Scanner */
-        .scanner-beam {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            z-index: 20;
-            animation: scan-move 3s infinite cubic-bezier(0.4, 0.0, 0.2, 1);
-            box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
-        }
-
-        /* 1. INTI LISTRIK (Electric Core) */
-        .scanner-beam::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 0;
-            transform: translateY(-50%);
-            width: 100%;
-            height: 4px;
-            background:
-                linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0) 10%, #00FFFF 50%, rgba(0, 255, 255, 0) 90%, transparent 100%),
-                repeating-linear-gradient(90deg, transparent 0, transparent 2px, rgba(255, 255, 255, 0.8) 3px, transparent 4px);
-            background-size: 100% 100%, 10px 100%;
-            box-shadow:
-                0 0 10px #00FFFF,
-                0 0 20px #00FFFF,
-                0 0 30px #FFFFFF;
-            filter: brightness(1.5);
-            animation: electric-jitter 0.1s infinite;
-        }
-
-        /* 2. PANTULAN CAHAYA / TRAIL (Light Reflection Behind) */
-        .scanner-beam::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 120px;
-            /* Panjang ekor cahaya */
-            background: linear-gradient(to top,
-                    rgba(0, 255, 255, 0.6) 0%,
-                    rgba(0, 255, 255, 0.2) 30%,
-                    transparent 100%);
-            opacity: 0.6;
-        }
-
-        @keyframes electric-jitter {
-            0% {
-                opacity: 0.9;
-                transform: translateY(-50%) scaleY(1);
-            }
-
-            50% {
-                opacity: 1;
-                transform: translateY(-50%) scaleY(1.3);
-            }
-
-            100% {
-                opacity: 0.9;
-                transform: translateY(-50%) scaleY(1);
-            }
-        }
-
-        @keyframes scan-move {
-            0% {
-                top: -10%;
-                opacity: 0;
-            }
-
-            10% {
-                opacity: 1;
-            }
-
-            90% {
-                opacity: 1;
-            }
-
-            100% {
-                top: 110%;
-                opacity: 0;
-            }
-        }
-
-        /* SCANNER BEAM TRACKING STATE (LOCKED) */
-        .scanner-beam.tracking {
-            animation: none; /* Hentikan animasi idle */
-            display: block !important;
-            transition: top 0.1s ease-out, box-shadow 0.2s; /* Gerakan halus mengikuti wajah */
-            height: 4px; /* Lebih tebal saat terkunci */
-            background: rgba(0, 255, 255, 0.9);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 1), 0 0 10px rgba(255, 255, 255, 0.8);
-        }
-        .scanner-beam.tracking.error {
-            background: rgba(255, 0, 85, 0.9);
-            box-shadow: 0 0 20px rgba(255, 0, 85, 1);
-        }
-        .scanner-beam.tracking.success {
-            background: rgba(0, 255, 127, 0.9);
-            box-shadow: 0 0 20px rgba(0, 255, 127, 1);
-        }
-
-        /* GLOBAL ALERT STATE (ACCESS DENIED) */
-        body.global-alert {
-            box-shadow: inset 0 0 100px rgba(255, 0, 0, 0.3);
-        }
-        body.global-alert .widget-panel {
-            border-color: rgba(255, 0, 85, 0.6);
-            box-shadow: 0 0 30px rgba(255, 0, 85, 0.2);
-        }
-
-        /* [NEW] CYBER-FRAME (DEKORASI SUDUT LAYAR) */
-        .cyber-frame {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 9995;
-            border: 1px solid rgba(0, 255, 255, 0.1);
-            margin: 10px;
-        }
-        .cyber-frame::before, .cyber-frame::after {
-            content: ''; position: absolute; width: 100px; height: 100px;
-            border: 2px solid var(--hud-primary); opacity: 0.5;
-        }
-        .cyber-frame::before { top: 0; left: 0; border-right: none; border-bottom: none; }
-        .cyber-frame::after { bottom: 0; right: 0; border-left: none; border-top: none; }
-
-        /* --- VIDEO STYLING --- */
-        .video-container video,
-        .video-container canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .video-container canvas {
-            /* Z-index 10 cukup aman untuk rendering Face-API */
-            z-index: 10;
-            pointer-events: none;
-            /* Penting: Canvas tidak boleh menghalangi klik */
-            filter: drop-shadow(0 0 4px rgba(0, 255, 255, 0.7)); /* NEW: Glow Effect */
-        }
-
-        .video-container video {
-            z-index: 1;
-            transform: scaleX(-1);
-            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* NEW: Animasi Zoom Halus */
-            /* Cermin */
-        }
-
-        /* CYBER CORNERS (Siku-siku Canggih) */
-        .cyber-corner {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            border: 2px solid var(--hud-primary);
-            z-index: 30;
-            transition: all 0.3s ease;
-            box-shadow: 0 0 10px var(--hud-primary);
-            opacity: 0.8;
-        }
-
-        .cc-tl {
-            top: -2px;
-            left: -2px;
-            border-right: none;
-            border-bottom: none;
-            /* border-radius: 8px 0 0 0; */
-            clip-path: polygon(0 0, 100% 0, 100% 20%, 20% 20%, 20% 100%, 0 100%);
-        }
-
-        .cc-tr {
-            top: -2px;
-            right: -2px;
-            border-left: none;
-            border-bottom: none;
-            /* border-radius: 0 8px 0 0; */
-            clip-path: polygon(0 0, 100% 0, 100% 100%, 80% 100%, 80% 20%, 0 20%);
-        }
-
-        .cc-bl {
-            bottom: -2px;
-            left: -2px;
-            border-right: none;
-            border-top: none;
-            /* border-radius: 0 0 0 8px; */
-            clip-path: polygon(0 0, 20% 0, 20% 80%, 100% 80%, 100% 100%, 0 100%);
-        }
-
-        .cc-br {
-            bottom: -2px;
-            right: -2px;
-            border-left: none;
-            border-top: none;
-            /* border-radius: 0 0 8px 0; */
-            clip-path: polygon(80% 0, 100% 0, 100% 100%, 0 100%, 0 80%, 80% 80%);
-        }
-
-
-        /* Efek Sukses (Hijau Neon) */
-        .video-container.scan-success {
-            border-color: #00FF7F !important;
-            box-shadow: 0 0 100px rgba(0, 255, 127, 0.9), inset 0 0 40px rgba(0, 255, 127, 0.4);
-        }
-
-        /* [NEW] SCANNING PULSE ANIMATION */
-        @keyframes pulse-ring {
-            0% { transform: scale(0.8); opacity: 0.5; }
-            100% { transform: scale(1.2); opacity: 0; }
-        }
-        .pulse-element {
-            position: absolute; border: 2px solid var(--hud-primary);
-            border-radius: 50%; pointer-events: none;
-            animation: pulse-ring 1.5s infinite;
-        }
-
-        /* --- 5. TEXT GLITCH EFFECT --- */
-        .glitch-text {
-            color: #FF00FF;
-            text-shadow: -3px 0 #00FFFF, 3px 0 #ac00ac, 0 0 15px #FF00FF;
-            animation: glitch-anim 3s infinite ease-in-out alternate-reverse;
-            text-transform: uppercase;
-        }
-
-        @keyframes glitch-anim {
-            0% { text-shadow: -2px 3px 0 #ff0055, 2px -3px 0 #00ffff; transform: translate(0); }
-            20% { text-shadow: 2px -3px 0 #ff0055, -2px 3px 0 #00ffff; transform: translate(-2px, 2px); }
-            40% { text-shadow: -2px 3px 0 #ff0055, 2px -3px 0 #00ffff; transform: translate(2px, -2px); }
-            60% { text-shadow: 2px -3px 0 #ff0055, -2px 3px 0 #00ffff; transform: translate(-2px, 2px); }
-            80% { text-shadow: -2px 3px 0 #ff0055, 2px -3px 0 #00ffff; transform: translate(2px, -2px); }
-            100% { text-shadow: 2px -3px 0 #ff0055, -2px 3px 0 #00ffff; transform: translate(0); }
-        }
-
-        /* CONTAINER GLITCH EFFECT */
-        .glitch-active {
-            position: relative;
-        }
-        .glitch-active::before,
-        .glitch-active::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: inherit;
-            pointer-events: none;
-            z-index: 20;
-            opacity: 0.5;
-        }
-        .glitch-active::before {
-            background-color: rgba(255, 0, 85, 0.3);
-            animation: glitch-anim-1 0.3s infinite linear alternate-reverse;
-            mix-blend-mode: hard-light;
-        }
-        .glitch-active::after {
-            background-color: rgba(0, 255, 255, 0.3);
-            animation: glitch-anim-2 0.3s infinite linear alternate-reverse;
-            mix-blend-mode: hard-light;
-        }
-        @keyframes glitch-anim-1 {
-            0% { clip-path: inset(20% 0 80% 0); transform: translate(-5px, 0); }
-            20% { clip-path: inset(60% 0 10% 0); transform: translate(5px, 0); }
-            40% { clip-path: inset(40% 0 50% 0); transform: translate(-5px, 0); }
-            60% { clip-path: inset(80% 0 5% 0); transform: translate(5px, 0); }
-            80% { clip-path: inset(10% 0 70% 0); transform: translate(-5px, 0); }
-            100% { clip-path: inset(30% 0 50% 0); transform: translate(5px, 0); }
-        }
-        @keyframes glitch-anim-2 {
-            0% { clip-path: inset(10% 0 60% 0); transform: translate(5px, 0); }
-            20% { clip-path: inset(30% 0 20% 0); transform: translate(-5px, 0); }
-            40% { clip-path: inset(70% 0 10% 0); transform: translate(5px, 0); }
-            60% { clip-path: inset(20% 0 50% 0); transform: translate(-5px, 0); }
-            80% { clip-path: inset(60% 0 30% 0); transform: translate(5px, 0); }
-            100% { clip-path: inset(50% 0 40% 0); transform: translate(-5px, 0); }
-        }
-
-        .fancy-header {
-            position: sticky;
-            padding: 0.5rem 0;
-            margin-bottom: 0.5rem;
-        }
-
-        /* --- 6. OVERLAY FULLSCREEN --- */
-        #successOverlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            transition: opacity 0.4s ease-in-out;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            background-color: rgba(0, 0, 0, 0.95);
-            pointer-events: none;
-        }
-
-        /* --- 7. ELEMEN KECIL --- */
-        .graph-bar {
-            width: 5px;
-            margin-right: 3px;
-            background-color: #00FF7F;
-            transition: height 0.3s ease;
-            box-shadow: 0 0 5px #00FF7F;
-        }
-
-        .loader-bar {
-            width: 100%;
-            height: 8px;
-            background: #111;
-            border: 1px solid #333;
-            margin-top: 5px;
-        }
-
-        .loader-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00FFFF, #00FF7F);
-            width: 0%;
-            transition: width 0.4s ease-out;
-            box-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
-        }
-
-        .loader-fill-red {
-            height: 100%;
-            background: linear-gradient(90deg, #FF0055, #FF5500);
-            width: 0%;
-            transition: width 0.4s ease-out;
-            box-shadow: 0 0 8px rgba(255, 0, 85, 0.7);
-        }
-
-        /* --- 8. ANIMASI HOLOGRAM OVERLAY --- */
-        @keyframes holoPopIn {
-            0% {
-                opacity: 0;
-                transform: perspective(1000px) rotateX(20deg) scale(0.8) translateY(50px);
-            }
-
-            60% {
-                transform: perspective(1000px) rotateX(-5deg) scale(1.05) translateY(-10px);
-            }
-
-            100% {
-                opacity: 1;
-                transform: perspective(1000px) rotateX(0deg) scale(1) translateY(0);
-            }
-        }
-
-        .holo-scan-line {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: rgba(255, 255, 255, 0.5);
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
-            opacity: 0.5;
-            animation: scanDownOverlay 3s linear infinite;
-            pointer-events: none;
-            z-index: 50;
-        }
-
-        @keyframes scanDownOverlay {
-            0% {
-                top: 0%;
-                opacity: 0;
-            }
-
-            10% {
-                opacity: 0.8;
-            }
-
-            90% {
-                opacity: 0.8;
-            }
-
-            100% {
-                top: 100%;
-                opacity: 0;
-            }
-        }
-
-        /* --- 9. SCREEN FLASH FX --- */
-        #screenFlash {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9998;
-            opacity: 0;
-            transition: opacity 0.1s ease-out;
-            mix-blend-mode: screen;
-        }
-
-        /* --- 10. BOOT SCREEN (Intro) --- */
-        #boot-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000;
-            z-index: 100000;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            align-items: flex-start;
-            padding: 2rem;
-            font-family: 'Courier New', monospace;
-            color: #00FF7F;
-            font-size: 14px;
-            pointer-events: none;
-        }
-
-        .boot-line {
-            margin-bottom: 4px;
-            opacity: 0.8;
-        }
-
-        .boot-cursor {
-            display: inline-block;
-            width: 8px;
-            height: 16px;
-            background: #00FF7F;
-            animation: blink 1s infinite;
-            vertical-align: middle;
-        }
-
-        @keyframes blink {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0;
-            }
-        }
-
-        /* --- 11. PHOTO SCAN EFFECT --- */
-        .photo-scan-active {
-            position: relative;
-        }
-
-        .photo-scan-active::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom, transparent, rgba(0, 255, 255, 0.8), transparent);
-            animation: scanDownPhoto 1s ease-in-out;
-        }
-
-        @keyframes scanDownPhoto {
-            0% {
-                top: -100%;
-                opacity: 0;
-            }
-
-            50% {
-                opacity: 1;
-            }
-
-            100% {
-                top: 100%;
-                opacity: 0;
-            }
-        }
-
-        /* --- 12. HOLO EMITTER (Visual Bawah) --- */
-        .holo-emitter {
-            position: absolute;
-            bottom: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80%;
-            height: 20px;
-            background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.8) 0%, rgba(0, 0, 0, 0) 70%);
-            filter: blur(10px);
-            z-index: 2;
-            opacity: 0.6;
-            animation: emitter-pulse 2s infinite alternate;
-        }
-
-        @keyframes emitter-pulse {
-            0% {
-                opacity: 0.4;
-                width: 70%;
-            }
-
-            100% {
-                opacity: 0.8;
-                width: 85%;
-            }
-        }
-
-        /* Perbaikan Scrollbar untuk Log */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 255, 255, 0.1);
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #00FFFF;
-            border-radius: 10px;
-        }
-
-        /* SATELLITE SCAN EFFECT */
-        .satellite-scan {
-            position: fixed;
-            top: 0;
-            left: -100%;
-            width: 20%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
-            z-index: 5;
-            animation: satellitePass 8s infinite cubic-bezier(0.4, 0.0, 0.2, 1);
-            pointer-events: none;
-        }
-        @keyframes satellitePass {
-            0% { left: -50%; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { left: 150%; opacity: 0; }
-        }
-
-        /* [NEW] AUTO-SCROLL ANIMATION FOR PERSONNEL ROSTER (STATUS KEHADIRAN) */
-        .roster-ticker-container {
-            overflow: hidden !important;
-            position: relative;
-            height: 100%;
-        }
-        #personnelRoster, #cutiRoster, #dlRoster {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            animation: rosterTickerVertical 38s linear infinite;
-        }
-        #personnelRoster:hover, #cutiRoster:hover, #dlRoster:hover {
-            animation-play-state: paused; /* Berhenti sejenak saat kursor di atas agar mudah dibaca */
-        }
-        @keyframes rosterTickerVertical {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-100%); }
-        }
-
-        /* --- 13. NEW HOLOGRAPHIC CARD OVERLAY --- */
-        .holo-card {
-            position: relative;
-            width: 95vw; /* Lebar 95% dari layar */
-            max-width: 1600px; /* Batas maksimal lebar */
-            height: 85vh; /* Tinggi 85% dari layar */
-            background: rgba(5, 8, 12, 0.96); /* Lebih gelap dan solid */
-            border: 1px solid rgba(0, 255, 255, 0.2);
-            border-radius: 10px;
-            padding: 0;
-            overflow: hidden;
-            box-shadow: 0 0 150px rgba(0, 0, 0, 0.95), 0 0 50px rgba(0, 255, 255, 0.1);
-            backdrop-filter: blur(30px);
-            transform-style: preserve-3d;
-            animation: holoCardEntry 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-            display: flex;
-            flex-direction: column;
-            /* Potongan sudut tech yang lebih agresif */
-            clip-path: polygon(30px 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%, 0 30px);
-            animation: holoCardEntry 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards, holoFloat 6s ease-in-out infinite 0.5s;
-        }
-        
-        .holo-header {
-            background: linear-gradient(90deg, rgba(0, 255, 255, 0.1) 0%, transparent 50%, rgba(0, 255, 255, 0.1) 100%);
-            padding: 20px 40px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 1.2rem;
-        }
-
-        .holo-content {
-            flex: 1; /* Isi sisa ruang vertikal */
-            padding: 40px 60px;
-            display: grid;
-            grid-template-columns: 350px 1fr 300px; /* UPDATE: 3 Kolom (Avatar, Info, Biometrik) */
-            gap: 60px;
-            align-items: center;
-            position: relative;
-        }
-
-        .holo-avatar-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-        }
-
-        .holo-avatar-frame {
-            width: 100%;
-            aspect-ratio: 1/1; /* Kotak sempurna */
-            border: 4px solid var(--hud-primary);
-            padding: 10px;
-            position: relative;
-            background: rgba(0,0,0,0.6);
-            box-shadow: 0 0 40px var(--hud-primary);
-        }
-        
-        .holo-avatar-frame img {
-            width: 100%; height: 100%;
-            object-fit: cover;
-            filter: contrast(1.1) saturate(1.1);
-        }
-
-        .holo-info { 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            height: 100%;
-            text-align: left; 
-            z-index: 2; 
-        }
-
-        /* Typography Besar */
-        .holo-name {
-            font-size: 4.5rem; /* Sangat Besar */
-            font-weight: 900;
-            line-height: 1;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .holo-role {
-            font-size: 2.5rem;
-            color: #00FFFF;
-            margin-bottom: 40px;
-            font-family: 'Rajdhani', sans-serif;
-            letter-spacing: 5px;
-            font-weight: 600;
-        }
-
-        .holo-status-box {
-            display: inline-block;
-            padding: 20px 40px;
-            border-radius: 6px;
-            font-size: 3rem;
-            font-weight: 800;
-            letter-spacing: 8px;
-            text-transform: uppercase;
-            margin-bottom: 30px;
-            width: fit-content;
-        }
-
-        .holo-message {
-            font-size: 1.8rem;
-            color: rgba(255, 255, 255, 0.9);
-            line-height: 1.5;
-            border-left: 6px solid rgba(255,255,255,0.2);
-            padding-left: 30px;
-            font-family: 'Rajdhani', sans-serif;
-        }
-
-        .holo-footer {
-            background: rgba(0, 0, 0, 0.6);
-            padding: 20px 40px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-family: 'Courier New', monospace;
-            font-size: 1rem;
-            color: rgba(255, 255, 255, 0.4);
-        }
-
-        .cooldown-track {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 6px; /* Lebih tebal */
-            background: rgba(255, 255, 255, 0.1);
-            z-index: 10;
-        }
-        
-        .cooldown-progress {
-            height: 100%;
-            background: var(--hud-primary);
-            width: 100%;
-            transform-origin: left;
-            box-shadow: 0 0 10px var(--hud-primary);
-        }
-
-        @keyframes holoCardEntry {
-            0% { opacity: 0; transform: scale(0.9) translateY(30px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        @keyframes holoFloat {
-            0%, 100% { transform: translateY(0) rotateX(0deg); }
-            50% { transform: translateY(-10px) rotateX(2deg); }
-        }
-
-        /* --- 14. AVATAR SCANNING LASER --- */
-        .holo-avatar-scan-line {
-            position: absolute;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            z-index: 10;
-            animation: avatarScan 1.5s ease-in-out infinite alternate;
-        }
-
-        @keyframes avatarScan {
-            0% { top: 0%; opacity: 0.5; box-shadow: 0 0 5px currentColor; }
-            100% { top: 100%; opacity: 1; box-shadow: 0 0 15px currentColor; }
-        }
-
-        /* --- 15. NEW BIOMETRIC SIDEBAR (RIGHT PANEL) --- */
-        .holo-biometrics {
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-            padding-left: 40px;
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
-            height: 70%;
-            justify-content: center;
-        }
-
-        .bio-row {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            opacity: 0;
-            animation: slideInRight 0.5s ease-out forwards;
-        }
-        .bio-row:nth-child(1) { animation-delay: 0.2s; }
-        .bio-row:nth-child(2) { animation-delay: 0.3s; }
-        .bio-row:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .bio-icon-box {
-            width: 50px; height: 50px;
-            border: 1px solid var(--hud-primary);
-            display: flex; align-items: center; justify-content: center;
-            background: rgba(0, 255, 255, 0.05);
-            position: relative;
-            overflow: hidden;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-        }
-        
-        .bio-label {
-            font-size: 0.75rem; color: rgba(255,255,255,0.5); font-family: 'Courier New'; letter-spacing: 1px;
-        }
-        .bio-value {
-            font-size: 1.4rem; color: var(--hud-primary); font-weight: bold; font-family: 'Rajdhani'; line-height: 1;
-        }
-
-        /* DNA Animation CSS */
-        .dna-wrapper { display: flex; gap: 4px; height: 30px; align-items: center; }
-        .dna-bar {
-            width: 4px; background: var(--hud-primary);
-            animation: dnaPulse 1s infinite ease-in-out;
-            border-radius: 2px;
-        }
-        @keyframes dnaPulse {
-            0%, 100% { height: 5px; opacity: 0.3; }
-            50% { height: 25px; opacity: 1; box-shadow: 0 0 8px currentColor; }
-        }
-
-        /* Hex Badge */
-        .hex-badge {
-            width: 50px; height: 50px;
-            background: var(--hud-primary);
-            display: flex; align-items: center; justify-content: center;
-            color: #000; font-weight: 800; font-size: 1.2rem;
-            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-            box-shadow: 0 0 15px var(--hud-primary);
-        }
-
-        /* --- 16. NEW OVERLAY ELEMENTS (STAMP & FINGERPRINT) --- */
-        .digital-stamp {
-            position: absolute;
-            right: 10%;
-            right: 20%;
-            bottom: 25%;
-            min-width: 320px;
-            padding: 25px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border: 4px double currentColor;
-            border-radius: 4px;
-            font-size: 4rem;
-            font-weight: 950;
-            text-transform: uppercase;
-            letter-spacing: 12px;
-            transform: translateY(-120vh) scale(3) rotate(-45deg);
-            opacity: 0;
-            animation: stampFall 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards 1.2s, stampHoloLoop 8s infinite 2s;
-            z-index: 60;
-            mix-blend-mode: normal;
-            background: linear-gradient(135deg, rgba(10, 20, 30, 0.95) 0%, rgba(5, 10, 15, 0.98) 100%);
-            box-shadow: 0 40px 120px rgba(0,0,0,1), inset 0 0 50px rgba(0,255,255,0.1);
-            backdrop-filter: blur(20px);
-            clip-path: polygon(30px 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%, 0 30px);
-            /* 4D Deep Text Shadow */
-            text-shadow: 
-                0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 
-                0 5px 0 #aaa, 0 10px 20px rgba(0,0,0,0.5);
-        }
-        @keyframes stampHoloLoop {
-            0%, 94%, 100% { filter: none; transform: translateY(0) scale(0.85) rotate(-15deg); }
-            95% { filter: hue-rotate(90deg) brightness(1.8) contrast(1.5); transform: translate(-3px, 1px) scale(0.86) rotate(-14deg); }
-            96% { filter: hue-rotate(-90deg) opacity(0.7); transform: translate(3px, -1px) scale(0.84) rotate(-16deg); }
-            97% { filter: invert(1) brightness(2) blur(1px); transform: translate(0, 0) scale(0.85) rotate(-15deg); }
-        }
-
-        .stamp-inner {
-            border: 2px solid currentColor;
-            padding: 5px 30px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-        }
-        
-        .stamp-label {
-            font-size: 1.4rem;
-            font-weight: normal;
-            letter-spacing: 8px;
-            margin-bottom: 0;
-            opacity: 0.8;
-        }
-
-        @keyframes stampFall {
-            0% { transform: translateY(-120vh) scale(2) rotate(-25deg); opacity: 0; }
-            70% { opacity: 1; }
-            100% { transform: translateY(0) scale(0.85) rotate(-15deg); opacity: 1; }
-        }
-
-        /* --- 17. NEW STATUS BOX ANIMATION --- */
-        .status-box-animated {
-            position: relative;
-            overflow: hidden;
-        }
-        .status-box-animated::after {
-            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-            animation: statusShine 2s infinite; pointer-events: none;
-        }
-        @keyframes statusShine { 0% { left: -100%; } 100% { left: 200%; } }
-
-        /* Impact Dust */
-        .impact-dust {
-            position: absolute;
-            right: 15%;
-            right: 25%;
-            bottom: 20%;
-            width: 400px;
-            height: 100px;
-            background: radial-gradient(ellipse at center, rgba(255,255,255,0.4) 0%, transparent 70%);
-            transform: translate(0, 0) scale(0);
-            opacity: 0;
-            z-index: 59;
-            pointer-events: none;
-            animation: dustExpand 0.6s ease-out forwards 1.55s;
-        }
-        
-        @keyframes dustExpand {
-            0% { transform: scale(0.2); opacity: 0.8; }
-            100% { transform: scale(2); opacity: 0; }
-        }
-
-        .fingerprint-box {
-            width: 60px; height: 70px;
-            border: 1px solid currentColor;
-            position: relative; overflow: hidden;
-            opacity: 0.8; background: rgba(0,0,0,0.2);
-            border-radius: 4px;
-        }
-        .fingerprint-pattern {
-            width: 100%; height: 100%;
-            background: repeating-radial-gradient(circle at 50% 60%, transparent 0, transparent 2px, currentColor 3px, currentColor 4px);
-            border-radius: 50% 50% 0 0; transform: scaleY(1.3); margin-top: 5px;
-        }
-        .fingerprint-scan {
-            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-            background: #fff; box-shadow: 0 0 8px #fff; animation: scanFP 1.5s ease-in-out infinite;
-        }
-        @keyframes scanFP { 0% {top:0; opacity:0;} 20% {opacity:1;} 80% {opacity:1;} 100% {top:100%; opacity:0;} }
-        
-        /* BARCODE SCAN FX */
-        @keyframes barcodeScan {
-            0% { left: 0%; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { left: 100%; opacity: 0; }
-        }
-
-        /* SCREEN SHAKE FX */
-        .screen-shake {
-            animation: screenShake 0.3s cubic-bezier(.36,.07,.19,.97) both;
-        }
-        @keyframes screenShake {
-            0%, 100% { transform: translate(0, 0); }
-            10%, 90% { transform: translate(-1px, 1px); }
-            20%, 80% { transform: translate(1px, -1px); }
-            30%, 50%, 70% { transform: translate(-3px, 3px); }
-            40%, 60% { transform: translate(3px, -3px); }
-        }
-
-        /* DIGITAL CRACK FX */
-        #digitalCrack {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 9999;
-            opacity: 0;
-            transform: scale(1.05);
-            transition: opacity 0.05s ease-out, transform 0.05s cubic-bezier(0.1, 0.9, 0.2, 1);
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 500 500' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter id='glow'%3E%3CfeGaussianBlur stdDeviation='2' result='coloredBlur'/%3E%3CfeMerge%3E%3CfeMergeNode in='coloredBlur'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Cg stroke='%2300FFFF' stroke-width='2' fill='none' filter='url(%23glow)'%3E%3Cpath d='M250 250 L150 80 M250 250 L350 80 M250 250 L450 250 M250 250 L350 420 M250 250 L150 420 M250 250 L50 250' stroke-linecap='round'/%3E%3Cpath d='M250 250 L200 180 L220 160 M250 250 L300 180 L280 160' stroke-width='1' opacity='0.7'/%3E%3Ccircle cx='250' cy='250' r='150' stroke-dasharray='10,30' opacity='0.3'/%3E%3C/g%3E%3C/svg%3E");
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: 120%;
-            mix-blend-mode: screen;
-        }
-        #digitalCrack.active { opacity: 1; transform: scale(1); }
-        #digitalCrack.crack-error {
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 500 500' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter id='glow'%3E%3CfeGaussianBlur stdDeviation='2' result='coloredBlur'/%3E%3CfeMerge%3E%3CfeMergeNode in='coloredBlur'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Cg stroke='%2300FFFF' stroke-width='2' fill='none' filter='url(%23glow)'%3E%3Cpath d='M250 250 L150 80 M250 250 L350 80 M250 250 L450 250 M250 250 L350 420 M250 250 L150 420 M250 250 L50 250' stroke-linecap='round'/%3E%3Cpath d='M250 250 L200 180 L220 160 M250 250 L300 180 L280 160' stroke-width='1' opacity='0.7'/%3E%3Ccircle cx='250' cy='250' r='150' stroke-dasharray='10,30' opacity='0.3'/%3E%3C/g%3E%3C/svg%3E");
-        }
-
-        /* --- 18. RUNNING TEXT (NEWS TICKER) --- */
-        .news-ticker {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 32px;
-            background: rgba(2, 6, 10, 0.95);
-            border-top: 1px solid var(--hud-primary); /* Border ini tetap ada */
-            background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 15px 15px; /* Pola grid halus */
-            display: flex;
-            perspective: 500px; /* Untuk efek 3D */
-            align-items: center;
-            z-index: 9996; /* Lebih tinggi dari cyber-frame */
-            overflow: hidden;
-            box-shadow: 0 -5px 20px rgba(0, 255, 255, 0.1);
-        }
-        /* --- [NEW] TOP NEWS TICKER STYLES (MOTTO) --- */
-        .news-ticker-top {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 36px;
-            background: linear-gradient(to bottom, rgba(10, 15, 25, 0.98), rgba(5, 10, 15, 0.9));
-            backdrop-filter: blur(10px);
-            border-bottom: 2px solid #FFD700;
-            background-image: linear-gradient(rgba(255, 215, 0, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 215, 0, 0.03) 1px, transparent 1px);
-            background-size: 15px 15px; /* Pola grid halus */
-            display: flex;
-            align-items: center;
-            perspective: 500px; /* Untuk efek 3D */
-            z-index: 9996; /* Lebih tinggi dari cyber-frame */
-            overflow: hidden;
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
-        }
-        .news-ticker-top::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #FFD700, transparent);
-            animation: ticker-line-pulse 3s infinite;
-        }
-        @keyframes ticker-line-pulse {
-            0%, 100% { opacity: 0.3; transform: scaleX(0.8); }
-            50% { opacity: 1; transform: scaleX(1); }
-        }
-        .ticker-head-top {
-            background: linear-gradient(135deg, #B8860B 0%, #FFD700 50%, #B8860B 100%);
-            color: #000;
-            padding: 0 25px;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            font-weight: 800;
-            font-size: 11px;
-            letter-spacing: 3px;
-            z-index: 11; /* Lebih tinggi dari after */
-            position: relative;
-            clip-path: polygon(0 0, 85% 0, 100% 100%, 0% 100%);
-            box-shadow: 5px 0 15px rgba(255,215,0,0.4);
-            font-family: 'Rajdhani', sans-serif;
-            padding-right: 35px;
-        }
-        .ticker-head-top::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%; width: 50%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-            transform: skewX(-20deg);
-            animation: label-shine 4s infinite;
-        } /* Efek kilauan pada label */
-        @keyframes label-shine {
-            0% { left: -100%; }
-            20%, 100% { left: 200%; }
-        }
-        .ticker-text-top {
-            position: absolute;
-            white-space: nowrap;
-            will-change: transform;
-            animation: ticker-top 70s linear infinite;
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 18px; /* Ukuran font tetap */
-            font-weight: 700;
-            letter-spacing: 2px;
-            line-height: 36px;
-            text-transform: uppercase;
-            color: #FFD700;
-            text-shadow: 2px 2px 0px rgba(0, 0, 0, 1), 0 0 10px rgba(255, 215, 0, 0.2);
-        }
-        .ticker-head { /* Ticker bawah */
-            background: var(--hud-primary);
-            color: #000;
-            padding: 0 20px;
-            height: 100%;
-            display: flex; /* Tetap flex */
-            align-items: center; /* Tetap center */
-            font-weight: 800; /* Tetap bold */
-            font-size: 12px; /* Tetap 12px */
-            letter-spacing: 2px; /* Lebih lebar */
-            z-index: 10;
-            position: relative;
-            clip-path: polygon(0 0, 100% 0, 90% 100%, 0% 100%);
-            padding-right: 30px;
-            box-shadow: 5px 0 15px rgba(0,255,255,0.3);
-        }
-        .ticker-content-wrapper {
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-            height: 100%; /* Pastikan tinggi penuh */
-            mask-image: linear-gradient(to right, transparent, black 20px, black 95%, transparent);
-        }
-        .ticker-text {
-            position: absolute;
-            white-space: nowrap;
-            will-change: transform; /* Hapus text-shadow dari will-change karena sudah diatur di glow-pulse-cyan */
-            animation: ticker-bottom 40s linear infinite, glow-pulse-cyan 3s infinite alternate;
-            color: var(--hud-primary); /* Warna tetap */
-            font-size: 13px; /* Sedikit lebih besar */
-            line-height: 32px;
-            font-family: 'Rajdhani', monospace;
-            text-shadow: 0 0 5px var(--hud-primary);
-            font-weight: 600;
-            transform-style: preserve-3d; /* Untuk efek 3D */
-            transform: none; /* Hapus skew dan translate awal */
-        }
-        .text-glow-white {
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
-        }
-
-        /* [UPGRADE] PAUSE ON HOVER: Memudahkan user membaca pesan panjang */
-        .news-ticker:hover .ticker-text,
-        .news-ticker-top:hover .ticker-text-top {
-            animation-play-state: paused;
-            cursor: help;
-        }
-
-        /* Animasi Ticker Lebih Dinamis */
-        @keyframes ticker-top {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); } /* Durasi diatur di properti animation */
-        }
-        @keyframes ticker-bottom {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
-        }
-        /* Glow Pulsing */
-        @keyframes glow-pulse-gold {
-            /* Mengubah menjadi glow statis yang lebih lembut */
-            0%, 100% { text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
-        }
-        @keyframes glow-pulse-cyan {
-            /* Mengubah menjadi glow statis yang lebih lembut */
-            0%, 100% { text-shadow: 0 0 5px var(--hud-primary), 0 0 2px rgba(255, 255, 255, 0.1); }
-        }
-        /* Animasi ticker lama (dihapus karena diganti yang baru) */
-        /* @keyframes ticker {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
-        } */
-
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-            .btn-menu {
-                font-size: 1rem !important;
-                padding: 1rem !important;
-            }
-            #videoContainer {
-                max-width: 100vw !important;
-                height: auto !important;
-            }
-            #main-content {
-                padding: 1rem !important;
-            }
-            .hud-panel {
-                font-size: 0.8rem !important;
-            }
-        }
-    </style>
+    /* Minimal Custom CSS for animations that Tailwind doesn\'t have built-in by default */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #022c22; /* emerald-950 */
+        background-image: 
+            radial-gradient(circle at 50% -20%, rgba(251, 191, 36, 0.12), transparent 50%),
+            radial-gradient(circle at 50% 120%, rgba(16, 185, 129, 0.1), transparent 50%),
+            linear-gradient(rgba(251, 191, 36, 0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(251, 191, 36, 0.02) 1px, transparent 1px);
+        background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
+        color: #ecfdf5; /* emerald-50 */
+        margin: 0;
+        overflow: hidden;
+    }
+    
+    /* Auto-scroll animation for rosters */
+    .roster-ticker-container {
+        overflow: hidden !important;
+        position: relative;
+        height: 100%;
+    }
+    #personnelRoster, #cutiRoster, #dlRoster {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        animation: rosterTickerVertical 30s linear infinite;
+    }
+    #personnelRoster:hover, #cutiRoster:hover, #dlRoster:hover {
+        animation-play-state: paused;
+    }
+    @keyframes rosterTickerVertical {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(-100%); }
+    }
+
+    /* Hide scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(16, 185, 129, 0.1); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.5); border-radius: 10px; }
+
+    /* Elegant Horizontal Marquee */
+    @keyframes marqueeHorizontal {
+        0% { transform: translateX(100vw); }
+        100% { transform: translateX(-100%); }
+    }
+    .animate-marquee {
+        display: inline-block;
+        white-space: nowrap;
+        animation: marqueeHorizontal 35s linear infinite;
+        padding-left: 100vw; /* Start off-screen */
+    }
+    .animate-marquee:hover {
+        animation-play-state: paused;
+    }
+
+    /* AI Scanner Line Animation */
+    @keyframes aiScan {
+        0% { top: 0%; opacity: 0; }
+        15% { opacity: 1; }
+        85% { opacity: 1; }
+        100% { top: 100%; opacity: 0; }
+    }
+    .animate-marquee {
+        display: inline-block;
+        white-space: nowrap;
+        animation: marqueeHorizontal 35s linear infinite;
+        padding-left: 100vw;
+    }
+    .animate-marquee:hover {
+        animation-play-state: paused;
+    }
+
+    /* Floating Ambient Particles */
+    @keyframes floatUp {
+        0% { transform: translateY(100vh) scale(0); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+    }
+    .ambient-particle {
+        position: fixed;
+        width: 3px;
+        height: 3px;
+        background: radial-gradient(circle, rgba(251,191,36,0.8), transparent);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 1;
+        animation: floatUp var(--duration) linear infinite;
+        animation-delay: var(--delay);
+    }
+
+    /* Institutional Watermark */
+    .institutional-watermark {
+        position: fixed;
+        bottom: 60px;
+        right: 30px;
+        width: 120px;
+        height: 120px;
+        opacity: 0.04;
+        pointer-events: none;
+        z-index: 2;
+        animation: spin 60s linear infinite;
+    }
+
+    /* Footer ticker */
+    @keyframes footerTicker {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+    }
+    .footer-ticker-text {
+        display: inline-block;
+        white-space: nowrap;
+        animation: footerTicker 40s linear infinite;
+    }
+</style>
 
 </head>
 
@@ -1571,15 +176,14 @@
     </svg>
 
 
-    <div id="screenFlash"></div> <!-- Efek Kilatan -->
-    <div id="alarm-overlay"></div> <!-- [NEW] Red Alert Overlay -->
-    <div class="cyber-frame"></div> <!-- [NEW] Cyber Corner Frame -->
-    <div id="digitalCrack"></div> <!-- Efek Retakan Digital (NEW) -->
-    <div class="satellite-scan"></div> <!-- Global Scan Effect -->
+     <!-- Efek Kilatan -->
+     <!-- [NEW] Red Alert Overlay -->
+     <!-- [NEW] Cyber Corner Frame -->
+     <!-- Efek Retakan Digital (NEW) -->
+     <!-- Global Scan Effect -->
 
     <!-- [UPGRADE] MANUAL VISION CONTROLS (Akses Cepat Mode Sensor) -->
-    <div class="sensor-control-panel print:hidden">
-        <div class="text-[9px] text-cyan-500 font-bold tracking-[0.2em] mb-1 opacity-50 uppercase pl-1">Optic Sensors</div>
+    
         <button onclick="setVisionMode('normal')" class="sensor-btn" title="Standard Spectrum">
             <i class="fa-solid fa-eye"></i>
         </button>
@@ -1592,154 +196,192 @@
     </div>
 
     <!-- [NEW] RUNNING TEXT TICKER TOP: MOTTO PELAYANAN -->
-    <div class="news-ticker-top">
-        <div class="ticker-head-top">MOTTO PELAYANAN</div>
-        <div class="ticker-content-wrapper">
-            <div class="ticker-text-top">:: <span class="text-white text-glow-white">MELAYANI DENGAN SEPENUH HATI ADALAH PRIORITAS KAMI</span> :: MEMBERIKAN PELAYANAN KESEHATAN TERBAIK DENGAN INTEGRITAS DAN PROFESIONALISME :: <span class="text-white text-glow-white">PUSKESMAS WANA, MITRA TERPERCAYA MENUJU HIDUP SEHAT</span> :: KEPUASAN ANDA, KEBAHAGIAAN KAMI :: <span class="text-white text-glow-white">SENYUM, SAPA, SALAM ADALAH BUDAYA KERJA KAMI</span> ::</div>
+    <div class="w-full flex items-stretch border-b border-amber-500/40 bg-black/40 backdrop-blur-md overflow-hidden relative shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
+        <!-- Glowing Edge (Top & Bottom) -->
+        <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-400/80 to-transparent"></div>
+        <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
+        
+        <!-- Label Statis (Ribbon Style) -->
+        <div class="relative bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white font-bold px-6 py-2 flex items-center justify-center whitespace-nowrap z-20 shadow-[5px_0_20px_rgba(251,191,36,0.4)] border-r-2 border-amber-300 text-xs tracking-widest font-serif uppercase">
+            <img src="logo.jpg" alt="Logo" class="w-5 h-5 rounded-full object-cover border border-amber-100/60 shadow-[0_0_8px_rgba(255,255,255,0.4)] mr-3">
+            MOTTO PELAYANAN 
+            <img src="logo.jpg" alt="Logo" class="w-5 h-5 rounded-full object-cover border border-amber-100/60 shadow-[0_0_8px_rgba(255,255,255,0.4)] ml-3">
+            <!-- Edge flare -->
+            <div class="absolute right-0 top-0 bottom-0 w-[1px] bg-white opacity-70"></div>
+        </div>
+        
+        <!-- Kontainer Marquee (Frosted Glass Panel) -->
+        <div class="flex-1 bg-gradient-to-r from-emerald-950/80 via-emerald-900/60 to-emerald-950/80 py-2 relative overflow-hidden flex items-center shadow-inner">
+            <div class="animate-marquee font-serif italic text-[15px] tracking-wide whitespace-nowrap drop-shadow-lg flex items-center">
+                <span class="text-amber-200 font-semibold"><i class="fa-solid fa-leaf text-emerald-400 mr-1 text-xs"></i> Melayani dengan sepenuh hati adalah prioritas kami <span class="mx-4 text-amber-500/50">|</span></span> 
+                <span class="text-emerald-200 font-semibold"><i class="fa-solid fa-leaf text-amber-400 mr-1 text-xs"></i> Memberikan pelayanan kesehatan terbaik dengan integritas dan profesionalisme <span class="mx-4 text-amber-500/50">|</span></span> 
+                <span class="text-amber-100 font-semibold"><i class="fa-solid fa-leaf text-emerald-400 mr-1 text-xs"></i> Puskesmas Wana, mitra terpercaya menuju hidup sehat <span class="mx-4 text-amber-500/50">|</span></span> 
+                <span class="text-emerald-100 font-semibold"><i class="fa-solid fa-leaf text-amber-400 mr-1 text-xs"></i> Kepuasan Anda, kebahagiaan kami <span class="mx-4 text-amber-500/50">|</span></span> 
+                <span class="text-amber-200 font-semibold"><i class="fa-solid fa-leaf text-emerald-400 mr-1 text-xs"></i> Senyum, sapa, salam adalah budaya kerja kami <span class="mx-4 text-transparent">|</span></span>
+            </div>
+            <!-- Gradient fade at edges -->
+            <div class="absolute top-0 bottom-0 left-0 w-12 bg-gradient-to-r from-emerald-950/90 to-transparent z-10 pointer-events-none"></div>
+            <div class="absolute top-0 bottom-0 right-0 w-12 bg-gradient-to-l from-emerald-950/90 to-transparent z-10 pointer-events-none"></div>
         </div>
     </div>
 
     <!-- BOOT SCREEN -->
-    <div id="boot-screen">
-        <div id="boot-log"></div>
+    
     </div>
 
     <div id="main-content" class="w-full p-2 lg:p-4">
 
-        <div id="successOverlay"></div>
+        <div id="successOverlay" class="fixed inset-0 z-[99999] flex items-center justify-center pointer-events-none transition-opacity duration-300 opacity-0"></div>
 
         <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 mt-0 p-2">
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
-<!-- [NEW] PANEL KHUSUS CUTI PEGAWAI (PREMIUM GLOW) -->
-<div id="cuti-panel" class="widget-panel border-2 border-[#FF7300] shadow-[0_0_40px_rgba(255,115,0,0.45),inset_0_0_25px_rgba(255,115,0,0.15)] rounded-lg overflow-hidden relative" style="background: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(160deg, #220b00 0%, #0d0400 100%); background-size: 16px 16px, auto; overflow: visible;">
-    <div class="widget-title relative z-10 flex flex-col items-center justify-center text-center" style="background: linear-gradient(90deg, rgba(255, 115, 0, 0.35) 0%, rgba(13, 4, 0, 0.95) 100%); border-left: 6px solid #FF7300; border-bottom: 1px solid rgba(255, 115, 0, 0.3); color: #FFF; padding: 15px 10px; box-shadow: -10px 0 20px rgba(255, 115, 0, 0.3);">
-        <div class="text-2xl font-black tracking-[0.3em] text-white mb-3" style="text-shadow: 0 0 10px rgba(255,115,0,0.8), 0 2px 4px rgba(0, 0, 0, 0.9);">
+<!-- [NEW] PANEL KHUSUS CUTI PEGAWAI (PREMIUM ACADEMIC) -->
+<div id="cuti-panel" class="bg-black/20 backdrop-blur-md border border-amber-500/20 shadow-2xl rounded-2xl overflow-hidden relative flex flex-col gap-4 p-4 transition-all duration-300">
+    <!-- Glowing Top Edge -->
+    <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent opacity-60"></div>
+    <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4 border-b border-amber-500/20">
+        <div class="text-xl font-bold tracking-widest text-amber-100 mb-2 font-serif">
             CUTI PEGAWAI
         </div>
-        <div class="flex flex-col items-center justify-center gap-1 mb-3">
-            <span id="cuti-counter-badge" class="px-5 py-2 text-4xl text-[#FF8800] bg-black/95 border-2 border-[#FF8800] rounded-lg font-black font-mono shadow-[0_0_25px_rgba(255,136,0,0.7),inset_0_0_10px_rgba(255,136,0,0.3)] animate-pulse" style="line-height: 1;">0</span>
-            <span class="text-lg text-[#FF8800] font-bold tracking-[0.2em] mt-1" style="text-shadow: 0 0 8px rgba(255,136,0,0.4);">PEGAWAI</span>
+        <div class="flex flex-col items-center justify-center gap-1 mb-2">
+            <span id="cuti-counter-badge" class="px-6 py-2 text-3xl text-amber-950 bg-amber-500 rounded-lg font-bold shadow-lg shadow-amber-500/20">0</span>
+            <span class="text-xs text-amber-200/70 font-medium tracking-widest mt-2 uppercase">Pegawai</span>
         </div>
-        <div class="text-sm text-[#FF8800] font-bold tracking-[0.4em] uppercase mb-2" style="text-shadow: 0 0 5px rgba(255,136,0,0.3);">PUSKESMAS WANA</div>
-        <div class="w-3/4 h-[2px] bg-gradient-to-r from-transparent via-[#FF8800] to-transparent"></div>
+        <div class="text-[10px] text-amber-400/50 font-semibold tracking-[0.2em] uppercase">Puskesmas Wana</div>
     </div>
-    <div class="roster-ticker-container h-60 mt-2 relative z-10">
-        <div id="cutiRoster" class="pr-1"></div>
+    <div class="roster-ticker-container h-60 relative z-10">
+        <div id="cutiRoster" class="pr-1 text-emerald-50"></div>
     </div>
 </div>
 
-<!-- [NEW] PANEL KHUSUS DINAS LUAR (PREMIUM GLOW) -->
-<div id="dl-panel" class="widget-panel border-2 border-[#00FFD2] shadow-[0_0_40px_rgba(0,255,210,0.45),inset_0_0_25px_rgba(0,255,210,0.15)] rounded-lg overflow-hidden relative" style="background: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(160deg, #00241e 0%, #000c0a 100%); background-size: 16px 16px, auto; overflow: visible;">
-    <div class="widget-title relative z-10 flex flex-col items-center justify-center text-center" style="background: linear-gradient(90deg, rgba(0, 255, 210, 0.35) 0%, rgba(0, 12, 10, 0.95) 100%); border-left: 6px solid #00FFD2; border-bottom: 1px solid rgba(0, 255, 210, 0.3); color: #FFF; padding: 15px 10px; box-shadow: -10px 0 20px rgba(0, 255, 210, 0.25);">
-        <div class="text-2xl font-black tracking-[0.3em] text-white mb-3" style="text-shadow: 0 0 10px rgba(0,255,210,0.8), 0 2px 4px rgba(0, 0, 0, 0.9);">
+<!-- [NEW] PANEL KHUSUS DINAS LUAR (PREMIUM ACADEMIC) -->
+<div id="dl-panel" class="bg-black/20 backdrop-blur-md border border-amber-500/20 shadow-2xl rounded-2xl overflow-hidden relative flex flex-col gap-4 p-4 transition-all duration-300">
+    <!-- Glowing Top Edge -->
+    <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent opacity-60"></div>
+    <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4 border-b border-amber-500/20">
+        <div class="text-xl font-bold tracking-widest text-amber-100 mb-2 font-serif">
             DINAS LUAR
         </div>
-        <div class="flex flex-col items-center justify-center gap-1 mb-3">
-            <span id="dl-counter-badge" class="px-5 py-2 text-4xl text-[#00FFD2] bg-black/95 border-2 border-[#00FFD2] rounded-lg font-black font-mono shadow-[0_0_25px_rgba(0,255,210,0.7),inset_0_0_10px_rgba(0,255,210,0.3)] animate-pulse" style="line-height: 1;">0</span>
-            <span class="text-lg text-[#00FFD2] font-bold tracking-[0.2em] mt-1" style="text-shadow: 0 0 8px rgba(0,255,210,0.4);">PEGAWAI</span>
+        <div class="flex flex-col items-center justify-center gap-1 mb-2">
+            <span id="dl-counter-badge" class="px-6 py-2 text-3xl text-amber-950 bg-amber-500 rounded-lg font-bold shadow-lg shadow-amber-500/20">0</span>
+            <span class="text-xs text-amber-200/70 font-medium tracking-widest mt-2 uppercase">Pegawai</span>
         </div>
-        <div class="text-sm text-[#00FFD2] font-bold tracking-[0.4em] uppercase mb-2" style="text-shadow: 0 0 5px rgba(0,255,210,0.3);">PUSKESMAS WANA</div>
-        <div class="w-3/4 h-[2px] bg-gradient-to-r from-transparent via-[#00FFD2] to-transparent"></div>
+        <div class="text-[10px] text-amber-400/50 font-semibold tracking-[0.2em] uppercase">Puskesmas Wana</div>
     </div>
-    <div class="roster-ticker-container h-60 mt-2 relative z-10">
-        <div id="dlRoster" class="pr-1"></div>
+    <div class="roster-ticker-container h-60 relative z-10">
+        <div id="dlRoster" class="pr-1 text-emerald-50"></div>
     </div>
 </div>
 
                 <!-- [MODIFIED] Menambahkan ID dan status awal tersembunyi -->
-                <div id="target-data-panel" class="widget-panel panel-hidden">
-                    <h2 class="widget-title">:: DATA TARGET ::</h2>
-                    <div class="space-y-3 text-center">
+                <!-- PANEL DATA TARGET (PREMIUM) -->
+                <div id="target-data-panel" class="bg-black/20 backdrop-blur-md border border-amber-500/30 shadow-2xl rounded-2xl p-6 transition-all duration-500 opacity-0 scale-95 blur-sm pointer-events-none relative overflow-hidden">
+                    <!-- Glowing Top Edge -->
+                    <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent opacity-60"></div>
+                    <h2 class="text-center font-bold tracking-[0.2em] text-amber-200 mb-4 pb-2 border-b border-amber-500/20 font-serif">:: DATA PEGAWAI ::</h2>
+                    <div class="space-y-4 text-center">
 
                         <!-- FOTO KARYAWAN -->
-                        <div class="w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-cyan-400 bg-gray-800 flex items-center justify-center mb-2 p-1 relative"
-                            id="photoContainer">
-                            <img id="userPhotoDisplay" src="" onerror="this.style.display='none'" alt="User Photo"
-                                class="w-full h-full object-cover rounded-full">
-                        </div>
-
-                        <div>
-                            <p class="text-xs text-gray-400">JABATAN</p>
-                            <p id="userJabatanDisplay" class="text-lg font-bold text-amber-400 truncate">...</p>
-                        </div>
-
-                        <div>
-                            <p class="text-xs text-gray-400">IDENTITAS</p>
-                            <p id="userIdDisplay" class="text-xl font-bold text-cyan-400 truncate">MEMINDAI...</p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400">LEVEL OTORISASI</p>
-                            <p id="userStatusDisplay" class="text-lg font-bold text-red-500">TERKUNCI</p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400">KONDISI PSIKIS</p>
-                            <p id="userEmotionDisplay" class="text-md font-mono text-cyan-300 animate-pulse">KALIBRASI...</p>
+                        <div class="relative w-36 h-36 mx-auto mb-6 flex items-center justify-center">
+                            <!-- Spinning Dashed Ring -->
+                            <div class="absolute inset-0 rounded-full border-[3px] border-dashed border-amber-400/60 animate-[spin_12s_linear_infinite]"></div>
+                            <!-- Inner Glowing Solid Ring -->
+                            <div class="absolute inset-2 rounded-full border-[2px] border-amber-500 shadow-[0_0_20px_rgba(251,191,36,0.6)] animate-pulse"></div>
+                            <!-- Core Image -->
+                            <div class="absolute inset-3 overflow-hidden rounded-full bg-emerald-950 z-10 border border-black shadow-inner">
+                                <img id="userPhotoDisplay" src="" onerror="this.style.display='none'" alt="User Photo" class="w-full h-full object-cover scale-105">
                             </div>
-                            <div>
-                            <p class="text-xs text-gray-400">LOG TERAKHIR</p>
-                            <p id="lastActionDisplay" class="text-md font-mono text-amber-400">--:--:--</p>
+                        </div>
+
+                        <div>
+                            <p class="text-[10px] text-amber-200/50 font-semibold tracking-[0.2em] uppercase">Jabatan</p>
+                            <p id="userJabatanDisplay" class="text-lg font-bold text-amber-100 truncate">...</p>
+                        </div>
+
+                        <div>
+                            <p class="text-[10px] text-amber-200/50 font-semibold tracking-[0.2em] uppercase">Identitas</p>
+                            <p id="userIdDisplay" class="text-xl font-bold text-white truncate">MEMINDAI...</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-amber-200/50 font-semibold tracking-[0.2em] uppercase">Status Kehadiran</p>
+                            <p id="userStatusDisplay" class="text-lg font-bold text-amber-500">TERKUNCI</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-amber-200/50 font-semibold tracking-[0.2em] uppercase">Verifikasi Wajah</p>
+                            <p id="userEmotionDisplay" class="text-md font-mono text-amber-200 animate-pulse">KALIBRASI...</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-amber-200/50 font-semibold tracking-[0.2em] uppercase">Log Terakhir</p>
+                            <p id="lastActionDisplay" class="text-md font-mono text-amber-300">--:--:--</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="col-span-1 lg:col-span-2 flex flex-col items-center justify-start gap-4 order-1 lg:order-2">
-                <div class="fancy-header w-full text-center">
+                <div class="w-full text-center flex flex-col items-center justify-center py-2 mb-2">
                     <img id="mainLogo" src="logo.jpg" class="hidden" alt="Logo Instansi">
-                    <h1 id="mainTitle" class="text-4xl lg:text-5xl font-extrabold tracking-widest text-center">AETHER
-                    </h1>
-                    <p class="text-xs text-cyan-700 mt-1 font-mono">TITIK AKSES AMAN: A-9 // [TERHUBUNG]</p>
+                    <h1 id="mainTitle" class="text-4xl lg:text-5xl font-extrabold tracking-[0.3em] text-amber-400 drop-shadow-lg font-serif">AETHER</h1>
+                    <p class="text-[10px] text-amber-200/50 mt-1 font-sans tracking-[0.3em] uppercase">Titik Akses Utama // [Terhubung]</p>
                 </div>
 
-                <div id="videoContainer" class="video-container max-w-full">
-                    <video id="videoElement" autoplay muted playsinline></video>
-                    <!-- [NEW] Viewfinder Overlay -->
-                    <div class="viewfinder-overlay">
-                        <div class="viewfinder-crosshair"></div>
+                <div id="videoContainer" class="relative w-full max-w-[900px] pt-[48%] bg-emerald-950 rounded-2xl overflow-hidden shadow-[0_15px_60px_rgba(251,191,36,0.15),inset_0_0_20px_rgba(0,0,0,0.8)] border border-amber-500/30">
+                    <video id="videoElement" class="absolute top-0 left-0 w-full h-full object-cover" autoplay muted playsinline></video>
+                    <!-- [NEW] Professional Viewfinder Corners (Gold) -->
+                    <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <div class="w-48 h-64 relative overflow-hidden">
+                            <!-- Top Left -->
+                            <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-amber-400/70 rounded-tl-lg"></div>
+                            <!-- Top Right -->
+                            <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-amber-400/70 rounded-tr-lg"></div>
+                            <!-- Bottom Left -->
+                            <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-amber-400/70 rounded-bl-lg"></div>
+                            <!-- Bottom Right -->
+                            <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-amber-400/70 rounded-br-lg"></div>
+                            
+                            <!-- [NEW] Animated AI Scanner Line -->
+                            <div class="absolute left-0 right-0 h-[2px] bg-amber-400 opacity-60 shadow-[0_0_15px_rgba(251,191,36,0.9)] animate-[aiScan_2.5s_ease-in-out_infinite]"></div>
+                        </div>
                     </div>
 
-                    <canvas id="overlay"></canvas>
+                    <canvas id="overlay" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10"></canvas>
                 </div>
 
-                <div class="w-full bg-gray-900/80 border border-cyan-500/30 p-3 rounded text-center backdrop-blur-sm">
-                    <p id="statusMessage"
-                        class="text-xl lg:text-2xl font-bold text-gray-300 transition-colors duration-300">
-                        MENGINISIALISASI SENSOR...
+                <div class="w-full bg-black/30 border border-amber-500/20 p-4 rounded-xl text-center backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.2)] relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent animate-pulse"></div>
+                    <p id="statusMessage" class="text-xl lg:text-2xl font-bold text-amber-100 transition-colors duration-300 font-serif tracking-wide relative z-10">
+                        SISTEM SIAP
                     </p>
                 </div>
-<!-- NEW: A.I. VOICE VISUALIZER -->
-<canvas id="aiVoiceVisualizer" class="w-full h-6 opacity-80 rounded border border-cyan-500/20 bg-black/40" width="600"
-    height="40"></canvas>
+                <!-- A.I. VOICE VISUALIZER -->
+                <canvas id="aiVoiceVisualizer" class="w-full h-6 opacity-80 rounded-lg border border-amber-500/20 bg-black/40" width="600" height="40"></canvas>
             </div>
 
             <div class="col-span-1 flex flex-col gap-4 order-3">
-                <!-- PANEL WAVEFORM DIGANTI DENGAN PERSONNEL ROSTER (PREMIUM GLOW) -->
-                <div class="widget-panel flex-grow min-h-0 relative border-2 border-[#00E5FF] shadow-[0_0_40px_rgba(0,229,255,0.45),inset_0_0_25px_rgba(0,229,255,0.15)] rounded-lg overflow-hidden relative" style="background: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(160deg, #00223a 0%, #000a12 100%); background-size: 16px 16px, auto; overflow: visible;">
-                    <div class="widget-title relative z-10 flex flex-col items-center justify-center text-center" style="background: linear-gradient(90deg, rgba(0, 229, 255, 0.35) 0%, rgba(0, 10, 18, 0.95) 100%); border-left: 6px solid #00E5FF; border-bottom: 1px solid rgba(0, 229, 255, 0.3); color: #FFF; padding: 15px 10px; box-shadow: -10px 0 20px rgba(0, 229, 255, 0.25);">
-                        <div class="text-2xl font-black tracking-[0.3em] text-white mb-3" style="text-shadow: 0 0 10px rgba(0,229,255,0.8), 0 2px 4px rgba(0, 0, 0, 0.9);">
+                <!-- PANEL DAFTAR HADIR (PREMIUM ACADEMIC) -->
+                <div class="bg-black/20 backdrop-blur-md border border-amber-500/20 shadow-2xl rounded-2xl p-4 lg:p-6 flex flex-col gap-4 relative overflow-hidden transition-all duration-300">
+                    <!-- Glowing Top Edge -->
+                    <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent opacity-60"></div>
+                    
+                    <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4 border-b border-amber-500/20">
+                        <div class="text-xl font-bold tracking-widest text-amber-100 mb-2 font-serif">
                             DAFTAR HADIR
                         </div>
-                        <div class="flex flex-col items-center justify-center gap-1 mb-3">
-                            <span id="hadir-counter-badge" class="px-5 py-2 text-4xl text-[#00E5FF] bg-black/90 border-2 border-[#00E5FF] rounded-lg font-black font-mono shadow-[0_0_25px_rgba(0,229,255,0.7),inset_0_0_10px_rgba(0,229,255,0.3)] animate-pulse" style="line-height: 1;">0</span>
-                            <span class="text-lg text-[#00E5FF] font-bold tracking-[0.2em] mt-1" style="text-shadow: 0 0 8px rgba(0,229,255,0.4);">PEGAWAI</span>
+                        <div class="flex flex-col items-center justify-center gap-1 mb-2">
+                            <span id="hadir-counter-badge" class="px-6 py-2 text-3xl text-amber-950 bg-amber-500 rounded-lg font-bold shadow-lg shadow-amber-500/20">0</span>
+                            <span class="text-xs text-amber-200/70 font-medium tracking-widest mt-2 uppercase">Pegawai</span>
                         </div>
-                        <div class="text-sm text-cyan-200 font-bold tracking-[0.4em] uppercase mb-2" style="text-shadow: 0 0 5px rgba(0,229,255,0.3);">PUSKESMAS WANA</div>
-                        <div class="w-3/4 h-[2px] bg-gradient-to-r from-transparent via-[#00E5FF] to-transparent"></div>
+                        <div class="text-[10px] text-amber-400/50 font-semibold tracking-[0.2em] uppercase">Puskesmas Wana</div>
                     </div>
-                    <div class="h-full roster-ticker-container pr-1 mt-2 relative z-10">
-                        <div id="personnelRoster" class="py-2 flex flex-col gap-2">
-                            <div class="text-[#00A3FF] text-sm font-semibold tracking-widest text-center py-6 animate-pulse" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">MEMUAT DATA KEHADIRAN...</div>
+                    <div class="roster-ticker-container flex-grow relative z-10">
+                        <div id="personnelRoster" class="pr-1 text-emerald-50">
+                            <div class="text-emerald-300 text-sm font-semibold tracking-widest text-center py-6 animate-pulse">MEMUAT DATA KEHADIRAN...</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="widget-panel h-64 flex-shrink-0" style="background: rgba(5, 10, 15, 0.98);">
-                    <h2 class="widget-title">:: LOG KEHADIRAN ::</h2>
-                    <div id="attendanceLog" class="h-full overflow-y-auto font-mono text-xs opacity-100 space-y-1">
-                        <p class="text-gray-600 italic">> Waiting for check-in...</p>
-                    </div>
-                </div>
+                    <!-- Log Kehadiran Dihapus Sesuai Permintaan -->
             </div>
 
         </div>
@@ -1901,13 +543,60 @@
             };
         </script>
 
-        <!-- RUNNING TEXT TICKER -->
-        <div class="news-ticker">
-            <div class="ticker-head">INFO SISTEM</div>
-            <div class="ticker-content-wrapper">
-                <div class="ticker-text">:: SELAMAT DATANG DI SISTEM BIOMETRIK PUSKESMAS WANA :: PASTIKAN WAJAH TERLIHAT JELAS
-                    :: JANGAN GUNAKAN MASKER SAAT SCAN :: LAPORKAN JIKA TERJADI KESALAHAN :: SYSTEM VERSION 4.5 STABLE :: JAGA
-                    JARAK AMAN :: TERIMA KASIH ATAS KERJASAMA ANDA ::</div>
+        <!-- INSTITUTIONAL WATERMARK -->
+        <img src="logo.jpg" class="institutional-watermark" alt="Watermark">
+
+        <!-- FLOATING AMBIENT PARTICLES -->
+        <div class="ambient-particle" style="left: 5%; --duration: 18s; --delay: 0s;"></div>
+        <div class="ambient-particle" style="left: 15%; --duration: 22s; --delay: -4s;"></div>
+        <div class="ambient-particle" style="left: 25%; --duration: 16s; --delay: -8s;"></div>
+        <div class="ambient-particle" style="left: 40%; --duration: 20s; --delay: -2s;"></div>
+        <div class="ambient-particle" style="left: 55%; --duration: 24s; --delay: -10s;"></div>
+        <div class="ambient-particle" style="left: 65%; --duration: 19s; --delay: -6s;"></div>
+        <div class="ambient-particle" style="left: 75%; --duration: 21s; --delay: -12s;"></div>
+        <div class="ambient-particle" style="left: 85%; --duration: 17s; --delay: -3s;"></div>
+        <div class="ambient-particle" style="left: 92%; --duration: 23s; --delay: -7s;"></div>
+
+        <!-- PREMIUM INSTITUTIONAL FOOTER BAR -->
+        <div class="fixed bottom-0 left-0 right-0 z-[9999] flex items-stretch h-9 border-t border-amber-500/30 bg-black/60 backdrop-blur-lg shadow-[0_-4px_20px_rgba(0,0,0,0.6)]">
+            <!-- Glowing Top Edge -->
+            <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-400/60 to-transparent"></div>
+            
+            <!-- Left: Logo + Instansi Name -->
+            <div class="flex items-center gap-2 px-4 border-r border-amber-500/20 whitespace-nowrap">
+                <img src="logo.jpg" class="w-5 h-5 rounded-full object-cover border border-amber-500/40" alt="Logo">
+                <span class="text-[10px] text-amber-200/80 font-serif tracking-widest uppercase font-semibold">Puskesmas Wana</span>
+            </div>
+            
+            <!-- Center: Running Info Text -->
+            <div class="flex-1 overflow-hidden flex items-center relative">
+                <div class="footer-ticker-text text-[10px] text-amber-400/70 tracking-[0.15em] font-mono">
+                    <span class="mx-4"><i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i> SISTEM BIOMETRIK v5.0 PREMIUM</span>
+                    <span class="mx-4 text-amber-500/40">|</span>
+                    <span class="mx-4"><i class="fa-solid fa-face-smile text-amber-400 mr-1"></i> PASTIKAN WAJAH TERLIHAT JELAS</span>
+                    <span class="mx-4 text-amber-500/40">|</span>
+                    <span class="mx-4"><i class="fa-solid fa-mask-face text-amber-400 mr-1"></i> JANGAN GUNAKAN MASKER SAAT MEMINDAI</span>
+                    <span class="mx-4 text-amber-500/40">|</span>
+                    <span class="mx-4"><i class="fa-solid fa-circle-exclamation text-amber-400 mr-1"></i> LAPORKAN JIKA TERJADI KENDALA TEKNIS</span>
+                    <span class="mx-4 text-amber-500/40">|</span>
+                    <span class="mx-4"><i class="fa-solid fa-heart text-rose-400 mr-1"></i> TERIMA KASIH ATAS DEDIKASI ANDA</span>
+                    <!-- Duplicate for seamless loop -->
+                    <span class="mx-4"><i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i> SISTEM BIOMETRIK v5.0 PREMIUM</span>
+                    <span class="mx-4 text-amber-500/40">|</span>
+                    <span class="mx-4"><i class="fa-solid fa-face-smile text-amber-400 mr-1"></i> PASTIKAN WAJAH TERLIHAT JELAS</span>
+                    <span class="mx-4 text-amber-500/40">|</span>
+                    <span class="mx-4"><i class="fa-solid fa-mask-face text-amber-400 mr-1"></i> JANGAN GUNAKAN MASKER SAAT MEMINDAI</span>
+                    <span class="mx-4 text-amber-500/40">|</span>
+                    <span class="mx-4"><i class="fa-solid fa-circle-exclamation text-amber-400 mr-1"></i> LAPORKAN JIKA TERJADI KENDALA TEKNIS</span>
+                    <span class="mx-4 text-amber-500/40">|</span>
+                    <span class="mx-4"><i class="fa-solid fa-heart text-rose-400 mr-1"></i> TERIMA KASIH ATAS DEDIKASI ANDA</span>
+                </div>
+            </div>
+            
+            <!-- Right: Live Clock Badge -->
+            <div class="flex items-center gap-2 px-4 border-l border-amber-500/20 whitespace-nowrap">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.8)]"></div>
+                <span class="text-[10px] text-emerald-300/80 font-mono tracking-widest">ONLINE</span>
             </div>
         </div>
 
