@@ -1981,7 +1981,7 @@ function animateTitle() {
         sigerContainer.style.alignItems = 'center';
         sigerContainer.style.width = '100%';
         sigerContainer.style.marginBottom = '20px'; // Jarak bawah diperbaiki agar tidak tertimpa
-        sigerContainer.style.marginTop = '10px'; 
+        sigerContainer.style.marginTop = '-12px'; // Digeser ke atas agar sejajar panel samping
         sigerContainer.innerHTML = `
         <div style="
             display: flex; 
@@ -1989,9 +1989,9 @@ function animateTitle() {
             align-items: center; 
             justify-content: center; 
             width: 100%; 
-            max-width: 640px; 
+            max-width: 800px; /* Diperbesar dari 640px */
             margin: 0 auto; 
-            padding: 12px; 
+            padding: 16px; /* Tambah padding */
             border: 1px solid rgba(0, 255, 255, 0.8); 
             background: linear-gradient(135deg, rgba(6, 20, 30, 0.9) 0%, rgba(3, 10, 15, 0.95) 100%);
             backdrop-filter: blur(20px);
@@ -1999,49 +1999,34 @@ function animateTitle() {
             position: relative;
             clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
         ">
-            <div style="display: flex; flex-direction: row; align-items: stretch; justify-content: center; width: 100%; gap: 10px;">
+            <div style="display: flex; flex-direction: row; align-items: stretch; justify-content: center; width: 100%; gap: 15px;">
                 
                 <!-- CHRONO MODULE -->
-                <div style="flex: 1.6; border: 1px solid rgba(0,255,255,0.3); padding: 10px; background: rgba(0,0,0,0.5); position: relative; display: flex; align-items: center; gap: 15px;">
-                    <div style="width: 75px; height: 75px; position: relative;">
+                <div style="flex: 1.6; border: 1px solid rgba(0,255,255,0.3); padding: 15px; background: rgba(0,0,0,0.5); position: relative; display: flex; align-items: center; gap: 20px;">
+                    <div style="width: 90px; height: 90px; position: relative;">
                         <svg viewBox="0 0 100 100" style="width: 100%; height: 100%; transform: rotate(-90deg);">
                             <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,255,255,0.1)" stroke-width="2" />
                             <circle id="clock-ring-sec" cx="50" cy="50" r="45" fill="none" stroke="#00FFFF" stroke-width="4" stroke-dasharray="0 283" style="transition: stroke-dasharray 0.1s linear;" stroke-linecap="round" />
                         </svg>
                         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; pointer-events: none;">
-                            <span id="clock-s" style="font-size: 24px; font-weight: 900; color: #FFD700; font-family: 'Rajdhani';">--</span>
-                            <span id="clock-ms-soph" style="font-size: 9px; color: #00FFFF; margin-top: -5px; font-family: 'Share Tech Mono';">.00</span>
+                            <span id="clock-s" style="font-size: 30px; font-weight: 900; color: #FFD700; font-family: 'Rajdhani';">--</span>
+                            <span id="clock-ms-soph" style="font-size: 11px; color: #00FFFF; margin-top: -5px; font-family: 'Share Tech Mono';">.00</span>
                         </div>
                     </div>
                     
                     <div style="display: flex; flex-direction: column;">
-                        <div style="font-size: 8px; color: #00FF7F; letter-spacing: 2px; font-family: 'Share Tech Mono';">MASTER_CLOCK [SYNCED]</div>
+                        <div style="font-size: 10px; color: #00FF7F; letter-spacing: 2px; font-family: 'Share Tech Mono';">MASTER_CLOCK [SYNCED]</div>
                         <div style="display: flex; align-items: baseline; font-family: 'Rajdhani'; font-weight: 900; color: #FFF; text-shadow: 0 0 20px #00FFFF;">
-                            <span id="clock-h" style="font-size: 46px; line-height: 1;">--</span>
-                            <span style="font-size: 34px; margin: 0 2px; animation: blink 1s infinite;">:</span>
-                            <span id="clock-m" style="font-size: 46px; line-height: 1;">--</span>
+                            <span id="clock-h" style="font-size: 58px; line-height: 1;">--</span>
+                            <span style="font-size: 42px; margin: 0 2px; animation: blink 1s infinite;">:</span>
+                            <span id="clock-m" style="font-size: 58px; line-height: 1;">--</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- TELEMETRY & IMAGE -->
-                <div style="flex: 2.2; height: 95px; position: relative; border: 1px solid rgba(0,255,255,0.5); overflow: hidden; background: #000;">
-                    <img src="pkm.jpg" alt="PKM" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.5; filter: contrast(1.2);">
-                    <div style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.9) 0%, transparent 50%, rgba(0,0,0,0.9) 100%);"></div>
-                    
-                    <div style="position: absolute; top: 8px; left: 12px; font-size: 8px; color: #00FFFF; opacity: 0.9; font-family: 'Share Tech Mono';">
-                        UNIX: <span id="tele-unix" style="color:#FFF;">--</span><br>
-                        JULI: <span id="tele-julian" style="color:#FFD700;">--</span><br>
-                        LAT: <span style="color:#00FF7F;">${Math.floor(Math.random()*20+5)}ms</span>
-                    </div>
-                    
-                    <div style="position: absolute; bottom: 8px; right: 12px; text-align: right;">
-                         <div id="clock-date-soph" class="chrono-text" style="font-size: 13px; font-weight: bold; color: #00FFFF; letter-spacing: 1px;">--</div>
-                         <div style="font-size: 8px; color: rgba(255,255,255,0.5); font-family: 'Share Tech Mono';">SYSTEM_VERSION_4.5_STABLE</div>
-                    </div>
-
-                    <!-- SCANLINE FX -->
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.1) 3px); pointer-events: none;"></div>
+                <!-- TELEMETRY & IMAGE (CLEAN VIEW) -->
+                <div style="flex: 2.2; height: 125px; position: relative; border: 1px solid rgba(0,255,255,0.5); overflow: hidden; background: #000; border-radius: 4px;">
+                    <img src="pkm.jpg" alt="PKM" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.95; filter: contrast(1.15) brightness(1.05);">
                 </div>
             </div>
         </div>
@@ -2221,26 +2206,10 @@ function animateTitle() {
 let rosterScrollInterval = null;
 let cutiScrollInterval = null; // [NEW] Untuk panel Cuti
 
-// [NEW] Fungsi Auto Scroll Panel Kehadiran & Cuti
+// [NEW] Fungsi Auto Scroll dinonaktifkan di JS karena digantikan oleh CSS Animation (GPU Accelerated)
+// yang jauh lebih mulus dan anti-patah, seperti permintaan untuk meniru panel DAFTAR HADIR.
 function startRosterAutoScroll() {
-    const speed = 1; // Kecepatan scroll (pixel per tick)
-    const delay = 50; // Interval waktu (ms)
-
-    // Kami menonaktifkan JS Scroll untuk Kehadiran karena sudah menggunakan CSS Animation GPU-Accelerated yang jauh lebih mulus.
-    // Ini menghilangkan konflik rendering (tersendat-sendat) di browser.
-
-    if (cutiRoster) {
-        if (cutiScrollInterval) clearInterval(cutiScrollInterval);
-        cutiScrollInterval = setInterval(() => {
-            if (cutiRoster.matches(':hover')) return;
-            if (cutiRoster.scrollHeight > cutiRoster.clientHeight) {
-                cutiRoster.scrollTop += speed;
-                if (Math.ceil(cutiRoster.scrollTop + cutiRoster.clientHeight) >= cutiRoster.scrollHeight) {
-                cutiRoster.scrollTop = 0;
-                }
-            }
-        }, delay);
-    }
+    // Kosong (ditangani CSS @keyframes rosterTickerVertical)
 }
 
 async function updatePersonnelRoster() {
@@ -2264,11 +2233,11 @@ async function updatePersonnelRoster() {
             
             // Reset counter badges
             const hadirBadge = document.getElementById('hadir-counter-badge');
-            if (hadirBadge) hadirBadge.textContent = '0 ORANG';
+            if (hadirBadge) hadirBadge.textContent = '0';
             const cutiBadge = document.getElementById('cuti-counter-badge');
-            if (cutiBadge) cutiBadge.textContent = '0 ORANG';
+            if (cutiBadge) cutiBadge.textContent = '0';
             const dlBadge = document.getElementById('dl-counter-badge');
-            if (dlBadge) dlBadge.textContent = '0 ORANG';
+            if (dlBadge) dlBadge.textContent = '0';
             return;
         }
 

@@ -41,6 +41,6 @@
     "tts": "^0.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.14"
   }
 }
