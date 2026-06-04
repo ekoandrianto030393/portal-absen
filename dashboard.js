@@ -170,7 +170,7 @@ async function loadSystemConfig() {
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
     // Hide all views
-    ['overview', 'daily', 'monthly', 'performance', 'employees', 'view-db', 'settings'].forEach(id => {
+    ['overview', 'daily', 'monthly', 'performance', 'employees', 'view-db', 'view-db-monthly', 'settings'].forEach(id => {
         document.getElementById(`view-${id}`).classList.add('hidden');
         document.getElementById(`nav-${id}`).classList.remove('active');
     });
@@ -187,6 +187,7 @@ function switchTab(tabName) {
         'performance': 'Monitoring Kinerja Pegawai',
         'employees': 'Direktori Data Pegawai',
         'view-db': 'Data View Absensi Harian',
+        'view-db-monthly': 'DATA VIEW BULANAN',
         'settings': 'Pengaturan Sistem'
     };
     document.getElementById('page-title').textContent = titles[tabName];
@@ -198,6 +199,7 @@ function switchTab(tabName) {
     if (tabName === 'performance') loadPerformanceData();
     if (tabName === 'employees') loadEmployees();
     if (tabName === 'view-db') loadViewDbData();
+    if (tabName === 'view-db-monthly') loadViewDbMonthlyData();
 }
 
 // --- JAM DIGITAL ---
@@ -304,6 +306,26 @@ function renderRecentActivity(data) {
 }
 
 // --- DATA LOADER: DAILY ---
+function toggleFilterTypeDaily() {
+    const type = document.getElementById('filter-daily-type').value;
+    const dateContainer = document.getElementById('container-daily-date');
+    const monthContainer = document.getElementById('container-daily-month');
+    
+    if (type === 'daily') {
+        dateContainer.classList.remove('hidden');
+        monthContainer.classList.add('hidden');
+    } else {
+        dateContainer.classList.add('hidden');
+        monthContainer.classList.remove('hidden');
+        const monthInput = document.getElementById('filter-daily-month');
+        if (!monthInput.value) {
+            const now = new Date();
+            monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+    }
+    loadDailyData();
+}
+
 async function loadDailyData(silent = false) {
     const tbody = document.getElementById('table-daily-body');
     
@@ -313,7 +335,26 @@ async function loadDailyData(silent = false) {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/absensi/harian?_t=${Date.now()}`);
+        const typeEl = document.getElementById('filter-daily-type');
+        const type = typeEl ? typeEl.value : 'daily';
+        
+        let url = `${API_BASE}/absensi/harian?_t=${Date.now()}`;
+        
+        if (type === 'daily') {
+            const dateInput = document.getElementById('filter-daily-date');
+            const dateVal = dateInput ? dateInput.value : '';
+            if (dateVal) {
+                url += `&tanggal=${dateVal}`;
+            }
+        } else {
+            const monthInput = document.getElementById('filter-daily-month');
+            const monthVal = monthInput ? monthInput.value : '';
+            if (monthVal) {
+                url += `&bulan=${monthVal}`;
+            }
+        }
+
+        const response = await fetch(url);
         const result = await response.json();
         
         tbody.innerHTML = '';
@@ -406,13 +447,20 @@ async function loadDailyData(silent = false) {
                     keteranganHtml = `<div class="text-[10px] text-slate-500 italic mt-1.5 border-t border-slate-100 pt-1 leading-tight"><i class="fa-solid fa-circle-info text-[9px] mr-1"></i>${escapeHtml(row.keterangan)}</div>`;
                 }
 
+                let tglDisplay = '';
+                if (type === 'monthly' && row.tanggal) {
+                    const dObj = new Date(row.tanggal);
+                    const formattedDate = dObj.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' });
+                    tglDisplay = `<span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 mr-2 font-sans font-bold">${formattedDate}</span>`;
+                }
+
                 // [NEW] Highlight baris jika terlambat (Pink Background)
                 const rowBgClass = isLate ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-slate-50';
                 const rowBorderClass = isLate ? 'border-rose-200' : 'border-slate-200';
 
                 const tr = `
                     <tr onclick="openModal('${row.id_karyawan}')" class="${rowBgClass} transition cursor-pointer group border-b ${rowBorderClass} last:border-0">
-                        <td class="px-6 py-3 font-mono text-slate-800 font-bold">${row.jam_masuk}</td>
+                        <td class="px-6 py-3 font-mono text-slate-800 font-bold">${tglDisplay}${row.jam_masuk}</td>
                         <td class="px-6 py-3 font-bold text-slate-800 group-hover:text-blue-700 transition">${row.nama_karyawan}</td>
                         <td class="px-6 py-3 text-slate-600 text-xs font-bold uppercase tracking-wider">${row.jabatan || '-'}</td>
                         <td class="p-5">
@@ -452,30 +500,61 @@ async function loadDailyData(silent = false) {
     }
 }
 
-// --- DATA LOADER: VIEW DB (RAW ABSENSI HARIAN) ---
-async function loadViewDbData() {
+// --- DATA LOADER: VIEW DB (RAW ABSENSI HARIAN & BULANAN) ---
+function toggleFilterTypeViewDb() {
+    const type = document.getElementById('filter-view-db-type').value;
     const dateInput = document.getElementById('filter-view-db-date');
-    // Default ke hari ini jika kosong
-    const dateVal = dateInput.value || new Date().toISOString().split('T')[0];
-    if (!dateInput.value) dateInput.value = dateVal;
+    const monthInput = document.getElementById('filter-view-db-month');
+    
+    if (type === 'daily') {
+        dateInput.classList.remove('hidden');
+        monthInput.classList.add('hidden');
+    } else {
+        dateInput.classList.add('hidden');
+        monthInput.classList.remove('hidden');
+        if (!monthInput.value) {
+            const now = new Date();
+            monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+    }
+    loadViewDbData();
+}
+
+async function loadViewDbData() {
+    const type = document.getElementById('filter-view-db-type').value;
+    const dateInput = document.getElementById('filter-view-db-date');
+    const monthInput = document.getElementById('filter-view-db-month');
+    
+    let url = `${API_BASE}/absensi/harian?_t=${Date.now()}`;
+    
+    if (type === 'daily') {
+        const dateVal = dateInput.value || new Date().toISOString().split('T')[0];
+        if (!dateInput.value) dateInput.value = dateVal;
+        url += `&tanggal=${dateVal}`;
+    } else {
+        const monthVal = monthInput.value || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+        if (!monthInput.value) monthInput.value = monthVal;
+        url += `&bulan=${monthVal}`;
+    }
 
     const tbody = document.getElementById('table-view-db-body');
     tbody.innerHTML = '<tr><td colspan="11" class="p-4 text-center">Memuat data...</td></tr>';
 
     try {
-        const response = await fetch(`${API_BASE}/absensi/harian?tanggal=${dateVal}&_t=${Date.now()}`);
+        const response = await fetch(url);
         const result = await response.json();
         
         tbody.innerHTML = '';
         if (result.data && result.data.length > 0) {
             result.data.forEach(row => {
+                const dateOnly = row.tanggal ? row.tanggal.split('T')[0] : '-';
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50">
                         <td class="px-4 py-2 font-mono">${row.id_absensi}</td>
                         <td class="px-4 py-2 font-mono">${row.id_karyawan}</td>
                         <td class="px-4 py-2 font-bold">${row.nama_karyawan}</td>
                         <td class="px-4 py-2">${row.jabatan || '-'}</td>
-                        <td class="px-4 py-2 font-mono">${row.tanggal}</td>
+                        <td class="px-4 py-2 font-mono">${dateOnly}</td>
                         <td class="px-4 py-2 font-mono text-emerald-600 font-bold">${row.jam_masuk || '-'}</td>
                         <td class="px-4 py-2 font-mono text-blue-600 font-bold">${row.jam_keluar || '-'}</td>
                         <td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 border border-gray-200">${row.status}</span></td>
@@ -484,7 +563,7 @@ async function loadViewDbData() {
                         <td class="px-4 py-2 text-xs text-slate-500 italic">${row.keterangan || '-'}</td>
                         <td class="px-4 py-2 text-center">
                             <div class="flex items-center justify-center gap-1">
-                                <button onclick="openEditAbsensiModal('${row.id_absensi}', '${escapeHtml(row.nama_karyawan)}', '${row.tanggal}', '${row.jam_masuk || ''}', '${row.jam_keluar || ''}', '${row.status}', '${escapeHtml(row.keterangan || '')}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit Data">
+                                <button onclick="openEditAbsensiModal('${row.id_absensi}', '${escapeHtml(row.nama_karyawan)}', '${dateOnly}', '${row.jam_masuk || ''}', '${row.jam_keluar || ''}', '${row.status}', '${escapeHtml(row.keterangan || '')}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit Data">
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </button>
                                 <button onclick="deleteAbsensiDb('${row.id_absensi}', '${escapeHtml(row.nama_karyawan)}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Hapus Data">
@@ -496,7 +575,7 @@ async function loadViewDbData() {
                 `;
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="11" class="p-4 text-center text-slate-500">Tidak ada data untuk tanggal ini.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500">Tidak ada data untuk ${type === 'daily' ? 'tanggal' : 'bulan'} ini.</td></tr>`;
         }
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
@@ -569,6 +648,11 @@ async function saveAbsensiChanges() {
 
 // --- DATA LOADER: MONTHLY RECAP ---
 async function loadMonthlyRecap(silent = false) {
+    const formatEl = document.getElementById('rekap-format');
+    const format = formatEl ? formatEl.value : 'ringkasan';
+    if (format === 'menyamping') {
+        return loadMonthlyMatrix(silent);
+    }
     const month = document.getElementById('filter-month').value;
     const table = document.getElementById('table-rekap');
 
@@ -775,14 +859,14 @@ async function loadMonthlyRecap(silent = false) {
                         <td class="px-6 py-3 text-center bg-rose-50/50 text-rose-700 font-bold border-l border-r border-slate-200">${row.total_sakit || 0}</td>
                         <td class="px-6 py-3 text-center bg-purple-50/50 text-purple-700 font-bold border-r border-slate-200">${row.total_izin || 0}</td>
                         <td class="px-6 py-3 text-center bg-orange-50/50 text-orange-700 font-bold border-r border-slate-200">${row.total_cuti || 0}</td>
-                        <td class="px-6 py-3 text-center ${row.alpa > 0 ? 'text-red-600 font-black' : 'text-slate-300'}">${row.alpa}</td>
+                        <td class="px-6 py-3 text-center ${row.alpa > 0 ? 'text-red-600 font-black cursor-pointer hover:underline hover:bg-red-50' : 'text-slate-300'}" ${row.alpa > 0 ? `onclick="event.stopPropagation(); showPelanggaranDates('${row.id_karyawan}', '${escapeHtml(row.nama)}', 'alpa')"` : ''} title="Klik untuk melihat detail tanggal">${row.alpa}</td>
                         <td class="px-6 py-3 text-center font-bold ${persentase >= 95 ? 'text-emerald-600' : (persentase >= 80 ? 'text-blue-600' : 'text-red-600')}">${persentase}%</td>
                         <td class="px-6 py-3 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-black' : 'text-slate-300'}">${row.telat_kali}</td>
                         <td class="px-6 py-3 text-center text-slate-500">${formatPelanggaranToHHMMSS(row.telat_menit)}</td>
                         <td class="px-6 py-3 text-center ${row.psw_kali > 0 ? 'text-amber-600 font-black' : 'text-slate-300'}">${row.psw_kali || 0}</td>
                         <td class="px-6 py-3 text-center ${row.psw_menit > 0 ? 'text-amber-600' : 'text-slate-300'}">${formatPelanggaranToHHMMSS(row.psw_menit || 0)}</td>
                         <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-200">${formatPelanggaranToHHMMSS(totalMenitPelanggaranBaru)}</td>
-                        <td class="px-6 py-3 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-black' : 'text-slate-300'}">${row.tanpa_absen_pulang}</td>
+                        <td class="px-6 py-3 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-black cursor-pointer hover:underline hover:bg-red-50' : 'text-slate-300'}" ${row.tanpa_absen_pulang > 0 ? `onclick="event.stopPropagation(); showPelanggaranDates('${row.id_karyawan}', '${escapeHtml(row.nama)}', 'tanpa_pulang')"` : ''} title="Klik untuk melihat detail tanggal">${row.tanpa_absen_pulang}</td>
                         <td class="px-6 py-3 text-center text-red-600">${row.potongan_jam} Jam</td>
                         <td class="px-6 py-3 text-center font-mono text-emerald-600 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
                         <td class="px-6 py-3 text-center print:hidden">
@@ -838,6 +922,88 @@ async function loadMonthlyRecap(silent = false) {
         console.error(e);
     } finally {
         if (!silent) hideSpinner();
+    }
+}
+
+// --- FITUR: TAMPILKAN DETAIL TANGGAL PELANGGARAN ---
+async function showPelanggaranDates(idKaryawan, namaKaryawan, tipe) {
+    const month = document.getElementById('filter-month').value;
+    const title = tipe === 'tanpa_pulang' ? 'Detail Tanpa Absen Pulang' : (tipe === 'alpa' ? 'Detail Alpa (Tidak Hadir)' : 'Detail Pelanggaran');
+    
+    // Create simple modal dynamically
+    const modalId = 'modal-pelanggaran-dates';
+    let modal = document.getElementById(modalId);
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 opacity-0 hidden';
+        modal.innerHTML = `
+            <div class="bg-white rounded-xl shadow-2xl w-[450px] max-w-full overflow-hidden transform scale-95 transition-transform duration-300 relative">
+                <div class="bg-slate-800 p-4 flex justify-between items-center text-white">
+                    <h3 class="font-bold text-lg" id="${modalId}-title">Detail</h3>
+                    <button onclick="document.getElementById('${modalId}').classList.add('opacity-0'); setTimeout(() => document.getElementById('${modalId}').classList.add('hidden'), 300)" class="text-slate-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-xmark fa-lg"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm text-slate-600 mb-4 font-bold"><i class="fa-regular fa-user mr-2"></i><span id="${modalId}-nama"></span></p>
+                    <div id="${modalId}-content" class="max-h-[400px] overflow-y-auto pr-2 space-y-2">
+                        <div class="text-center py-4 text-slate-500"><i class="fa-solid fa-circle-notch fa-spin"></i> Memuat data...</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    document.getElementById(`${modalId}-title`).textContent = title;
+    document.getElementById(`${modalId}-nama`).textContent = namaKaryawan;
+    document.getElementById(`${modalId}-content`).innerHTML = '<div class="text-center py-4 text-slate-500"><i class="fa-solid fa-circle-notch fa-spin"></i> Memuat data...</div>';
+    
+    modal.classList.remove('hidden');
+    // Trigger reflow
+    void modal.offsetWidth;
+    modal.classList.remove('opacity-0');
+    modal.querySelector('.transform').classList.remove('scale-95');
+    
+    try {
+        const response = await fetch(`${API_BASE}/absensi/history/${idKaryawan}?periode=${month}&tipe=${tipe}`);
+        const result = await response.json();
+        
+        let html = '';
+        if (result.success && result.data && result.data.length > 0) {
+            result.data.forEach((item, idx) => {
+                const dateObj = new Date(item.tanggal);
+                const dateStr = dateObj.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                // Format YYYY-MM-DD for checking daily
+                const yyyy = dateObj.getFullYear();
+                const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const dd = String(dateObj.getDate()).padStart(2, '0');
+                const isoDate = `${yyyy}-${mm}-${dd}`;
+                
+                html += `
+                    <div onclick="document.getElementById('${modalId}').classList.add('opacity-0'); setTimeout(() => { document.getElementById('${modalId}').classList.add('hidden'); checkDailyFromRecap('${isoDate}'); }, 300)" 
+                         class="p-3 border border-slate-200 rounded-lg bg-slate-50 hover:bg-white hover:border-blue-400 hover:shadow-md cursor-pointer transition-all flex justify-between items-center group">
+                        <div>
+                            <div class="font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">${idx + 1}. ${dateStr}</div>
+                            <div class="text-xs text-slate-500 font-mono">
+                                Masuk: <span class="text-emerald-600 font-bold">${item.jam_masuk || '-'}</span> | 
+                                Keluar: <span class="text-rose-600 font-bold">${item.jam_keluar || '-'}</span>
+                            </div>
+                            <div class="text-xs text-rose-600 mt-1 italic"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${item.keterangan || 'Tanpa Absen Pulang'}</div>
+                        </div>
+                        <div class="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            html = '<div class="text-center py-4 text-slate-500 italic">Tidak ada data detail.</div>';
+        }
+        document.getElementById(`${modalId}-content`).innerHTML = html;
+    } catch (e) {
+        document.getElementById(`${modalId}-content`).innerHTML = `<div class="text-center py-4 text-red-500">Error: ${e.message}</div>`;
     }
 }
 
@@ -1676,9 +1842,19 @@ function exportExcel() {
 }
 
 // --- FITUR: PRINT REPORT ---
-function printReport() {
+function printMonthlyMatrix() {
+    printReport(true);
+}
+
+function printReport(forceMatrix = false) {
+    const isMatrix = forceMatrix || document.getElementById('rekap-format')?.value === 'menyamping';
+    
     // Update teks periode di header cetak
-    const monthInput = document.getElementById('filter-month');
+    let monthInput = document.getElementById('filter-month');
+    if (isMatrix && document.getElementById('view-view-db-monthly') && !document.getElementById('view-view-db-monthly').classList.contains('hidden')) {
+        monthInput = document.getElementById('filter-view-db-monthly-month');
+    }
+    
     if (monthInput && monthInput.value) {
         const date = new Date(monthInput.value);
         const options = { year: 'numeric', month: 'long' };
@@ -1702,7 +1878,10 @@ function printReport() {
     if (tsEl) tsEl.textContent = fullTime;
 
     // [NEW] INJECT TABEL KE AREA CETAK (Gaya Akademik & Resmi)
-    const sourceTable = document.getElementById('table-rekap');
+    let sourceTable = document.getElementById('table-rekap');
+    if (isMatrix && document.getElementById('view-view-db-monthly') && !document.getElementById('view-view-db-monthly').classList.contains('hidden')) {
+        sourceTable = document.getElementById('table-view-db-monthly');
+    }
     const printContainer = document.getElementById('print-table-container');
 
     if (sourceTable && printContainer) {
@@ -1712,7 +1891,11 @@ function printReport() {
         const tableClone = sourceTable.cloneNode(true);
         
         // Hapus class Tailwind yang tidak cocok untuk cetak resmi
-        tableClone.className = 'border-collapse border-2 border-black text-[12pt] font-serif leading-relaxed w-full';
+        if (isMatrix) {
+            tableClone.className = 'border-collapse border border-black text-[6pt] font-sans w-full';
+        } else {
+            tableClone.className = 'border-collapse border-2 border-black text-[12pt] font-serif leading-relaxed w-full';
+        }
         
         // Styling Header (Hitam Putih, Tegas)
         const thead = tableClone.querySelector('thead');
@@ -1726,7 +1909,11 @@ function printReport() {
                     return;
                 }
 
-                th.className = 'border-2 border-black px-4 py-6 text-center align-middle uppercase font-bold bg-gray-200';
+                if (isMatrix) {
+                    th.className = 'border border-black p-0.5 text-center align-middle uppercase font-bold bg-gray-100 text-[6pt]';
+                } else {
+                    th.className = 'border-2 border-black px-4 py-6 text-center align-middle uppercase font-bold bg-gray-200';
+                }
                 th.style.position = 'static'; // Hapus sticky
                 // Hapus ikon sort
                 const icon = th.querySelector('i');
@@ -1754,18 +1941,27 @@ function printReport() {
 
                     // Kolom Nama (idx 2) dan ID (idx 1) dibuat lebih tebal dan besar
                     let extraStyle = '';
-                    if (cell.cellIndex === 1 || cell.cellIndex === 2) {
+                    if (!isMatrix && (cell.cellIndex === 1 || cell.cellIndex === 2)) {
                         extraStyle = ' font-black text-[14pt]'; 
                     }
 
-                    cell.className = 'border border-black px-4 py-8 align-middle text-black' + extraStyle;
+                    if (isMatrix) {
+                        cell.className = 'border border-black p-0.5 align-middle text-center text-black text-[6.5pt]';
+                    } else {
+                        cell.className = 'border border-black px-4 py-8 align-middle text-black' + extraStyle;
+                    }
                     cell.style.backgroundColor = 'transparent';
                     cell.style.color = 'black';
                     cell.style.position = 'static';
                     
-                    // Bersihkan Badge/Icon (Ambil Text Saja agar terlihat resmi)
+                    // Bersihkan Badge/Icon dan berikan warna pada T, P, TAP serta line-break
                     if (cell.children.length > 0) {
-                        cell.innerHTML = cell.innerText.trim();
+                        let text = cell.innerText.trim();
+                        text = text.replace(/\n/g, '<br>');
+                        text = text.replace(/(T:\s*\d+m)/g, '<span style="color: red; font-weight: bold;">$1</span>');
+                        text = text.replace(/(P:\s*\d+m)/g, '<span style="color: #b45309; font-weight: bold;">$1</span>'); // Amber-700
+                        text = text.replace(/(TAP)/g, '<span style="color: red; font-weight: bold;">TAP</span>');
+                        cell.innerHTML = text;
                     }
                 });
             });
@@ -2546,5 +2742,235 @@ function filterManualEmp() {
         if (txtValue.toUpperCase().indexOf(input) > -1) {
             select.options[i].style.display = "";
         } else { select.options[i].style.display = "none"; }
+    }
+}
+
+// --- [NEW] FORMAT PIVOT MATRIX BULANAN MENYAMPING ---
+function toggleRekapFormat() {
+    loadMonthlyRecap();
+}
+
+async function loadMonthlyMatrix(silent = false) {
+    const month = document.getElementById('filter-month').value;
+    const table = document.getElementById('table-rekap');
+
+    const dateObj = new Date(month);
+    const monthName = dateObj.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+    if (!silent) showSpinner();
+
+    try {
+        const response = await fetch(`${API_BASE}/absensi/bulanan/matrix?periode=${month}&_t=${Date.now()}`);
+        const result = await response.json();
+
+        if (!result.success) throw new Error(result.message || 'Gagal mengambil data');
+
+        const days = result.daysInMonth;
+        
+        let thDays = '';
+        for (let d = 1; d <= days; d++) {
+            thDays += `<th class="px-2 py-3 text-center border border-slate-700 min-w-[80px]">Tgl ${d}</th>`;
+        }
+
+        table.innerHTML = `
+            <caption class="caption-top mb-6 text-center border-b-2 border-slate-800 pb-4">
+                <h2 class="text-2xl font-serif font-bold text-slate-900 uppercase tracking-widest">Detail Presensi Harian Menyamping</h2>
+                <p class="text-sm text-slate-600 font-serif italic mt-1">Periode Laporan: ${monthName}</p>
+            </caption>
+            <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider border-b border-slate-700 bg-slate-800 text-white">
+                <tr>
+                    <th class="px-4 py-3 text-center border border-slate-700 w-12">No.</th>
+                    <th class="px-6 py-3 text-left border border-slate-700 w-56">Nama Pegawai</th>
+                    <th class="px-6 py-3 text-left border border-slate-700 w-36">Jabatan</th>
+                    ${thDays}
+                </tr>
+            </thead>
+            <tbody id="table-rekap-body" class="text-slate-800 divide-y divide-slate-200 text-xs bg-white">
+            </tbody>
+        `;
+
+        const tbody = table.querySelector('tbody');
+
+        result.data.forEach((row, index) => {
+            let tdDays = '';
+            for (let d = 1; d <= days; d++) {
+                const dayData = row.hari[d];
+                let cellContent = '<span class="text-slate-300">-</span>';
+                let cellClass = 'bg-slate-50/50';
+
+                if (dayData) {
+                    const status = dayData.status;
+                    if (status === 'DL' || status === 'DINAS_LUAR') {
+                        cellContent = '<span class="text-blue-600 font-bold">DL</span>';
+                        cellClass = 'bg-blue-50';
+                    } else if (status === 'SAKIT') {
+                        cellContent = '<span class="text-rose-600 font-bold">S</span>';
+                        cellClass = 'bg-rose-50';
+                    } else if (status === 'IZIN') {
+                        cellContent = '<span class="text-purple-600 font-bold">I</span>';
+                        cellClass = 'bg-purple-50';
+                    } else if (status === 'CUTI') {
+                        cellContent = '<span class="text-orange-600 font-bold">C</span>';
+                        cellClass = 'bg-orange-50';
+                    } else if (status === 'ALPA') {
+                        cellContent = '<span class="text-red-600 font-extrabold">A</span>';
+                        cellClass = 'bg-red-50';
+                    } else {
+                        const masuk = dayData.jam_masuk ? dayData.jam_masuk.substring(0, 5) : '';
+                        let keluar = dayData.jam_keluar ? dayData.jam_keluar.substring(0, 5) : '';
+                        
+                        let isLupaPulang = false;
+                        if (dayData.keterangan && (dayData.keterangan.includes('Otomatis') || dayData.keterangan.includes('Tanpa Absen Pulang'))) {
+                            isLupaPulang = true;
+                            keluar = `<span class="text-red-600 font-extrabold text-[10px] bg-red-100 px-1 py-0.5 rounded border border-red-200" title="Tanpa Absen Pulang (TAP)">TAP</span>`;
+                        }
+
+                        let lateIndicator = '';
+                        if (dayData.telat_menit > 0) {
+                            lateIndicator = `<div class="text-[9px] text-red-500 font-bold">T: ${dayData.telat_menit}m</div>`;
+                        }
+                        let pswIndicator = '';
+                        if (dayData.psw_menit > 0) {
+                            pswIndicator = `<div class="text-[9px] text-amber-600 font-bold">P: ${dayData.psw_menit}m</div>`;
+                        }
+
+                        cellContent = `
+                            <div class="font-mono font-bold text-slate-800">${masuk || '-'}</div>
+                            <div class="font-mono text-slate-500 border-t border-slate-100 mt-0.5 pt-0.5">${keluar || '-'}</div>
+                            ${lateIndicator}
+                            ${pswIndicator}
+                        `;
+                        cellClass = isLupaPulang ? 'bg-rose-100/70' : (dayData.telat_menit > 0 ? 'bg-rose-50/20' : 'bg-emerald-50/20');
+                    }
+
+                    const toolTip = `Tanggal: ${d}\nStatus: ${status}\nJam Masuk: ${dayData.jam_masuk || '-'}\nJam Keluar: ${dayData.jam_keluar || '-'}\nKeterangan: ${dayData.keterangan || '-'}`;
+                    tdDays += `<td class="px-2 py-2 text-center border border-slate-200 ${cellClass}" title="${escapeHtml(toolTip)}">${cellContent}</td>`;
+                } else {
+                    tdDays += `<td class="px-2 py-2 text-center border border-slate-200 ${cellClass}">${cellContent}</td>`;
+                }
+            }
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-2 text-center font-mono border border-slate-200">${index + 1}</td>
+                    <td class="px-6 py-2 font-bold text-slate-800 border border-slate-200">${row.nama}</td>
+                    <td class="px-6 py-2 text-slate-600 border border-slate-200 uppercase font-semibold">${row.jabatan || '-'}</td>
+                    ${tdDays}
+                </tr>
+            `;
+        });
+
+    } catch (e) {
+        console.error(e);
+        table.innerHTML = `<tr><td class="p-4 text-red-500">Error: ${e.message}</td></tr>`;
+    } finally {
+        if (!silent) hideSpinner();
+    }
+}
+
+// --- DATA LOADER: DATABASE MONTHLY (DATA VIEW BULANAN - MATRIX) ---
+async function loadViewDbMonthlyData() {
+    const monthInput = document.getElementById('filter-view-db-monthly-month');
+    
+    if (!monthInput.value) {
+        const now = new Date();
+        monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    const month = monthInput.value;
+    const table = document.getElementById('table-view-db-monthly');
+    const tbody = document.getElementById('table-view-db-monthly-body');
+    tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center">Memuat data view bulanan...</td></tr>';
+
+    try {
+        const response = await fetch(`${API_BASE}/absensi/bulanan/matrix?periode=${month}&_t=${Date.now()}`);
+        const result = await response.json();
+
+        if (!result.success) throw new Error(result.message || 'Gagal mengambil data');
+
+        const days = result.daysInMonth;
+        
+        let thDays = '';
+        for (let d = 1; d <= days; d++) {
+            thDays += `<th class="px-2 py-2 text-center border border-slate-700 min-w-[85px] text-[10px]">Tgl ${d}</th>`;
+        }
+
+        const thead = table.querySelector('thead');
+        thead.innerHTML = `
+            <tr class="bg-slate-800 text-white uppercase text-[10px] font-bold">
+                <th class="px-3 py-2 text-center border border-slate-700 w-10">No</th>
+                <th class="px-4 py-2 text-left border border-slate-700 w-44">Nama Pegawai</th>
+                <th class="px-4 py-2 text-left border border-slate-700 w-32">Jabatan</th>
+                ${thDays}
+            </tr>
+        `;
+
+        tbody.innerHTML = '';
+
+        result.data.forEach((row, index) => {
+            let tdDays = '';
+            for (let d = 1; d <= days; d++) {
+                const dayData = row.hari[d];
+                let cellContent = '<span class="text-slate-300">-</span>';
+                let cellClass = 'bg-slate-50/50';
+
+                if (dayData) {
+                    const status = dayData.status;
+                    if (status === 'DL' || status === 'DINAS_LUAR') {
+                        cellContent = '<span class="text-blue-600 font-bold">DL</span>';
+                        cellClass = 'bg-blue-50';
+                    } else if (status === 'SAKIT') {
+                        cellContent = '<span class="text-rose-600 font-bold">S</span>';
+                        cellClass = 'bg-rose-50';
+                    } else if (status === 'IZIN') {
+                        cellContent = '<span class="text-purple-600 font-bold">I</span>';
+                        cellClass = 'bg-purple-50';
+                    } else if (status === 'CUTI') {
+                        cellContent = '<span class="text-orange-600 font-bold">C</span>';
+                        cellClass = 'bg-orange-50';
+                    } else if (status === 'ALPA') {
+                        cellContent = '<span class="text-red-600 font-extrabold">A</span>';
+                        cellClass = 'bg-red-50';
+                    } else {
+                        const masuk = dayData.jam_masuk ? dayData.jam_masuk.substring(0, 5) : '-';
+                        let keluar = dayData.jam_keluar ? dayData.jam_keluar.substring(0, 5) : '-';
+                        
+                        let isLupaPulang = false;
+                        if (dayData.keterangan && (dayData.keterangan.includes('Otomatis') || dayData.keterangan.includes('Tanpa Absen Pulang'))) {
+                            isLupaPulang = true;
+                            keluar = `<span class="text-red-600 font-extrabold text-[10px] bg-red-100 px-1 py-0.5 rounded border border-red-200" title="Tanpa Absen Pulang (TAP)">TAP</span>`;
+                        }
+
+                        let ketStr = '';
+                        if (dayData.telat_menit > 0) ketStr += ` T:${dayData.telat_menit}m`;
+                        if (dayData.psw_menit > 0) ketStr += ` P:${dayData.psw_menit}m`;
+
+                        cellContent = `
+                            <div class="font-bold text-slate-800 font-mono">${masuk} - ${keluar}</div>
+                            ${ketStr ? `<div class="text-[9px] text-red-500 font-bold mt-0.5">${ketStr}</div>` : ''}
+                        `;
+                        cellClass = isLupaPulang ? 'bg-rose-100/70' : (dayData.telat_menit > 0 ? 'bg-rose-50/20' : 'bg-emerald-50/20');
+                    }
+
+                    const toolTip = `Tanggal: ${d}\nStatus: ${status}\nJam Masuk: ${dayData.jam_masuk || '-'}\nJam Keluar: ${dayData.jam_keluar || '-'}\nKeterangan: ${dayData.keterangan || '-'}`;
+                    tdDays += `<td class="px-2 py-1.5 text-center border border-slate-200 ${cellClass}" title="${escapeHtml(toolTip)}">${cellContent}</td>`;
+                } else {
+                    tdDays += `<td class="px-2 py-1.5 text-center border border-slate-200 ${cellClass}">${cellContent}</td>`;
+                }
+            }
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-3 py-1.5 text-center font-mono border border-slate-200">${index + 1}</td>
+                    <td class="px-4 py-1.5 font-bold text-slate-800 border border-slate-200">${row.nama}</td>
+                    <td class="px-4 py-1.5 text-slate-600 border border-slate-200 uppercase font-semibold text-[10px]">${row.jabatan || '-'}</td>
+                    ${tdDays}
+                </tr>
+            `;
+        });
+
+    } catch (e) {
+        console.error(e);
+        tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
     }
 }

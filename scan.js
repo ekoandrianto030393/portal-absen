@@ -5877,6 +5877,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // [NEW] Jalankan Auto Scroll untuk Panel Kehadiran
     startRosterAutoScroll();
 
+    // Start dynamic radar telemetry updater
+    const teleKey = document.getElementById('teleKey');
+    const telePosX = document.getElementById('telePosX');
+    const telePosY = document.getElementById('telePosY');
+    const telePing = document.getElementById('telePing');
+
+    setInterval(() => {
+        if (teleKey) {
+            const randHex = '0x' + Math.floor(Math.random() * 65536).toString(16).toUpperCase().padStart(4, '0');
+            teleKey.textContent = randHex;
+        }
+        if (telePosX) {
+            const randX = (115 + Math.random() * 0.05).toFixed(4); // Simulasi koordinat geografis
+            telePosX.textContent = randX;
+        }
+        if (telePosY) {
+            const randY = (-5 - Math.random() * 0.05).toFixed(4);
+            telePosY.textContent = randY;
+        }
+        if (telePing) {
+            const randPing = Math.floor(Math.random() * 15 + 8) + 'ms';
+            telePing.textContent = randPing;
+        }
+    }, 300);
+
     // CSS ADJUSTMENT: Geser area scan (Video Container) sedikit ke atas
     if (videoContainer) {
         videoContainer.style.marginTop = "-90px"; 

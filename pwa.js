@@ -94,23 +94,21 @@ function setupBeforeInstallPrompt() {
 // Register Service Worker
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-        addDebugLog('✅ Service Worker API available');
-        
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/sw.js', { scope: '/' })
-                .then(function(registration) {
-                    addDebugLog('✅ Service Worker registered successfully');
-                    return navigator.serviceWorker.ready;
-                })
-                .then(function() {
-                    addDebugLog('✅ Service Worker is READY for installation');
-                })
-                .catch(function(error) {
-                    addDebugLog('❌ Service Worker registration failed: ' + error.message);
-                });
+        addDebugLog('🧹 Clearing Service Worker...');
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) {
+                registration.unregister();
+                addDebugLog('✅ Service Worker Unregistered');
+            }
         });
-    } else {
-        addDebugLog('❌ Service Worker API NOT available');
+    }
+    if ('caches' in window) {
+        caches.keys().then(function(names) {
+            for (let name of names) {
+                caches.delete(name);
+                addDebugLog('✅ Cache storage deleted: ' + name);
+            }
+        });
     }
 }
 

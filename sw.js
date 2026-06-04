@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biometrik-v1';
+const CACHE_NAME = 'biometrik-v17';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -17,13 +17,7 @@ const urlsToCache = [
   '/monitoring.js',
   '/karyawan.js',
   '/absensi.js',
-  '/rekap_api.js',
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap',
-  'https://cdn.babylonjs.com/babylon.js',
-  'https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js',
-  'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.0/dist/tf.min.js',
-  'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js'
+  '/rekap_api.js'
 ];
 
 // Install Service Worker
@@ -42,7 +36,23 @@ self.addEventListener('fetch', event => {
         if (response) {
           return response;
         }
-        return fetch(event.request);
+        return fetch(event.request).catch(() => {
+          // Jaringan gagal & tidak ada cache — kembalikan respons fallback
+          if (event.request.headers.get('accept')?.includes('application/json') ||
+              event.request.url.includes('/verify') ||
+              event.request.url.includes('/api/')) {
+            // API request: kembalikan JSON error
+            return new Response(
+              JSON.stringify({ error: true, message: 'Offline - jaringan tidak tersedia' }),
+              { status: 503, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+          // Request lainnya: kembalikan halaman offline sederhana
+          return new Response('Offline - halaman tidak tersedia', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain' }
+          });
+        });
       })
   );
 });

@@ -548,21 +548,25 @@ app.get('/api/rekap/bulanan', (req, res) => {
 
 // Endpoint: Data Absensi Harian (Sesuai View Baru di skema_final.sql)
 app.get('/api/absensi/harian', (req, res) => {
-    // [FIX] Default tampilkan HANYA hari ini agar Dashboard Overview akurat
-    // Tambahkan parameter ?tanggal=YYYY-MM-DD jika ingin melihat history
+    // Tambahkan parameter ?tanggal=YYYY-MM-DD atau ?bulan=YYYY-MM jika ingin melihat history
     const tanggal = req.query.tanggal;
+    const bulan = req.query.bulan;
     let sql = "SELECT * FROM view_absensi_harian";
     let params = [];
 
     if (tanggal) {
         sql += " WHERE tanggal = ?";
         params.push(tanggal);
+        sql += " ORDER BY (jam_masuk IS NULL) DESC, jam_masuk DESC";
+    } else if (bulan) {
+        sql += " WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?";
+        params.push(bulan);
+        sql += " ORDER BY id_karyawan ASC, tanggal ASC";
     } else {
         sql += " WHERE tanggal = CURDATE()";
+        sql += " ORDER BY (jam_masuk IS NULL) DESC, jam_masuk DESC";
     }
     
-    sql += " ORDER BY (jam_masuk IS NULL) DESC, jam_masuk DESC"; // [FIX] Prioritaskan data tanpa jam (DL/Izin) di atas
-
     pool.query(sql, params, (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, data: results });
@@ -575,6 +579,107 @@ app.get('/api/absensi/today', (req, res) => {
     pool.query(sql, (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json(results);
+    });
+});
+
+// Endpoint: Data History Absensi Pegawai per Bulan (Detail Pelanggaran)
+app.get('/api/absensi/history/:id_karyawan', (req, res) => {
+    const { id_karyawan } = req.params;
+    const { periode, tipe } = req.query; // tipe='tanpa_pulang' | 'alpa'
+    
+    if (tipe === 'alpa') {
+        const sql = `
+            SELECT DISTINCT tanggal, '-' AS jam_masuk, '-' AS jam_keluar, 'Tidak Hadir Tanpa Keterangan (Alpa)' AS keterangan, 'ALPA' AS status 
+            FROM absensi 
+            WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? 
+              AND tanggal <= CURDATE()
+              AND tanggal NOT IN (
+                  SELECT tanggal FROM absensi WHERE id_karyawan = ? AND DATE_FORMAT(tanggal, '%Y-%m') = ?
+              )
+            ORDER BY tanggal ASC
+        `;
+        pool.query(sql, [periode, id_karyawan, periode], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            res.json({ success: true, data: results });
+        });
+        return;
+    }
+
+    let sql = "SELECT tanggal, jam_masuk, jam_keluar, keterangan, status FROM view_absensi_harian WHERE id_karyawan = ? AND DATE_FORMAT(tanggal, '%Y-%m') = ?";
+    let params = [id_karyawan, periode];
+    
+    if (tipe === 'tanpa_pulang') {
+        sql += " AND ((jam_keluar IS NULL AND tanggal < CURDATE()) OR keterangan LIKE '%Tanpa Absen Pulang%' OR keterangan LIKE '%Lupa Absen Pulang%')";
+    }
+    
+    sql += " ORDER BY tanggal ASC";
+    
+    pool.query(sql, params, (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, data: results });
+    });
+});
+
+// Endpoint: Data Absensi Bulanan Matrix (Menyamping)
+app.get('/api/absensi/bulanan/matrix', (req, res) => {
+    let periode = req.query.periode; // format YYYY-MM
+    if (!periode) {
+        const now = new Date();
+        periode = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    const sqlKaryawan = "SELECT id_karyawan, nama, jabatan FROM karyawan ORDER BY nama ASC";
+    const sqlAbsensi = `
+        SELECT a.id_karyawan, a.tanggal, a.jam_masuk, a.jam_keluar, a.status, a.keterangan, a.telat_menit, a.psw_menit 
+        FROM absensi a 
+        WHERE DATE_FORMAT(a.tanggal, '%Y-%m') = ?
+    `;
+
+    pool.query(sqlKaryawan, (err, karyawanList) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        
+        pool.query(sqlAbsensi, [periode], (err, absensiList) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+
+            const [year, month] = periode.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            const absensiMap = {};
+            absensiList.forEach(row => {
+                const day = new Date(row.tanggal).getDate();
+                if (!absensiMap[row.id_karyawan]) {
+                    absensiMap[row.id_karyawan] = {};
+                }
+                absensiMap[row.id_karyawan][day] = {
+                    jam_masuk: row.jam_masuk,
+                    jam_keluar: row.jam_keluar,
+                    status: row.status,
+                    keterangan: row.keterangan,
+                    telat_menit: row.telat_menit,
+                    psw_menit: row.psw_menit
+                };
+            });
+
+            const matrix = karyawanList.map(k => {
+                const hari = {};
+                for (let d = 1; d <= daysInMonth; d++) {
+                    hari[d] = absensiMap[k.id_karyawan]?.[d] || null;
+                }
+                return {
+                    id_karyawan: k.id_karyawan,
+                    nama: k.nama,
+                    jabatan: k.jabatan,
+                    hari: hari
+                };
+            });
+
+            res.json({
+                success: true,
+                periode: periode,
+                daysInMonth: daysInMonth,
+                data: matrix
+            });
+        });
     });
 });
 
