@@ -337,34 +337,70 @@ app.get('/api/rekap', (req, res) => {
         periode = `${year}-${month}`;
     }
 
-    // UPDATE: Gunakan View 'view_rekap_bulanan' sesuai skema_final.sql
-    const sql = `SELECT * FROM view_rekap_bulanan WHERE periode = ?`;
+    // [FIX] Query langsung (TANPA VIEW) agar SEMUA karyawan selalu tampil
+    // View lama menggunakan CROSS JOIN yang menyebabkan hanya karyawan dengan data absensi yang muncul
+    const sql = `
+        SELECT 
+            k.no_urut,
+            k.id_karyawan,
+            k.nama,
+            k.jabatan,
+            ? AS periode,
+            (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) AS total_hari_kerja,
+            COUNT(a.jam_masuk) AS total_masuk,
+            COALESCE(SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0) AS total_dl,
+            COALESCE(SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END), 0) AS total_sakit,
+            COALESCE(SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END), 0) AS total_izin,
+            COALESCE(SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END), 0) AS total_cuti,
+            GREATEST(0, 
+                (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) 
+                - COUNT(a.jam_masuk) 
+                - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI') THEN 1 ELSE 0 END), 0)
+            ) AS alpa,
+            COALESCE(SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END), 0) AS telat_kali,
+            COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
+            COALESCE(SUM(CASE WHEN a.psw_menit > 0 THEN 1 ELSE 0 END), 0) AS psw_kali,
+            COALESCE(SUM(a.psw_menit), 0) AS psw_menit,
+            (COALESCE(SUM(a.telat_menit), 0) + COALESCE(SUM(a.psw_menit), 0)) AS total_pelanggaran_menit,
+            COALESCE(SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan LIKE '%Otomatis%') THEN 1 ELSE 0 END), 0) AS tanpa_absen_pulang,
+            COALESCE(SUM(CASE WHEN a.jam_keluar IS NOT NULL AND (a.keterangan IS NULL OR a.keterangan NOT LIKE '%Otomatis%') THEN 1 ELSE 0 END), 0) AS pulang_kali,
+            COALESCE(SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan LIKE '%Otomatis%') THEN ${POTONGAN_LUPA_PULANG} ELSE 0 END), 0) AS potongan_jam,
+            SEC_TO_TIME(COALESCE(SUM(
+                CASE 
+                    WHEN a.jam_keluar IS NOT NULL THEN TIMESTAMPDIFF(SECOND, a.jam_masuk, a.jam_keluar)
+                    WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN
+                        GREATEST(0, TIMESTAMPDIFF(SECOND, a.jam_masuk, 
+                            CASE 
+                                WHEN DAYOFWEEK(a.tanggal) = 6 THEN '${AUTO_PULANG_JUMAT}'
+                                WHEN DAYOFWEEK(a.tanggal) = 7 THEN '${AUTO_PULANG_SABTU}'
+                                ELSE '${AUTO_PULANG_DEFAULT}'
+                            END
+                        ))
+                    ELSE 0 
+                END
+            ), 0)) AS total_jam_kerja
+        FROM karyawan k
+        LEFT JOIN absensi a ON k.id_karyawan = a.id_karyawan AND DATE_FORMAT(a.tanggal, '%Y-%m') = ?
+        GROUP BY k.id_karyawan, k.no_urut, k.nama, k.jabatan
+        ORDER BY k.no_urut ASC, k.nama ASC
+    `;
 
-    pool.query(sql, [periode], (err, results) => {
+    pool.query(sql, [periode, periode, periode, periode], (err, results) => {
         if (err) {
+            console.error('❌ [REKAP] Error:', err.message);
             return res.status(500).json({ success: false, message: err.message });
         }
 
+        console.log(`\n📊 [REKAP] Periode: ${periode} | Total Pegawai: ${results.length}`);
+
         // [DEBUG] Verifikasi Perhitungan Total Pelanggaran (Telat + PSW)
-        console.log(`\n📊 VERIFIKASI TOTAL PELANGGARAN (Periode: ${periode})`);
-        console.log('---------------------------------------------------------------------------------');
-        console.log('| NAMA KARYAWAN       | TELAT (m) | PSW (m)   | TOTAL (DB) | STATUS FIX 100% |');
-        console.log('---------------------------------------------------------------------------------');
-        
         results.forEach(r => {
             const telat = parseInt(r.telat_menit) || 0;
             const psw = parseInt(r.psw_menit) || 0;
-            const totalDB = parseInt(r.total_pelanggaran_menit) || 0;
-            const totalManual = telat + psw;
-            const isMatch = totalDB === totalManual;
-            const statusIcon = isMatch ? '✅ VALID' : '❌ ERROR';
-            
-            // Hanya tampilkan jika ada pelanggaran agar terminal tidak penuh
-            if (totalManual > 0) {
-                console.log(`| ${r.nama.substring(0, 19).padEnd(19)} | ${String(telat).padEnd(9)} | ${String(psw).padEnd(9)} | ${String(totalDB).padEnd(10)} | ${statusIcon.padEnd(15)} |`);
+            if (telat > 0 || psw > 0) {
+                console.log(`   ⚠️ ${r.nama}: Telat ${telat}m, PSW ${psw}m`);
             }
         });
-        console.log('---------------------------------------------------------------------------------\n');
 
         res.json({ success: true, data: results });
     });
@@ -378,9 +414,34 @@ app.get('/api/slip_gaji/print', (req, res) => {
         return res.status(400).send("<h3>Error: Parameter id_karyawan dan periode (YYYY-MM) wajib disertakan.</h3>");
     }
 
-    const sql = "SELECT * FROM view_rekap_bulanan WHERE id_karyawan = ? AND periode = ?";
+    // [FIX] Query langsung tanpa VIEW agar data lengkap
+    const sql = `
+        SELECT 
+            k.no_urut, k.id_karyawan, k.nama, k.jabatan,
+            ? AS periode,
+            (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) AS total_hari_kerja,
+            COUNT(a.jam_masuk) AS total_masuk,
+            COALESCE(SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0) AS total_dl,
+            COALESCE(SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END), 0) AS total_sakit,
+            COALESCE(SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END), 0) AS total_izin,
+            COALESCE(SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END), 0) AS total_cuti,
+            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) - COUNT(a.jam_masuk) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI') THEN 1 ELSE 0 END), 0)) AS alpa,
+            COALESCE(SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END), 0) AS telat_kali,
+            COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
+            COALESCE(SUM(CASE WHEN a.psw_menit > 0 THEN 1 ELSE 0 END), 0) AS psw_kali,
+            COALESCE(SUM(a.psw_menit), 0) AS psw_menit,
+            (COALESCE(SUM(a.telat_menit), 0) + COALESCE(SUM(a.psw_menit), 0)) AS total_pelanggaran_menit,
+            COALESCE(SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan LIKE '%Otomatis%') THEN 1 ELSE 0 END), 0) AS tanpa_absen_pulang,
+            COALESCE(SUM(CASE WHEN a.jam_keluar IS NOT NULL AND (a.keterangan IS NULL OR a.keterangan NOT LIKE '%Otomatis%') THEN 1 ELSE 0 END), 0) AS pulang_kali,
+            COALESCE(SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan LIKE '%Otomatis%') THEN ${POTONGAN_LUPA_PULANG} ELSE 0 END), 0) AS potongan_jam,
+            SEC_TO_TIME(COALESCE(SUM(CASE WHEN a.jam_keluar IS NOT NULL THEN TIMESTAMPDIFF(SECOND, a.jam_masuk, a.jam_keluar) WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN GREATEST(0, TIMESTAMPDIFF(SECOND, a.jam_masuk, CASE WHEN DAYOFWEEK(a.tanggal) = 6 THEN '${AUTO_PULANG_JUMAT}' WHEN DAYOFWEEK(a.tanggal) = 7 THEN '${AUTO_PULANG_SABTU}' ELSE '${AUTO_PULANG_DEFAULT}' END)) ELSE 0 END), 0)) AS total_jam_kerja
+        FROM karyawan k
+        LEFT JOIN absensi a ON k.id_karyawan = a.id_karyawan AND DATE_FORMAT(a.tanggal, '%Y-%m') = ?
+        WHERE k.id_karyawan = ?
+        GROUP BY k.id_karyawan, k.no_urut, k.nama, k.jabatan
+    `;
     
-    pool.query(sql, [id_karyawan, periode], (err, results) => {
+    pool.query(sql, [periode, periode, periode, periode, id_karyawan], (err, results) => {
         if (err) return res.status(500).send(err.message);
         if (results.length === 0) return res.status(404).send("<h3>Data absensi tidak ditemukan untuk periode ini.</h3>");
 
@@ -538,9 +599,34 @@ app.get('/api/rekap/bulanan', (req, res) => {
         periode = `${year}-${month}`;
     }
 
-    const sql = `SELECT * FROM view_rekap_bulanan WHERE periode = ?`;
+    // [FIX] Query langsung tanpa VIEW agar SEMUA karyawan tampil
+    const sql = `
+        SELECT 
+            k.no_urut, k.id_karyawan, k.nama, k.jabatan,
+            ? AS periode,
+            (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) AS total_hari_kerja,
+            COUNT(a.jam_masuk) AS total_masuk,
+            COALESCE(SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0) AS total_dl,
+            COALESCE(SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END), 0) AS total_sakit,
+            COALESCE(SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END), 0) AS total_izin,
+            COALESCE(SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END), 0) AS total_cuti,
+            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) - COUNT(a.jam_masuk) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI') THEN 1 ELSE 0 END), 0)) AS alpa,
+            COALESCE(SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END), 0) AS telat_kali,
+            COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
+            COALESCE(SUM(CASE WHEN a.psw_menit > 0 THEN 1 ELSE 0 END), 0) AS psw_kali,
+            COALESCE(SUM(a.psw_menit), 0) AS psw_menit,
+            (COALESCE(SUM(a.telat_menit), 0) + COALESCE(SUM(a.psw_menit), 0)) AS total_pelanggaran_menit,
+            COALESCE(SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan LIKE '%Otomatis%') THEN 1 ELSE 0 END), 0) AS tanpa_absen_pulang,
+            COALESCE(SUM(CASE WHEN a.jam_keluar IS NOT NULL AND (a.keterangan IS NULL OR a.keterangan NOT LIKE '%Otomatis%') THEN 1 ELSE 0 END), 0) AS pulang_kali,
+            COALESCE(SUM(CASE WHEN (a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE()) OR (a.keterangan LIKE '%Otomatis%') THEN ${POTONGAN_LUPA_PULANG} ELSE 0 END), 0) AS potongan_jam,
+            SEC_TO_TIME(COALESCE(SUM(CASE WHEN a.jam_keluar IS NOT NULL THEN TIMESTAMPDIFF(SECOND, a.jam_masuk, a.jam_keluar) WHEN a.jam_masuk IS NOT NULL AND a.jam_keluar IS NULL AND a.tanggal < CURDATE() THEN GREATEST(0, TIMESTAMPDIFF(SECOND, a.jam_masuk, CASE WHEN DAYOFWEEK(a.tanggal) = 6 THEN '${AUTO_PULANG_JUMAT}' WHEN DAYOFWEEK(a.tanggal) = 7 THEN '${AUTO_PULANG_SABTU}' ELSE '${AUTO_PULANG_DEFAULT}' END)) ELSE 0 END), 0)) AS total_jam_kerja
+        FROM karyawan k
+        LEFT JOIN absensi a ON k.id_karyawan = a.id_karyawan AND DATE_FORMAT(a.tanggal, '%Y-%m') = ?
+        GROUP BY k.id_karyawan, k.no_urut, k.nama, k.jabatan
+        ORDER BY k.no_urut ASC, k.nama ASC
+    `;
 
-    pool.query(sql, [periode], (err, results) => {
+    pool.query(sql, [periode, periode, periode, periode], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, data: results });
     });
@@ -628,7 +714,7 @@ app.get('/api/absensi/bulanan/matrix', (req, res) => {
         periode = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     }
 
-    const sqlKaryawan = "SELECT id_karyawan, nama, jabatan FROM karyawan ORDER BY nama ASC";
+    const sqlKaryawan = "SELECT id_karyawan, nama, jabatan FROM karyawan ORDER BY no_urut ASC, nama ASC";
     const sqlAbsensi = `
         SELECT a.id_karyawan, a.tanggal, a.jam_masuk, a.jam_keluar, a.status, a.keterangan, a.telat_menit, a.psw_menit 
         FROM absensi a 
@@ -638,6 +724,9 @@ app.get('/api/absensi/bulanan/matrix', (req, res) => {
     pool.query(sqlKaryawan, (err, karyawanList) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         
+        console.log(`\n📋 [MATRIX] Periode: ${periode} | Total Karyawan di DB: ${karyawanList.length}`);
+        karyawanList.forEach((k, i) => console.log(`   ${i+1}. ${k.id_karyawan} - ${k.nama}`));
+
         pool.query(sqlAbsensi, [periode], (err, absensiList) => {
             if (err) return res.status(500).json({ success: false, message: err.message });
 

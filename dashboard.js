@@ -205,8 +205,15 @@ function switchTab(tabName) {
 // --- JAM DIGITAL ---
 function updateClock() {
     const now = new Date();
-    document.getElementById('clock-time').textContent = now.toLocaleTimeString('id-ID', { hour12: false });
-    document.getElementById('clock-date').textContent = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    document.getElementById('clock-time').innerHTML = `${hours}:${minutes}<span class="text-slate-400 text-sm animate-pulse ml-1">:${seconds}</span>`;
+    
+    // Tanggal bergaya formal Indonesia (contoh: 05 Juni 2026)
+    const options = { day: '2-digit', month: 'long', year: 'numeric' };
+    document.getElementById('clock-date').textContent = now.toLocaleDateString('id-ID', options);
 }
 
 // --- HELPER: LOADING SPINNER ---
@@ -306,26 +313,6 @@ function renderRecentActivity(data) {
 }
 
 // --- DATA LOADER: DAILY ---
-function toggleFilterTypeDaily() {
-    const type = document.getElementById('filter-daily-type').value;
-    const dateContainer = document.getElementById('container-daily-date');
-    const monthContainer = document.getElementById('container-daily-month');
-    
-    if (type === 'daily') {
-        dateContainer.classList.remove('hidden');
-        monthContainer.classList.add('hidden');
-    } else {
-        dateContainer.classList.add('hidden');
-        monthContainer.classList.remove('hidden');
-        const monthInput = document.getElementById('filter-daily-month');
-        if (!monthInput.value) {
-            const now = new Date();
-            monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        }
-    }
-    loadDailyData();
-}
-
 async function loadDailyData(silent = false) {
     const tbody = document.getElementById('table-daily-body');
     
@@ -335,23 +322,12 @@ async function loadDailyData(silent = false) {
     }
 
     try {
-        const typeEl = document.getElementById('filter-daily-type');
-        const type = typeEl ? typeEl.value : 'daily';
-        
         let url = `${API_BASE}/absensi/harian?_t=${Date.now()}`;
         
-        if (type === 'daily') {
-            const dateInput = document.getElementById('filter-daily-date');
-            const dateVal = dateInput ? dateInput.value : '';
-            if (dateVal) {
-                url += `&tanggal=${dateVal}`;
-            }
-        } else {
-            const monthInput = document.getElementById('filter-daily-month');
-            const monthVal = monthInput ? monthInput.value : '';
-            if (monthVal) {
-                url += `&bulan=${monthVal}`;
-            }
+        const dateInput = document.getElementById('filter-daily-date');
+        const dateVal = dateInput ? dateInput.value : '';
+        if (dateVal) {
+            url += `&tanggal=${dateVal}`;
         }
 
         const response = await fetch(url);
@@ -448,11 +424,6 @@ async function loadDailyData(silent = false) {
                 }
 
                 let tglDisplay = '';
-                if (type === 'monthly' && row.tanggal) {
-                    const dObj = new Date(row.tanggal);
-                    const formattedDate = dObj.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' });
-                    tglDisplay = `<span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 mr-2 font-sans font-bold">${formattedDate}</span>`;
-                }
 
                 // [NEW] Highlight baris jika terlambat (Pink Background)
                 const rowBgClass = isLate ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-slate-50';
@@ -2769,7 +2740,10 @@ async function loadMonthlyMatrix(silent = false) {
         
         let thDays = '';
         for (let d = 1; d <= days; d++) {
-            thDays += `<th class="px-2 py-3 text-center border border-slate-700 min-w-[80px]">Tgl ${d}</th>`;
+            const dateObj = new Date(`${month}-${String(d).padStart(2, '0')}T00:00:00`);
+            const isSunday = dateObj.getDay() === 0;
+            const thClass = isSunday ? 'text-red-400 font-bold bg-red-900/20' : '';
+            thDays += `<th class="px-2 py-3 text-center border border-slate-700 min-w-[80px] ${thClass}">Tgl ${d}</th>`;
         }
 
         table.innerHTML = `
@@ -2892,7 +2866,10 @@ async function loadViewDbMonthlyData() {
         
         let thDays = '';
         for (let d = 1; d <= days; d++) {
-            thDays += `<th class="px-2 py-2 text-center border border-slate-700 min-w-[85px] text-[10px]">Tgl ${d}</th>`;
+            const dateObj = new Date(`${month}-${String(d).padStart(2, '0')}T00:00:00`);
+            const isSunday = dateObj.getDay() === 0;
+            const thClass = isSunday ? 'text-red-400 print:text-red-600 print:bg-red-100 font-extrabold' : '';
+            thDays += `<th class="px-2 py-2 text-center border border-slate-700 min-w-[85px] text-[10px] ${thClass}">Tgl ${d}</th>`;
         }
 
         const thead = table.querySelector('thead');
@@ -2910,9 +2887,12 @@ async function loadViewDbMonthlyData() {
         result.data.forEach((row, index) => {
             let tdDays = '';
             for (let d = 1; d <= days; d++) {
+                const dateObj = new Date(`${month}-${String(d).padStart(2, '0')}T00:00:00`);
+                const isSunday = dateObj.getDay() === 0;
+
                 const dayData = row.hari[d];
-                let cellContent = '<span class="text-slate-300">-</span>';
-                let cellClass = 'bg-slate-50/50';
+                let cellContent = isSunday ? '<span class="text-red-300 font-bold print:text-red-500">-</span>' : '<span class="text-slate-300">-</span>';
+                let cellClass = isSunday ? 'bg-red-50/50 print:bg-red-50' : 'bg-slate-50/50';
 
                 if (dayData) {
                     const status = dayData.status;

@@ -351,7 +351,7 @@ const SoundFX = {
             // Log error to system HUD instead of crashing console
             if (e.message.includes('402') || e.message.includes('quota')) {
                 SoundFX.elevenLabs.quotaExceeded = true; // [FIX] Tandai agar tidak coba lagi
-                logSystem(`VOICE MODULE: Quota Exceeded. Menggunakan Browser TTS.`, 'text-amber-400');
+                logSystem(`VOICE MODULE: Quota Exceeded. Menggunakan Browser TTS.`, 'text-champagne-400');
             } else {
                 logSystem(`VOICE MODULE: Link failed (${e.message})`, 'text-red-400');
             }
@@ -414,7 +414,7 @@ function initAudioVisualizer() {
             total += dataArray[i];
             
             // Warna Gradient Cyan ke Ungu
-            ctx.fillStyle = `rgba(251, 191, 36, ${barHeight / 100})`;
+            ctx.fillStyle = `rgba(221, 188, 130, ${barHeight / 100})`;
             ctx.fillRect(x, (canvas.height - barHeight) / 2, barWidth, barHeight); // Center vertical
             x += barWidth + 1;
         }
@@ -432,9 +432,9 @@ function drawIdleRadar(ctx, x, y, radius) {
     // Rotating Radar Sweep
     ctx.rotate(time);
     const gradient = ctx.createConicGradient(0, 0, 0);
-    gradient.addColorStop(0, 'rgba(251, 191, 36, 0)');
-    gradient.addColorStop(0.8, 'rgba(251, 191, 36, 0)');
-    gradient.addColorStop(1, 'rgba(251, 191, 36, 0.1)');
+    gradient.addColorStop(0, 'rgba(221, 188, 130, 0)');
+    gradient.addColorStop(0.8, 'rgba(221, 188, 130, 0)');
+    gradient.addColorStop(1, 'rgba(221, 188, 130, 0.1)');
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -458,9 +458,9 @@ if (stealthToggle) {
         } else {
             // MODE NORMAL
             stealthToggle.textContent = '[ OFF ]';
-            stealthToggle.className = 'bg-transparent border border-amber-500/50 text-amber-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all duration-300';
+            stealthToggle.className = 'bg-transparent border border-champagne-500/50 text-champagne-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all duration-300';
             if(stealthIcon) stealthIcon.className = 'w-2 h-2 rounded-full bg-gray-600';
-            logSystem('STEALTH MODE: DISENGAGED. Audio Online.', 'text-amber-500');
+            logSystem('STEALTH MODE: DISENGAGED. Audio Online.', 'text-champagne-500');
         }
     });
 }
@@ -481,16 +481,16 @@ function setSystemTheme(status) {
     
     switch(status) {
         case 'SUCCESS': 
-            primary = '#F59E0B'; secondary = '#008800'; glow = 'rgba(245, 158, 11, 0.6)'; 
+            primary = '#F59E0B'; secondary = '#008800'; glow = 'rgba(210, 164, 93, 0.6)'; 
             break;
         case 'ERROR': 
             primary = '#FF0055'; secondary = '#880000'; glow = 'rgba(255, 0, 85, 0.6)'; 
             break;
         case 'SCANNING': 
-            primary = '#FBBF24'; secondary = '#0088FF'; glow = 'rgba(251, 191, 36, 0.6)'; 
+            primary = '#FBBF24'; secondary = '#0088FF'; glow = 'rgba(221, 188, 130, 0.6)'; 
             break;
         default: // IDLE
-            primary = '#FBBF24'; secondary = '#0088FF'; glow = 'rgba(251, 191, 36, 0.3)';
+            primary = '#FBBF24'; secondary = '#0088FF'; glow = 'rgba(221, 188, 130, 0.3)';
     }
     root.style.setProperty('--hud-primary', primary);
     root.style.setProperty('--hud-secondary', secondary);
@@ -515,7 +515,7 @@ window.setVisionMode = (mode) => {
         v.style.filter = 'url(#night-vision) brightness(1.2) contrast(1.1)';
         logSystem('SENSOR: NIGHT VISION ENGAGED', 'text-green-500');
     } else {
-        logSystem('SENSOR: STANDARD OPTICS RESTORED', 'text-amber-500');
+        logSystem('SENSOR: STANDARD OPTICS RESTORED', 'text-champagne-500');
     }
     SoundFX.play('comms_open');
 };
@@ -707,13 +707,13 @@ function drawHolographicMesh(ctx, landmarks) {
             // Putih terang memudar ke Cyan
             const intensity = 1 - (dist / 25);
             ctx.strokeStyle = `rgba(255, 255, 255, ${intensity})`; 
-            ctx.fillStyle = `rgba(251, 191, 36, ${intensity * 0.6})`;
+            ctx.fillStyle = `rgba(221, 188, 130, ${intensity * 0.6})`;
             ctx.fill();
             ctx.lineWidth = 1.5;
         } else {
             // Sudah stabil (Cyan redup)
-            ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)';
-            ctx.fillStyle = 'rgba(251, 191, 36, 0.02)'; 
+            ctx.strokeStyle = 'rgba(221, 188, 130, 0.15)';
+            ctx.fillStyle = 'rgba(221, 188, 130, 0.02)'; 
             ctx.lineWidth = 0.5;
         }
         ctx.stroke();
@@ -753,7 +753,7 @@ function drawHolographicMesh(ctx, landmarks) {
                 ctx.lineTo(p2.x, p2.y);
             }
         }
-        ctx.strokeStyle = `rgba(251, 191, 36, 0.5)`;
+        ctx.strokeStyle = `rgba(221, 188, 130, 0.5)`;
         ctx.stroke();
     });
 
@@ -782,7 +782,7 @@ function drawHolographicMesh(ctx, landmarks) {
     ctx.beginPath();
     ctx.moveTo(points[0].x - 25, scanY);
     ctx.lineTo(points[16].x + 25, scanY);
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+    ctx.strokeStyle = 'rgba(221, 188, 130, 0.9)';
     ctx.lineWidth = 2;
     ctx.shadowColor = '#FBBF24';
     ctx.shadowBlur = 15;
@@ -966,7 +966,7 @@ function drawGuideOverlay(ctx, w, h, isCentered = false) {
 
     // 2. Crosshair Tengah
     ctx.setLineDash([]);
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.3)';
+    ctx.strokeStyle = 'rgba(221, 188, 130, 0.3)';
     ctx.beginPath();
     ctx.moveTo(cx - 15, cy); ctx.lineTo(cx + 15, cy);
     ctx.moveTo(cx, cy - 15); ctx.lineTo(cx, cy + 15);
@@ -990,7 +990,7 @@ function drawGuideOverlay(ctx, w, h, isCentered = false) {
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
     
     // [UPDATE] Warna Teks: Hijau jika pas, Kuning jika belum
-    ctx.fillStyle = isCentered ? `rgba(245, 158, 11, ${blinkAlpha})` : `rgba(255, 255, 0, ${blinkAlpha})`;
+    ctx.fillStyle = isCentered ? `rgba(210, 164, 93, ${blinkAlpha})` : `rgba(255, 255, 0, ${blinkAlpha})`;
     ctx.textAlign = 'center';
     ctx.fillText(text, cx, cy + radius + 35);
 
@@ -1013,7 +1013,7 @@ function drawGuideOverlay(ctx, w, h, isCentered = false) {
         ctx.lineTo(arrowSize, -arrowSize * 1.5); 
         ctx.closePath();
         // [UPDATE] Warna Panah mengikuti status (Hijau/Kuning)
-        ctx.fillStyle = isCentered ? `rgba(245, 158, 11, ${blinkAlpha})` : `rgba(255, 255, 0, ${blinkAlpha})`;
+        ctx.fillStyle = isCentered ? `rgba(210, 164, 93, ${blinkAlpha})` : `rgba(255, 255, 0, ${blinkAlpha})`;
         ctx.fill();
         ctx.restore();
     };
@@ -1078,7 +1078,7 @@ function drawTargetLock(ctx, x, y, radius) {
     ctx.rotate(time * 1.5);
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 1.5); // Lingkaran tidak penuh
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
+    ctx.strokeStyle = 'rgba(221, 188, 130, 0.6)';
     ctx.lineWidth = 2;
     ctx.stroke();
     
@@ -1280,13 +1280,13 @@ function drawHolographicMesh(ctx, landmarks) {
             // Putih terang memudar ke Cyan
             const intensity = 1 - (dist / 25);
             ctx.strokeStyle = `rgba(255, 255, 255, ${intensity})`; 
-            ctx.fillStyle = `rgba(251, 191, 36, ${intensity * 0.6})`;
+            ctx.fillStyle = `rgba(221, 188, 130, ${intensity * 0.6})`;
             ctx.fill();
             ctx.lineWidth = 1.5;
         } else {
             // Sudah stabil (Cyan redup)
-            ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)';
-            ctx.fillStyle = 'rgba(251, 191, 36, 0.02)'; 
+            ctx.strokeStyle = 'rgba(221, 188, 130, 0.15)';
+            ctx.fillStyle = 'rgba(221, 188, 130, 0.02)'; 
             ctx.lineWidth = 0.5;
         }
         ctx.stroke();
@@ -1700,8 +1700,8 @@ function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     
     let bgColor = 'bg-slate-800/80';
-    let borderColor = 'border-amber-500';
-    let textColor = 'text-amber-300';
+    let borderColor = 'border-champagne-500';
+    let textColor = 'text-champagne-300';
     let icon = '<i class="fa-solid fa-circle-info"></i>';
 
     if (type === 'success') {
@@ -1713,8 +1713,8 @@ function showToast(message, type = 'info') {
         textColor = 'text-red-300';
         icon = '<i class="fa-solid fa-circle-xmark"></i>';
     } else if (type === 'warning') {
-        borderColor = 'border-amber-500';
-        textColor = 'text-amber-300';
+        borderColor = 'border-champagne-500';
+        textColor = 'text-champagne-300';
         icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
     }
 
@@ -1843,10 +1843,10 @@ function setStatusVisual(message, colorClass, isPulsing = false) {
     
 
     // Tentukan warna shadow berdasarkan colorClass untuk efek glow
-    let shadowColor = '#FBBF24'; // Default untuk text-amber-500
+    let shadowColor = '#FBBF24'; // Default untuk text-champagne-500
     if (colorClass.includes('text-green-500')) shadowColor = '#F59E0B';
     else if (colorClass.includes('text-red-500')) shadowColor = '#FF0055';
-    else if (colorClass.includes('text-amber-500') || colorClass.includes('text-yellow-400')) shadowColor = '#FFD700';
+    else if (colorClass.includes('text-champagne-500') || colorClass.includes('text-yellow-400')) shadowColor = '#FFD700';
     else if (colorClass.includes('text-gray-300')) shadowColor = '#CCCCCC';
 
     // Terapkan font-family dan text-shadow untuk kedalaman dan glow
@@ -1877,7 +1877,7 @@ function resizeCanvas() {
 
         // PENTING: Untuk Face-API
         faceapi.matchDimensions(canvas, { width: W, height: videoH});
-        logSystem(`Canvas resized to ${W}x${videoH}.`, 'text-amber-500');
+        logSystem(`Canvas resized to ${W}x${videoH}.`, 'text-champagne-500');
     }
 }
 
@@ -1902,9 +1902,9 @@ function logAttendance(name, time) {
     if (placeholder) placeholder.remove();
 
     const entry = document.createElement('div');
-    entry.className = 'flex justify-between items-center border-b border-amber-900/30 pb-1 mb-1 animate-[fadeIn_0.5s_ease-out]';
+    entry.className = 'flex justify-between items-center border-b border-champagne-900/30 pb-1 mb-1 animate-[fadeIn_0.5s_ease-out]';
     entry.innerHTML = `
-        <span class="text-amber-400 font-bold truncate w-2/3 flex items-center gap-2">
+        <span class="text-champagne-400 font-bold truncate w-2/3 flex items-center gap-2">
             <span class="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_5px_#00FF00]"></span>
             ${name}
         </span>
@@ -1967,6 +1967,7 @@ function updateClock() {
 }
 
 function animateTitle() {
+    return; // Disabled dynamically overwriting header to preserve HTML layout
     if (!mainTitle) return;
     const targetText = AGENCY_NAME;
     
@@ -1990,20 +1991,20 @@ function animateTitle() {
             max-width: 800px; 
             margin: 0 auto; 
             padding: 16px; 
-            border: 1px solid rgba(251, 191, 36, 0.5); 
+            border: 1px solid rgba(221, 188, 130, 0.5); 
             background: linear-gradient(135deg, rgba(2, 44, 34, 0.9) 0%, rgba(2, 44, 34, 0.95) 100%);
             backdrop-filter: blur(20px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(251, 191, 36, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(221, 188, 130, 0.05);
             position: relative;
             border-radius: 12px;
         ">
             <div style="display: flex; flex-direction: row; align-items: stretch; justify-content: center; width: 100%; gap: 15px;">
                 
                 <!-- CHRONO MODULE (ACADEMIC) -->
-                <div style="flex: 1.6; border: 1px solid rgba(251, 191, 36, 0.3); padding: 15px; background: rgba(0,0,0,0.3); position: relative; display: flex; align-items: center; gap: 20px; border-radius: 8px;">
+                <div style="flex: 1.6; border: 1px solid rgba(221, 188, 130, 0.3); padding: 15px; background: rgba(0,0,0,0.3); position: relative; display: flex; align-items: center; gap: 20px; border-radius: 8px;">
                     <div style="width: 90px; height: 90px; position: relative;">
                         <svg viewBox="0 0 100 100" style="width: 100%; height: 100%; transform: rotate(-90deg);">
-                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(251,191,36,0.1)" stroke-width="2" />
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(221,188,130,0.1)" stroke-width="2" />
                             <circle id="clock-ring-sec" cx="50" cy="50" r="45" fill="none" stroke="#FBBF24" stroke-width="4" stroke-dasharray="0 283" style="transition: stroke-dasharray 0.1s linear;" stroke-linecap="round" />
                         </svg>
                         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; pointer-events: none;">
@@ -2014,7 +2015,7 @@ function animateTitle() {
                     
                     <div style="display: flex; flex-direction: column;">
                         <div style="font-size: 11px; color: #FBBF24; letter-spacing: 2px; font-family: 'Inter', sans-serif; opacity: 0.8; margin-bottom: 4px;">WAKTU SISTEM</div>
-                        <div style="display: flex; align-items: baseline; font-family: 'Lora', serif; font-weight: 700; color: #FFF; text-shadow: 0 0 15px rgba(251,191,36,0.4);">
+                        <div style="display: flex; align-items: baseline; font-family: 'Lora', serif; font-weight: 700; color: #FFF; text-shadow: 0 0 15px rgba(221,188,130,0.4);">
                             <span id="clock-h" style="font-size: 58px; line-height: 1;">--</span>
                             <span style="font-size: 42px; margin: 0 4px; animation: blink 1s infinite; opacity: 0.8;">:</span>
                             <span id="clock-m" style="font-size: 58px; line-height: 1;">--</span>
@@ -2023,7 +2024,7 @@ function animateTitle() {
                 </div>
 
                 <!-- TELEMETRY & IMAGE (ACADEMIC) -->
-                <div style="flex: 2.2; height: 125px; position: relative; border: 1px solid rgba(251,191,36,0.5); overflow: hidden; background: #022c22; border-radius: 8px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
+                <div style="flex: 2.2; height: 125px; position: relative; border: 1px solid rgba(221,188,130,0.5); overflow: hidden; background: #022c22; border-radius: 8px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
                     <img src="pkm.jpg" alt="PKM" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.85; filter: contrast(1.1) sepia(0.2) hue-rotate(-10deg);">
                 </div>
             </div>
@@ -2058,7 +2059,7 @@ function animateTitle() {
             mainLogo.style.borderRadius = '50%'; 
             mainLogo.style.objectFit = 'cover';
             mainLogo.style.zIndex = '101';
-            mainLogo.style.filter = 'drop-shadow(0 0 8px rgba(251,191,36,0.6))';
+            mainLogo.style.filter = 'drop-shadow(0 0 8px rgba(221,188,130,0.6))';
         }
 
         // --- POSISI JUDUL: POJOK KIRI ATAS (HUD STYLE) ---
@@ -2098,7 +2099,7 @@ function animateTitle() {
             
             // Style dasar span
             span.style.color = '#FBBF24'; 
-            span.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+            span.style.textShadow = '0 0 10px rgba(221, 188, 130, 0.5)';
             span.style.color = '#FFD700'; 
             span.style.textShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
             span.style.transition = 'transform 0.1s, color 0.1s, text-shadow 0.1s';
@@ -2130,7 +2131,7 @@ function animateTitle() {
 
             let char = original;
             let color = '#FBBF24'; // Base: Cyan Neon
-            let textShadow = '0 0 8px rgba(251, 191, 36, 0.6)';
+            let textShadow = '0 0 8px rgba(221, 188, 130, 0.6)';
             let transform = 'scale(1) translateZ(0px)';
             let opacity = 0.8 + (Math.sin(time * 3 + i) * 0.1); // Breathing effect
 
@@ -2324,17 +2325,17 @@ async function updatePersonnelRoster() {
                 timeGradient = 'text-[#f43f5e] bg-black/75 border-[#f43f5e]';
                 statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(244,63,94,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">PULANG</span>`;
             } else {
-                bgGradient = 'linear-gradient(135deg, rgba(251,191,36,0.15) 0%, rgba(251,191,36,0.05) 50%, rgba(2,44,34,1) 100%)';
+                bgGradient = 'linear-gradient(135deg, rgba(221,188,130,0.15) 0%, rgba(221,188,130,0.05) 50%, rgba(2,44,34,1) 100%)';
                 glowColor = '#FBBF24';
                 badgeStyle = 'bg-[#FBBF24] text-black border-[#FBBF24]';
                 timeGradient = 'text-[#FBBF24] bg-black/75 border-[#FBBF24]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(251,191,36,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">HADIR</span>`;
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(221,188,130,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">HADIR</span>`;
             }
 
             const solidStatusBg = isDL ? 'bg-[#3b82f6]' : isCuti ? 'bg-[#f97316]' : isOut ? 'bg-[#f43f5e]' : 'bg-[#FBBF24]';
 
             const item = document.createElement('div');
-            item.className = `group flex items-center p-3 rounded-lg border border-amber-500/10 transition-all duration-300 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden bg-black/40 hover:bg-black/60 hover:-translate-y-0.5 select-none cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.6)] hover:border-amber-500/30`;
+            item.className = `group flex items-center p-3 rounded-lg border border-champagne-500/10 transition-all duration-300 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden bg-black/40 hover:bg-black/60 hover:-translate-y-0.5 select-none cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.6)] hover:border-champagne-500/30`;
             
             item.style.background = bgGradient;
 
@@ -2371,7 +2372,7 @@ async function updatePersonnelRoster() {
                         <p class="font-extrabold text-[15px] ${nameColor} truncate leading-tight tracking-wider ${hoverGlowClass} transition-colors" style="text-shadow: 0 1px 3px rgba(0,0,0,0.9);">${row.nama}</p>
                         ${dlIcon || cutiIcon || ''}
                     </div>
-                    <p class="text-[10px] text-amber-400 font-extrabold truncate mb-2.5 uppercase tracking-[0.2em] drop-shadow-sm">${row.jabatan || '-'}</p>
+                    <p class="text-[10px] text-champagne-400 font-extrabold truncate mb-2.5 uppercase tracking-[0.2em] drop-shadow-sm">${row.jabatan || '-'}</p>
                     
                     <!-- Pocket Data Container -->
                     <div class="grid grid-cols-2 gap-2 bg-[#02050a]/90 p-2 rounded border border-white/5">
@@ -2546,7 +2547,7 @@ const api = {
         } catch (pyErr) {
             // Python server tidak tersedia - lanjut ke Node.js saja
             console.warn('🐍 [PYTHON] Server tidak tersedia, menggunakan Node.js saja:', pyErr.message);
-            logSystem('AI ENGINE: Python offline, fallback Node.js', 'text-amber-400');
+            logSystem('AI ENGINE: Python offline, fallback Node.js', 'text-champagne-400');
             pythonEngine = 'fallback_nodejs';
         }
 
@@ -2593,25 +2594,25 @@ const api = {
 };
 
 async function loadLabeledImages() {
-    setStatusVisual('BOOT SEQUENCE: Memuat Database Wajah...', 'text-amber-500', true);
+    setStatusVisual('BOOT SEQUENCE: Memuat Database Wajah...', 'text-champagne-500', true);
     if(dbStatus) {
         dbStatus.textContent = 'LOADING...';
-        dbStatus.className = 'text-amber-500 font-bold';
+        dbStatus.className = 'text-champagne-500 font-bold';
     }
-    logSystem('Database Sync Initiated.', 'text-amber-500');
+    logSystem('Database Sync Initiated.', 'text-champagne-500');
     
     try {
         const descriptorsData = await api.getDescriptors();
         // console.log("DEBUG SERVER DATA:", descriptorsData);
-        logSystem(`DIAGNOSTIK: Diterima ${descriptorsData ? descriptorsData.length : 0} data dari server.`, 'text-amber-400');
+        logSystem(`DIAGNOSTIK: Diterima ${descriptorsData ? descriptorsData.length : 0} data dari server.`, 'text-champagne-400');
         
         if (!descriptorsData || descriptorsData.length === 0) {
-            setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-amber-500');
+            setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-champagne-500');
             if(dbStatus) {
                 dbStatus.textContent = 'EMPTY';
-                dbStatus.className = 'text-amber-500 font-bold';
+                dbStatus.className = 'text-champagne-500 font-bold';
             }
-            logSystem(`Database loaded: 0 records.`, 'text-amber-500');
+            logSystem(`Database loaded: 0 records.`, 'text-champagne-500');
             return [];
         }
 
@@ -2668,12 +2669,12 @@ async function loadLabeledImages() {
         
         // FIX: Jika server merespon error "Database is empty", anggap sebagai KOSONG (Amber), bukan OFFLINE (Merah)
         if (error.message && (error.message.includes('empty') || error.message.includes('Database is empty'))) {
-            setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-amber-500');
+            setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-champagne-500');
             if(dbStatus) {
                 dbStatus.textContent = 'EMPTY';
-                dbStatus.className = 'text-amber-500 font-bold';
+                dbStatus.className = 'text-champagne-500 font-bold';
             }
-            logSystem(`Database loaded: 0 records (Server Message).`, 'text-amber-500');
+            logSystem(`Database loaded: 0 records (Server Message).`, 'text-champagne-500');
             return [];
         }
 
@@ -2702,7 +2703,7 @@ function stopCamera() {
 async function startCamera(deviceId = null) {
     stopCamera(); 
     
-    logSystem('Camera stream starting...', 'text-amber-500');
+    logSystem('Camera stream starting...', 'text-champagne-500');
 
     try {
         const constraints = {
@@ -2740,7 +2741,7 @@ async function loadTodayAttendance() {
     try {
         const data = await api.getTodayAttendance();
         if (data && data.length > 0) {
-            logSystem(`KERNEL DIAGNOSTIC: Loading ${data.length} records...`, 'text-amber-500');
+            logSystem(`KERNEL DIAGNOSTIC: Loading ${data.length} records...`, 'text-champagne-500');
             // Loop data (Asumsi urut waktu ASC dari server)
             // logAttendance melakukan prepend, jadi data terakhir akan muncul paling atas
             data.forEach(row => {
@@ -2763,8 +2764,8 @@ async function initializeApp() {
     if (isAppInitialized) return;
     isAppInitialized = true;
 
-    setStatusVisual('BOOT SEQUENCE: Loading Neural Engine...', 'text-amber-500', true);
-    logSystem('Application boot sequence initiated.', 'text-amber-500');
+    setStatusVisual('BOOT SEQUENCE: Loading Neural Engine...', 'text-champagne-500', true);
+    logSystem('Application boot sequence initiated.', 'text-champagne-500');
 
     // [FIX] Suppress TensorFlow.js Backend/Platform Overwrite Warnings
     if (window.faceapi && faceapi.tf) {
@@ -2789,11 +2790,11 @@ async function initializeApp() {
             logSystem('ENGINE: BLAZEFACE ACCELERATOR ONLINE', 'text-purple-400');
         } catch (blazeErr) {
             console.warn("BlazeFace local load failed, using TinyFace fallback.", blazeErr);
-            logSystem('ENGINE: BLAZEFACE OFFLINE (Using Fallback)', 'text-amber-500');
+            logSystem('ENGINE: BLAZEFACE OFFLINE (Using Fallback)', 'text-champagne-500');
         }
 
         logSystem('Neural Network Models Loaded.', 'text-green-500');
-        setStatusVisual('Models Loaded. Starting Camera Stream...', 'text-amber-400', true);
+        setStatusVisual('Models Loaded. Starting Camera Stream...', 'text-champagne-400', true);
 
         // [NEW] Inisialisasi ONNX Runtime sebagai Fallback Engine
         // Mengatur thread WASM agar pemrosesan neural lebih cepat jika WebGL bermasalah
@@ -3241,11 +3242,11 @@ async function detectFace() {
             if (isLive) {
                 // SUDAH BERGERAK -> PROSES ABSEN
                 userStatusDisplay.textContent = 'VERIFYING...';
-                userStatusDisplay.className = 'text-lg font-bold text-amber-500';
+                userStatusDisplay.className = 'text-lg font-bold text-champagne-500';
                 setSystemTheme('SUCCESS');
 
                 if (!isProcessing) { 
-                    setStatusVisual(`AUTHORIZING ${employee.nama}...`, 'text-amber-400', true);
+                    setStatusVisual(`AUTHORIZING ${employee.nama}...`, 'text-champagne-400', true);
                     isProcessing = true;
                     // Simpan match terakhir sebelum proses absensi
                     lastKnownMatch = { id: recognizedId, box: resizedDetections.detection.box, landmarks: resizedDetections.landmarks, faceLabel: faceLabel, faceColor: faceColor };
@@ -3306,7 +3307,7 @@ async function detectFace() {
                 videoContainer.classList.remove('scanning-border-error');
                 if (labeledDescriptors && labeledDescriptors.length > 0) {
                     // Unknown Face
-                    setStatusVisual('SCANNING..', 'text-amber-500');
+                    setStatusVisual('SCANNING..', 'text-champagne-500');
                     userStatusDisplay.textContent = 'UNKNOWN TARGET';
                     faceLabel = 'UNKNOWN';
                     faceColor = '#FBBF24';
@@ -3318,7 +3319,7 @@ async function detectFace() {
                     if (Math.random() < 0.15) triggerGlitch();
                 } else {
                     // DB Offline
-                    setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-amber-500');
+                    setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-champagne-500');
                     userStatusDisplay.textContent = 'OFFLINE';
                 }
             }
@@ -3398,7 +3399,7 @@ document.addEventListener('mousemove', (e) => {
 // =============================================================================
 
 async function processAttendance(karyawanId, imageBase64) {
-    logSystem(`Sending attendance request for ID: ${karyawanId}`, 'text-amber-500');
+    logSystem(`Sending attendance request for ID: ${karyawanId}`, 'text-champagne-500');
 
     if(successOverlay) {
         successOverlay.style.opacity = 0;
@@ -3409,12 +3410,12 @@ async function processAttendance(karyawanId, imageBase64) {
         successOverlay.innerHTML = `
             <div class="holo-card" style="border-color: ${HEADER_COLOR}; text-align: center; justify-content: center;">
                 <div class="holo-header" style="justify-content: center;">
-                    <span class="text-amber-400 font-mono tracking-[0.5em] text-2xl animate-pulse">MENGHUBUNGKAN SERVER...</span>
+                    <span class="text-champagne-400 font-mono tracking-[0.5em] text-2xl animate-pulse">MENGHUBUNGKAN SERVER...</span>
                 </div>
                 <div class="p-20 flex flex-col items-center justify-center h-full">
                     <h1 class="text-6xl font-black text-white mb-8 tracking-widest glitch-text">MEMPROSES BIOMETRIK</h1>
                     <div class="w-full bg-gray-800 h-1 mt-4 rounded overflow-hidden">
-                        <div class="h-full bg-amber-400 animate-[loading_1s_infinite]"></div>
+                        <div class="h-full bg-champagne-400 animate-[loading_1s_infinite]"></div>
                     </div>
                 </div>
             </div>
@@ -3454,7 +3455,7 @@ async function processAttendance(karyawanId, imageBase64) {
         const serverTimestamp = new Date().toLocaleTimeString('id-ID');
 
         const statusColor = result.statusColor || 'red';
-        const displayColor = (statusColor === 'green' ? 'text-green-500' : (statusColor === 'yellow' ? 'text-amber-500' : 'text-red-500'));
+        const displayColor = (statusColor === 'green' ? 'text-green-500' : (statusColor === 'yellow' ? 'text-champagne-500' : 'text-red-500'));
         
         const cleanMessage = result.message.replace(/\*\*|✅\s*/g, '');
 
@@ -3691,7 +3692,7 @@ async function processAttendance(karyawanId, imageBase64) {
                 diagItem.className = 'flex justify-between items-center bg-gray-800/50 p-2 rounded border-l-2 border-green-500 animate-[fadeIn_0.5s_ease-out]';
                 diagItem.innerHTML = `
                     <div class="flex flex-col overflow-hidden">
-                        <span class="text-amber-300 font-bold text-xs break-words leading-tight" title="${display_name}">${display_name}</span>
+                        <span class="text-champagne-300 font-bold text-xs break-words leading-tight" title="${display_name}">${display_name}</span>
                         <span class="text-[9px] text-gray-400 mt-0.5">${display_jabatan}</span>
                     </div>
                     <span class="text-[10px] font-mono text-green-400 ml-2 whitespace-nowrap font-bold bg-green-900/20 px-1 rounded">${result.result_code.includes('IN') ? 'IN' : 'OUT'}</span>
@@ -3784,9 +3785,9 @@ async function processAttendance(karyawanId, imageBase64) {
             await SoundFX.speak(warningSpeakText);
             setSystemTheme('ERROR'); 
 
-            setStatusVisual(`${display_name}: ${cleanMessage}`, isWarning ? 'text-amber-500' : 'text-red-500');
+            setStatusVisual(`${display_name}: ${cleanMessage}`, isWarning ? 'text-champagne-500' : 'text-red-500');
             userStatusDisplay.textContent = isWarning ? 'NOTICE' : 'DENIED';
-            userStatusDisplay.className = 'text-lg font-bold ' + (isWarning ? 'text-amber-500' : 'text-red-500');
+            userStatusDisplay.className = 'text-lg font-bold ' + (isWarning ? 'text-champagne-500' : 'text-red-500');
 
             // Background: Kuning untuk Warning (Waktu), Merah untuk Error (Wajah Tidak Dikenal)
             finalBackground = isWarning 
@@ -3799,7 +3800,7 @@ async function processAttendance(karyawanId, imageBase64) {
         // --- GENERATE VISUAL EFFECTS (From Admin ID Card) ---
         // Generate random QR blocks
         const qrBlocks = Array(25).fill(0).map(() => 
-            `<div class="w-full h-full bg-amber-900/50 ${Math.random() > 0.5 ? 'bg-amber-400' : 'opacity-20'}"></div>`
+            `<div class="w-full h-full bg-champagne-900/50 ${Math.random() > 0.5 ? 'bg-champagne-400' : 'opacity-20'}"></div>`
         ).join('');
 
         // Generate floating digital particles
@@ -3809,7 +3810,7 @@ async function processAttendance(karyawanId, imageBase64) {
             const delay = Math.random() * 5;
             const duration = Math.random() * 3 + 2;
             const size = Math.random() * 3 + 1;
-            return `<div class="absolute bg-amber-400 rounded-sm opacity-0" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation: float-particle ${duration}s linear infinite; animation-delay: -${delay}s; box-shadow: 0 0 4px #FBBF24;"></div>`;
+            return `<div class="absolute bg-champagne-400 rounded-sm opacity-0" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation: float-particle ${duration}s linear infinite; animation-delay: -${delay}s; box-shadow: 0 0 4px #FBBF24;"></div>`;
         }).join('');
 
         // --- NEW: LOGIKA WARNA & ICON STATUS (CUSTOMIZATION) ---
@@ -4774,8 +4775,8 @@ async function processAttendance(karyawanId, imageBase64) {
                     }
                     .stamp-details {
                         font-size: 16px; color: #FFF;
-                        border-top: 1px solid rgba(251, 191, 36, 0.4);
-                        border-bottom: 1px solid rgba(251, 191, 36, 0.4);
+                        border-top: 1px solid rgba(221, 188, 130, 0.4);
+                        border-bottom: 1px solid rgba(221, 188, 130, 0.4);
                         padding: 15px 0; margin-bottom: 20px;
                         font-family: 'Montserrat', sans-serif;
                         text-transform: uppercase;
@@ -5904,7 +5905,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // CSS ADJUSTMENT: Geser area scan (Video Container) sedikit ke atas
     if (videoContainer) {
-        videoContainer.style.marginTop = "-90px"; 
+        // Disabled: videoContainer.style.marginTop = "-90px"; 
+        videoContainer.style.marginTop = "0px";
     }
 });
 
