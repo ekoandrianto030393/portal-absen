@@ -633,9 +633,9 @@ async function loadMonthlyRecap(silent = false) {
     
     // Header Table
     table.innerHTML = `
-        <caption class="caption-top mb-6 text-center border-b-2 border-slate-800 pb-4">
-            <h2 class="text-2xl font-serif font-bold text-slate-900 uppercase tracking-widest">Laporan Rekapitulasi Presensi</h2>
-            <p class="text-sm text-slate-600 font-serif italic mt-1">Periode Laporan: ${monthName}</p>
+        <caption class="caption-top mb-6 text-center border-b-2 border-slate-800 pb-4 print:border-b-0 print:mb-2 print:pb-0">
+            <h2 class="text-2xl font-serif font-bold text-slate-900 uppercase tracking-widest print:text-lg print:tracking-normal print:font-bold">LAPORAN REKAPITULASI PRESENSI</h2>
+            <p class="text-sm text-slate-600 font-serif italic mt-1 print:hidden">Periode Laporan: ${monthName}</p>
         </caption>
         <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider border-b border-slate-700 bg-slate-800 text-white print:bg-white print:text-black">
             <tr>
@@ -1616,7 +1616,7 @@ function renderPieChart(present, late, absent) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, color: '#64748b', font: {family: 'Inter', size: 11} } } }
+            plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, color: '#D2A45D', font: {family: 'Inter', size: 11} } } }
         }
     });
 }
@@ -1674,17 +1674,17 @@ function initLineChart() {
             datasets: [{
                 label: 'Total Hadir',
                 data: [],
-                borderColor: '#3b82f6', // Blue 500
+                borderColor: '#D2A45D', // Gold
                 backgroundColor: (context) => {
                     const ctx = context.chart.ctx;
                     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-                    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
-                    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+                    gradient.addColorStop(0, 'rgba(210, 164, 93, 0.5)');
+                    gradient.addColorStop(1, 'rgba(210, 164, 93, 0.0)');
                     return gradient;
                 },
                 borderWidth: 2,
-                pointBackgroundColor: '#ffffff',
-                pointBorderColor: '#3b82f6',
+                pointBackgroundColor: '#01140f',
+                pointBorderColor: '#D2A45D',
                 pointBorderWidth: 2,
                 pointRadius: 4,
                 pointHoverRadius: 6,
@@ -1696,8 +1696,8 @@ function initLineChart() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true, grid: { borderDash: [4, 4], color: '#f1f5f9' }, ticks: { color: '#94a3b8', font: {family: 'Inter', size: 10}, stepSize: 1 } },
-                x: { grid: { display: false }, ticks: { color: '#94a3b8', font: {family: 'Inter', size: 10} } }
+                y: { beginAtZero: true, grid: { borderDash: [4, 4], color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#a7f3d0', font: {family: 'Inter', size: 10}, stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: '#a7f3d0', font: {family: 'Inter', size: 10} } }
             },
             plugins: { 
                 legend: { display: false },

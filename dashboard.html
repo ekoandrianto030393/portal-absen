@@ -25,15 +25,15 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* KONFIGURASI DESAIN UTAMA */
+        /* KONFIGURASI DESAIN UTAMA (LUXURY AUTHORITATIVE COMMAND CENTER) */
         :root {
-            --primary-color: #1e293b; /* Slate 800 - Deep Professional */
-            --secondary-color: #334155; /* Slate 700 */
-            --accent-color: #2563eb; /* Royal Blue */
-            --bg-color: #f8fafc; /* Slate 50 - Paper White */
-            --text-main: #0f172a; /* Slate 900 - High Contrast */
-            --text-body: #475569; /* Slate 600 - Readable Gray */
-            --border-color: #cbd5e1; /* Slate 300 - Distinct Borders */
+            --primary-color: #01140f; /* Deep Emerald Background */
+            --secondary-color: #022c22; /* Emerald 900 for Cards */
+            --accent-color: #D2A45D; /* Metallic Gold */
+            --bg-color: #010a08; /* Very Dark Emerald */
+            --text-main: #f8e3a1; /* Light Gold */
+            --text-body: #a7f3d0; /* Emerald 200 */
+            --border-color: rgba(255, 255, 255, 0.1); /* Frosted Glass Border */
         }
 
         body {
@@ -41,82 +41,99 @@
             background-color: var(--bg-color);
             color: var(--text-body);
             font-size: 14px; /* Base font size 14px-16px */
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 100% 0%, rgba(210, 164, 93, 0.05) 0%, transparent 40%);
+            background-attachment: fixed;
         }
 
-        /* Styling Scrollbar Halus */
+        /* Styling Scrollbar Halus (Gold/Emerald) */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        ::-webkit-scrollbar-track { background: #010a08; }
+        ::-webkit-scrollbar-thumb { background: #022c22; border-radius: 4px; border: 1px solid rgba(210,164,93,0.2); }
+        ::-webkit-scrollbar-thumb:hover { background: #10b981; }
 
-        /* Card Styling: Border Radius 12px & Shadow Halus */
+        /* Card Styling: Glassmorphism Luxury */
         .card-academic {
-            background: white;
-            border-radius: 2px; /* Sudut tajam (Academic Standard) */
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            border: 1px solid #e2e8f0;
-            border-top: 3px solid var(--primary-color); /* Aksen Folder Arsip */
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        /* Sidebar Active State - Emerald & Orange Premium */
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px; 
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 2px solid rgba(210, 164, 93, 0.5); /* Gold Accent */
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        .card-academic:hover {
+            border-color: rgba(210, 164, 93, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 15px rgba(210, 164, 93, 0.1);
+        }
+
+        /* Sidebar Active State - Luxury Gold & Emerald */
         .nav-item.active {
-            background: linear-gradient(90deg, rgba(249, 115, 22, 0.15) 0%, transparent 100%);
-            color: #fb923c; /* orange-400 */
-            border-left: 4px solid #f97316; /* orange-500 */
+            background: linear-gradient(90deg, rgba(210, 164, 93, 0.15) 0%, transparent 100%);
+            color: #D2A45D; /* Metallic Gold */
+            border-left: 3px solid #D2A45D;
             border-right: none;
             font-weight: 700;
         }
         .nav-item.active i {
-            color: #f97316 !important; /* orange-500 */
-            text-shadow: 0 0 12px rgba(249, 115, 22, 0.4);
+            color: #D2A45D !important;
+            text-shadow: 0 0 12px rgba(210, 164, 93, 0.6);
         }
 
         /* Header Typography */
-        h1, h2, h3 { font-family: 'Merriweather', serif; font-weight: 700; letter-spacing: -0.01em; }
-        .page-header { font-family: 'Merriweather', serif; font-size: 24px; font-weight: 900; color: var(--primary-color); letter-spacing: 0.5px; text-transform: uppercase; }
+        h1, h2, h3 { font-family: 'Merriweather', serif; font-weight: 700; letter-spacing: 0.05em; }
+        .page-header { font-family: 'Merriweather', serif; font-size: 24px; font-weight: 900; color: #D2A45D; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 15px rgba(210, 164, 93, 0.3); }
         
-        /* Table Styling Academic */
+        /* Table Styling Luxury */
         table { border-collapse: collapse; width: 100%; }
-        th { font-family: 'Inter', sans-serif; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; color: #f8fafc; background: linear-gradient(to bottom, #1e293b, #0f172a); }
-        td { border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+        th { font-family: 'Inter', sans-serif; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; color: #D2A45D; background: rgba(2, 44, 34, 0.8); border-bottom: 1px solid rgba(210,164,93,0.3); backdrop-filter: blur(4px); }
+        td { border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; color: #e2e8f0; }
+        tr:hover td { background-color: rgba(255,255,255,0.02); }
         tr:last-child td { border-bottom: none; }
-        
-        /* --- DARK MODE OVERRIDES --- */
-        body.dark {
-            --primary-color: #f1f5f9; /* Slate 100 */
-            --secondary-color: #94a3b8; /* Slate 400 */
-            --accent-color: #60a5fa; /* Blue 400 */
-            --bg-color: #0f172a; /* Slate 900 */
-            --text-main: #f8fafc; /* Slate 50 */
-            --text-body: #cbd5e1; /* Slate 300 */
-            --border-color: #334155; /* Slate 700 */
-        }
-        
-        /* Force Override Tailwind Classes in Dark Mode */
-        body.dark .bg-white { background-color: #1e293b !important; color: #e2e8f0; }
-        body.dark .bg-slate-50, body.dark .bg-gray-50 { background-color: #0f172a !important; }
-        body.dark .bg-gray-100 { background-color: #334155 !important; color: #e2e8f0; }
-        
-        body.dark .text-slate-800, body.dark .text-gray-800, body.dark .text-\[\#2c3e50\] { color: #f1f5f9 !important; }
-        body.dark .text-slate-700, body.dark .text-gray-700 { color: #e2e8f0 !important; }
-        body.dark .text-slate-600, body.dark .text-gray-600 { color: #cbd5e1 !important; }
-        body.dark .text-slate-500, body.dark .text-gray-500 { color: #94a3b8 !important; }
-        
-        body.dark .border-slate-200, body.dark .border-gray-200, body.dark .border-gray-100 { border-color: #334155 !important; }
-        
-        body.dark .card-academic, body.dark aside { background-color: #1e293b; border-color: #334155; }
-        body.dark header { background-color: rgba(30, 41, 59, 0.9); border-color: #334155; }
-        body.dark .nav-item:hover { background-color: #334155; color: #fff; }
-        
-        body.dark input, body.dark select, body.dark textarea { background-color: #0f172a; border-color: #475569; color: #f1f5f9; }
-        body.dark tbody tr:hover { background-color: #334155 !important; }
         
         /* Advanced Gradient Text */
         .text-gradient {
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-image: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+            background-image: linear-gradient(135deg, #f8e3a1 0%, #D2A45D 50%, #8c6a32 100%);
         }
+        
+        /* Force Remove All White Backgrounds in Main content */
+        .bg-white { background-color: rgba(255,255,255,0.03) !important; backdrop-filter: blur(10px); color: #e2e8f0; border-color: rgba(255,255,255,0.05) !important; }
+        .bg-slate-50, .bg-gray-50 { background-color: rgba(0,0,0,0.2) !important; border-color: rgba(255,255,255,0.05) !important; }
+        .bg-slate-100, .bg-gray-100 { background-color: rgba(255,255,255,0.02) !important; color: #e2e8f0 !important; }
+        .text-slate-800, .text-gray-800, .text-slate-900 { color: #f1f5f9 !important; }
+        .text-slate-700, .text-gray-700 { color: #e2e8f0 !important; }
+        .text-slate-600, .text-gray-600 { color: #cbd5e1 !important; }
+        .text-slate-500, .text-gray-500 { color: #94a3b8 !important; }
+        .border-slate-200, .border-gray-200, .border-gray-100 { border-color: rgba(255,255,255,0.05) !important; }
+        .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.05) !important; }
+        input, select, textarea { background-color: rgba(0,0,0,0.3) !important; border-color: rgba(255,255,255,0.1) !important; color: #f1f5f9 !important; }
+
+        /* Override Hover Classes to prevent invisible text in Dark Theme */
+        .hover\:bg-slate-50:hover, 
+        .group:hover .group-hover\:\!bg-slate-50, 
+        .hover\:bg-slate-100:hover, 
+        .hover\:bg-rose-100:hover, 
+        .hover\:bg-red-50:hover, 
+        .hover\:bg-blue-50:hover, 
+        .hover\:bg-emerald-50:hover { 
+            background-color: rgba(255,255,255,0.05) !important; 
+        }
+
+        .group-hover\:text-blue-700, 
+        .group-hover\:text-blue-600, 
+        .hover\:text-blue-600:hover, 
+        .hover\:text-blue-400:hover,
+        .hover\:text-emerald-700:hover { 
+            color: #D2A45D !important; 
+        }
+        
+        .bg-rose-50 { background-color: rgba(244,63,94,0.1) !important; border-color: rgba(244,63,94,0.2) !important; }
+        .bg-slate-50\/50 { background-color: rgba(0,0,0,0.1) !important; }
 
         /* [NEW] Print Styles for Academic Look */
         @media print {
@@ -172,58 +189,58 @@
         class="fixed inset-y-0 left-0 z-50 w-[260px] bg-[#022c22] border-r border-emerald-900 flex flex-col transition-all duration-300 shadow-[4px_0_24px_rgba(0,0,0,0.15)] print:hidden text-emerald-100 -translate-x-full md:relative md:translate-x-0">
         
         <!-- Header Sidebar -->
-        <div class="h-20 flex items-center px-6 border-b border-emerald-800 bg-[#064e3b] relative overflow-hidden">
+        <div class="h-20 flex items-center px-6 border-b border-[rgba(210,164,93,0.2)] bg-[rgba(0,0,0,0.3)] backdrop-blur-md relative overflow-hidden">
             <!-- Subtle top accent line -->
-            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 to-orange-600"></div>
+            <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#f8e3a1] via-[#D2A45D] to-[#8c6a32]"></div>
             
-            <img src="logo.jpg" alt="Logo" class="h-11 w-11 rounded-full border-2 border-orange-500 mr-3 object-contain shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+            <img src="logo.jpg" alt="Logo" class="h-11 w-11 rounded-full border-2 border-[#D2A45D] mr-3 object-contain shadow-[0_0_15px_rgba(210,164,93,0.3)]">
             <div class="flex flex-col">
-                <span class="text-base font-serif font-black text-white tracking-wide uppercase leading-tight drop-shadow-md">PUSKESMAS</span>
-                <span class="text-[11px] font-bold text-orange-400 tracking-[0.2em] uppercase drop-shadow-sm">W A N A</span>
+                <span class="text-base font-serif font-black text-[#f8e3a1] tracking-wide uppercase leading-tight drop-shadow-md">PUSKESMAS</span>
+                <span class="text-[11px] font-bold text-[#D2A45D] tracking-[0.2em] uppercase drop-shadow-sm">W A N A</span>
             </div>
         </div>
 
         <nav class="flex-1 overflow-y-auto py-6">
             <ul class="space-y-1 px-4">
-                <li class="px-3 pb-2 pt-1"><span class="text-[10px] font-bold tracking-widest text-emerald-500 uppercase drop-shadow-sm">Dashboard Utama</span></li>
+                <li class="px-3 pb-2 pt-1"><span class="text-[10px] font-bold tracking-widest text-[#D2A45D] opacity-80 uppercase drop-shadow-sm">Dashboard Utama</span></li>
                 <li><button id="nav-overview" onclick="switchTab('overview')"
-                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-800/50 hover:text-orange-300 transition-all active"><i
-                            class="fa-solid fa-chart-pie w-5 text-center text-emerald-600/70"></i> <span class="font-medium">Overview</span></button></li>
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-900/50 hover:text-[#D2A45D] transition-all active"><i
+                            class="fa-solid fa-chart-pie w-5 text-center text-[#D2A45D]/70"></i> <span class="font-medium">Overview</span></button></li>
                 <li><button id="nav-daily" onclick="switchTab('daily')"
-                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-800/50 hover:text-orange-300 transition-all"><i
-                            class="fa-solid fa-calendar-day w-5 text-center text-emerald-600/70"></i> <span class="font-medium">Laporan Harian</span></button></li>
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-900/50 hover:text-[#D2A45D] transition-all"><i
+                            class="fa-solid fa-calendar-day w-5 text-center text-[#D2A45D]/70"></i> <span class="font-medium">Laporan Harian</span></button></li>
                 <li><button id="nav-monthly" onclick="switchTab('monthly')"
-                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-800/50 hover:text-orange-300 transition-all"><i
-                            class="fa-solid fa-table w-5 text-center text-emerald-600/70"></i> <span class="font-medium">Rekap Bulanan</span></button></li>
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-900/50 hover:text-[#D2A45D] transition-all"><i
+                            class="fa-solid fa-table w-5 text-center text-[#D2A45D]/70"></i> <span class="font-medium">Rekap Bulanan</span></button></li>
                 
-                <li class="px-3 pb-2 pt-6"><span class="text-[10px] font-bold tracking-widest text-emerald-500 uppercase drop-shadow-sm">Manajemen Data</span></li>
+                <li class="px-3 pb-2 pt-6"><span class="text-[10px] font-bold tracking-widest text-[#D2A45D] opacity-80 uppercase drop-shadow-sm">Manajemen Data</span></li>
                 <li><button id="nav-performance" onclick="switchTab('performance')"
-                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-800/50 hover:text-orange-300 transition-all"><i
-                            class="fa-solid fa-chart-line w-5 text-center text-emerald-600/70"></i> <span class="font-medium">Kinerja Pegawai</span></button></li>
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-900/50 hover:text-[#D2A45D] transition-all"><i
+                            class="fa-solid fa-chart-line w-5 text-center text-[#D2A45D]/70"></i> <span class="font-medium">Kinerja Pegawai</span></button></li>
                 <li><button id="nav-employees" onclick="switchTab('employees')"
-                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-800/50 hover:text-orange-300 transition-all"><i
-                            class="fa-solid fa-users w-5 text-center text-emerald-600/70"></i> <span class="font-medium">Data Pegawai</span></button></li>
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-900/50 hover:text-[#D2A45D] transition-all"><i
+                            class="fa-solid fa-users w-5 text-center text-[#D2A45D]/70"></i> <span class="font-medium">Data Pegawai</span></button></li>
                 
-                <li class="px-3 pb-2 pt-6"><span class="text-[10px] font-bold tracking-widest text-emerald-500 uppercase drop-shadow-sm">Database Sistem</span></li>
+                <li class="px-3 pb-2 pt-6"><span class="text-[10px] font-bold tracking-widest text-[#D2A45D] opacity-80 uppercase drop-shadow-sm">Database Sistem</span></li>
                 <li><button id="nav-view-db" onclick="switchTab('view-db')"
-                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-800/50 hover:text-orange-300 transition-all"><i
-                            class="fa-solid fa-database w-5 text-center text-emerald-600/70"></i> <span class="font-medium">Data Absensi</span></button></li>
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-900/50 hover:text-[#D2A45D] transition-all"><i
+                            class="fa-solid fa-database w-5 text-center text-[#D2A45D]/70"></i> <span class="font-medium">Data Absensi</span></button></li>
                 <li><button id="nav-view-db-monthly" onclick="switchTab('view-db-monthly')"
-                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-800/50 hover:text-orange-300 transition-all"><i
-                            class="fa-solid fa-calendar-days w-5 text-center text-emerald-600/70"></i> <span class="font-medium">Data View Bulanan</span></button></li>
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-900/50 hover:text-[#D2A45D] transition-all"><i
+                            class="fa-solid fa-calendar-days w-5 text-center text-[#D2A45D]/70"></i> <span class="font-medium">Data View Bulanan</span></button></li>
                 
-                <li class="pt-6 mt-2 border-t border-emerald-800/50"><button id="nav-settings" onclick="switchTab('settings')"
-                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-800/50 hover:text-orange-300 transition-all"><i
-                            class="fa-solid fa-sliders w-5 text-center text-emerald-600/70"></i> <span class="font-medium">Pengaturan</span></button></li>
+                <li class="pt-6 mt-2 border-t border-[rgba(210,164,93,0.2)]"><button id="nav-settings" onclick="switchTab('settings')"
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-100/80 rounded-lg hover:bg-emerald-900/50 hover:text-[#D2A45D] transition-all"><i
+                            class="fa-solid fa-sliders w-5 text-center text-[#D2A45D]/70"></i> <span class="font-medium">Pengaturan</span></button></li>
                 <li><button onclick="logout()"
                         class="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-rose-400 rounded-lg hover:bg-rose-900/40 hover:text-rose-300 transition-all mt-1"><i
                             class="fa-solid fa-right-from-bracket w-5 text-center"></i> <span class="font-medium">Keluar Sistem</span></button></li>
             </ul>
         </nav>
 
-        <div class="p-5 border-t border-emerald-800/50 bg-[#064e3b] text-center shadow-inner">
-            <p class="font-serif italic text-[11px] text-orange-300/80">SIM PUSKESMAS WANA</p>
-            <p class="font-sans text-[9px] text-emerald-400/50 tracking-widest uppercase mt-1">Ver 4.5.2 (Stable)</p>
+        <div class="p-5 border-t border-[rgba(210,164,93,0.2)] bg-[rgba(0,0,0,0.3)] backdrop-blur-md text-center shadow-inner">
+            <p class="font-serif italic text-[11px] text-[#D2A45D]/80">SIM PUSKESMAS WANA</p>
+            <p class="font-sans text-[9px] text-[#D2A45D]/50 tracking-widest uppercase mt-1">Ver 4.5.2 (Premium)</p>
         </div>
         </aside>
 
@@ -232,16 +249,16 @@
         class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300 opacity-0"></div>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-[#f1f5f9] print:hidden">
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-transparent print:hidden">
         <!-- HEADER -->
         <header
-            class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 sticky top-0 shadow-sm">
+            class="h-16 bg-[rgba(1,10,8,0.7)] backdrop-blur-xl border-b border-[rgba(255,255,255,0.05)] flex items-center justify-between px-6 z-10 sticky top-0 shadow-sm">
             <div class="flex items-center">
-                <h1 id="page-title" class="page-header text-slate-800 text-lg md:text-xl lg:text-2xl">Dashboard Overview</h1>
+                <h1 id="page-title" class="page-header text-gradient text-lg md:text-xl lg:text-2xl">Dashboard Overview</h1>
             </div>
             <div class="flex items-center gap-6">
                 <!-- Clock & Status (Command Center Style) -->
-                <div class="hidden md:flex items-center gap-4 bg-slate-50 border border-slate-200 px-4 py-2 rounded-lg shadow-inner">
+                <div class="hidden md:flex items-center gap-4 bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)] px-4 py-2 rounded-lg shadow-inner">
                     <!-- Status Badge -->
                     <div class="flex items-center gap-2" title="Server Status">
                         <div class="relative flex h-3 w-3">
@@ -255,18 +272,14 @@
                     
                     <!-- Digital Clock -->
                     <div class="text-right flex flex-col justify-center">
-                        <div id="clock-time" class="font-mono text-xl font-black text-slate-800 tracking-wider leading-none">00:00<span class="text-slate-400 text-sm animate-pulse ml-1">:00</span></div>
-                        <div id="clock-date" class="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">1 JANUARI 2024</div>
+                        <div id="clock-time" class="font-mono text-xl font-black text-[#D2A45D] tracking-wider leading-none">00:00<span class="text-[#D2A45D]/50 text-sm animate-pulse ml-1">:00</span></div>
+                        <div id="clock-date" class="text-[10px] uppercase font-bold text-emerald-300 tracking-widest mt-1">1 JANUARI 2024</div>
                     </div>
                 </div>
 
                 <!-- Actions -->
                 <div class="flex items-center gap-3">
-                    <!-- Dark Mode Toggle -->
-                    <button id="btn-dark-mode" onclick="toggleDarkMode()"
-                        class="p-2 text-gray-400 hover:text-[#3498db] transition-colors" title="Toggle Dark Mode"><i
-                            class="fa-solid fa-moon"></i></button>
-                    <button onclick="manualRefresh(this)" class="p-2 text-gray-400 hover:text-[#3498db] transition-colors"
+                    <button onclick="manualRefresh(this)" class="p-2 text-emerald-100 hover:text-[#D2A45D] transition-colors"
                         title="Refresh Data"><i class="fa-solid fa-arrows-rotate"></i></button>
                     <button onclick="toggleFullscreen()" class="p-2 text-gray-400 hover:text-[#3498db] transition-colors"><i
                             id="icon-fullscreen" class="fa-solid fa-expand"></i></button>
@@ -857,11 +870,10 @@
     <img src="logo.jpg" class="w-full h-full object-contain" alt="Logo PKM">
             </div>
         </div>
-<div class="text-center mb-6">
-    <h2 class="text-xl font-bold uppercase underline decoration-2 underline-offset-4 text-black">Laporan Absensi Pegawai
-    </h2>
-    <p id="print-period" class="mt-2 font-bold text-black">Periode: -</p>
-        </div>
+<div class="text-center mb-2">
+    <h2 class="text-lg font-bold uppercase text-black">LAPORAN PRESENSI PEGAWAI</h2>
+    <p id="print-period" class="font-bold text-black mt-1">Periode: -</p>
+</div>
 
         <!-- CONTAINER TABEL CETAK (Diisi via JS) -->
         <div id="print-table-container" class="mb-8 w-full"></div>

@@ -44,18 +44,18 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
     <script src="./models/blazeface.js"></script> <!-- Gunakan file lokal Anda -->
-    <!-- FONT AKADEMIK: Cinzel & Montserrat -->
+    <!-- FONT PREMIUM: Playfair Display & Outfit -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
 
     <style>
     /* Minimal Custom CSS for animations that Tailwind doesn't have built-in by default */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     
-    /* ===== TIPOGRAFI AKADEMIK ===== */
-    .font-serif { font-family: 'Cinzel', serif; }
-    .font-sans { font-family: 'Montserrat', sans-serif; }
+    /* ===== TIPOGRAFI PREMIUM ===== */
+    .font-serif { font-family: 'Playfair Display', serif; }
+    .font-sans { font-family: 'Outfit', sans-serif; }
 
     /* Kaca yang Memantulkan Cahaya (Glass Sweep) */
     .glass-sweep {
@@ -97,20 +97,31 @@
     .text-metallic-gold {
         background: linear-gradient(
             to right, 
-            #d2a45d 20%, 
-            #fdfbf7 40%, 
-            #d2a45d 60%, 
-            #a56c36 80%
+            #BF953F 0%, 
+            #FCF6BA 25%, 
+            #B38728 50%, 
+            #FBF5B7 75%, 
+            #AA771C 100%
         );
         background-size: 200% auto;
         color: transparent;
         -webkit-background-clip: text;
         background-clip: text;
+        -webkit-text-fill-color: transparent;
         animation: metallicShine 6s linear infinite;
     }
 
+    /* Background Ornamen Watermark */
+    .bg-watermark {
+        background-image: 
+            radial-gradient(rgba(210, 164, 93, 0.04) 1.5px, transparent 1.5px),
+            radial-gradient(rgba(210, 164, 93, 0.02) 1px, transparent 1px);
+        background-size: 60px 60px, 30px 30px;
+        background-position: 0 0, 15px 15px;
+    }
+
     body {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Outfit', sans-serif;
         background-color: #021a14; /* deeper luxury emerald */
         background-image: 
             radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.08), transparent 40%),
@@ -255,20 +266,11 @@
     }
     .dark-panel-card .panel-separator {
         width: 100%;
-        height: 3px;
-        margin: 8px auto;
-        border-radius: 2px;
-        background: linear-gradient(
-            90deg,
-            transparent 0%,
-            #d2a45d 15%,
-            #ddbc82 35%,
-            #10b981 50%,
-            #ddbc82 65%,
-            #d2a45d 85%,
-            transparent 100%
-        );
-        opacity: 0.6;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(210, 164, 93, 0.8), transparent);
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 0 10px rgba(210, 164, 93, 0.5);
     }
 
     /* Footer ticker */
@@ -285,7 +287,7 @@
 
 </head>
 
-<body>
+<body class="text-white min-h-screen overflow-x-hidden flex flex-col items-center justify-start bg-watermark relative pt-14 selection:bg-champagne-500/30">
 
     <!-- [NEW] TOAST NOTIFICATION CONTAINER -->
     <div id="toast-container" class="fixed top-6 right-6 z-[100000] flex flex-col gap-3"></div>
@@ -293,7 +295,6 @@
     <!-- SVG FILTERS FOR SENSOR MODES -->
     <svg style="display: none;">
         <defs>
-            <!-- Thermal Vision: Mapping luminance to Heatmap colors (Blue-Green-Red) -->
             <filter id="thermal-filter">
                 <feColorMatrix type="matrix" values="
                             0.33 0.33 0.33 0 0
@@ -306,65 +307,40 @@
                     <feFuncB type="table" tableValues="1 0 0 0" />
                 </feComponentTransfer>
             </filter>
-            <!-- Night Vision: Green Monochrome + High Gain -->
             <filter id="night-vision">
                 <feColorMatrix type="matrix" values="0 0 0 0 0  0 1.2 0 0 0  0 0 0 0 0  0 0 0 1 0" />
             </filter>
         </defs>
     </svg>
 
-
-     <!-- Efek Kilatan -->
-     <!-- [NEW] Red Alert Overlay -->
-     <!-- [NEW] Cyber Corner Frame -->
-     <!-- Efek Retakan Digital (NEW) -->
-     <!-- Global Scan Effect -->
-
-    <!-- [UPGRADE] MANUAL VISION CONTROLS (Akses Cepat Mode Sensor) -->
-    
-        <button onclick="setVisionMode('normal')" class="sensor-btn" title="Standard Spectrum">
-            <i class="fa-solid fa-eye"></i>
-        </button>
-        <button onclick="setVisionMode('thermal')" class="sensor-btn" style="border-color: #FF0055; color: #FF0055;" title="Thermal Heatmap">
-            <i class="fa-solid fa-fire"></i>
-        </button>
-        <button onclick="setVisionMode('night')" class="sensor-btn" style="border-color: #00FF7F; color: #00FF7F;" title="Enhanced Night Vision">
-            <i class="fa-solid fa-moon"></i>
-        </button>
-    </div>
-
     <!-- [NEW] RUNNING TEXT TICKER TOP: MOTTO PELAYANAN -->
     <div class="w-full flex items-stretch border-b border-champagne-500/40 bg-black/40 backdrop-blur-md overflow-hidden relative shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
-        <!-- Glowing Edge (Top & Bottom) -->
         <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-champagne-400/80 to-transparent"></div>
         <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-champagne-500/50 to-transparent"></div>
         
-        <!-- Label Statis (Ribbon Style) -->
         <div class="relative bg-gradient-to-r from-champagne-600 via-champagne-500 to-champagne-600 text-white font-bold px-6 py-2 flex items-center justify-center whitespace-nowrap z-20 shadow-[5px_0_20px_rgba(221,188,130,0.4)] border-r-2 border-champagne-300 text-xs tracking-widest font-serif uppercase">
             <img src="logo.jpg" alt="Logo" class="w-5 h-5 rounded-full object-cover border border-champagne-100/60 shadow-[0_0_8px_rgba(255,255,255,0.4)] mr-3">
             MOTTO PELAYANAN 
             <img src="logo.jpg" alt="Logo" class="w-5 h-5 rounded-full object-cover border border-champagne-100/60 shadow-[0_0_8px_rgba(255,255,255,0.4)] ml-3">
-            <!-- Edge flare -->
             <div class="absolute right-0 top-0 bottom-0 w-[1px] bg-white opacity-70"></div>
         </div>
         
-        <!-- Kontainer Marquee (Frosted Glass Panel) -->
-        <div class="flex-1 bg-gradient-to-r from-emerald-950/80 via-emerald-900/60 to-emerald-950/80 py-2 relative overflow-hidden flex items-center shadow-inner">
-            <div class="animate-marquee font-serif italic text-[15px] tracking-wide whitespace-nowrap drop-shadow-lg flex items-center">
-                <span class="text-champagne-200 font-semibold"><i class="fa-solid fa-leaf text-emerald-400 mr-1 text-xs"></i> Melayani dengan sepenuh hati adalah prioritas kami <span class="mx-4 text-champagne-500/50">|</span></span> 
-                <span class="text-emerald-200 font-semibold"><i class="fa-solid fa-leaf text-champagne-400 mr-1 text-xs"></i> Memberikan pelayanan kesehatan terbaik dengan integritas dan profesionalisme <span class="mx-4 text-champagne-500/50">|</span></span> 
-                <span class="text-champagne-100 font-semibold"><i class="fa-solid fa-leaf text-emerald-400 mr-1 text-xs"></i> Puskesmas Wana, mitra terpercaya menuju hidup sehat <span class="mx-4 text-champagne-500/50">|</span></span> 
-                <span class="text-emerald-100 font-semibold"><i class="fa-solid fa-leaf text-champagne-400 mr-1 text-xs"></i> Kepuasan Anda, kebahagiaan kami <span class="mx-4 text-champagne-500/50">|</span></span> 
-                <span class="text-champagne-200 font-semibold"><i class="fa-solid fa-leaf text-emerald-400 mr-1 text-xs"></i> Senyum, sapa, salam adalah budaya kerja kami <span class="mx-4 text-transparent">|</span></span>
+        <div class="flex-1 bg-gradient-to-r from-emerald-950/90 via-[#01140f] to-emerald-950/90 py-2.5 relative overflow-hidden flex items-center shadow-[inset_0_2px_15px_rgba(0,0,0,0.8)] border-b border-champagne-500/20">
+            <div class="animate-marquee font-serif text-[14px] tracking-[0.15em] whitespace-nowrap flex items-center uppercase font-medium">
+                <span class="text-metallic-gold">Melayani dengan sepenuh hati adalah prioritas kami</span> 
+                <span class="mx-6 text-champagne-500/40 text-[8px]"><i class="fa-solid fa-diamond"></i></span> 
+                <span class="text-metallic-gold">Memberikan pelayanan kesehatan terbaik dengan integritas dan profesionalisme</span> 
+                <span class="mx-6 text-champagne-500/40 text-[8px]"><i class="fa-solid fa-diamond"></i></span> 
+                <span class="text-metallic-gold">Puskesmas Wana, mitra terpercaya menuju hidup sehat</span> 
+                <span class="mx-6 text-champagne-500/40 text-[8px]"><i class="fa-solid fa-diamond"></i></span> 
+                <span class="text-metallic-gold">Kepuasan Anda, kebahagiaan kami</span> 
+                <span class="mx-6 text-champagne-500/40 text-[8px]"><i class="fa-solid fa-diamond"></i></span> 
+                <span class="text-metallic-gold">Senyum, sapa, salam adalah budaya kerja kami</span> 
+                <span class="mx-6 text-transparent text-[8px]"><i class="fa-solid fa-diamond"></i></span>
             </div>
-            <!-- Gradient fade at edges -->
-            <div class="absolute top-0 bottom-0 left-0 w-12 bg-gradient-to-r from-emerald-950/90 to-transparent z-10 pointer-events-none"></div>
-            <div class="absolute top-0 bottom-0 right-0 w-12 bg-gradient-to-l from-emerald-950/90 to-transparent z-10 pointer-events-none"></div>
+            <div class="absolute top-0 bottom-0 left-0 w-24 bg-gradient-to-r from-[#021a14] to-transparent z-10 pointer-events-none"></div>
+            <div class="absolute top-0 bottom-0 right-0 w-24 bg-gradient-to-l from-[#021a14] to-transparent z-10 pointer-events-none"></div>
         </div>
-    </div>
-
-    <!-- BOOT SCREEN -->
-    
     </div>
 
     <div id="main-content" class="w-full p-2 lg:p-4">
@@ -374,70 +350,69 @@
         <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 mt-0 p-2">
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
-<!-- PANEL KHUSUS CUTI PEGAWAI -->
-<div id="cuti-panel" class="dark-panel-card glass-sweep relative flex flex-col gap-3 p-3 transition-all duration-300">
-    <div class="relative z-10 flex flex-col items-center justify-center text-center pb-2">
-        <div class="text-lg font-bold tracking-widest text-metallic-gold mb-1 font-serif flex items-center justify-center gap-2">
-            <i class="fa-solid fa-umbrella-beach text-champagne-400"></i> CUTI PEGAWAI
-        </div>
-        <div class="panel-separator"></div>
-        <div class="flex flex-col items-center justify-center gap-1 mb-1 mt-1">
-            <span id="cuti-counter-badge" class="px-5 py-1.5 text-2xl text-champagne-100 drop-shadow-[0_0_8px_rgba(253,251,247,0.8)] font-serif bg-gradient-to-b from-black/80 to-[#1a140a] border border-champagne-500/40 rounded-lg font-bold shadow-[inset_0_1px_2px_rgba(255,255,255,0.1),0_0_15px_rgba(210,164,93,0.3)] relative overflow-hidden"><div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 pointer-events-none"></div><span class="relative z-10">0</span></span>
-            <span class="text-[10px] text-champagne-200/70 font-medium tracking-widest mt-1 uppercase">Pegawai</span>
-        </div>
-        <div class="text-[9px] text-champagne-400/60 font-bold tracking-[0.2em] uppercase">Puskesmas Wana</div>
-    </div>
-    <div class="roster-ticker-container h-40 relative z-10">
-        <div id="cutiRoster" class="pr-1 text-emerald-50"></div>
-    </div>
-</div>
+                <div id="cuti-panel" class="dark-panel-card glass-sweep relative flex flex-col gap-3 p-3 transition-all duration-300">
+                    <div class="relative z-10 flex flex-col items-center justify-center text-center pb-2">
+                        <div class="text-lg font-bold tracking-widest text-metallic-gold mb-1 font-serif flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-umbrella-beach text-champagne-400"></i> CUTI PEGAWAI
+                        </div>
+                        <div class="panel-separator"></div>
+                        <div class="flex flex-col items-center justify-center gap-1 mb-1 mt-1">
+                            <div class="relative group mt-1 mb-2">
+                                <div class="absolute inset-0 bg-champagne-400/20 rounded-full blur-md opacity-60"></div>
+                                <div class="relative inline-flex items-center justify-center min-w-[70px] px-5 py-1.5 bg-white/5 backdrop-blur-md border border-white/20 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.5),inset_0_1px_5px_rgba(255,255,255,0.2)]">
+                                    <span id="cuti-counter-badge" class="text-3xl font-serif font-bold text-metallic-gold drop-shadow-[0_2px_5px_rgba(0,0,0,0.8)]">0</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-champagne-200/70 font-medium tracking-widest mt-1 uppercase">Pegawai</span>
+                        </div>
+                        <div class="text-[9px] text-champagne-400/60 font-bold tracking-[0.2em] uppercase">Puskesmas Wana</div>
+                    </div>
+                    <div class="roster-ticker-container h-40 relative z-10">
+                        <div id="cutiRoster" class="pr-1 text-emerald-50"></div>
+                    </div>
+                </div>
 
-<!-- PANEL KHUSUS DINAS LUAR -->
-<div id="dl-panel" class="dark-panel-card glass-sweep relative flex flex-col gap-4 p-4 transition-all duration-300">
-    <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4">
-        <div class="text-xl font-bold tracking-widest text-metallic-gold mb-1 font-serif flex items-center justify-center gap-2">
-            <i class="fa-solid fa-car text-champagne-400"></i> DINAS LUAR
-        </div>
-        <div class="panel-separator"></div>
-        <div class="flex flex-col items-center justify-center gap-1 mb-2 mt-2">
-            <span id="dl-counter-badge" class="px-6 py-2 text-3xl text-champagne-100 drop-shadow-[0_0_8px_rgba(253,251,247,0.8)] font-serif bg-gradient-to-b from-black/80 to-[#1a140a] border border-champagne-500/40 rounded-lg font-bold shadow-[inset_0_1px_2px_rgba(255,255,255,0.1),0_0_15px_rgba(210,164,93,0.3)] relative overflow-hidden"><div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 pointer-events-none"></div><span class="relative z-10">0</span></span>
-            <span class="text-xs text-champagne-200/70 font-medium tracking-widest mt-2 uppercase">Pegawai</span>
-            <div class="w-16 h-[2px] bg-champagne-400/50 mt-1"></div>
-        </div>
-        <div class="text-[10px] text-champagne-400/60 font-bold tracking-[0.2em] uppercase">Puskesmas Wana</div>
-        <div class="w-24 h-[2px] bg-champagne-500/30 mt-1.5 mb-1"></div>
-    </div>
-    <div class="roster-ticker-container h-60 relative z-10">
-        <div id="dlRoster" class="pr-1 text-emerald-50"></div>
-    </div>
-</div>
+                <div id="dl-panel" class="dark-panel-card glass-sweep relative flex flex-col gap-4 p-4 transition-all duration-300">
+                    <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4">
+                        <div class="text-xl font-bold tracking-widest text-metallic-gold mb-1 font-serif flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-car text-champagne-400"></i> DINAS LUAR
+                        </div>
+                        <div class="panel-separator"></div>
+                        <div class="flex flex-col items-center justify-center gap-1 mb-2 mt-2">
+                            <div class="relative group mt-2 mb-2">
+                                <div class="absolute inset-0 bg-champagne-400/20 rounded-full blur-md opacity-60"></div>
+                                <div class="relative inline-flex items-center justify-center min-w-[80px] px-6 py-2 bg-white/5 backdrop-blur-md border border-white/20 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.5),inset_0_1px_5px_rgba(255,255,255,0.2)]">
+                                    <span id="dl-counter-badge" class="text-4xl font-serif font-bold text-metallic-gold drop-shadow-[0_2px_5px_rgba(0,0,0,0.8)]">0</span>
+                                </div>
+                            </div>
+                            <span class="text-xs text-champagne-200/70 font-medium tracking-widest mt-2 uppercase">Pegawai</span>
+                            <div class="w-16 h-[2px] bg-champagne-400/50 mt-1"></div>
+                        </div>
+                        <div class="text-[10px] text-champagne-400/60 font-bold tracking-[0.2em] uppercase">Puskesmas Wana</div>
+                        <div class="w-24 h-[2px] bg-champagne-500/30 mt-1.5 mb-1"></div>
+                    </div>
+                    <div class="roster-ticker-container h-60 relative z-10">
+                        <div id="dlRoster" class="pr-1 text-emerald-50"></div>
+                    </div>
+                </div>
 
-                <!-- [MODIFIED] Menambahkan ID dan status awal tersembunyi -->
-                <!-- PANEL DATA TARGET (PREMIUM) -->
                 <div id="target-data-panel" class="dark-panel-card p-6 transition-all duration-500 opacity-0 scale-95 blur-sm pointer-events-none relative overflow-hidden">
                     <h2 class="text-center font-bold tracking-[0.2em] text-champagne-200 mb-2 font-serif flex items-center justify-center gap-2">
                         <i class="fa-solid fa-id-card text-champagne-400"></i> DATA PEGAWAI
                     </h2>
                     <div class="panel-separator mb-4"></div>
                     <div class="space-y-4 text-center">
-
-                        <!-- FOTO KARYAWAN -->
                         <div class="relative w-36 h-36 mx-auto mb-6 flex items-center justify-center">
-                            <!-- Spinning Dashed Ring -->
                             <div class="absolute inset-0 rounded-full border-[3px] border-dashed border-champagne-400/60 animate-[spin_12s_linear_infinite]"></div>
-                            <!-- Inner Glowing Solid Ring -->
                             <div class="absolute inset-2 rounded-full border-[2px] border-champagne-500 shadow-[0_0_20px_rgba(221,188,130,0.6)] animate-pulse"></div>
-                            <!-- Core Image -->
                             <div class="absolute inset-3 overflow-hidden rounded-full bg-emerald-950 z-10 border border-black shadow-inner">
                                 <img id="userPhotoDisplay" src="" onerror="this.style.display='none'" alt="User Photo" class="w-full h-full object-cover scale-105">
                             </div>
                         </div>
-
                         <div>
                             <p class="text-[10px] text-champagne-200/50 font-semibold tracking-[0.2em] uppercase">Jabatan</p>
                             <p id="userJabatanDisplay" class="text-lg font-bold text-champagne-100 truncate">...</p>
                         </div>
-
                         <div>
                             <p class="text-[10px] text-champagne-200/50 font-semibold tracking-[0.2em] uppercase">Identitas</p>
                             <p id="userIdDisplay" class="text-xl font-bold text-white truncate">MEMINDAI...</p>
@@ -459,94 +434,70 @@
             </div>
 
             <div class="col-span-1 lg:col-span-2 flex flex-col items-center justify-start gap-3 order-1 lg:order-2">
-                <div class="w-full text-center flex flex-col items-center justify-center pt-0 pb-1 mb-1 mt-[-10px]">
-                    <!-- PRESENSI BIOMETRIK (Stacked) -->
-                    <div class="flex flex-col items-center mb-2">
-                        <h1 id="mainTitle" class="text-4xl lg:text-5xl font-serif font-bold uppercase tracking-widest text-metallic-gold drop-shadow-[0_0_10px_rgba(210,164,93,0.3)] leading-tight">
-                            PRESENSI<br>BIOMETRIK
+                <div class="w-full text-center flex flex-col items-center justify-center pt-0 pb-0 mb-1 mt-[-15px]">
+                    <div class="flex flex-wrap items-center justify-center gap-3 lg:gap-5 mb-1">
+                        <h1 id="mainTitle" class="text-3xl lg:text-4xl font-serif font-bold uppercase tracking-[0.15em] text-metallic-gold drop-shadow-[0_0_10px_rgba(210,164,93,0.3)] leading-tight whitespace-nowrap">
+                            PRESENSI BIOMETRIK
                         </h1>
                     </div>
-                    
-                    <!-- PUSKESMAS WANA with fading lines -->
-                    <div class="flex items-center justify-center w-full max-w-lg mb-1">
+                    <div class="flex items-center justify-center w-full max-w-lg mb-1 mt-1">
                         <div class="h-[2px] flex-grow bg-gradient-to-r from-transparent to-champagne-400/80"></div>
                         <h2 class="px-5 text-xl font-serif font-bold text-white tracking-[0.2em] uppercase">PUSKESMAS WANA</h2>
                         <div class="h-[2px] flex-grow bg-gradient-to-l from-transparent to-champagne-400/80"></div>
                     </div>
-                    
-                    <!-- KABUPATEN LAMPUNG TIMUR -->
-                    <h3 class="text-sm font-sans font-bold text-teal-500 tracking-[0.4em] uppercase drop-shadow-[0_0_8px_rgba(20,184,166,0.4)]">
+                    <h3 class="text-sm font-sans font-bold text-teal-500 tracking-[0.4em] uppercase drop-shadow-[0_0_8px_rgba(20,184,166,0.4)] mb-2">
                         KABUPATEN LAMPUNG TIMUR
                     </h3>
+                    <div id="commandCenterClock" class="text-xl lg:text-2xl font-mono font-bold text-champagne-300 tracking-[0.2em] drop-shadow-[0_0_10px_rgba(210,164,93,0.8)]">00:00:00</div>
                 </div>
-
-                <div id="videoContainer" class="relative w-full max-w-[900px] pt-[48%] bg-[#01140f] rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.2),inset_0_0_20px_rgba(16,185,129,0.1)] border border-emerald-500/40 mt-1">
-                    <video id="videoElement" class="absolute top-0 left-0 w-full h-full object-cover" autoplay muted playsinline></video>
-                    
-                    <!-- Outer Container Corners -->
-                    <div class="absolute inset-0 pointer-events-none z-30">
-                        <!-- Top Left -->
-                        <div class="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-emerald-400/80 rounded-tl-2xl shadow-[inset_4px_4px_10px_rgba(16,185,129,0.2)]"></div>
-                        <!-- Top Right -->
-                        <div class="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-emerald-400/80 rounded-tr-2xl shadow-[inset_-4px_4px_10px_rgba(16,185,129,0.2)]"></div>
-                        <!-- Bottom Left -->
-                        <div class="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-emerald-400/80 rounded-bl-2xl shadow-[inset_4px_-4px_10px_rgba(16,185,129,0.2)]"></div>
-                        <!-- Bottom Right -->
-                        <div class="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-emerald-400/80 rounded-br-2xl shadow-[inset_-4px_-4px_10px_rgba(16,185,129,0.2)]"></div>
-                    </div>
-
-                    <!-- Viewfinder Corners (Premium Medical/Emerald Style) -->
+                <div class="relative w-full max-w-[900px] p-[6px] rounded-[24px] bg-white/5 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 mt-1">
+                    <div class="absolute top-0 left-10 right-10 h-[1px] bg-gradient-to-r from-transparent via-champagne-300 to-transparent opacity-50"></div>
+                    <div id="videoContainer" class="relative w-full pt-[48%] bg-[#01140f] rounded-[18px] overflow-hidden shadow-[inset_0_0_40px_rgba(0,0,0,0.8)] border border-white/5">
+                        <video id="videoElement" class="absolute top-0 left-0 w-full h-full object-cover filter brightness-[1.05] contrast-[1.05]" autoplay muted playsinline></video>
+                        <div class="absolute inset-0 pointer-events-none z-30">
+                            <div class="absolute top-0 left-0 w-10 h-10 border-t-[2px] border-l-[2px] border-white/30 rounded-tl-[18px]"></div>
+                            <div class="absolute top-0 right-0 w-10 h-10 border-t-[2px] border-r-[2px] border-white/30 rounded-tr-[18px]"></div>
+                            <div class="absolute bottom-0 left-0 w-10 h-10 border-b-[2px] border-l-[2px] border-white/30 rounded-bl-[18px]"></div>
+                            <div class="absolute bottom-0 right-0 w-10 h-10 border-b-[2px] border-r-[2px] border-white/30 rounded-br-[18px]"></div>
+                        </div>
+                        <div class="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none z-20 mix-blend-overlay"></div>
                     <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
                         <div class="w-56 h-72 relative">
-                            <!-- Top Left -->
-                            <div class="absolute top-0 left-0 w-12 h-12 border-t-[3px] border-l-[3px] border-cyan-400/80 rounded-tl-2xl shadow-[-5px_-5px_15px_rgba(6,182,212,0.3)]"></div>
+                            <div class="absolute top-0 left-0 w-12 h-12 border-t-[3px] border-l-[3px] border-[#D2A45D]/80 rounded-tl-2xl shadow-[-5px_-5px_15px_rgba(210,164,93,0.2)]"></div>
                             <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-emerald-400 rounded-tl-lg m-2"></div>
-                            
-                            <!-- Top Right -->
-                            <div class="absolute top-0 right-0 w-12 h-12 border-t-[3px] border-r-[3px] border-cyan-400/80 rounded-tr-2xl shadow-[5px_-5px_15px_rgba(6,182,212,0.3)]"></div>
+                            <div class="absolute top-0 right-0 w-12 h-12 border-t-[3px] border-r-[3px] border-[#D2A45D]/80 rounded-tr-2xl shadow-[5px_-5px_15px_rgba(210,164,93,0.2)]"></div>
                             <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-emerald-400 rounded-tr-lg m-2"></div>
-                            
-                            <!-- Bottom Left -->
-                            <div class="absolute bottom-0 left-0 w-12 h-12 border-b-[3px] border-l-[3px] border-cyan-400/80 rounded-bl-2xl shadow-[-5px_5px_15px_rgba(6,182,212,0.3)]"></div>
+                            <div class="absolute bottom-0 left-0 w-12 h-12 border-b-[3px] border-l-[3px] border-[#D2A45D]/80 rounded-bl-2xl shadow-[-5px_5px_15px_rgba(210,164,93,0.2)]"></div>
                             <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-emerald-400 rounded-bl-lg m-2"></div>
-                            
-                            <!-- Bottom Right -->
-                            <div class="absolute bottom-0 right-0 w-12 h-12 border-b-[3px] border-r-[3px] border-cyan-400/80 rounded-br-2xl shadow-[5px_5px_15px_rgba(6,182,212,0.3)]"></div>
+                            <div class="absolute bottom-0 right-0 w-12 h-12 border-b-[3px] border-r-[3px] border-[#D2A45D]/80 rounded-br-2xl shadow-[5px_5px_15px_rgba(210,164,93,0.2)]"></div>
                             <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-emerald-400 rounded-br-lg m-2"></div>
-                            
-                            <!-- Animated AI Scanner Line (Cyan/Emerald) -->
-                            <div class="absolute left-0 right-0 h-[2px] bg-cyan-400 opacity-80 shadow-[0_0_12px_rgba(6,182,212,1),0_0_20px_rgba(16,185,129,0.8)] animate-[aiScan_2.5s_ease-in-out_infinite]"></div>
+                            <div class="absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D2A45D] to-transparent opacity-100 shadow-[0_0_8px_rgba(210,164,93,1),0_0_20px_rgba(210,164,93,0.5)] animate-[aiScan_2.5s_ease-in-out_infinite]"></div>
                         </div>
                     </div>
-
-                    <!-- Telemetry HUD with Clear Random Numbers (Highly Visible) -->
-                    <div class="absolute top-4 left-4 text-xs font-mono font-bold leading-tight pointer-events-none z-20 bg-slate-900/70 backdrop-blur-md text-cyan-400 p-3 rounded-lg border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)] min-w-[180px]">
-                        <div class="flex items-center gap-1.5 text-cyan-300 mb-2 border-b border-cyan-500/30 pb-1.5 uppercase font-sans tracking-widest text-[9px] animate-pulse">
-                            <i class="fa-solid fa-wave-square text-teal-400"></i> BIOSCAN_V5.0_ACTIVE
+                    <div class="absolute top-4 left-4 text-xs font-mono font-bold leading-tight pointer-events-none z-20 text-[#D2A45D] p-3 min-w-[180px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                        <div class="flex items-center gap-1.5 text-[#f8e3a1] mb-2 border-b border-[rgba(210,164,93,0.3)] pb-1.5 uppercase font-sans tracking-widest text-[9px] animate-pulse">
+                            <i class="fa-solid fa-crosshairs text-emerald-400"></i> BIOSCAN_V5.0
                         </div>
-                        <div class="text-[10px] space-y-0.5">
-                            <span class="text-teal-500/80">SYS_KEY:</span> <span id="teleKey" class="text-white">0x0000</span><br>
-                            <span class="text-teal-500/80">POS_X:</span> <span id="telePosX" class="text-white">0.00</span><br>
-                            <span class="text-teal-500/80">POS_Y:</span> <span id="telePosY" class="text-white">0.00</span><br>
-                            <span class="text-teal-500/80">LATENCY:</span> <span id="telePing" class="text-cyan-300">12ms</span>
+                        <div class="text-[10px] space-y-0.5 tracking-wider">
+                            <span class="text-emerald-400/80">SYS_KEY:</span> <span id="teleKey" class="text-white">0x0000</span><br>
+                            <span class="text-emerald-400/80">POS_X:</span> <span id="telePosX" class="text-white">0.00</span><br>
+                            <span class="text-emerald-400/80">POS_Y:</span> <span id="telePosY" class="text-white">0.00</span><br>
+                            <span class="text-emerald-400/80">LATENCY:</span> <span id="telePing" class="text-[#D2A45D]">12ms</span>
                         </div>
                     </div>
-
                     <canvas id="overlay" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10"></canvas>
                 </div>
-
+                </div>
                 <div class="dark-panel-card w-full p-4 text-center relative overflow-hidden">
                     <p id="statusMessage" class="text-2xl lg:text-3xl font-extrabold text-metallic-gold transition-colors duration-300 font-serif tracking-wide relative z-10 drop-shadow-[0_0_12px_rgba(210,164,93,0.8)]">
                         SISTEM SIAP
                     </p>
                     <div class="panel-separator mt-2"></div>
                 </div>
-                <!-- A.I. VOICE VISUALIZER -->
                 <canvas id="aiVoiceVisualizer" class="w-full h-6 opacity-90 rounded-lg border-2 border-champagne-500/40 shadow-md bg-emerald-950/80" width="600" height="40"></canvas>
             </div>
 
             <div class="col-span-1 flex flex-col gap-4 order-3">
-                <!-- PANEL DAFTAR HADIR -->
                 <div class="dark-panel-card glass-sweep relative flex flex-col gap-4 p-4 lg:p-6 transition-all duration-300">
                     <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4">
                         <div class="text-xl font-bold tracking-widest text-metallic-gold mb-1 font-serif flex items-center justify-center gap-2">
@@ -554,7 +505,12 @@
                         </div>
                         <div class="panel-separator"></div>
                         <div class="flex flex-col items-center justify-center gap-1 mb-2 mt-2">
-                            <span id="hadir-counter-badge" class="px-6 py-2 text-3xl text-champagne-100 drop-shadow-[0_0_8px_rgba(253,251,247,0.8)] font-serif bg-gradient-to-b from-black/80 to-[#1a140a] border border-champagne-500/40 rounded-lg font-bold shadow-[inset_0_1px_2px_rgba(255,255,255,0.1),0_0_15px_rgba(210,164,93,0.3)] relative overflow-hidden"><div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 pointer-events-none"></div><span class="relative z-10">0</span></span>
+                            <div class="relative group mt-2 mb-2">
+                                <div class="absolute inset-0 bg-champagne-400/20 rounded-full blur-md opacity-60"></div>
+                                <div class="relative inline-flex items-center justify-center min-w-[80px] px-6 py-2 bg-white/5 backdrop-blur-md border border-white/20 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.5),inset_0_1px_5px_rgba(255,255,255,0.2)]">
+                                    <span id="hadir-counter-badge" class="text-4xl font-serif font-bold text-metallic-gold drop-shadow-[0_2px_5px_rgba(0,0,0,0.8)]">0</span>
+                                </div>
+                            </div>
                             <span class="text-xs text-champagne-200/70 font-medium tracking-widest mt-2 uppercase">Pegawai</span>
                             <div class="w-16 h-[2px] bg-champagne-400/50 mt-1"></div>
                         </div>
@@ -568,15 +524,11 @@
                     </div>
                 </div>
             </div>
-                    <!-- Log Kehadiran Dihapus Sesuai Permintaan -->
             </div>
-
         </div>
     </div>
 
-    <!-- ADMIN OVERRIDE PANEL (HIDDEN) -->
-    <div id="adminOverlay"
-        class="fixed inset-0 z-[99999] hidden items-center justify-center bg-black/90 backdrop-blur-sm transition-opacity duration-300">
+    <div id="adminOverlay" class="fixed inset-0 z-[99999] hidden items-center justify-center bg-black/90 backdrop-blur-sm transition-opacity duration-300">
         <div class="widget-panel w-full max-w-md border-red-500 shadow-[0_0_30px_rgba(255,0,0,0.5)] bg-gray-900/90">
             <div class="flex justify-between items-center border-b border-red-500/50 pb-2 mb-4">
                 <h2 class="text-xl font-bold text-red-500 tracking-widest flex items-center gap-2">
@@ -585,55 +537,38 @@
                 </h2>
                 <button id="btnCloseAdmin" class="text-red-500 hover:text-white font-mono">[ ESC ]</button>
             </div>
-
             <div class="space-y-5 font-mono text-xs">
                 <div>
                     <label class="block text-red-400 mb-2 font-bold">SECURITY THRESHOLD (SENSITIVITY)</label>
                     <div class="flex items-center gap-3">
-                        <input type="range" id="adminThreshold" min="0.1" max="0.6" step="0.01" value="0.36"
-                            class="flex-grow accent-red-500 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                        <input type="range" id="adminThreshold" min="0.1" max="0.6" step="0.01" value="0.36" class="flex-grow accent-red-500 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
                         <span id="adminThresholdVal" class="text-white font-bold text-lg w-12 text-right">0.32</span>
                     </div>
-                    <p class="text-[10px] text-gray-500 mt-1">Lower value = Stricter (More Secure). Higher = Easier
-                        Match.</p>
+                    <p class="text-[10px] text-gray-500 mt-1">Lower value = Stricter (More Secure). Higher = Easier Match.</p>
                 </div>
-
-                <!-- AUTO-FIX CONFIG -->
                 <div class="flex items-center justify-between border-t border-red-500/30 pt-4">
                     <div class="flex items-center gap-2">
-                        <div id="autofixIcon" class="w-2 h-2 rounded-full bg-green-500 transition-colors duration-300">
-                        </div>
+                        <div id="autofixIcon" class="w-2 h-2 rounded-full bg-green-500 transition-colors duration-300"></div>
                         <span class="text-xs font-mono text-red-400 tracking-wider">AUTO-FIX ABSEN</span>
                     </div>
-                    <button id="autofixToggle"
-                        class="bg-green-900/20 border border-green-500 text-green-400 text-[10px] px-3 py-1 font-mono hover:border-red-500 hover:text-red-400 transition-all duration-300">
+                    <button id="autofixToggle" class="bg-green-900/20 border border-green-500 text-green-400 text-[10px] px-3 py-1 font-mono hover:border-red-500 hover:text-red-400 transition-all duration-300">
                         [ ON ]
                     </button>
                 </div>
-
                 <div class="pt-4 border-t border-red-500/30 grid grid-cols-2 gap-3">
-                    <button id="btnAdminReload"
-                        class="bg-red-900/20 border border-red-500 text-red-400 py-3 hover:bg-red-600 hover:text-white transition-all font-bold tracking-wider">
+                    <button id="btnAdminReload" class="bg-red-900/20 border border-red-500 text-red-400 py-3 hover:bg-red-600 hover:text-white transition-all font-bold tracking-wider">
                         FORCE RELOAD DB
                     </button>
-                    <button id="btnAdminSave"
-                        class="bg-red-600 text-white py-3 hover:bg-red-500 transition-all shadow-[0_0_15px_rgba(255,0,0,0.6)] font-bold tracking-wider">
+                    <button id="btnAdminSave" class="bg-red-600 text-white py-3 hover:bg-red-500 transition-all shadow-[0_0_15px_rgba(255,0,0,0.6)] font-bold tracking-wider">
                         APPLY CHANGES
                     </button>
                 </div>
             </div>
         </div>
-
-        <!-- CORNER PROFILE CARD (NEW) -->
-        <div id="corner-profile-card"
-            class="fixed bottom-12 right-6 z-[100] hidden flex items-center gap-4 bg-slate-900/95 border-l-4 border-emerald-500 p-4 rounded-r-none rounded-l-xl shadow-[0_0_30px_rgba(0,0,0,0.8)] backdrop-blur-md transition-all duration-500 transform translate-x-full max-w-sm border border-white/10">
+        <div id="corner-profile-card" class="fixed bottom-12 right-6 z-[100] hidden flex items-center gap-4 bg-slate-900/95 border-l-4 border-emerald-500 p-4 rounded-r-none rounded-l-xl shadow-[0_0_30px_rgba(0,0,0,0.8)] backdrop-blur-md transition-all duration-500 transform translate-x-full max-w-sm border border-white/10">
             <div class="relative w-20 h-20 flex-shrink-0">
-                <img id="corner-photo" src=""
-                    class="w-full h-full object-cover rounded-md border border-white/30 shadow-lg"
-                    onerror="this.style.display='none'">
-                <div
-                    class="absolute -bottom-2 -right-2 bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider shadow-sm">
-                    ID</div>
+                <img id="corner-photo" src="" class="w-full h-full object-cover rounded-md border border-white/30 shadow-lg" onerror="this.style.display='none'">
+                <div class="absolute -bottom-2 -right-2 bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider shadow-sm">ID</div>
             </div>
             <div class="flex flex-col min-w-0">
                 <div class="text-[9px] text-emerald-400 font-bold tracking-widest uppercase mb-0.5">PUSKESMAS WANA</div>
@@ -641,70 +576,47 @@
                     <img src="logo.jpg" class="w-5 h-5 object-contain drop-shadow-md">
                     <div class="text-[9px] text-emerald-400 font-bold tracking-widest uppercase">PUSKESMAS WANA</div>
                 </div>
-                <h3 id="corner-name" class="text-lg font-bold text-white font-sans leading-tight truncate">NAMA
-                </h3>
+                <h3 id="corner-name" class="text-lg font-bold text-white font-sans leading-tight truncate">NAMA</h3>
                 <p id="corner-jabatan" class="text-xs text-slate-300 font-sans truncate mt-0.5">JABATAN</p>
                 <div class="flex items-center gap-2 mt-2">
-                    <span id="corner-id"
-                        class="text-[10px] text-slate-400 font-mono bg-black/30 px-1.5 py-0.5 rounded border border-white/10">0000</span>
-                    <span id="corner-status"
-                        class="text-[10px] font-bold text-black bg-green-500 px-2 py-0.5 rounded">ACTIVE</span>
+                    <span id="corner-id" class="text-[10px] text-slate-400 font-mono bg-black/30 px-1.5 py-0.5 rounded border border-white/10">0000</span>
+                    <span id="corner-status" class="text-[10px] font-bold text-black bg-green-500 px-2 py-0.5 rounded">ACTIVE</span>
                 </div>
             </div>
         </div>
-
-        <!-- ANTI-SPOOFING / LIVENESS DETECTION MODULE -->
         <script>
-            /**
-             * LivenessCheck: Modul untuk mendeteksi apakah wajah hidup (berkedip) atau foto mati.
-             * Cara pakai di scan.js:
-             * 1. Panggil LivenessCheck.update(landmarks) setiap frame.
-             * 2. Jika return true, berarti user sudah berkedip (valid).
-             */
             window.LivenessCheck = {
-                EAR_THRESHOLD: 0.35, // DIPERMUDAH LAGI: Naik ke 0.35 (Mata sipit/biasa lebih mudah)
+                EAR_THRESHOLD: 0.35,
                 BLINK_FRAMES: 1,
-                YAW_THRESHOLD_L: 0.4, // Batas nengok kiri (Rasio < 0.4)
-                YAW_THRESHOLD_R: 0.6, // Batas nengok kanan (Rasio > 0.6)
+                YAW_THRESHOLD_L: 0.4,
+                YAW_THRESHOLD_R: 0.6,
                 consecutiveCloseFrames: 0,
-                lastEAR: 0,          // DEBUG: Simpan nilai EAR terakhir
-                lastYaw: 0.5,        // DEBUG: Simpan nilai Yaw (0.5 = Tengah)
+                lastEAR: 0,
+                lastYaw: 0.5,
                 isLive: false,
-
                 getEAR: function (eye) {
-                    // Menghitung jarak Euclidean antar titik mata
                     const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
-                    // Titik landmark mata: 0,3 (horizontal), 1,5 (vertikal 1), 2,4 (vertikal 2)
                     const v1 = dist(eye[1], eye[5]);
                     const v2 = dist(eye[2], eye[4]);
                     const h = dist(eye[0], eye[3]);
                     return (v1 + v2) / (2.0 * h);
                 },
-
                 getHeadYaw: function (landmarks) {
-                    const nose = landmarks.getNose()[3]; // Ujung hidung
-                    const leftJaw = landmarks.getJawOutline()[0]; // Tepi rahang kiri
-                    const rightJaw = landmarks.getJawOutline()[16]; // Tepi rahang kanan
-
+                    const nose = landmarks.getNose()[3];
+                    const leftJaw = landmarks.getJawOutline()[0];
+                    const rightJaw = landmarks.getJawOutline()[16];
                     const distLeft = Math.hypot(nose.x - leftJaw.x, nose.y - leftJaw.y);
                     const distRight = Math.hypot(nose.x - rightJaw.x, nose.y - rightJaw.y);
-
                     if (distLeft + distRight === 0) return 0.5;
                     return distLeft / (distLeft + distRight);
                 },
-
                 update: function (landmarks) {
                     if (!landmarks) return false;
-                    if (this.isLive) return true; // Sekali hidup, tetap hidup
-
+                    if (this.isLive) return true;
                     const leftEye = landmarks.getLeftEye();
                     const rightEye = landmarks.getRightEye();
-
-                    // Rata-rata rasio kedua mata
                     const avgEAR = (this.getEAR(leftEye) + this.getEAR(rightEye)) / 2.0;
-                    this.lastEAR = avgEAR; // Update nilai untuk debugging
-
-                    // 1. CEK KEDIPAN
+                    this.lastEAR = avgEAR;
                     if (avgEAR < this.EAR_THRESHOLD) {
                         this.consecutiveCloseFrames++;
                         if (this.consecutiveCloseFrames >= this.BLINK_FRAMES) {
@@ -714,26 +626,17 @@
                     } else {
                         this.consecutiveCloseFrames = 0;
                     }
-
-                    // 2. CEK GERAKAN KEPALA (NOLEH)
                     const yaw = this.getHeadYaw(landmarks);
                     this.lastYaw = yaw;
-
-                    // Jika rasio hidung bergeser jauh dari tengah (0.5)
                     if (yaw < this.YAW_THRESHOLD_L || yaw > this.YAW_THRESHOLD_R) {
                         this.isLive = true;
                     }
                     return this.isLive;
                 },
-
                 reset: function () { this.isLive = false; this.consecutiveCloseFrames = 0; }
             };
         </script>
-
-        <!-- INSTITUTIONAL WATERMARK -->
         <img src="logo.jpg" class="institutional-watermark" alt="Watermark">
-
-        <!-- FLOATING AMBIENT PARTICLES -->
         <div class="ambient-particle" style="left: 5%; --duration: 18s; --delay: 0s;"></div>
         <div class="ambient-particle" style="left: 15%; --duration: 22s; --delay: -4s;"></div>
         <div class="ambient-particle" style="left: 25%; --duration: 16s; --delay: -8s;"></div>
@@ -743,19 +646,12 @@
         <div class="ambient-particle" style="left: 75%; --duration: 21s; --delay: -12s;"></div>
         <div class="ambient-particle" style="left: 85%; --duration: 17s; --delay: -3s;"></div>
         <div class="ambient-particle" style="left: 92%; --duration: 23s; --delay: -7s;"></div>
-
-        <!-- PREMIUM INSTITUTIONAL FOOTER BAR -->
         <div class="fixed bottom-0 left-0 right-0 z-[9999] flex items-stretch h-9 border-t border-champagne-500/30 bg-black/60 backdrop-blur-lg shadow-[0_-4px_20px_rgba(0,0,0,0.6)]">
-            <!-- Glowing Top Edge -->
             <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-champagne-400/60 to-transparent"></div>
-            
-            <!-- Left: Logo + Instansi Name -->
             <div class="flex items-center gap-2 px-4 border-r border-champagne-500/20 whitespace-nowrap">
                 <img src="logo.jpg" class="w-5 h-5 rounded-full object-cover border border-champagne-500/40" alt="Logo">
                 <span class="text-[10px] text-champagne-200/80 font-serif tracking-widest uppercase font-semibold">Puskesmas Wana</span>
             </div>
-            
-            <!-- Center: Running Info Text -->
             <div class="flex-1 overflow-hidden flex items-center relative">
                 <div class="footer-ticker-text text-[10px] text-champagne-400/70 tracking-[0.15em] font-mono">
                     <span class="mx-4"><i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i> SISTEM BIOMETRIK v5.0 PREMIUM</span>
@@ -767,40 +663,22 @@
                     <span class="mx-4"><i class="fa-solid fa-circle-exclamation text-champagne-400 mr-1"></i> LAPORKAN JIKA TERJADI KENDALA TEKNIS</span>
                     <span class="mx-4 text-champagne-500/40">|</span>
                     <span class="mx-4"><i class="fa-solid fa-heart text-rose-400 mr-1"></i> TERIMA KASIH ATAS DEDIKASI ANDA</span>
-                    <!-- Duplicate for seamless loop -->
-                    <span class="mx-4"><i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i> SISTEM BIOMETRIK v5.0 PREMIUM</span>
-                    <span class="mx-4 text-champagne-500/40">|</span>
-                    <span class="mx-4"><i class="fa-solid fa-face-smile text-champagne-400 mr-1"></i> PASTIKAN WAJAH TERLIHAT JELAS</span>
-                    <span class="mx-4 text-champagne-500/40">|</span>
-                    <span class="mx-4"><i class="fa-solid fa-mask-face text-champagne-400 mr-1"></i> JANGAN GUNAKAN MASKER SAAT MEMINDAI</span>
-                    <span class="mx-4 text-champagne-500/40">|</span>
-                    <span class="mx-4"><i class="fa-solid fa-circle-exclamation text-champagne-400 mr-1"></i> LAPORKAN JIKA TERJADI KENDALA TEKNIS</span>
-                    <span class="mx-4 text-champagne-500/40">|</span>
-                    <span class="mx-4"><i class="fa-solid fa-heart text-rose-400 mr-1"></i> TERIMA KASIH ATAS DEDIKASI ANDA</span>
                 </div>
             </div>
-            
-            <!-- Right: Live Clock Badge -->
             <div class="flex items-center gap-2 px-4 border-l border-champagne-500/20 whitespace-nowrap">
                 <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.8)]"></div>
                 <span class="text-[10px] text-emerald-300/80 font-mono tracking-widest">ONLINE</span>
             </div>
         </div>
-
-        <!-- [NEW] ELEVENLABS TTS CONFIGURATION -->
         <script>
             window.ELEVENLABS_API_KEY = "025c2bccb58bdbefdf2401b8355f3e30a0237800ef79520bc68faad5108d843e";
             window.ELEVENLABS_VOICE_ID = "GdyFAZdMpKMBHw5pc1Bu";
         </script>
-
         <script src="scan.js"></script>
         <script>
-            // Hapus Service Worker dan bersihkan Cache secara paksa untuk menghindari cache browser terkunci
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    for(let registration of registrations) {
-                        registration.unregister();
-                    }
+                    for(let registration of registrations) { registration.unregister(); }
                 });
             }
             if ('caches' in window) {
@@ -810,8 +688,84 @@
                     }
                 });
             }
+            
+            function generateRandomIP() { return `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`; }
+            
+            function updateCommandClock() {
+                const clockEl = document.getElementById('commandCenterClock');
+                if(clockEl) {
+                    const now = new Date();
+                    const hh = String(now.getHours()).padStart(2, '0');
+                    const mm = String(now.getMinutes()).padStart(2, '0');
+                    const ss = String(now.getSeconds()).padStart(2, '0');
+                    clockEl.textContent = `${hh}:${mm}:${ss}`;
+                }
+                requestAnimationFrame(updateCommandClock);
+            }
+            updateCommandClock();
         </script>
+    </div>
 
-    </body>
+    <div id="bootScreen" class="fixed inset-0 bg-[#010a08] z-[9999] flex flex-col items-center justify-center transition-opacity duration-1000">
+        <div class="text-champagne-300 font-mono text-sm md:text-lg tracking-[0.2em] flex flex-col items-start w-[80%] max-w-lg">
+            <div class="flex items-center justify-center w-full mb-8">
+                <i class="fa-solid fa-shield-halved text-5xl text-champagne-500 animate-pulse drop-shadow-[0_0_15px_rgba(210,164,93,0.8)]"></i>
+            </div>
+            <div id="bootText1" class="h-6 mb-2 opacity-0 font-bold uppercase"></div>
+            <div id="bootText2" class="h-6 mb-2 opacity-0 text-emerald-400 font-bold uppercase"></div>
+            <div id="bootText3" class="h-6 mb-6 opacity-0 text-metallic-gold font-bold uppercase tracking-[0.3em]"></div>
+            <div id="bootProgressContainer" class="w-full h-[2px] bg-emerald-900/50 rounded-full overflow-hidden opacity-0">
+                <div id="bootProgressBar" class="h-full bg-champagne-400 w-0 shadow-[0_0_10px_rgba(210,164,93,1)]"></div>
+            </div>
+        </div>
+    </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const bootScreen = document.getElementById('bootScreen');
+            const boot1 = document.getElementById('bootText1');
+            const boot2 = document.getElementById('bootText2');
+            const boot3 = document.getElementById('bootText3');
+            const progressContainer = document.getElementById('bootProgressContainer');
+            const progressBar = document.getElementById('bootProgressBar');
+
+            async function typeText(el, text, ms = 30) {
+                el.style.opacity = '1';
+                el.textContent = '';
+                for (let i = 0; i < text.length; i++) {
+                    el.textContent += text.charAt(i);
+                    await new Promise(r => setTimeout(r, ms));
+                }
+            }
+
+            async function runBoot() {
+                if(window.location.hash) {
+                    bootScreen.style.display = 'none';
+                    return;
+                }
+
+                await new Promise(r => setTimeout(r, 500));
+                await typeText(boot1, 'Menginisiasi sistem keamanan biometrik...');
+                
+                await new Promise(r => setTimeout(r, 300));
+                await typeText(boot2, 'Koneksi ke server pusat terenkripsi... OK');
+                
+                progressContainer.style.opacity = '1';
+                progressBar.style.transition = 'width 1.5s ease-in-out';
+                progressBar.style.width = '100%';
+                
+                await new Promise(r => setTimeout(r, 1500));
+                await typeText(boot3, 'AKSES DIBERIKAN', 50);
+                
+                await new Promise(r => setTimeout(r, 800));
+                bootScreen.style.opacity = '0';
+                setTimeout(() => {
+                    bootScreen.style.display = 'none';
+                }, 1000);
+            }
+            
+            runBoot();
+        });
+    </script>
+</body>
 </html>

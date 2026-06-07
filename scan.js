@@ -2343,18 +2343,21 @@ async function updatePersonnelRoster() {
                 <div class="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-all pointer-events-none transform -translate-x-full group-hover:translate-x-full ease-in-out z-20" style="transition-duration: 1.2s;"></div>
                 
                 <!-- AVATAR SECTION -->
-                <div class="relative w-[68px] h-[68px] flex-shrink-0 group-hover:scale-105 transition-transform duration-500 z-10 ml-2">
-                    <!-- Outer Plate (Bingkai Tajam) -->
-                    <div class="absolute -inset-1 rounded-xl border border-white/5 bg-gradient-to-br from-[#0c1424] to-[#040812] shadow-[0_4px_10px_rgba(0,0,0,0.8)] z-0 pointer-events-none"></div>
+                <div class="relative w-[64px] h-[64px] flex-shrink-0 group-hover:scale-105 transition-transform duration-500 z-10 ml-2">
+                    <!-- Elegant Metallic/Glass Frame Wrapper -->
+                    <div class="absolute -inset-[2px] rounded-xl bg-gradient-to-br from-champagne-400 via-emerald-600 to-[#021a14] opacity-80 group-hover:opacity-100 transition-opacity z-0 shadow-[0_4px_15px_rgba(0,0,0,0.6)]"></div>
                     
-                    <!-- Inner Neon Glow Frame (Bingkai Cahaya) -->
-                    <div class="absolute inset-0 rounded-lg border-[2px] ${borderColor} opacity-90 group-hover:opacity-100 transition-opacity shadow-[inset_0_0_10px_rgba(255,255,255,0.2)] mix-blend-screen z-20 pointer-events-none"></div>
+                    <!-- Dark Inner Bezel -->
+                    <div class="absolute inset-0 rounded-[10px] bg-[#040812] z-0"></div>
                     
-                    <img src="${photoSrc}" class="w-full h-full rounded-lg object-cover bg-[#02050A] relative z-10" style="filter: brightness(1.1) contrast(1.15) saturate(1.1); image-rendering: high-quality;">
+                    <!-- Status Color Glow Accent -->
+                    <div class="absolute inset-0 rounded-[10px] opacity-40 group-hover:opacity-80 transition-opacity z-20 pointer-events-none mix-blend-screen" style="box-shadow: inset 0 0 15px ${glowColor};"></div>
                     
-                    <!-- Status Indicator Dot with Breathing Aura Ring -->
-                    <div class="absolute -bottom-1 -right-1 w-[18px] h-[18px] ${solidStatusBg} rounded-full border-[3px] border-[#0A0F14] shadow-[0_0_15px_${glowColor}] z-40" title="${statusText}">
-                        <span class="absolute -inset-[3px] rounded-full ${solidStatusBg} opacity-75 animate-ping z-0"></span>
+                    <img src="${photoSrc}" class="w-full h-full rounded-[10px] object-cover relative z-10 border border-white/5" style="filter: brightness(1.1) contrast(1.1) saturate(1.1); image-rendering: high-quality;">
+                    
+                    <!-- Elegant Status Dot -->
+                    <div class="absolute -bottom-1.5 -right-1.5 w-[18px] h-[18px] ${solidStatusBg} rounded-full border-[2px] border-[#0A0F14] shadow-[0_0_12px_${glowColor}] z-40" title="${statusText}">
+                        <span class="absolute -inset-[2px] rounded-full ${solidStatusBg} opacity-60 animate-[pulse_2s_ease-in-out_infinite] z-0"></span>
                     </div>
                 </div>
 
