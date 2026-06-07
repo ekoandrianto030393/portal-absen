@@ -111,13 +111,13 @@
 
     body {
         font-family: 'Inter', sans-serif;
-        background-color: #01140f; /* very dark emerald */
+        background-color: #021a14; /* deeper luxury emerald */
         background-image: 
-            radial-gradient(circle at 50% -20%, rgba(210, 164, 93, 0.1), transparent 50%),
-            radial-gradient(circle at 50% 120%, rgba(16, 185, 129, 0.05), transparent 50%),
-            linear-gradient(rgba(210, 164, 93, 0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(210, 164, 93, 0.02) 1px, transparent 1px);
-        background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
+            radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.08), transparent 40%),
+            radial-gradient(circle at 90% 80%, rgba(210, 164, 93, 0.05), transparent 50%),
+            linear-gradient(rgba(16, 185, 129, 0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(16, 185, 129, 0.02) 1px, transparent 1px);
+        background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
         color: #ecfdf5; /* emerald-50 */
         margin: 0;
         overflow: hidden;
@@ -243,12 +243,14 @@
 
     /* ===== DARK PANEL CARD: For Cuti & DL panels ===== */
     .dark-panel-card {
-        background: linear-gradient(145deg, rgba(0,0,0,0.35) 0%, rgba(6,78,59,0.25) 100%);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(210,164,93,0.25);
-        border-top: 4px solid #d2a45d;
-        border-radius: 16px;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05);
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        border-left: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         overflow: hidden;
     }
     .dark-panel-card .panel-separator {
@@ -478,34 +480,56 @@
                     </h3>
                 </div>
 
-                <div id="videoContainer" class="relative w-full max-w-[900px] pt-[48%] bg-[#01140f] rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(210,164,93,0.1)] border-4 border-champagne-500 mt-1">
+                <div id="videoContainer" class="relative w-full max-w-[900px] pt-[48%] bg-[#01140f] rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.2),inset_0_0_20px_rgba(16,185,129,0.1)] border border-emerald-500/40 mt-1">
                     <video id="videoElement" class="absolute top-0 left-0 w-full h-full object-cover" autoplay muted playsinline></video>
-                    <!-- Viewfinder Corners (Champagne) -->
+                    
+                    <!-- Outer Container Corners -->
+                    <div class="absolute inset-0 pointer-events-none z-30">
+                        <!-- Top Left -->
+                        <div class="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-emerald-400/80 rounded-tl-2xl shadow-[inset_4px_4px_10px_rgba(16,185,129,0.2)]"></div>
+                        <!-- Top Right -->
+                        <div class="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-emerald-400/80 rounded-tr-2xl shadow-[inset_-4px_4px_10px_rgba(16,185,129,0.2)]"></div>
+                        <!-- Bottom Left -->
+                        <div class="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-emerald-400/80 rounded-bl-2xl shadow-[inset_4px_-4px_10px_rgba(16,185,129,0.2)]"></div>
+                        <!-- Bottom Right -->
+                        <div class="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-emerald-400/80 rounded-br-2xl shadow-[inset_-4px_-4px_10px_rgba(16,185,129,0.2)]"></div>
+                    </div>
+
+                    <!-- Viewfinder Corners (Premium Medical/Emerald Style) -->
                     <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
-                        <div class="w-48 h-64 relative overflow-hidden">
+                        <div class="w-56 h-72 relative">
                             <!-- Top Left -->
-                            <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-champagne-400/70 rounded-tl-lg"></div>
-                            <!-- Top Right -->
-                            <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-champagne-400/70 rounded-tr-lg"></div>
-                            <!-- Bottom Left -->
-                            <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-champagne-400/70 rounded-bl-lg"></div>
-                            <!-- Bottom Right -->
-                            <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-champagne-400/70 rounded-br-lg"></div>
+                            <div class="absolute top-0 left-0 w-12 h-12 border-t-[3px] border-l-[3px] border-cyan-400/80 rounded-tl-2xl shadow-[-5px_-5px_15px_rgba(6,182,212,0.3)]"></div>
+                            <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-emerald-400 rounded-tl-lg m-2"></div>
                             
-                            <!-- Animated AI Scanner Line -->
-                            <div class="absolute left-0 right-0 h-[2px] bg-champagne-400 opacity-60 shadow-[0_0_10px_rgba(210,164,93,0.9)] animate-[aiScan_2.5s_ease-in-out_infinite]"></div>
+                            <!-- Top Right -->
+                            <div class="absolute top-0 right-0 w-12 h-12 border-t-[3px] border-r-[3px] border-cyan-400/80 rounded-tr-2xl shadow-[5px_-5px_15px_rgba(6,182,212,0.3)]"></div>
+                            <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-emerald-400 rounded-tr-lg m-2"></div>
+                            
+                            <!-- Bottom Left -->
+                            <div class="absolute bottom-0 left-0 w-12 h-12 border-b-[3px] border-l-[3px] border-cyan-400/80 rounded-bl-2xl shadow-[-5px_5px_15px_rgba(6,182,212,0.3)]"></div>
+                            <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-emerald-400 rounded-bl-lg m-2"></div>
+                            
+                            <!-- Bottom Right -->
+                            <div class="absolute bottom-0 right-0 w-12 h-12 border-b-[3px] border-r-[3px] border-cyan-400/80 rounded-br-2xl shadow-[5px_5px_15px_rgba(6,182,212,0.3)]"></div>
+                            <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-emerald-400 rounded-br-lg m-2"></div>
+                            
+                            <!-- Animated AI Scanner Line (Cyan/Emerald) -->
+                            <div class="absolute left-0 right-0 h-[2px] bg-cyan-400 opacity-80 shadow-[0_0_12px_rgba(6,182,212,1),0_0_20px_rgba(16,185,129,0.8)] animate-[aiScan_2.5s_ease-in-out_infinite]"></div>
                         </div>
                     </div>
 
                     <!-- Telemetry HUD with Clear Random Numbers (Highly Visible) -->
-                    <div class="absolute top-4 left-4 text-xs font-mono font-bold leading-tight pointer-events-none z-20 bg-slate-950/95 text-emerald-400 p-3.5 rounded-xl border-2 border-champagne-500 shadow-2xl min-w-[180px]">
-                        <div class="flex items-center gap-1.5 text-champagne-400 mb-1.5 border-b border-champagne-500/40 pb-1 uppercase font-serif tracking-widest text-[9.5px] animate-pulse">
-                            <i class="fa-solid fa-satellite-dish text-emerald-400"></i> AETHER_V5.0_UPLINK
+                    <div class="absolute top-4 left-4 text-xs font-mono font-bold leading-tight pointer-events-none z-20 bg-slate-900/70 backdrop-blur-md text-cyan-400 p-3 rounded-lg border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)] min-w-[180px]">
+                        <div class="flex items-center gap-1.5 text-cyan-300 mb-2 border-b border-cyan-500/30 pb-1.5 uppercase font-sans tracking-widest text-[9px] animate-pulse">
+                            <i class="fa-solid fa-wave-square text-teal-400"></i> BIOSCAN_V5.0_ACTIVE
                         </div>
-                        SEC_KEY: <span id="teleKey" class="text-white">0x0000</span><br>
-                        COORD_X: <span id="telePosX" class="text-white">0.00</span><br>
-                        COORD_Y: <span id="telePosY" class="text-white">0.00</span><br>
-                        NET_LAT: <span id="telePing" class="text-champagne-400">12ms</span>
+                        <div class="text-[10px] space-y-0.5">
+                            <span class="text-teal-500/80">SYS_KEY:</span> <span id="teleKey" class="text-white">0x0000</span><br>
+                            <span class="text-teal-500/80">POS_X:</span> <span id="telePosX" class="text-white">0.00</span><br>
+                            <span class="text-teal-500/80">POS_Y:</span> <span id="telePosY" class="text-white">0.00</span><br>
+                            <span class="text-teal-500/80">LATENCY:</span> <span id="telePing" class="text-cyan-300">12ms</span>
+                        </div>
                     </div>
 
                     <canvas id="overlay" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10"></canvas>
