@@ -1836,26 +1836,18 @@ function logSystem(message, color = 'text-green-500') {
 function setStatusVisual(message, colorClass, isPulsing = false) {
     if (!statusMessage) return;
     statusMessage.textContent = message;
-    statusMessage.className = "text-xl lg:text-2xl font-bold transition-colors duration-300";
     
-    // Gunakan font-black, uppercase, dan tracking-wide untuk tampilan lebih futuristik
-    statusMessage.className = 'text-xl lg:text-2xl font-black transition-colors duration-300 uppercase tracking-wide';
+    // Selalu gunakan font serif dan efek teks emas metalik untuk kesan premium
+    statusMessage.className = 'text-2xl lg:text-3xl font-serif font-bold transition-all duration-500 uppercase tracking-widest text-metallic-gold';
     
-
     // Tentukan warna shadow berdasarkan colorClass untuk efek glow
-    let shadowColor = '#FBBF24'; // Default untuk text-champagne-500
-    if (colorClass.includes('text-green-500')) shadowColor = '#F59E0B';
-    else if (colorClass.includes('text-red-500')) shadowColor = '#FF0055';
-    else if (colorClass.includes('text-champagne-500') || colorClass.includes('text-yellow-400')) shadowColor = '#FFD700';
-    else if (colorClass.includes('text-gray-300')) shadowColor = '#CCCCCC';
-
+    let shadowColor = '#d2a45d'; // Default untuk text-metallic-gold
+    
     // Terapkan font-family dan text-shadow untuk kedalaman dan glow
-            statusMessage.style.filter = `drop-shadow(0 0 8px ${shadowColor}60)`; // Tambahan drop-shadow untuk efek lebih tebal
+    statusMessage.style.filter = `drop-shadow(0 0 12px ${shadowColor}80)`; 
 
     if (isPulsing) {
-        
-    } else {
-        statusMessage.className = "text-xl lg:text-2xl font-bold transition-colors duration-300";
+        statusMessage.classList.add('animate-pulse');
     }
 }
 
@@ -3638,14 +3630,14 @@ async function processAttendance(karyawanId, imageBase64) {
                     if (result.telat_menit > 0) {
                         finalStatusText = `TERLAMBAT`;
                         finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi masuk tetap dicatat.</div><span style="font-weight:950; font-size: 2.8rem; line-height: 1.1; display:block; margin-top:10px; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5); transform: perspective(500px) rotateX(15deg); letter-spacing: 2px;">+ ${result.telat_menit} MENIT</span>`;
-                        finalStatusColor = '#FFD700'; // Kuning Emas
-                        finalBackground = `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
+                        finalStatusColor = '#10B981'; // Diubah dari Kuning Emas menjadi Hijau
+                        finalBackground = ABSEN_NORMAL_BG;
                     } else {
                         finalStatusText = 'TEPAT WAKTU';
                         finalStatusText = 'ABSEN MASUK BERHASIL';
                         finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi MASUK Terkonfirmasi.</div><span style="font-weight:950; font-size: 2.2rem; display:block; margin-top:10px; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5); transform: perspective(500px) rotateX(15deg); letter-spacing: 4px;">SELAMAT BEKERJA</span>`;
                         finalBackground = ABSEN_NORMAL_BG;
-                        finalStatusColor = '#F59E0B'; // Hijau Spring
+                        finalStatusColor = '#10B981'; // Hijau Spring
                     }
                     // Tambahkan pesan selamat datang setelah warna ditentukan
                     welcomeMessage = `<div id="welcomeMessageTarget" class="text-lg font-semibold tracking-wider mb-1" style="color: ${finalStatusColor}CC; text-shadow: 0 0 5px ${finalStatusColor}; min-height: 28px;"></div>`;
@@ -3658,12 +3650,12 @@ async function processAttendance(karyawanId, imageBase64) {
                         finalStatusText = 'PULANG CEPAT (PSW)';
                         // Gunakan pesan dari server yang berisi detail menit PSW
                         finalMessageHTML = `<span style="font-weight:bold; text-shadow: 0 0 15px rgba(255,255,255,0.3);">${cleanMessage}</span>`;
-                        finalStatusColor = '#FFD700'; // Kuning Emas
-                        finalBackground = `radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(100, 80, 0, 0.95) 100%)`;
+                        finalStatusColor = '#10B981'; // Diubah dari Kuning Emas menjadi Hijau
+                        finalBackground = ABSEN_NORMAL_BG;
                     } else {
                         finalStatusText = 'CHECK-OUT BERHASIL';
                         finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi PULANG Terkonfirmasi.</div><span style="font-weight:900; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">Hati-hati di jalan.</span>`;
-                        finalStatusColor = '#F59E0B'; // Hijau Spring (Sama seperti Check-In)
+                        finalStatusColor = '#10B981'; // Hijau Spring (Sama seperti Check-In)
                         finalBackground = ABSEN_NORMAL_BG;
                     }
                     logAttendance(display_name, serverTimestamp); // Log ke panel kanan
@@ -3673,7 +3665,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     finalStatusText = 'SUDAH ABSEN MASUK';
                     finalMessageHTML = `<span style="font-weight:950; font-size: 2rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">DATA TERKONFIRMASI</span><br><span style="font-size: 1.1rem; opacity: 0.8;">Anda sudah melakukan absen masuk.</span>`;
                     finalBackground = ABSEN_NORMAL_BG;
-                    finalStatusColor = '#F59E0B';
+                    finalStatusColor = '#10B981';
                     break;
                 case 'STATUS_CONFIRMED':
                 default: // Fallback untuk kasus sukses lainnya
@@ -3780,6 +3772,22 @@ async function processAttendance(karyawanId, imageBase64) {
                 if (result.jam_masuk_start) {
                     let jamMasukBuka = result.jam_masuk_start.substring(0, 5);
                     warningSpeakText += ` absen masuk dibuka jam ${jamMasukBuka}.`;
+                }
+            } else if (result.result_code === 'ALREADY_CHECKED_OUT') {
+                let jamPulangPendek = result.jam_pulang ? result.jam_pulang.substring(0, 5) : '';
+                if (!jamPulangPendek && result.message) {
+                    const match = result.message.match(/pukul\s+([0-9:]+)/);
+                    if (match) jamPulangPendek = match[1].substring(0, 5);
+                }
+                if (!jamPulangPendek && result.message) {
+                    const match2 = result.message.match(/jam\s+([0-9:]+)/);
+                    if (match2) jamPulangPendek = match2[1].substring(0, 5);
+                }
+                
+                if (jamPulangPendek) {
+                    warningSpeakText = `Peringatan ${display_name}, Anda sudah absen pulang pada jam ${jamPulangPendek}.`;
+                } else {
+                    warningSpeakText = `Peringatan ${display_name}, Anda sudah absen pulang.`;
                 }
             }
             await SoundFX.speak(warningSpeakText);
@@ -5666,7 +5674,7 @@ function initMatrixRain() {
 // --- BABYLON.JS BACKGROUND LOGIC (Dipindahkan dari scan.html) ---
 function initBackground3D() {
     // Safety check: Pastikan BABYLON sudah terload sebelum inisialisasi
-    if (typeof BABYLON === 'undefined') {
+    if (typeof BABYLON === 'undefined' || !BABYLON.Engine) {
         console.warn("Babylon.js resources failed to load. 3D Background disabled.");
         return;
     }

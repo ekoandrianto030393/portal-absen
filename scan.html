@@ -44,15 +44,71 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
     <script src="./models/blazeface.js"></script> <!-- Gunakan file lokal Anda -->
-    <!-- FONT SCI-FI: Rajdhani & Lora -->
+    <!-- FONT AKADEMIK: Cinzel & Montserrat -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
 
     <style>
-    /* Minimal Custom CSS for animations that Tailwind doesn\'t have built-in by default */
+    /* Minimal Custom CSS for animations that Tailwind doesn't have built-in by default */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     
+    /* ===== TIPOGRAFI AKADEMIK ===== */
+    .font-serif { font-family: 'Cinzel', serif; }
+    .font-sans { font-family: 'Montserrat', sans-serif; }
+
+    /* Kaca yang Memantulkan Cahaya (Glass Sweep) */
+    .glass-sweep {
+        position: relative;
+        overflow: hidden;
+    }
+    .glass-sweep::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%; width: 50%; height: 100%;
+        background: linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent);
+        transform: skewX(-25deg);
+        animation: sweep 8s ease-in-out infinite;
+        z-index: 10;
+        pointer-events: none;
+    }
+    @keyframes sweep {
+        0% { left: -100%; }
+        20% { left: 200%; }
+        100% { left: 200%; }
+    }
+
+    /* Ambient Aurora Orbs */
+    @keyframes ambientBlob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0px, 0px) scale(1); }
+    }
+    .animate-ambient {
+        animation: ambientBlob 20s ease-in-out infinite alternate;
+    }
+
+    /* Metallic Gold Text */
+    @keyframes metallicShine {
+        0% { background-position: -200% center; }
+        100% { background-position: 200% center; }
+    }
+    .text-metallic-gold {
+        background: linear-gradient(
+            to right, 
+            #d2a45d 20%, 
+            #fdfbf7 40%, 
+            #d2a45d 60%, 
+            #a56c36 80%
+        );
+        background-size: 200% auto;
+        color: transparent;
+        -webkit-background-clip: text;
+        background-clip: text;
+        animation: metallicShine 6s linear infinite;
+    }
+
     body {
         font-family: 'Inter', sans-serif;
         background-color: #01140f; /* very dark emerald */
@@ -317,14 +373,14 @@
 
             <div class="col-span-1 flex flex-col gap-4 order-2 lg:order-1">
 <!-- PANEL KHUSUS CUTI PEGAWAI -->
-<div id="cuti-panel" class="dark-panel-card relative flex flex-col gap-3 p-3 transition-all duration-300">
+<div id="cuti-panel" class="dark-panel-card glass-sweep relative flex flex-col gap-3 p-3 transition-all duration-300">
     <div class="relative z-10 flex flex-col items-center justify-center text-center pb-2">
-        <div class="text-lg font-bold tracking-widest text-champagne-100 mb-1 font-serif flex items-center justify-center gap-2">
+        <div class="text-lg font-bold tracking-widest text-metallic-gold mb-1 font-serif flex items-center justify-center gap-2">
             <i class="fa-solid fa-umbrella-beach text-champagne-400"></i> CUTI PEGAWAI
         </div>
         <div class="panel-separator"></div>
         <div class="flex flex-col items-center justify-center gap-1 mb-1 mt-1">
-            <span id="cuti-counter-badge" class="px-5 py-1.5 text-2xl text-champagne-950 bg-champagne-500 rounded-lg font-bold shadow-lg shadow-champagne-500/20">0</span>
+            <span id="cuti-counter-badge" class="px-5 py-1.5 text-2xl text-champagne-100 drop-shadow-[0_0_8px_rgba(253,251,247,0.8)] font-serif bg-gradient-to-b from-black/80 to-[#1a140a] border border-champagne-500/40 rounded-lg font-bold shadow-[inset_0_1px_2px_rgba(255,255,255,0.1),0_0_15px_rgba(210,164,93,0.3)] relative overflow-hidden"><div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 pointer-events-none"></div><span class="relative z-10">0</span></span>
             <span class="text-[10px] text-champagne-200/70 font-medium tracking-widest mt-1 uppercase">Pegawai</span>
         </div>
         <div class="text-[9px] text-champagne-400/60 font-bold tracking-[0.2em] uppercase">Puskesmas Wana</div>
@@ -335,14 +391,14 @@
 </div>
 
 <!-- PANEL KHUSUS DINAS LUAR -->
-<div id="dl-panel" class="dark-panel-card relative flex flex-col gap-4 p-4 transition-all duration-300">
+<div id="dl-panel" class="dark-panel-card glass-sweep relative flex flex-col gap-4 p-4 transition-all duration-300">
     <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4">
-        <div class="text-xl font-bold tracking-widest text-champagne-100 mb-1 font-serif flex items-center justify-center gap-2">
+        <div class="text-xl font-bold tracking-widest text-metallic-gold mb-1 font-serif flex items-center justify-center gap-2">
             <i class="fa-solid fa-car text-champagne-400"></i> DINAS LUAR
         </div>
         <div class="panel-separator"></div>
         <div class="flex flex-col items-center justify-center gap-1 mb-2 mt-2">
-            <span id="dl-counter-badge" class="px-6 py-2 text-3xl text-champagne-950 bg-champagne-500 rounded-lg font-bold shadow-lg shadow-champagne-500/20">0</span>
+            <span id="dl-counter-badge" class="px-6 py-2 text-3xl text-champagne-100 drop-shadow-[0_0_8px_rgba(253,251,247,0.8)] font-serif bg-gradient-to-b from-black/80 to-[#1a140a] border border-champagne-500/40 rounded-lg font-bold shadow-[inset_0_1px_2px_rgba(255,255,255,0.1),0_0_15px_rgba(210,164,93,0.3)] relative overflow-hidden"><div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 pointer-events-none"></div><span class="relative z-10">0</span></span>
             <span class="text-xs text-champagne-200/70 font-medium tracking-widest mt-2 uppercase">Pegawai</span>
             <div class="w-16 h-[2px] bg-champagne-400/50 mt-1"></div>
         </div>
@@ -404,7 +460,7 @@
                 <div class="w-full text-center flex flex-col items-center justify-center pt-0 pb-1 mb-1 mt-[-10px]">
                     <!-- PRESENSI BIOMETRIK (Stacked) -->
                     <div class="flex flex-col items-center mb-2">
-                        <h1 id="mainTitle" class="text-4xl lg:text-5xl font-serif font-bold uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-champagne-200 via-champagne-400 to-champagne-600 drop-shadow-[0_0_10px_rgba(210,164,93,0.3)] leading-tight">
+                        <h1 id="mainTitle" class="text-4xl lg:text-5xl font-serif font-bold uppercase tracking-widest text-metallic-gold drop-shadow-[0_0_10px_rgba(210,164,93,0.3)] leading-tight">
                             PRESENSI<br>BIOMETRIK
                         </h1>
                     </div>
@@ -456,7 +512,7 @@
                 </div>
 
                 <div class="dark-panel-card w-full p-4 text-center relative overflow-hidden">
-                    <p id="statusMessage" class="text-xl lg:text-2xl font-extrabold text-champagne-100 transition-colors duration-300 font-serif tracking-wide relative z-10">
+                    <p id="statusMessage" class="text-2xl lg:text-3xl font-extrabold text-metallic-gold transition-colors duration-300 font-serif tracking-wide relative z-10 drop-shadow-[0_0_12px_rgba(210,164,93,0.8)]">
                         SISTEM SIAP
                     </p>
                     <div class="panel-separator mt-2"></div>
@@ -467,14 +523,14 @@
 
             <div class="col-span-1 flex flex-col gap-4 order-3">
                 <!-- PANEL DAFTAR HADIR -->
-                <div class="dark-panel-card relative flex flex-col gap-4 p-4 lg:p-6 transition-all duration-300">
+                <div class="dark-panel-card glass-sweep relative flex flex-col gap-4 p-4 lg:p-6 transition-all duration-300">
                     <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4">
-                        <div class="text-xl font-bold tracking-widest text-champagne-100 mb-1 font-serif flex items-center justify-center gap-2">
+                        <div class="text-xl font-bold tracking-widest text-metallic-gold mb-1 font-serif flex items-center justify-center gap-2">
                             <i class="fa-solid fa-clipboard-check text-champagne-400"></i> DAFTAR HADIR
                         </div>
                         <div class="panel-separator"></div>
                         <div class="flex flex-col items-center justify-center gap-1 mb-2 mt-2">
-                            <span id="hadir-counter-badge" class="px-6 py-2 text-3xl text-champagne-950 bg-champagne-500 rounded-lg font-bold shadow-lg shadow-champagne-500/20">0</span>
+                            <span id="hadir-counter-badge" class="px-6 py-2 text-3xl text-champagne-100 drop-shadow-[0_0_8px_rgba(253,251,247,0.8)] font-serif bg-gradient-to-b from-black/80 to-[#1a140a] border border-champagne-500/40 rounded-lg font-bold shadow-[inset_0_1px_2px_rgba(255,255,255,0.1),0_0_15px_rgba(210,164,93,0.3)] relative overflow-hidden"><div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50 pointer-events-none"></div><span class="relative z-10">0</span></span>
                             <span class="text-xs text-champagne-200/70 font-medium tracking-widest mt-2 uppercase">Pegawai</span>
                             <div class="w-16 h-[2px] bg-champagne-400/50 mt-1"></div>
                         </div>
