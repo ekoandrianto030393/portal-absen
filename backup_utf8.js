@@ -1,4 +1,4 @@
-//
+﻿//
 /**
  * scan.js - Advanced Biometric Gateway (PUSKESMAS WANA)
  * FINAL STABILIZATION & CUSTOMIZATION: Disesuaikan 100% untuk UI FUTURISTIK Anda.
@@ -4059,10 +4059,7 @@ async function processAttendance(karyawanId, imageBase64) {
                 </div>
             `;
             // Latar belakang dikembalikan ke mode high-tech gelap (agar rumus fisika & nadi terlihat kontras)
-            successOverlay.style.backgroundImage = 'linear-gradient(rgba(5, 10, 20, 0.8), rgba(0, 0, 0, 0.95)), url("medis.jpg")';
-            successOverlay.style.backgroundSize = 'cover';
-            successOverlay.style.backgroundPosition = 'center';
-            successOverlay.style.backgroundRepeat = 'no-repeat';
+            successOverlay.style.background = 'radial-gradient(circle at center, rgba(5, 10, 20, 0.98) 0%, #000000 100%)';
             successOverlay.innerHTML = `
                 <style>
                     .shutter-layer {
