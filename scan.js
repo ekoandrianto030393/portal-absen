@@ -413,9 +413,16 @@ function initAudioVisualizer() {
             barHeight = dataArray[i] / 2; // Scale height
             total += dataArray[i];
             
-            // Warna Gradient Cyan ke Ungu
-            ctx.fillStyle = `rgba(221, 188, 130, ${barHeight / 100})`;
-            ctx.fillRect(x, (canvas.height - barHeight) / 2, barWidth, barHeight); // Center vertical
+            // Liquid Gold Wave Effect
+            const grad = ctx.createLinearGradient(0, (canvas.height - barHeight) / 2, 0, (canvas.height + barHeight) / 2);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            grad.addColorStop(0.3, 'rgba(210, 164, 93, 0.9)');
+            grad.addColorStop(1, 'rgba(210, 164, 93, 0.1)');
+            ctx.fillStyle = grad;
+            ctx.shadowColor = 'rgba(210, 164, 93, 0.5)';
+            ctx.shadowBlur = 8;
+            ctx.fillRect(x, (canvas.height - barHeight) / 2, barWidth - 1, barHeight); // Center vertical
+            ctx.shadowBlur = 0; // reset
             x += barWidth + 1;
         }
         window.audioLevel = total / bufferLength; // Rata-rata level suara (0-255)
@@ -466,12 +473,12 @@ if (stealthToggle) {
 }
 
 let FACE_MATCHING_THRESHOLD = 0.45; // [UPDATE] Diperketat ke 0.40 untuk Akurasi Tinggi (Anti-Acak)
-// --- DEFINISI WARNA (Futuristik) ---
-const PROFESSIONAL_STATUS_COLOR = '#F59E0B'; 
-const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
-const HEADER_COLOR = '#FBBF24'; 
-const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(204,133,0,0.95) 100%)'; 
-const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(0,255,127,0.8) 0%, rgba(0,100,0,0.95) 100%)';
+// --- DEFINISI WARNA (Mewah & Berwibawa) ---
+const PROFESSIONAL_STATUS_COLOR = '#D2A45D'; // Champagne Gold
+const NAME_HIGHLIGHT_COLOR = '#E5E4E2'; // Platinum
+const HEADER_COLOR = '#C58B45'; // Deep Gold
+const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(165,108,54,0.8) 0%, rgba(108,72,43,0.95) 100%)'; // Elegant Amber
+const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(210,164,93,0.8) 0%, rgba(133,87,49,0.95) 100%)'; // Elegant Gold
 const AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
 
 // --- NEW FEATURE: DYNAMIC SYSTEM THEME ---
@@ -846,14 +853,14 @@ function drawBiometricProgress(ctx, box, progress, color) {
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
     // 2. Progress Arc
     ctx.beginPath();
     ctx.arc(cx, cy, radius, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * progress));
     ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 1.5;
     ctx.shadowColor = color;
     ctx.shadowBlur = 15;
     ctx.stroke();
@@ -952,8 +959,8 @@ function drawGuideOverlay(ctx, w, h, isCentered = false) {
     const radius = Math.min(w, h) * 0.28; // Ukuran target (sesuai area deteksi optimal)
 
     // [UPDATE] Logika Warna Dinamis (Amber = Standby, Emerald = Pas)
-    const baseColor = isCentered ? '16, 185, 129' : '251, 191, 36'; // RGB: Emerald vs Amber
-    const strokeStyle = `rgba(${baseColor}, ${isCentered ? 0.8 : 0.15})`; // Lebih terang jika pas
+    const baseColor = isCentered ? '210, 164, 93' : '197, 139, 69'; // RGB: Light Gold vs Deep Gold
+    const strokeStyle = `rgba(${baseColor}, ${isCentered ? 0.8 : 0.25})`; // Lebih terang jika pas
 
     ctx.save();
     // 1. Lingkaran Target (Putus-putus)
@@ -1047,7 +1054,7 @@ function drawDynamicScreenCorners(ctx, w, h, box, color) {
 
     ctx.save();
     ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 1.5;
     ctx.shadowColor = color;
     ctx.shadowBlur = 15;
     ctx.lineCap = 'square';
@@ -2916,7 +2923,7 @@ function drawSciFiHUD(ctx, box, landmarks, color, label, status) {
         const end = start + segLen * 0.4; // Celah antar segmen
         ctx.arc(cx, cy, radius, start, end);
     }
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.stroke();
 
     // 2. Cincin Dalam Berlawanan Arah
@@ -2930,7 +2937,7 @@ function drawSciFiHUD(ctx, box, landmarks, color, label, status) {
     // 3. Bracket Sudut Taktis
     const bLen = 25;
     const bGap = 15; // Jarak dari wajah
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 1.5;
     
     // Gambar 4 Sudut
     const drawCorner = (px, py, dx, dy) => {

@@ -375,11 +375,8 @@ async function loadDailyData(silent = false) {
                     statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-calendar-check"></i> Cuti</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
-                } else if (status === 'HADIR_MANUAL') {
-                    // [SYNC] Tampilkan badge khusus untuk input manual, jam tetap tampil sesuai input
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-keyboard"></i> Hadir (Manual)</span>`;
-                } else if (row.jam_masuk) {
-                    // --- LOGIKA HADIR NORMAL ---
+                } else if (status === 'HADIR_MANUAL' || row.jam_masuk) {
+                    // --- LOGIKA HADIR NORMAL & MANUAL ---
                     
                     // [FIX] Gunakan data matang dari database (telat_menit)
                     // [FIX] Gunakan data matang dari database, jangan hitung manual di JS
@@ -391,6 +388,7 @@ async function loadDailyData(silent = false) {
                     
                     // UPDATE: Status "Hadir", Keterlambatan "Terlambat/Tepat Waktu"
                     statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-check"></i> Hadir</span>`;
+
                     
                     if (isLate) {
                         lateDisplay = `Terlambat (${lateMinutes} Menit)`;
