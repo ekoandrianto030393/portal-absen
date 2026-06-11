@@ -5,7 +5,7 @@ module.exports = (pool) => {
     // POST /api/absensi
     router.post('/', async (req, res) => {
         const { id_karyawan } = req.body;
-        const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+        const _d = new Date(); const today = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`; // Format YYYY-MM-DD (Local Timezone)
         const now = new Date().toLocaleTimeString('id-ID', { hour12: false }); // Format HH:mm:ss
 
         try {

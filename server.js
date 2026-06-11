@@ -79,7 +79,11 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME || 'biometrik_absensi_wajah_db',
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    // [FIX] Mencegah driver mengubah DATE/TIME menjadi JavaScript Date object
+    // Tanpa ini, DATE '2026-06-02' → JS Date → JSON "2026-06-01T17:00:00Z" (mundur 1 hari di UTC+7)
+    dateStrings: true,
+    timezone: '+07:00'
 });
 
 // Cek Koneksi Database saat Startup
@@ -695,7 +699,9 @@ app.get('/api/absensi/history/:id_karyawan', (req, res) => {
     let params = [id_karyawan, periode];
     
     if (tipe === 'tanpa_pulang') {
-        sql += " AND ((jam_keluar IS NULL AND tanggal < CURDATE()) OR keterangan LIKE '%Tanpa Absen Pulang%' OR keterangan LIKE '%Lupa Absen Pulang%')";
+        sql += " AND ((jam_keluar IS NULL AND tanggal < CURDATE()) OR keterangan LIKE '%Otomatis%')";
+    } else if (tipe === 'psw') {
+        sql += " AND psw_menit > 0";
     }
     
     sql += " ORDER BY tanggal ASC";
@@ -1090,8 +1096,8 @@ app.post('/api/absensi/manual', (req, res) => {
         // Pastikan format waktu lengkap HH:MM:SS
         finalJamMasuk = jam_masuk ? (jam_masuk.length === 5 ? jam_masuk + ':00' : jam_masuk) : null;
         finalJamKeluar = jam_keluar ? (jam_keluar.length === 5 ? jam_keluar + ':00' : jam_keluar) : null;
-        // [FIX] Biarkan status tetap HADIR_MANUAL agar dashboard bisa menampilkannya dengan badge khusus
-        finalStatus = 'HADIR_MANUAL'; 
+        // [FIX] Simpan sebagai HADIR agar otomatis masuk ke rekap bulanan seperti absen normal
+        finalStatus = 'HADIR'; 
 
         // [FIX] Hitung Keterlambatan Manual
         if (finalJamMasuk && finalJamMasuk > BATAS_TELAT) {

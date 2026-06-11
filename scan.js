@@ -2352,7 +2352,7 @@ async function updatePersonnelRoster() {
                 <!-- AVATAR SECTION -->
                 <div class="relative w-[64px] h-[64px] flex-shrink-0 group-hover:scale-105 transition-transform duration-500 z-10 ml-2">
                     <!-- Elegant Metallic/Glass Frame Wrapper -->
-                    <div class="absolute -inset-[2px] rounded-xl bg-gradient-to-br from-champagne-400 via-emerald-600 to-[#021a14] opacity-80 group-hover:opacity-100 transition-opacity z-0 shadow-[0_4px_15px_rgba(0,0,0,0.6)]"></div>
+                    <div class="absolute -inset-[2px] rounded-xl bg-gradient-to-br from-champagne-400 via-emerald-600 to-[#051c14] opacity-80 group-hover:opacity-100 transition-opacity z-0 shadow-[0_4px_15px_rgba(0,0,0,0.6)]"></div>
                     
                     <!-- Dark Inner Bezel -->
                     <div class="absolute inset-0 rounded-[10px] bg-[#040812] z-0"></div>
@@ -3683,6 +3683,52 @@ async function processAttendance(karyawanId, imageBase64) {
                     finalMessageHTML = `Identitas Terkonfirmasi.<br>Data telah disimpan.`;
                     finalBackground = ABSEN_NORMAL_BG;
                     finalStatusColor = NAME_HIGHLIGHT_COLOR; 
+            }
+
+            // --- [NEW] ANIMASI KARTU POPUP DI TENGAH ATAS KAMERA ---
+            const centerSuccessPopup = document.getElementById('centerSuccessPopup');
+            if (centerSuccessPopup) {
+                const photoSrc = employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : 'logo.jpg';
+                const statusColorPop = result.result_code === 'CHECK_IN_SUCCESS' || result.result_code === 'ALREADY_IN_CONFIRMATION' ? 'bg-[#10B981]' : 'bg-[#f43f5e]';
+                const glowColorPop = result.result_code === 'CHECK_IN_SUCCESS' || result.result_code === 'ALREADY_IN_CONFIRMATION' ? '#10B981' : '#f43f5e';
+                
+                centerSuccessPopup.innerHTML = `
+                    <div class="flex items-center p-4 rounded-xl border border-champagne-500/50 bg-[#061811]/95 backdrop-blur-xl shadow-[0_15px_40px_rgba(0,0,0,0.8),0_0_20px_${glowColorPop}80] overflow-hidden relative w-full">
+                        <div class="absolute left-0 top-0 bottom-0 w-[5px] z-20" style="background-color: ${glowColorPop}; box-shadow: 0 0 15px ${glowColorPop};"></div>
+                        <div class="absolute -inset-[2px] rounded-xl bg-gradient-to-br from-champagne-400 via-emerald-600 to-[#051c14] opacity-50 z-0"></div>
+                        <div class="absolute inset-0 rounded-[10px] bg-[#040812] z-0"></div>
+                        <div class="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%] animate-[shine_2s_linear_infinite] z-20 pointer-events-none"></div>
+
+                        <div class="relative w-[72px] h-[72px] flex-shrink-0 z-10 ml-3 shadow-[0_0_15px_${glowColorPop}60] rounded-[12px]">
+                            <img src="${photoSrc}" class="w-full h-full rounded-[12px] object-cover border-2 border-white/20">
+                            <div class="absolute -bottom-2 -right-2 w-5 h-5 ${statusColorPop} rounded-full border-2 border-[#040812] shadow-[0_0_10px_${glowColorPop}] z-40 flex items-center justify-center">
+                                <i class="fa-solid fa-check text-[10px] text-white"></i>
+                            </div>
+                        </div>
+
+                        <div class="flex-grow min-w-0 z-10 ml-5">
+                            <p class="font-extrabold text-[17px] text-white truncate leading-tight tracking-wider" style="text-shadow: 0 2px 5px rgba(0,0,0,0.8);">${display_name}</p>
+                            <p class="text-[11px] text-champagne-400 font-extrabold truncate mb-2 uppercase tracking-[0.2em]">${display_jabatan}</p>
+                            
+                            <div class="inline-block bg-[#02050a]/90 px-3 py-1.5 rounded-lg border border-white/10 mt-1">
+                                <p class="text-[12px] font-black tracking-widest text-white leading-none"><span style="color: ${glowColorPop}; text-shadow: 0 0 8px ${glowColorPop};">${finalStatusText}</span></p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Tampilkan Popup
+                centerSuccessPopup.style.opacity = '1';
+                centerSuccessPopup.style.transform = 'translate(-50%, 0) scale(1.05)';
+                setTimeout(() => {
+                    centerSuccessPopup.style.transform = 'translate(-50%, 0) scale(1)';
+                }, 300);
+
+                // Sembunyikan setelah 4 detik
+                setTimeout(() => {
+                    centerSuccessPopup.style.opacity = '0';
+                    centerSuccessPopup.style.transform = 'translate(-50%, -48px) scale(0.8)';
+                }, 4000);
             }
 
             // UPDATE DIAGNOSTIC PANEL (Full Name List)
