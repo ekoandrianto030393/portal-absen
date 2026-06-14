@@ -47,10 +47,11 @@ class AntiSpoofPredict:
     def predict(self, img, model_path):
         model = self._load_model(model_path)
         
-        # Preprocessing: Resize 80x80 dengan kualitas tinggi (INTER_AREA)
-        img = cv2.resize(img, (80, 80), interpolation=cv2.INTER_AREA)
+        # Preprocessing: Resize 80x80 dengan kualitas tinggi (INTER_LINEAR)
+        img = cv2.resize(img, (80, 80), interpolation=cv2.INTER_LINEAR)
         
-        # WAJIB COBA RGB LAGI (Sekarang dengan Square Crop)
+        # Model MiniFASNet dilatih dengan format BGR (bawaan OpenCV).
+        # Model MiniFASNet dilatih dengan format RGB
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
         # Normalization (-1 to 1)

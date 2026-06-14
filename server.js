@@ -1,6 +1,19 @@
 // Muat konfigurasi dari file .env
 require('dotenv').config();
 
+// --- PENCEGAH CRASH OTOMATIS (ANTI-CRASH) ---
+// Mencegah server Node.js mati tiba-tiba jika ada error yang tidak terduga
+process.on('uncaughtException', (err) => {
+    console.error('💥 [CRITICAL ERROR] Terjadi kesalahan sistem:', err);
+    console.log('🛡️ Sistem Anti-Crash aktif, server tetap berjalan...');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 [UNHANDLED REJECTION] Ada proses asinkron yang gagal:', reason);
+    console.log('🛡️ Sistem Anti-Crash aktif, server tetap berjalan...');
+});
+// ------------------------------------------
+
 const express = require('express');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');

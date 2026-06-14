@@ -19,7 +19,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Tailwind CSS & FontAwesome -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="libs/tailwindcss.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -323,12 +323,12 @@
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-slate-800 text-white text-xs uppercase font-bold tracking-wider">
                                 <tr>
-                                    <th class="px-6 py-4 border-b border-slate-600">Jam Masuk</th>
-                                    <th onclick="sortTable('table-daily-body', 1)" class="px-6 py-4 border-b border-slate-600 cursor-pointer hover:bg-slate-700 transition-colors">Nama Pegawai <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
-                                    <th class="px-6 py-4 border-b border-slate-600">Jabatan</th>
-                                    <th class="px-6 py-4 border-b border-slate-600">Status</th>
-                                    <th class="px-6 py-4 border-b border-slate-600">Keterangan Waktu</th>
-                                    <th class="px-6 py-4 border-b border-slate-600">Jam Pulang</th>
+                                    <th class="px-6 py-4">Jam Masuk</th>
+                                    <th onclick="sortTable('table-daily-body', 1)" class="px-6 py-4 cursor-pointer hover:bg-slate-700 transition-colors">Nama Pegawai <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
+                                    <th class="px-6 py-4">Jabatan</th>
+                                    <th class="px-6 py-4">Status</th>
+                                    <th class="px-6 py-4">Keterangan Waktu</th>
+                                    <th class="px-6 py-4">Jam Pulang</th>
                                 </tr>
                             </thead>
                             <tbody id="table-daily-body" class="text-sm text-slate-700 divide-y divide-slate-200">

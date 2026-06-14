@@ -90,39 +90,244 @@ let trackingMissCount = 0;   // [NEW] Counter jika tracking hilang
 let stabilityCounter = 0;    // [NEW] Counter frame stabil
 let userScanCounters = {};   // [NEW] Counter scan per user session
 
-// --- LIVENESS DETECTION ENGINE (ANTI-SPOOFING) ---
+// --- LIVENESS DETECTION ENGINE (ANTI-SPOOFING: DETEKSI GERAKAN KEPALA) ---
+// Sistem ini hanya memastikan user menggerakkan kepala sedikit saja (ke arah manapun).
+// Jika kepala tidak bergerak sama sekali (foto/video statis), absen ditolak.
 class LivenessDetector {
     constructor() {
-        this.movementDetected = false;
+        this.isLive = false;
         this.lastYaw = 0;
+        this.lastPitch = 0;
+        
+        // Baseline (posisi awal kepala saat pertama terdeteksi)
+        this.baselineYaw = 0;
+        this.baselinePitch = 0;
+        this.baselineSet = false;
+        this.baselineFrames = 0;
+        this.BASELINE_FRAMES_NEEDED = 3; // Frame untuk menentukan posisi awal
+        
+        // Tracking pergerakan
+        this.yawSamples = [];       // Riwayat yaw beberapa frame terakhir
+        this.pitchSamples = [];     // Riwayat pitch beberapa frame terakhir
+        this.MAX_SAMPLES = 20;      // Buffer riwayat
+        
+        // Threshold gerakan (sangat kecil — cukup gerak sedikit)
+        this.MOVEMENT_THRESHOLD = 0.08; // Threshold untuk deteksi bebas (kiri/kanan/atas/bawah)/ Delta yaw/pitch minimal — gerak sedikit namun pasti
+        this.movementScore = 0;     // Akumulasi skor gerakan
+        this.SCORE_TO_PASS = 2;     // Cukup 2 frame gerakan terdeteksi
+        
+        // TTS
+        this.instructionSpoken = false;
+        this.warningSpoken = false;
+        this.startTime = 0;
+        this.TIMEOUT_MS = 10000;    // 10 detik timeout
     }
 
     reset() {
-        this.movementDetected = false;
+        this.isLive = false;
+        this.baselineSet = false;
+        this.baselineFrames = 0;
+        this.baselineYaw = 0;
+        this.baselinePitch = 0;
+        this.yawSamples = [];
+        this.pitchSamples = [];
+        this.movementScore = 0;
         this.lastYaw = 0;
+        this.lastPitch = 0;
+        this.instructionSpoken = false;
+        this.warningSpoken = false;
+        this.startTime = 0;
     }
 
-    update(landmarks) {
-        const leftEye = landmarks.getLeftEye();
-        const rightEye = landmarks.getRightEye();
-        
-        // Estimasi Yaw (Rotasi Kepala) untuk UI AR
+    // Hitung Yaw (rotasi horizontal) dari landmarks
+    computeYaw(landmarks) {
         const nose = landmarks.getNose()[3];
-        const leftEyeCenter = leftEye[0]; 
-        const rightEyeCenter = rightEye[3]; 
-        const faceWidth = Math.abs(rightEyeCenter.x - leftEyeCenter.x);
-        if (faceWidth > 0) {
-            const noseRel = (nose.x - leftEyeCenter.x) / faceWidth;
-            this.lastYaw = (noseRel - 0.5) * 2; 
+        const leftEye = landmarks.getLeftEye()[0];
+        const rightEye = landmarks.getRightEye()[3];
+        const faceWidth = Math.abs(rightEye.x - leftEye.x);
+        if (faceWidth <= 0) return 0;
+        return ((nose.x - leftEye.x) / faceWidth - 0.5) * 2;
+    }
+
+    // Hitung Pitch (rotasi vertikal) dari landmarks  
+    computePitch(landmarks) {
+        const nose = landmarks.getNose()[3];
+        const leftEye = landmarks.getLeftEye()[0];
+        const rightEye = landmarks.getRightEye()[3];
+        const eyeCenterY = (leftEye.y + rightEye.y) / 2;
+        const jaw = landmarks.getJawOutline()[8];
+        const faceHeight = Math.abs(jaw.y - eyeCenterY);
+        if (faceHeight <= 0) return 0;
+        const noseRelY = (nose.y - eyeCenterY) / faceHeight;
+        return (noseRelY - 0.5) * 2;
+    }
+
+    // Update per frame
+    update(landmarks) {
+        if (!landmarks) return false;
+        if (this.isLive) return true;
+        
+        const yaw = this.computeYaw(landmarks);
+        const pitch = this.computePitch(landmarks);
+        this.lastYaw = yaw;
+        this.lastPitch = pitch;
+
+        // Fase 1: Kumpulkan baseline posisi awal
+        if (!this.baselineSet) {
+            this.baselineFrames++;
+            if (this.baselineFrames >= this.BASELINE_FRAMES_NEEDED) {
+                this.baselineYaw = yaw;
+                this.baselinePitch = pitch;
+                this.baselineSet = true;
+                this.startTime = Date.now();
+            }
+            return false;
         }
 
-        // Logika Deteksi Gerakan Kepala (Yaw)
-        // Jika kepala menoleh ke kiri/kanan (Threshold 0.2)
-        if (Math.abs(this.lastYaw) > 0.2) {
-            this.movementDetected = true;
+        // Ucapkan instruksi sekali
+        if (!this.instructionSpoken) {
+            this.instructionSpoken = true;
+            if (typeof SoundFX !== 'undefined' && SoundFX.speak) {
+                // SoundFX.speak('Gerakkan kepala Anda sedikit untuk verifikasi'); // [DISABLED]
+            }
         }
 
-        return this.movementDetected;
+        // Simpan sample
+        this.yawSamples.push(yaw);
+        this.pitchSamples.push(pitch);
+        if (this.yawSamples.length > this.MAX_SAMPLES) this.yawSamples.shift();
+        if (this.pitchSamples.length > this.MAX_SAMPLES) this.pitchSamples.shift();
+
+        // Cek delta dari baseline
+        const deltaYaw = Math.abs(yaw - this.baselineYaw);
+        const deltaPitch = Math.abs(pitch - this.baselinePitch);
+
+        if (deltaYaw > this.MOVEMENT_THRESHOLD || deltaPitch > this.MOVEMENT_THRESHOLD) {
+            this.movementScore++;
+        }
+
+        // Lulus jika cukup frame mendeteksi gerakan
+        if (this.movementScore >= this.SCORE_TO_PASS) {
+            this.isLive = true;
+            console.log('[LIVENESS] PASSED — gerakan kepala terdeteksi');
+            return true;
+        }
+
+        // Timeout warning
+        if (!this.warningSpoken && Date.now() - this.startTime > 5000) {
+            this.warningSpoken = true;
+            if (typeof SoundFX !== 'undefined' && SoundFX.speak) {
+                // SoundFX.speak('Kepala Anda belum bergerak. Silakan gerakkan sedikit.'); // [DISABLED]
+            }
+        }
+
+        // Timeout → reset dan coba lagi
+        if (Date.now() - this.startTime > this.TIMEOUT_MS) {
+            console.log('[LIVENESS] Timeout — reset');
+            this.baselineSet = false;
+            this.baselineFrames = 0;
+            this.movementScore = 0;
+            this.yawSamples = [];
+            this.pitchSamples = [];
+            this.instructionSpoken = false;
+            this.warningSpoken = false;
+            return false;
+        }
+
+        return false;
+    }
+
+    // Gambar overlay instruksi di canvas
+    drawLivenessOverlay(ctx, box) {
+        if (this.isLive) return;
+        if (!this.baselineSet) return;
+
+        const cx = box.x + box.width / 2;
+        const cy = box.y - 45;
+        const instruction = 'Gerakkan kepala Anda sedikit';
+        const remaining = Math.max(0, Math.ceil((this.TIMEOUT_MS - (Date.now() - this.startTime)) / 1000));
+        const progress = Math.min(1, (Date.now() - this.startTime) / this.TIMEOUT_MS);
+
+        ctx.save();
+
+        // --- Pill background ---
+        const pillW = 310;
+        const pillH = 38;
+        const pillX = cx - pillW / 2;
+        const pillY = cy - pillH / 2;
+        const pillR = pillH / 2;
+
+        ctx.beginPath();
+        ctx.moveTo(pillX + pillR, pillY);
+        ctx.lineTo(pillX + pillW - pillR, pillY);
+        ctx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + pillR, pillR);
+        ctx.arcTo(pillX + pillW, pillY + pillH, pillX + pillW - pillR, pillY + pillH, pillR);
+        ctx.lineTo(pillX + pillR, pillY + pillH);
+        ctx.arcTo(pillX, pillY + pillH, pillX, pillY + pillR, pillR);
+        ctx.arcTo(pillX, pillY, pillX + pillR, pillY, pillR);
+        ctx.closePath();
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fill();
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // --- Ikon gerak + teks ---
+        const pulse = 0.7 + 0.3 * Math.abs(Math.sin(Date.now() / 300));
+        ctx.globalAlpha = pulse;
+        ctx.font = 'bold 13px "Outfit", sans-serif';
+        ctx.fillStyle = '#FFD700';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`↔  ${instruction}`, cx, cy);
+        ctx.globalAlpha = 1;
+
+        // --- Progress bar ---
+        const barW = pillW - 16;
+        const barH = 3;
+        const barX = pillX + 8;
+        const barY = pillY + pillH + 5;
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(barX, barY, barW, barH);
+
+        const r = Math.floor(255 * progress);
+        const g = Math.floor(255 * (1 - progress));
+        ctx.fillStyle = `rgb(${r}, ${g}, 50)`;
+        ctx.fillRect(barX, barY, barW * (1 - progress), barH);
+
+        // --- Timer ---
+        ctx.font = '10px "Courier New", monospace';
+        ctx.fillStyle = remaining <= 3 ? '#FF4444' : 'rgba(255, 215, 0, 0.7)';
+        ctx.fillText(`${remaining}s`, cx, barY + barH + 12);
+
+        // --- Movement score indicator (titik-titik) ---
+        const dotY = barY + barH + 24;
+        const dotSpacing = 14;
+        const totalDots = this.SCORE_TO_PASS;
+        const startX = cx - ((totalDots - 1) * dotSpacing) / 2;
+
+        for (let i = 0; i < totalDots; i++) {
+            const dx = startX + i * dotSpacing;
+            ctx.beginPath();
+            ctx.arc(dx, dotY, 4, 0, Math.PI * 2);
+            if (i < this.movementScore) {
+                ctx.fillStyle = '#00FF88';
+                ctx.shadowColor = '#00FF88';
+                ctx.shadowBlur = 6;
+            } else {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.shadowBlur = 0;
+            }
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        ctx.restore();
     }
 }
 // Inisialisasi Global Liveness Check
@@ -478,7 +683,7 @@ const PROFESSIONAL_STATUS_COLOR = '#D2A45D'; // Champagne Gold
 const NAME_HIGHLIGHT_COLOR = '#E5E4E2'; // Platinum
 const HEADER_COLOR = '#C58B45'; // Deep Gold
 const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(165,108,54,0.8) 0%, rgba(108,72,43,0.95) 100%)'; // Elegant Amber
-const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(210,164,93,0.8) 0%, rgba(133,87,49,0.95) 100%)'; // Elegant Gold
+const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(181,154,114,0.15) 0%, rgba(6,20,13,0.95) 100%)'; // Elegant Deep Forest & Brass
 const AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
 
 // --- NEW FEATURE: DYNAMIC SYSTEM THEME ---
@@ -2500,7 +2705,7 @@ const api = {
 
         // --- STEP 1: Verifikasi InsightFace (Python Server) ---
         try {
-            const pyResponse = await fetch('http://localhost:5000/verify', {
+            const pyResponse = await fetch(`http://${window.location.hostname}:5000/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -2524,7 +2729,7 @@ const api = {
                 if (!pythonVerified) {
                     return {
                         success: false,
-                        message: `⚠️ Verifikasi AI GAGAL: Wajah tidak cocok dengan data biometrik (Score: ${pythonScore})`,
+                        message: `⚠️ Verifikasi GAGAL: Wajah tidak cocok dengan data biometrik (Score: ${pythonScore})`,
                         statusColor: 'red',
                         result_code: 'PYTHON_VERIFY_FAILED',
                         nama: pyResult.nama || karyawanId,
@@ -3072,7 +3277,7 @@ async function detectFace() {
         // --- LOGIKA BARU: RECOGNITION DULU -> BARU LIVENESS ---
         // 1. Lakukan Pengenalan Wajah Terlebih Dahulu (Agar nama langsung muncul)
         let faceLabel = 'UNKNOWN';
-        let faceColor = '#FF0055'; 
+        let faceColor = '#E2E8F0'; // Platinum/Silver
         let confidence = 0;
         let recognizedId = null;
         let employee = null;
@@ -3126,7 +3331,7 @@ async function detectFace() {
         } else {
             // DB Offline
             faceLabel = 'DB OFFLINE';
-            faceColor = '#FF00FF';
+            faceColor = '#B59A72'; // Brushed Brass
             updateSystemDiagnostics(0);
         }
 
@@ -3172,7 +3377,7 @@ async function detectFace() {
             
             employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
             faceLabel = employee.nama;
-            faceColor = '#F59E0B'; // Hijau (Match)
+            faceColor = '#10B981'; // Mint Green (Match)
         } else {
             // [NEW] Grace Period Logic (Anti-Acak)
             // Jika hasil jadi unknown tapi kita punya lock baru-baru ini, pertahankan hasil lama sebentar
@@ -3182,7 +3387,7 @@ async function detectFace() {
                 
                 employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
                 faceLabel = employee.nama; // Tetap tampilkan nama (Stabil)
-                faceColor = '#F59E0B';
+                faceColor = '#10B981'; // Mint Green
             } else {
                 // Benar-benar unknown atau grace period habis
                 recognizedId = null;
@@ -3190,14 +3395,20 @@ async function detectFace() {
                 
                 if (maxCount > 1) {
                     faceLabel = "VERIFYING...";
-                    faceColor = "#FBBF24"; 
+                    faceColor = "#B59A72"; // Brushed Brass
                 }
             }
         }
 
-        // 2. Cek Liveness (Gerakan/Kedipan) secara background
+        // 2. Cek Liveness (Gerakan Kepala Challenge-Response) secara background
 
-        const isLive = true; // MODIFIKASI: Bypass sensor gerakan kepala (Normal Mode)
+        // Update liveness detector dengan landmarks wajah saat ini
+        if (window.LivenessCheck) {
+            window.LivenessCheck.update(landmarks);
+        }
+        
+        // [MODIFIED] Menonaktifkan liveness (selalu true). Hapus "true || " untuk mengaktifkan kembali.
+        const isLive = true || (window.LivenessCheck ? window.LivenessCheck.isLive : true);
 
         // 3. Logika UI & Eksekusi
         if (recognizedId) {
@@ -3270,14 +3481,25 @@ async function detectFace() {
                     await processAttendance(recognizedId, imageBase64);
                 }
             } else {
-                // BELUM BERGERAK -> MINTA GERAKAN (TAPI NAMA SUDAH MUNCUL)
-                setStatusVisual(`HALO ${employee.nama}. GERAKKAN KEPALA UNTUK ABSEN`, 'text-yellow-400', true);
-                userStatusDisplay.textContent = 'MOVE HEAD';
+                // BELUM BERGERAK -> TAMPILKAN INSTRUKSI LIVENESS
+                const remaining = window.LivenessCheck ? Math.max(0, Math.ceil((window.LivenessCheck.TIMEOUT_MS - (Date.now() - window.LivenessCheck.startTime)) / 1000)) : 0;
+                
+                if (window.LivenessCheck && window.LivenessCheck.baselineSet) {
+                    setStatusVisual(`🛡️ GERAKKAN KEPALA SEDIKIT UNTUK VERIFIKASI (${remaining}s)`, 'text-yellow-400', true);
+                } else {
+                    setStatusVisual(`HALO ${employee.nama}. VERIFIKASI ANTI-SPOOFING...`, 'text-yellow-400', true);
+                }
+                userStatusDisplay.textContent = 'LIVENESS CHECK';
                 userStatusDisplay.className = 'text-lg font-bold text-yellow-400 animate-pulse';
                 setSystemTheme('SCANNING');
                 
+                // Gambar overlay instruksi liveness di canvas
+                if (window.LivenessCheck) {
+                    window.LivenessCheck.drawLivenessOverlay(context, box);
+                }
+                
                 // Ubah warna HUD jadi Kuning (Waiting)
-                faceColor = '#FFD700'; 
+                faceColor = '#E6D0A8'; // Soft Gold for Liveness waiting
             }
 
         } else {
@@ -3312,10 +3534,10 @@ async function detectFace() {
                     setStatusVisual('SCANNING..', 'text-champagne-500');
                     userStatusDisplay.textContent = 'UNKNOWN TARGET';
                     faceLabel = 'UNKNOWN';
-                    faceColor = '#FBBF24';
+                    faceColor = '#B59A72'; // Brushed Brass for Unknown
                     
                     // Gunakan warna Cyan stabil untuk status Unknown
-                    faceColor = '#FBBF24'; 
+                    faceColor = '#B59A72'; 
 
                     // Trigger Glitch Effect on Unknown Face (Interference)
                     if (Math.random() < 0.15) triggerGlitch();
@@ -3507,115 +3729,30 @@ async function processAttendance(karyawanId, imageBase64) {
             else if (hour >= 15 && hour < 19) timeGreeting = 'Sore';
             else if (hour >= 19 || hour < 4) timeGreeting = 'Malam';
             
-            // [NEW] Pesan Motivasi Acak
-            const quotes = [
-                "Semoga harimu menyenangkan.",
-                "Tetap semangat melayani masyarakat.",
-                "Jaga kesehatan dan tetap fokus.",
-                "Mari berikan pelayanan terbaik.",
-                "Jangan lupa senyum, sapa, salam, sopan, dan santun.",
-                "Kerja ikhlas adalah ibadah.",
-                "Semangat mengabdi untuk negeri.",
-                "Setiap langkah kecil menuju pelayanan yang lebih baik adalah sebuah kemenangan.",
-                "Dedikasi Anda hari ini adalah harapan bagi esok hari.",
-                "Terima kasih atas kontribusi Anda dalam menjaga kesehatan bersama.",
-                "Kebaikan yang Anda tebar akan kembali dalam bentuk yang tak terduga.",
-                "Profesionalisme adalah kunci kepercayaan masyarakat.",
-                "Satu pasien sehat, satu kebahagiaan untuk kita semua.",
-                "Energi positif Anda menular, sebarkan selalu.",
-                "Hari ini adalah kesempatan baru untuk membuat perbedaan.",
-                "Kesehatan adalah investasi terbaik, mari kita jaga bersama.",
-                "Senyum Anda adalah obat bagi pasien.",
-                "Bekerjalah dengan hati, hasilnya akan sampai ke hati.",
-                "Setiap tantangan adalah peluang untuk belajar dan tumbuh.",
-                "Keikhlasan dalam bekerja akan membawa keberkahan.",
-                "Jadilah alasan seseorang tersenyum hari ini.",
-                "Pelayanan prima dimulai dari diri kita sendiri.",
-                "Bersama kita bisa mewujudkan masyarakat yang lebih sehat.",
-                "Jangan lelah berbuat baik.",
-                "Kesabaran adalah kunci dalam melayani.",
-                "Hari ini luar biasa, mari buat menjadi lebih bermakna.",
-                "Anda adalah pahlawan kesehatan bagi mereka yang membutuhkan.",
-                "Tetaplah bersinar dan memberikan yang terbaik.",
-                "Semangat pagi! Mari awali hari dengan doa dan senyuman.",
-                "Kerja keras tidak akan mengkhianati hasil.",
-                "Kesehatan masyarakat adalah prioritas utama kita.",
-                "Lelahmu hari ini akan menjadi berkah di masa depan.",
-                "Setiap senyumanmu meringankan beban pasien.",
-                "Bekerja dengan hati, melayani dengan empati.",
-                "Jadilah inspirasi bagi rekan kerja dan pasien.",
-                "Ketulusan adalah bahasa yang dimengerti oleh semua orang.",
-                "Hari ini adalah lembaran baru untuk menulis cerita kebaikan.",
-                "Tangan yang melayani lebih mulia dari bibir yang berdoa.",
-                "Kesehatan adalah harta yang paling berharga.",
-                "Mari ciptakan lingkungan kerja yang positif dan harmonis.",
-                "Setiap tindakan kecilmu berdampak besar bagi orang lain.",
-                "Teruslah belajar dan tingkatkan kompetensi diri.",
-                "Kebahagiaan sejati ditemukan dalam memberi.",
-                "Jaga semangat, jaga integritas.",
-                "Bersyukur atas kesempatan untuk melayani sesama.",
-                "Kesembuhan pasien adalah kebahagiaan kita.",
-                "Mari bekerja sama untuk Puskesmas yang lebih baik.",
-                "Disiplin adalah jembatan antara tujuan dan pencapaian.",
-                "Waktu adalah aset berharga, gunakan sebaik mungkin.",
-                "Tetap tenang dan hadapi setiap tantangan dengan bijak.",
-                "Kesehatan adalah anugerah, melayani adalah amanah.",
-                "Setiap detik pelayananmu sangat berarti bagi mereka.",
-                "Jadikan pekerjaanmu sebagai ladang pahala.",
-                "Senyum tulusmu adalah awal kesembuhan pasien.",
-                "Bekerja cerdas, bekerja tuntas, bekerja ikhlas.",
-                "Kualitas pelayanan cermin kualitas diri.",
-                "Bersama kita wujudkan masyarakat sehat dan sejahtera.",
-                "Ketelitian dan kesabaran adalah kunci keselamatan pasien.",
-                "Hari ini adalah kesempatan untuk menjadi lebih baik dari kemarin.",
-                "Tebarkan kebaikan melalui pelayanan kesehatan yang prima.",
-                "Semangatmu adalah energi bagi kesembuhan pasien.",
-                "Melayani dengan hati, menyentuh dengan kasih.",
-                "Jaga integritas, junjung tinggi profesionalitas.",
-                "Kesehatan pasien adalah prioritas, kepuasan mereka adalah kebanggaan.",
-                "Setiap tetes keringatmu dalam melayani bernilai ibadah.",
-                "Jadilah pelita yang menerangi harapan pasien.",
-                "Kerjasama tim yang solid menghasilkan pelayanan yang hebat.",
-                "Jangan pernah lelah untuk peduli dan berbagi.",
-                "Kepercayaan pasien adalah amanah yang harus dijaga.",
-                "Awali hari dengan niat baik, akhiri dengan rasa syukur."
-            ];
-            
-            // [UPDATE] Randomizer Pintar: Pastikan tidak ada pengulangan kata yang sama berturut-turut
-            let quoteIndex;
-            do {
-                quoteIndex = Math.floor(Math.random() * quotes.length);
-            } while (quoteIndex === lastQuoteIndex && quotes.length > 1);
-            lastQuoteIndex = quoteIndex;
-            const randomQuote = quotes[quoteIndex];
-            
-            // [UPDATE] Logika Pesan Suara Berbeda untuk Masuk vs Pulang
+            // [UPDATE] Logika Pesan Suara Baku & Formal
             if (result.result_code === 'CHECK_OUT_SUCCESS') {
-                // Cek apakah PSW (Pulang Sebelum Waktunya)
                 const pswMenit = result.psw_menit || 0;
                 if (pswMenit > 0) {
-                    // [PSW] Pesan tegas namun sopan, menyebut nama & menit
-                    const pswPhrases = [
-                        `Perhatian, ${display_name}. Anda tercatat pulang lebih awal ${pswMenit} menit dari jadwal yang seharusnya. Mohon diperhatikan kedisiplinan jam kerja. Tetap jaga keselamatan di jalan.`,
-                        `${display_name}, Anda pulang sebelum waktunya, lebih cepat ${pswMenit} menit dari jadwal. Data Anda telah dicatat sebagai PSW. Hati-hati di jalan, dan semoga besok lebih tepat waktu.`,
-                        `Kepada ${display_name}, Anda tercatat meninggalkan kantor ${pswMenit} menit lebih awal dari jadwal pulang. Kedisiplinan adalah kunci pelayanan prima. Sampai jumpa besok, hati-hati di jalan.`,
-                    ];
-                    const pswMsg = pswPhrases[Math.floor(Math.random() * pswPhrases.length)];
-                    SoundFX.speak(pswMsg);
+                    SoundFX.speak(`Perhatian, ${display_name} Anda tercatat meninggalkan kantor lebih awal ${pswMenit} menit. Mohon untuk selalu disiplin terhadap waktu kerja.`);
                 } else {
-                    // Checkout normal, tepat waktu atau setelah jam pulang
-                    SoundFX.speak(`Sampai jumpa, ${display_name}. Terima kasih atas dedikasi dan pelayanan Anda hari ini. Hati-hati di jalan.`);
+                    SoundFX.speak(`Sampai jumpa, ${display_name}. Data kehadiran pulang atas nama ${display_name} berhasil dicatat. terima kasih.`);
+                }
+            } else if (result.result_code === 'ALREADY_CHECKED_IN' || result.result_code === 'ALREADY_IN_CONFIRMATION') {
+                let jamMasukAudio = result.jam_masuk || '';
+                if (!jamMasukAudio && result.message) {
+                    const matchAudio = result.message.match(/(?:pukul|jam)\s+([0-9:]+)/i);
+                    if (matchAudio) jamMasukAudio = matchAudio[1];
+                }
+                if (jamMasukAudio) {
+                    SoundFX.speak(`${display_name}, Anda sudah melakukan absen masuk pada jam ${jamMasukAudio}.`);
+                } else {
+                    SoundFX.speak(`${display_name}, Anda sudah melakukan absen masuk sebelumnya.`);
                 }
             } else {
-                // [MODIFIKASI] Pesan Khusus untuk ID H87
-                if (karyawanId === 'H87') {
-                    SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet.`);
-                } else if (result.telat_menit > 0) {
-                    // [NEW] Sapaan Khusus Terlambat
-                    SoundFX.speak(`Halo ${display_name}. Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
+                if (result.telat_menit > 0) {
+                    SoundFX.speak(`Selamat datang di Puskesmas Wana, ${display_name}. Data kehadiran masuk atas nama ${display_name} berhasil dicatat. Anda tercatat terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
                 } else {
-                    // [UPDATE] Greeting lebih ramah dengan sapaan "Halo"
-                    SoundFX.speak(`Halo, Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
+                    SoundFX.speak(`Selamat datang di Puskesmas Wana, ${display_name}. Data kehadiran masuk atas nama ${display_name} berhasil dicatat. terima kasih.`);
                 }
             }
             
@@ -3640,7 +3777,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     if (result.telat_menit > 0) {
                         finalStatusText = `TERLAMBAT`;
                         finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi masuk tetap dicatat.</div><span style="font-weight:950; font-size: 2.8rem; line-height: 1.1; display:block; margin-top:10px; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5); transform: perspective(500px) rotateX(15deg); letter-spacing: 2px;">+ ${result.telat_menit} MENIT</span>`;
-                        finalStatusColor = '#10B981'; // Diubah dari Kuning Emas menjadi Hijau
+                        finalStatusColor = '#FFD700'; // Kuning untuk peringatan terlambat
                         finalBackground = ABSEN_NORMAL_BG;
                     } else {
                         finalStatusText = 'TEPAT WAKTU';

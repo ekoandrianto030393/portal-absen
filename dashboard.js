@@ -655,7 +655,7 @@ async function loadMonthlyRecap(silent = false) {
             <h2 class="text-2xl font-serif font-bold text-slate-900 uppercase tracking-widest print:text-lg print:tracking-normal print:font-bold">LAPORAN REKAPITULASI PRESENSI</h2>
             <p class="text-sm text-slate-600 font-serif italic mt-1 print:hidden">Periode Laporan: ${monthName}</p>
         </caption>
-        <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider border-b border-slate-700 bg-slate-800 text-white print:bg-white print:text-black">
+        <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider bg-slate-800 text-white print:bg-white print:text-black">
             <tr>
                 <th class="md:sticky md:left-0 md:z-40 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 text-center w-16 md:border-r border-slate-700 print:border-black">No.</th>
                 <th onclick="sortTable('table-rekap-body', 1)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-16 md:z-40 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 w-24 md:border-r border-slate-700 print:border-black text-center">ID <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
@@ -2818,7 +2818,7 @@ async function loadMonthlyMatrix(silent = false) {
                 <h2 class="text-2xl font-serif font-bold text-slate-900 uppercase tracking-widest">Detail Presensi Harian Menyamping</h2>
                 <p class="text-sm text-slate-600 font-serif italic mt-1">Periode Laporan: ${monthName}</p>
             </caption>
-            <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider border-b border-slate-700 bg-slate-800 text-white">
+            <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider bg-slate-800 text-white">
                 <tr>
                     <th class="px-4 py-3 text-center border border-slate-700 w-12">No.</th>
                     <th class="px-6 py-3 text-left border border-slate-700 w-56">Nama Pegawai</th>

@@ -31,6 +31,7 @@ import mysql.connector
 import os
 import traceback
 from models.anti_spoofing.anti_spoof_predict import AntiSpoofPredict
+from insightface_antispoof import if_antispoof
 
 # Muat konfigurasi dari file .env (sama seperti Node.js)
 load_dotenv()
@@ -52,6 +53,27 @@ anti_spoof_model = None
 MODEL_LOADED = False
 ANTISPOOF_ENABLED = False
 
+# --- KONFIGURASI ANTI-SPOOFING ---
+# Threshold: Jika skor "ASLI" di bawah angka ini, wajah dianggap PALSU.
+# Semakin rendah angkanya, semakin longgar (jarang menolak wajah asli).
+# Semakin tinggi angkanya, semakin ketat (tapi bisa menolak wajah asli).
+# Rekomendasi: 0.3 - 0.5. Default: 0.4
+ANTISPOOF_THRESHOLD = float(os.getenv('ANTISPOOF_THRESHOLD', '0.4'))
+
+# Mode Kalibrasi: Jika True, anti-spoofing hanya MENCETAK log tanpa MENOLAK.
+# Set False jika sudah yakin threshold-nya pas dan siap memblokir spoofing.
+ANTISPOOF_REJECT_ENABLED = os.getenv('ANTISPOOF_REJECT_ENABLED', 'false').lower() == 'true'
+
+# Threshold Kemiripan Wajah (Face Match InsightFace)
+# Jika foto wajah cocok dengan database, skor harus di atas angka ini.
+# Rekomendasi: 0.35 - 0.45. Default: 0.40
+FACE_MATCH_THRESHOLD = float(os.getenv('FACE_MATCH_THRESHOLD', '0.40'))
+
+# Batas Ukuran Wajah (Deteksi Jarak Jauh/Layar HP Kecil)
+# Jika foto wajah di dalam layar HP terlalu kecil, kita langsung tolak!
+MIN_FACE_WIDTH = int(os.getenv('MIN_FACE_WIDTH', '130'))
+MIN_FACE_HEIGHT = int(os.getenv('MIN_FACE_HEIGHT', '150'))
+
 def init_model():
     """Inisialisasi model InsightFace dan Anti-Spoofing"""
     global face_app, anti_spoof_model, MODEL_LOADED, ANTISPOOF_ENABLED
@@ -70,6 +92,10 @@ def init_model():
         if os.path.exists(model_path):
             ANTISPOOF_ENABLED = True
             print("✅ Model Anti-Spoofing AKTIF!")
+            print(f"   📊 Threshold Skor ASLI  : {ANTISPOOF_THRESHOLD}")
+            print(f"   🛡️ Mode Blokir Otomatis : {'AKTIF ✅' if ANTISPOOF_REJECT_ENABLED else 'NONAKTIF (Mode Kalibrasi)'}")
+            if not ANTISPOOF_REJECT_ENABLED:
+                print(f"   💡 Untuk mengaktifkan blokir, tambahkan ANTISPOOF_REJECT_ENABLED=true di file .env")
         else:
             print("⚠️ Model Anti-Spoofing TIDAK DITEMUKAN (weights missing).")
             print(f"   Harap letakkan file weights di: {model_path}")
@@ -182,10 +208,52 @@ def verify_face():
                 "message": "Wajah tidak terdeteksi oleh InsightFace (kamera)",
                 "engine": "insightface"
             })
+            
+        print(f"👥 INFO: Terdeteksi {len(camera_faces)} wajah di kamera!", flush=True)
+        for i, f in enumerate(camera_faces):
+            box = f.bbox.astype(int)
+            w, h = box[2] - box[0], box[3] - box[1]
+            print(f"   Wajah {i+1}: Lebar={w}, Tinggi={h}", flush=True)
+
+        # Urutkan berdasarkan ukuran wajah terbesar
+        camera_faces = sorted(camera_faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]), reverse=True)
+        face = camera_faces[0]
+        bbox = face.bbox.astype(int)
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+        # --- STEP 1.1: Cek Batas Jarak (Ukuran Wajah) ---
+        if w < MIN_FACE_WIDTH or h < MIN_FACE_HEIGHT:
+            print(f"🚫 SPOOFING DITOLAK! Wajah terlalu kecil/jauh (Ukuran: {w}x{h} pixel, Batas: {MIN_FACE_WIDTH}x{MIN_FACE_HEIGHT})", flush=True)
+            if ANTISPOOF_REJECT_ENABLED:
+                return jsonify({
+                    "verified": False,
+                    "message": f"Wajah terlalu jauh/kecil. Silakan mendekat ke kamera. (Ukuran Wajah: {w}x{h})",
+                    "score": 0.0,
+                    "engine": "insightface"
+                })
 
         # --- STEP 1.5: Anti-Spoofing Check (Deteksi HP/Foto) ---
         if ANTISPOOF_ENABLED:
-            face = camera_faces[0]
+            print(f"🔍 Memulai proses Anti-Spoofing untuk wajah yang terdeteksi...", flush=True)
+            
+            # --- InsightFace Texture & Geometry Check ---
+            insight_check = if_antispoof.analyze_face(camera_img, face.bbox, face.kps)
+            print(f"   [Texture/Geometry] Texture Blur Variance: {insight_check['texture_variance']:.2f} | Depth Ratio: {insight_check['depth_ratio']:.4f}", flush=True)
+            if insight_check["is_spoof"]:
+                print(f"   🚫 SPOOF DETECTED (InsightFace): {insight_check['reasons'][0]}", flush=True)
+                if ANTISPOOF_REJECT_ENABLED:
+                    return jsonify({
+                        "verified": False,
+                        "score": 0,
+                        "message": f"⚠️ TERDETEKSI FOTO/LAYAR (Terlalu Blur). Gunakan wajah asli. (Var: {insight_check['texture_variance']:.1f})",
+                        "engine": "anti_spoofing",
+                        "antispoof_detail": {
+                            "reasons": insight_check["reasons"],
+                            "variance": insight_check["texture_variance"]
+                        }
+                    }), 403
+
+            # --- MiniFASNet Check ---
             bbox = face.bbox.astype(int)
             # Pastikan bbox valid
             # Logic Crop Persegi Sempurna untuk Anti-Spoofing
@@ -196,41 +264,90 @@ def verify_face():
             center_x = bbox[0] + w/2
             center_y = bbox[1] + h/2
             
-            # Skala 2.7x dari sisi terpanjang
-            scale = 2.7
-            new_side = side * scale
+            models = [
+                {"path": "models/anti_spoofing/2.7_80x80_MiniFASNetV2.pth", "scale": 2.7}
+            ]
             
-            x1 = int(max(0, center_x - new_side/2))
-            y1 = int(max(0, center_y - new_side/2))
-            x2 = int(min(camera_img.shape[1], center_x + new_side/2))
-            y2 = int(min(camera_img.shape[0], center_y + new_side/2))
+            prediction = np.zeros((1, 3))
             
-            face_img = camera_img[y1:y2, x1:x2]
+            for m in models:
+                scale = m["scale"]
+                model_path = m["path"]
+                
+                src_h, src_w = camera_img.shape[:2]
+                x, y = bbox[0], bbox[1]
+                box_w, box_h = w, h
+                
+                # Clamp scale (Logika Original MiniFASNet)
+                scale = min((src_h-1)/box_h, min((src_w-1)/box_w, scale))
+                
+                new_width = box_w * scale
+                new_height = box_h * scale
+                center_x, center_y = box_w/2+x, box_h/2+y
+                
+                left_top_x = center_x-new_width/2
+                left_top_y = center_y-new_height/2
+                right_bottom_x = center_x+new_width/2
+                right_bottom_y = center_y+new_height/2
+                
+                if left_top_x < 0:
+                    right_bottom_x -= left_top_x
+                    left_top_x = 0
+                if left_top_y < 0:
+                    right_bottom_y -= left_top_y
+                    left_top_y = 0
+                if right_bottom_x > src_w-1:
+                    left_top_x -= right_bottom_x-src_w+1
+                    right_bottom_x = src_w-1
+                if right_bottom_y > src_h-1:
+                    left_top_y -= right_bottom_y-src_h+1
+                    right_bottom_y = src_h-1
+                    
+                face_img = camera_img[int(left_top_y): int(right_bottom_y+1), int(left_top_x): int(right_bottom_x+1)]
+                
+                if face_img.size > 0:
+                    if scale == 2.7:
+                        cv2.imwrite("debug_antispoof_27.jpg", face_img)
+                    else:
+                        cv2.imwrite("debug_antispoof_40.jpg", face_img)
+                    
+                    pred = anti_spoof_model.predict(face_img, model_path)
+                    prediction += pred
             
-            # Tambahkan padding jika potongan di pinggir layar tidak square
-            if face_img.shape[0] != face_img.shape[1] and face_img.size > 0:
-                fh, fw = face_img.shape[:2]
-                diff = abs(fh - fw)
-                if fh < fw:
-                    face_img = cv2.copyMakeBorder(face_img, diff//2, diff-diff//2, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
+            # Rata-rata dari 2 model
+            prediction /= len(models)
+                
+            # Output model setelah softmax: 3 probabilitas
+            # Index 0 = Probabilitas PALSU (foto/layar)
+            # Index 1 = Probabilitas ASLI (wajah nyata)
+            # Index 2 = Probabilitas TIDAK PASTI
+            prob_fake_1 = prediction[0][0]
+            prob_real = prediction[0][1]
+            prob_fake_2 = prediction[0][2]
+            
+            # Total skor PALSU adalah gabungan dari Class 0 dan Class 2
+            total_fake = prob_fake_1 + prob_fake_2
+            
+            print(f"🔍 Anti-Spoof: ASLI={prob_real:.4f} | PALSU_Total={total_fake:.4f} (Batas: {ANTISPOOF_THRESHOLD})", flush=True)
+            
+            # Tolak jika skor ASLI di bawah threshold DAN mode reject sudah diaktifkan
+            if prob_real < ANTISPOOF_THRESHOLD:
+                if ANTISPOOF_REJECT_ENABLED:
+                    print(f"🚫 SPOOFING DITOLAK! Skor ASLI={prob_real:.4f} < Batas {ANTISPOOF_THRESHOLD}", flush=True)
+                    return jsonify({
+                        "verified": False,
+                        "score": 0,
+                        "message": f"⚠️ TERDETEKSI SPOOFING! Gunakan wajah asli. (Skor: {prob_real:.2f})",
+                        "engine": "anti_spoofing",
+                        "antispoof_detail": {
+                            "real": float(prob_real),
+                            "fake": float(prob_fake_1),
+                            "uncertain": float(prob_fake_2),
+                            "threshold": ANTISPOOF_THRESHOLD
+                        }
+                    }), 403
                 else:
-                    face_img = cv2.copyMakeBorder(face_img, 0, 0, diff//2, diff-diff//2, cv2.BORDER_CONSTANT, value=[0,0,0])
-            
-            if face_img.size > 0:
-                model_path = "models/anti_spoofing/2.7_80x80_MiniFASNetV2.pth"
-                prediction = anti_spoof_model.predict(face_img, model_path)
-                # Ambil 5 nilai tertinggi
-                top_indices = np.argsort(prediction[0])[-5:][::-1]
-                top_values = [f"Idx{i}:{prediction[0][i]:.2f}" for i in top_indices]
-                
-                # Hitung L2 Norm (Panjang Vektor)
-                vector_norm = np.linalg.norm(prediction[0])
-                
-                print(f"🔍 DEBUG Anti-Spoof: Norm={vector_norm:.4f} | Top {top_values}")
-                
-                # SEMENTARA: Kita biarkan lewat dulu (Skip Reject)
-                if False and vector_norm < 0.1: # Contoh threshold norm
-                    print(f"⚠️ REJECTED: Norm {vector_norm:.4f}")
+                    print(f"⚠️ MODE KALIBRASI: Spoofing terdeteksi tapi TIDAK ditolak (ANTISPOOF_REJECT_ENABLED=false)", flush=True)
 
         camera_embedding = camera_faces[0].embedding.astype(np.float32)
 
@@ -285,21 +402,20 @@ def verify_face():
         # --- STEP 4: Bandingkan kedua embedding ---
         similarity_score = compute_sim(camera_embedding, stored_embedding)
 
-        # Threshold untuk InsightFace (biasanya 0.4-0.6 sudah cukup akurat)
-        VERIFICATION_THRESHOLD = 0.45
-        is_verified = similarity_score > VERIFICATION_THRESHOLD
+        # Threshold untuk InsightFace diambil dari .env (default 0.40)
+        is_verified = similarity_score > FACE_MATCH_THRESHOLD
 
         # Status warna untuk frontend
         if similarity_score > 0.6:
             confidence_level = "TINGGI"
-        elif similarity_score > VERIFICATION_THRESHOLD:
+        elif similarity_score > FACE_MATCH_THRESHOLD:
             confidence_level = "CUKUP"
         else:
             confidence_level = "RENDAH"
 
         print(f"{'✅' if is_verified else '❌'} Verifikasi [{karyawan_id}] {db_result['nama']}: "
               f"Score={similarity_score:.4f} ({confidence_level}) | "
-              f"Threshold={VERIFICATION_THRESHOLD}")
+              f"Threshold={FACE_MATCH_THRESHOLD}")
 
         return jsonify({
             "verified": is_verified,
@@ -333,6 +449,123 @@ def verify_face():
 
 
 # =============================================================================
+# ENDPOINT: KALIBRASI ANTI-SPOOFING
+# =============================================================================
+@app.route('/antispoof-test', methods=['POST'])
+def antispoof_test():
+    """Endpoint khusus untuk menguji Anti-Spoofing.
+    Kirim foto wajah asli dan foto dari layar HP untuk melihat perbedaan skor.
+    Tidak akan menolak apapun, hanya menampilkan hasil analisis."""
+    if not ANTISPOOF_ENABLED or not MODEL_LOADED:
+        return jsonify({"error": "Anti-Spoofing atau InsightFace belum aktif"}), 503
+    
+    try:
+        data = request.get_json()
+        image_base64 = data.get('image', '')
+        
+        if not image_base64:
+            return jsonify({"error": "Parameter 'image' (base64) wajib diisi"}), 400
+        
+        camera_img = decode_base64_image(image_base64)
+        if camera_img is None:
+            return jsonify({"error": "Gagal decode gambar"}), 400
+        
+        # Deteksi wajah
+        camera_faces = face_app.get(camera_img)
+        if not camera_faces:
+            return jsonify({"error": "Tidak ada wajah terdeteksi dalam gambar"}), 400
+        
+        face = camera_faces[0]
+        bbox = face.bbox.astype(int)
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
+        side = max(w, h)
+        models = [
+            {"path": "models/anti_spoofing/2.7_80x80_MiniFASNetV2.pth", "scale": 2.7}
+        ]
+        
+        # --- InsightFace Texture & Geometry Check ---
+        insight_check = if_antispoof.analyze_face(camera_img, face.bbox, face.kps)
+        
+        prediction = np.zeros((1, 3))
+        
+        for m in models:
+            scale = m["scale"]
+            model_path = m["path"]
+            
+            src_h, src_w = camera_img.shape[:2]
+            x, y = bbox[0], bbox[1]
+            box_w, box_h = w, h
+            
+            scale = min((src_h-1)/box_h, min((src_w-1)/box_w, scale))
+            
+            new_width = box_w * scale
+            new_height = box_h * scale
+            center_x, center_y = box_w/2+x, box_h/2+y
+            
+            left_top_x = center_x-new_width/2
+            left_top_y = center_y-new_height/2
+            right_bottom_x = center_x+new_width/2
+            right_bottom_y = center_y+new_height/2
+            
+            if left_top_x < 0:
+                right_bottom_x -= left_top_x
+                left_top_x = 0
+            if left_top_y < 0:
+                right_bottom_y -= left_top_y
+                left_top_y = 0
+            if right_bottom_x > src_w-1:
+                left_top_x -= right_bottom_x-src_w+1
+                right_bottom_x = src_w-1
+            if right_bottom_y > src_h-1:
+                left_top_y -= right_bottom_y-src_h+1
+                right_bottom_y = src_h-1
+                
+            face_img = camera_img[int(left_top_y): int(right_bottom_y+1), int(left_top_x): int(right_bottom_x+1)]
+            
+            if face_img.size > 0:
+                pred = anti_spoof_model.predict(face_img, model_path)
+                prediction += pred
+                
+        prediction /= len(models)
+        
+        fake_score = float(prediction[0][0])
+        real_score = float(prediction[0][1])
+        uncertain_score = float(prediction[0][2])
+        
+        is_real = real_score >= ANTISPOOF_THRESHOLD
+        
+        # Jika insightface bilang spoof, maka ubah jadi fake
+        if insight_check["is_spoof"]:
+            is_real = False
+            
+        label = "ASLI (Wajah Nyata)" if is_real else "PALSU (Foto/Layar)"
+        
+        print(f"🧪 KALIBRASI Anti-Spoof: {label} | ASLI={real_score:.4f} PALSU={fake_score:.4f} RAGU={uncertain_score:.4f}")
+        print(f"   [Texture/Geometry] Var: {insight_check['texture_variance']:.2f} | Depth: {insight_check['depth_ratio']:.4f}")
+        
+        return jsonify({
+            "result": label,
+            "is_real": bool(is_real),
+            "scores": {
+                "real": round(real_score, 4),
+                "fake": round(fake_score, 4),
+                "uncertain": round(uncertain_score, 4)
+            },
+            "insightface_metrics": {
+                "texture_variance": round(insight_check['texture_variance'], 2),
+                "depth_ratio": round(insight_check['depth_ratio'], 4),
+                "is_spoof": insight_check['is_spoof'],
+                "reasons": insight_check['reasons']
+            },
+            "threshold": ANTISPOOF_THRESHOLD,
+            "recommendation": "Perhatikan 'texture_variance'. Foto dari layar HP biasanya memiliki variance < 35."
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =============================================================================
 # START SERVER
 # =============================================================================
 if __name__ == '__main__':
@@ -359,8 +592,9 @@ if __name__ == '__main__':
         print("💡 Pastikan XAMPP MySQL sudah di-Start!")
 
     print(f"\n🚀 Python Server berjalan di http://localhost:5000")
-    print(f"   Health Check: http://localhost:5000/health")
-    print(f"   Verification: POST http://localhost:5000/verify")
+    print(f"   Health Check : http://localhost:5000/health")
+    print(f"   Verification : POST http://localhost:5000/verify")
+    print(f"   Kalibrasi    : POST http://localhost:5000/antispoof-test")
     print("=" * 60)
 
     # Gunakan Waitress sebagai server produksi yang lebih stabil daripada app.run()

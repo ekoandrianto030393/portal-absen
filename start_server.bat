@@ -1,36 +1,27 @@
 @echo off
-:: ==================================================
-:: LAUNCHER OTOMATIS - BIOMETRIK ABSENSI
-:: ==================================================
-title Server Biometrik Absensi
 cd /d "%~dp0"
+color 0A
+title BIOMETRIK STARTUP MANAGER
 
-cls
+echo =======================================================
+echo          SISTEM ABSENSI BIOMETRIK (DUAL SERVER)
+echo =======================================================
 echo.
-echo [SYSTEM] Sedang mempersiapkan server...
-echo [SYSTEM] Mohon tunggu sebentar...
+echo [1] Menyalakan Server Node.js (Frontend ^& DB Route)...
+start "NODE.JS SERVER (BIOMETRIK)" cmd /k "%~dp0run_node.bat"
+
+timeout /t 2 /nobreak > NUL
+
 echo.
+echo [2] Menyalakan Server Python (InsightFace ^& Anti-Spoof)...
+start "PYTHON SERVER (ANTI-SPOOFING)" cmd /k "%~dp0run_python.bat"
 
-echo ============================================================
-echo [INFO] UNTUK AKSES DARI KOMPUTER/HP LAIN (SATU WIFI):
-echo Gunakan IP Address di bawah ini, contoh: http://192.168.1.5:3000/scan.html
-ipconfig | findstr /i "IPv4 IP Address Alamat"
-echo ============================================================
 echo.
-
-:: 1. Buka Browser Otomatis (Delay 3 detik agar server siap)
-timeout /t 3 /nobreak >nul
-echo [SYSTEM] Membuka Dashboard Absensi...
-start http://localhost:3000/scan.html
-
-:: 2. Jalankan Server Python untuk Verifikasi Wajah
-echo [SYSTEM] Menjalankan Service Python (Face Verification)...
-start cmd /k "python python_server.py"
-
-:: 3. Jalankan Server Node.js
-echo [SYSTEM] Menjalankan Service Node.js...
-echo [INFO]   Tekan CTRL+C untuk mematikan server.
+echo =======================================================
+echo SELESAI! DUA JENDELA TERMINAL TELAH TERBUKA!
 echo.
-node server.js
-
+echo PENTING: JANGAN TUTUP KEDUA JENDELA HITAM TERSEBUT.
+echo Jika ditutup, server akan mati. Silakan di-minimize saja.
+echo =======================================================
+echo.
 pause

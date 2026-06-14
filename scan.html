@@ -14,12 +14,12 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
 
     <!-- Babylon.js Core & Loaders -->
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="libs/babylon.js"></script>
+    <script src="libs/babylonjs.loaders.min.js"></script>
     
     <!-- Load full TensorFlow.js bundle to provide the loader components needed by BlazeFace -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.0/dist/tf.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="libs/tf.min.js"></script>
+    <script src="libs/tailwindcss.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -47,7 +47,7 @@
             }
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+    <script src="libs/face-api.js"></script>
     <script src="./models/blazeface.js"></script> <!-- Gunakan file lokal Anda -->
     <!-- FONT PREMIUM: Playfair Display & Outfit -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -89,36 +89,25 @@
         animation: ambientBlob 20s ease-in-out infinite alternate;
     }
 
-    /* Metallic Gold Text */
-    @keyframes metallicShine {
-        0% { background-position: -200% center; }
-        100% { background-position: 200% center; }
-    }
+    /* Solid Brushed Brass Text (Premium) */
     .text-metallic-gold {
-        background: linear-gradient(
-            to right, 
-            #BF953F 0%, 
-            #FCF6BA 25%, 
-            #B38728 50%, 
-            #FBF5B7 75%, 
-            #AA771C 100%
-        );
+        background: linear-gradient(135deg, #E6D0A8 0%, #B59A72 40%, #8C734B 60%, #C4A87E 100%);
         background-size: 200% auto;
         color: transparent;
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
-        animation: metallicShine 6s linear infinite;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Subtle drop shadow instead of neon */
     }
 
-    /* Breathing Glow (Luxurious Pulse) */
+    /* Luxurious Pulse (Very soft, non-intrusive) */
     @keyframes breathingGlow {
-        0% { opacity: 0.5; text-shadow: 0 0 2px rgba(210,164,93,0.3); box-shadow: 0 0 2px rgba(210,164,93,0.3); }
-        50% { opacity: 1; text-shadow: 0 0 12px rgba(210,164,93,0.8); box-shadow: 0 0 12px rgba(210,164,93,0.8); }
-        100% { opacity: 0.5; text-shadow: 0 0 2px rgba(210,164,93,0.3); box-shadow: 0 0 2px rgba(210,164,93,0.3); }
+        0% { opacity: 0.8; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        50% { opacity: 1; box-shadow: 0 4px 20px rgba(181, 154, 114, 0.15); }
+        100% { opacity: 0.8; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
     }
     .animate-breathing {
-        animation: breathingGlow 4s ease-in-out infinite;
+        animation: breathingGlow 6s ease-in-out infinite;
     }
 
     /* Background Ornamen Watermark */
@@ -132,13 +121,13 @@
 
     body {
         font-family: 'Outfit', sans-serif;
-        background-color: #0b1f16; /* Slightly lighter and softer green base */
+        background-color: #06120D; /* Very Deep Forest Green */
         background-image: 
-            radial-gradient(circle at 15% 15%, rgba(20, 150, 100, 0.35), transparent 55%), /* Lighter Emerald glow */
-            radial-gradient(circle at 85% 85%, rgba(20, 150, 100, 0.25), transparent 60%), /* Lighter Emerald glow */
-            radial-gradient(circle at 50% 50%, rgba(210, 164, 93, 0.05), transparent 60%), /* Subtle Gold center */
-            linear-gradient(rgba(229, 228, 226, 0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(229, 228, 226, 0.02) 1px, transparent 1px);
+            radial-gradient(circle at 15% 15%, rgba(6, 40, 25, 0.8), transparent 55%), /* Deep subtle green */
+            radial-gradient(circle at 85% 85%, rgba(6, 40, 25, 0.6), transparent 60%),
+            radial-gradient(circle at 50% 50%, rgba(181, 154, 114, 0.03), transparent 60%), /* Very subtle brass */
+            linear-gradient(rgba(229, 228, 226, 0.015) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(229, 228, 226, 0.015) 1px, transparent 1px);
         background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
         color: #f8fafc; /* slate-50 */
         margin: 0;
@@ -663,56 +652,11 @@
             </div>
         </div>
         <script>
-            window.LivenessCheck = {
-                EAR_THRESHOLD: 0.35,
-                BLINK_FRAMES: 1,
-                YAW_THRESHOLD_L: 0.4,
-                YAW_THRESHOLD_R: 0.6,
-                consecutiveCloseFrames: 0,
-                lastEAR: 0,
-                lastYaw: 0.5,
-                isLive: false,
-                getEAR: function (eye) {
-                    const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
-                    const v1 = dist(eye[1], eye[5]);
-                    const v2 = dist(eye[2], eye[4]);
-                    const h = dist(eye[0], eye[3]);
-                    return (v1 + v2) / (2.0 * h);
-                },
-                getHeadYaw: function (landmarks) {
-                    const nose = landmarks.getNose()[3];
-                    const leftJaw = landmarks.getJawOutline()[0];
-                    const rightJaw = landmarks.getJawOutline()[16];
-                    const distLeft = Math.hypot(nose.x - leftJaw.x, nose.y - leftJaw.y);
-                    const distRight = Math.hypot(nose.x - rightJaw.x, nose.y - rightJaw.y);
-                    if (distLeft + distRight === 0) return 0.5;
-                    return distLeft / (distLeft + distRight);
-                },
-                update: function (landmarks) {
-                    if (!landmarks) return false;
-                    if (this.isLive) return true;
-                    const leftEye = landmarks.getLeftEye();
-                    const rightEye = landmarks.getRightEye();
-                    const avgEAR = (this.getEAR(leftEye) + this.getEAR(rightEye)) / 2.0;
-                    this.lastEAR = avgEAR;
-                    if (avgEAR < this.EAR_THRESHOLD) {
-                        this.consecutiveCloseFrames++;
-                        if (this.consecutiveCloseFrames >= this.BLINK_FRAMES) {
-                            this.isLive = true;
-                            return true;
-                        }
-                    } else {
-                        this.consecutiveCloseFrames = 0;
-                    }
-                    const yaw = this.getHeadYaw(landmarks);
-                    this.lastYaw = yaw;
-                    if (yaw < this.YAW_THRESHOLD_L || yaw > this.YAW_THRESHOLD_R) {
-                        this.isLive = true;
-                    }
-                    return this.isLive;
-                },
-                reset: function () { this.isLive = false; this.consecutiveCloseFrames = 0; }
-            };
+            // --- ANTI-SPOOFING LIVENESS DETECTION ---
+            // Implementasi lengkap ada di scan.js (class LivenessDetector)
+            // Sistem challenge-response: meminta user gerakkan kepala ke arah acak
+            // Dilengkapi TTS instruksi dan visual overlay di canvas
+            // window.LivenessCheck diinisiasi oleh scan.js
         </script>
         <img src="logo.jpg" class="institutional-watermark" alt="Watermark">
         <div class="ambient-particle" style="left: 5%; --duration: 18s; --delay: 0s;"></div>
