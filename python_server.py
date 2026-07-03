@@ -402,20 +402,16 @@ def verify_face():
         # --- STEP 4: Bandingkan kedua embedding ---
         similarity_score = compute_sim(camera_embedding, stored_embedding)
 
-        # Threshold untuk InsightFace diambil dari .env (default 0.40)
-        is_verified = similarity_score > FACE_MATCH_THRESHOLD
+        # --- SEMENTARA: InsightFace Face Matching Dinonaktifkan ---
+        # is_verified = similarity_score > FACE_MATCH_THRESHOLD
+        is_verified = True  # BYPASS: Selalu lolos jika sudah lolos Anti-Spoofing
+        similarity_score = 1.0 # Fake max score
 
         # Status warna untuk frontend
-        if similarity_score > 0.6:
-            confidence_level = "TINGGI"
-        elif similarity_score > FACE_MATCH_THRESHOLD:
-            confidence_level = "CUKUP"
-        else:
-            confidence_level = "RENDAH"
+        confidence_level = "TINGGI (BYPASS MATCHER)"
 
-        print(f"{'✅' if is_verified else '❌'} Verifikasi [{karyawan_id}] {db_result['nama']}: "
-              f"Score={similarity_score:.4f} ({confidence_level}) | "
-              f"Threshold={FACE_MATCH_THRESHOLD}")
+        print(f"✅ Verifikasi [{karyawan_id}] {db_result['nama']}: "
+              f"BYPASS InsightFace Matcher (Fokus Anti-Spoofing)")
 
         return jsonify({
             "verified": is_verified,

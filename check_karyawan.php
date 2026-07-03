@@ -2,11 +2,25 @@
 // check_karyawan.php - Script untuk mengecek isi database tanpa phpMyAdmin
 header("Content-Type: text/html");
 
-// Konfigurasi sama persis dengan register_face.php
-$host = '127.0.0.1';
-$db   = 'biometrik_absensi_wajah_db';
-$user = 'root';
-$pass = ''; 
+// Fungsi untuk meload file .env
+function loadEnv($path) {
+    if (!file_exists($path)) return;
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        if (strpos($line, '=') !== false) {
+            list($name, $value) = explode('=', $line, 2);
+            $_ENV[trim($name)] = trim($value);
+        }
+    }
+}
+loadEnv(__DIR__ . '/.env');
+
+// Konfigurasi dari .env
+$host = $_ENV['DB_HOST'] ?? '127.0.0.1';
+$db   = $_ENV['DB_NAME'] ?? 'biometrik_absensi_wajah_db';
+$user = $_ENV['DB_USER'] ?? 'root';
+$pass = $_ENV['DB_PASS'] ?? '';
 
 echo "<h1>Cek Data Database</h1>";
 

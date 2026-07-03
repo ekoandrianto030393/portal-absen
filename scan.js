@@ -679,7 +679,7 @@ if (stealthToggle) {
 
 let FACE_MATCHING_THRESHOLD = 0.45; // [UPDATE] Diperketat ke 0.40 untuk Akurasi Tinggi (Anti-Acak)
 // --- DEFINISI WARNA (Mewah & Berwibawa) ---
-const PROFESSIONAL_STATUS_COLOR = '#D2A45D'; // Champagne Gold
+const PROFESSIONAL_STATUS_COLOR = '#D4AF37'; // Champagne Gold
 const NAME_HIGHLIGHT_COLOR = '#E5E4E2'; // Platinum
 const HEADER_COLOR = '#C58B45'; // Deep Gold
 const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(165,108,54,0.8) 0%, rgba(108,72,43,0.95) 100%)'; // Elegant Amber
@@ -2196,7 +2196,7 @@ function animateTitle() {
             margin: 0 auto; 
             padding: 16px; 
             border: 1px solid rgba(221, 188, 130, 0.5); 
-            background: linear-gradient(135deg, rgba(2, 44, 34, 0.9) 0%, rgba(2, 44, 34, 0.95) 100%);
+            background: linear-gradient(135deg, rgba(3, 7, 18, 0.9) 0%, rgba(3, 7, 18, 0.95) 100%);
             backdrop-filter: blur(20px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(221, 188, 130, 0.05);
             position: relative;
@@ -3750,7 +3750,7 @@ async function processAttendance(karyawanId, imageBase64) {
                 }
             } else {
                 if (result.telat_menit > 0) {
-                    SoundFX.speak(`Selamat datang di Puskesmas Wana, ${display_name}. Data kehadiran masuk atas nama ${display_name} berhasil dicatat. Anda tercatat terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
+                    SoundFX.speak(`${display_name}, Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
                 } else {
                     SoundFX.speak(`Selamat datang di Puskesmas Wana, ${display_name}. Data kehadiran masuk atas nama ${display_name} berhasil dicatat. terima kasih.`);
                 }
@@ -3797,12 +3797,12 @@ async function processAttendance(karyawanId, imageBase64) {
                         finalStatusText = 'PULANG CEPAT (PSW)';
                         // Gunakan pesan dari server yang berisi detail menit PSW
                         finalMessageHTML = `<span style="font-weight:bold; text-shadow: 0 0 15px rgba(255,255,255,0.3);">${cleanMessage}</span>`;
-                        finalStatusColor = '#10B981'; // Diubah dari Kuning Emas menjadi Hijau
+                        finalStatusColor = '#D4AF37'; // Diubah dari Kuning Emas menjadi Hijau
                         finalBackground = ABSEN_NORMAL_BG;
                     } else {
                         finalStatusText = 'CHECK-OUT BERHASIL';
                         finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi PULANG Terkonfirmasi.</div><span style="font-weight:900; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">Hati-hati di jalan.</span>`;
-                        finalStatusColor = '#10B981'; // Hijau Spring (Sama seperti Check-In)
+                        finalStatusColor = '#D4AF37'; // Hijau Spring (Sama seperti Check-In)
                         finalBackground = ABSEN_NORMAL_BG;
                     }
                     logAttendance(display_name, serverTimestamp); // Log ke panel kanan
@@ -3812,7 +3812,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     finalStatusText = 'SUDAH ABSEN MASUK';
                     finalMessageHTML = `<span style="font-weight:950; font-size: 2rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">DATA TERKONFIRMASI</span><br><span style="font-size: 1.1rem; opacity: 0.8;">Anda sudah melakukan absen masuk.</span>`;
                     finalBackground = ABSEN_NORMAL_BG;
-                    finalStatusColor = '#10B981';
+                    finalStatusColor = '#D4AF37';
                     break;
                 case 'STATUS_CONFIRMED':
                 default: // Fallback untuk kasus sukses lainnya
@@ -3827,7 +3827,7 @@ async function processAttendance(karyawanId, imageBase64) {
             if (centerSuccessPopup) {
                 const photoSrc = employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : 'logo.jpg';
                 const statusColorPop = result.result_code === 'CHECK_IN_SUCCESS' || result.result_code === 'ALREADY_IN_CONFIRMATION' ? 'bg-[#10B981]' : 'bg-[#f43f5e]';
-                const glowColorPop = result.result_code === 'CHECK_IN_SUCCESS' || result.result_code === 'ALREADY_IN_CONFIRMATION' ? '#10B981' : '#f43f5e';
+                const glowColorPop = result.result_code === 'CHECK_IN_SUCCESS' || result.result_code === 'ALREADY_IN_CONFIRMATION' ? '#D4AF37' : '#f43f5e';
                 
                 centerSuccessPopup.innerHTML = `
                     <div class="flex items-center p-4 rounded-xl border border-champagne-500/50 bg-[#061811]/95 backdrop-blur-xl shadow-[0_15px_40px_rgba(0,0,0,0.8),0_0_20px_${glowColorPop}80] overflow-hidden relative w-full">

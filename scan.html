@@ -140,11 +140,23 @@
         position: relative;
         height: 100%;
     }
-    #personnelRoster, #cutiRoster, #dlRoster {
+    #personnelRoster {
         display: flex;
         flex-direction: column;
         gap: 8px;
         animation: rosterTickerVertical 30s linear infinite;
+    }
+    #dlRoster {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        animation: rosterTickerVertical 30s linear infinite;
+    }
+    #cutiRoster {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        animation: rosterTickerVertical 18s linear infinite;
     }
     #personnelRoster:hover, #cutiRoster:hover, #dlRoster:hover {
         animation-play-state: paused;
@@ -527,18 +539,18 @@
                         <div class="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none z-20 mix-blend-overlay"></div>
                     <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
                         <div class="w-56 h-72 relative">
-                            <div class="absolute top-0 left-0 w-12 h-12 border-t-[3px] border-l-[3px] border-[#D2A45D]/80 rounded-tl-2xl shadow-[-5px_-5px_15px_rgba(210,164,93,0.2)]"></div>
+                            <div class="absolute top-0 left-0 w-12 h-12 border-t-[3px] border-l-[3px] border-[#D4AF37]/80 rounded-tl-2xl shadow-[-5px_-5px_15px_rgba(210,164,93,0.2)]"></div>
                             <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-emerald-400 rounded-tl-lg m-2"></div>
-                            <div class="absolute top-0 right-0 w-12 h-12 border-t-[3px] border-r-[3px] border-[#D2A45D]/80 rounded-tr-2xl shadow-[5px_-5px_15px_rgba(210,164,93,0.2)]"></div>
+                            <div class="absolute top-0 right-0 w-12 h-12 border-t-[3px] border-r-[3px] border-[#D4AF37]/80 rounded-tr-2xl shadow-[5px_-5px_15px_rgba(210,164,93,0.2)]"></div>
                             <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-emerald-400 rounded-tr-lg m-2"></div>
-                            <div class="absolute bottom-0 left-0 w-12 h-12 border-b-[3px] border-l-[3px] border-[#D2A45D]/80 rounded-bl-2xl shadow-[-5px_5px_15px_rgba(210,164,93,0.2)]"></div>
+                            <div class="absolute bottom-0 left-0 w-12 h-12 border-b-[3px] border-l-[3px] border-[#D4AF37]/80 rounded-bl-2xl shadow-[-5px_5px_15px_rgba(210,164,93,0.2)]"></div>
                             <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-emerald-400 rounded-bl-lg m-2"></div>
-                            <div class="absolute bottom-0 right-0 w-12 h-12 border-b-[3px] border-r-[3px] border-[#D2A45D]/80 rounded-br-2xl shadow-[5px_5px_15px_rgba(210,164,93,0.2)]"></div>
+                            <div class="absolute bottom-0 right-0 w-12 h-12 border-b-[3px] border-r-[3px] border-[#D4AF37]/80 rounded-br-2xl shadow-[5px_5px_15px_rgba(210,164,93,0.2)]"></div>
                             <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-emerald-400 rounded-br-lg m-2"></div>
-                            <div class="absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D2A45D] to-transparent opacity-100 shadow-[0_0_8px_rgba(210,164,93,1),0_0_20px_rgba(210,164,93,0.5)] animate-[aiScan_2.5s_ease-in-out_infinite]"></div>
+                            <div class="absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-100 shadow-[0_0_8px_rgba(210,164,93,1),0_0_20px_rgba(210,164,93,0.5)] animate-[aiScan_2.5s_ease-in-out_infinite]"></div>
                         </div>
                     </div>
-                    <div class="absolute top-4 left-4 text-xs font-mono font-bold leading-tight pointer-events-none z-20 text-[#D2A45D] p-3 min-w-[180px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                    <div class="absolute top-4 left-4 text-xs font-mono font-bold leading-tight pointer-events-none z-20 text-[#D4AF37] p-3 min-w-[180px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                         <div class="flex items-center gap-1.5 text-[#f8e3a1] mb-2 border-b border-[rgba(210,164,93,0.3)] pb-1.5 uppercase font-sans tracking-widest text-[9px] animate-breathing">
                             <i class="fa-solid fa-crosshairs text-champagne-400"></i> BIOSCAN_V5.0
                         </div>

@@ -535,9 +535,10 @@ async function loadViewDbData() {
         
         tbody.innerHTML = '';
         if (result.data && result.data.length > 0) {
+            let htmlContent = '';
             result.data.forEach(row => {
                 const dateOnly = row.tanggal ? row.tanggal.split('T')[0] : '-';
-                tbody.innerHTML += `
+                htmlContent += `
                     <tr class="hover:bg-slate-50">
                         <td class="px-4 py-2 font-mono">${row.id_absensi}</td>
                         <td class="px-4 py-2 font-mono">${row.id_karyawan}</td>
@@ -563,6 +564,7 @@ async function loadViewDbData() {
                     </tr>
                 `;
             });
+            tbody.innerHTML = htmlContent;
         } else {
             tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500">Tidak ada data untuk ${type === 'daily' ? 'tanggal' : 'bulan'} ini.</td></tr>`;
         }
@@ -769,6 +771,7 @@ async function loadMonthlyRecap(silent = false) {
                 jaspelInfo.innerHTML = `Total Jasa 60%: <b>${new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR'}).format(jaspelPool)}</b> | Nilai/Poin: <b>${new Intl.NumberFormat('id-ID').format(nilaiPerSatuPoin)}</b>`;
             }
 
+            let htmlContent = '';
             result.data.forEach((row, index) => {
                 // Hitung total saat looping
                 tHadir += parseInt(row.total_masuk) || 0;
@@ -833,7 +836,7 @@ async function loadMonthlyRecap(silent = false) {
                 // const persentase = Math.round(((parseInt(row.total_masuk) + parseInt(row.total_dl)) / totalHariKerja) * 100);
                 const persentase = totalHariKerja > 0 ? Math.round(((parseInt(row.total_masuk) || 0) / totalHariKerja) * 100) : 0; // [FIXED] Cukup hitung dari total_masuk.
 
-                tbody.innerHTML += `
+                htmlContent += `
                     <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-slate-50 border-b border-slate-200 last:border-0 group">
                         <td class="md:sticky md:left-0 md:z-10 sticky-col group-hover:!bg-slate-50 px-6 py-3 text-center font-mono text-slate-800 md:border-r border-slate-200 print:static print:bg-white print:border-b print:border-black">${index + 1}</td>
                         <td class="md:sticky md:left-16 md:z-10 sticky-col group-hover:!bg-slate-50 px-6 py-3 font-mono text-slate-800 md:border-r border-slate-200 print:static print:bg-white print:border-b print:border-black text-center">${row.id_karyawan}</td>
@@ -842,12 +845,12 @@ async function loadMonthlyRecap(silent = false) {
                         <td class="px-6 py-3 text-center">
                             <span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
                         </td>
-                        <td class="px-6 py-3 text-center cursor-pointer hover:bg-slate-50" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');" title="Klik untuk melihat di Data View Absensi Harian">
+                        <td class="px-6 py-3 text-center cursor-pointer hover:bg-slate-50" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'DL');" title="Klik untuk melihat di Data View Absensi Harian">
                             <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold text-xs border border-blue-200">${row.total_dl || 0}</span>
                         </td>
-                        <td class="px-6 py-3 text-center bg-rose-50/50 text-rose-700 font-bold border-l border-r border-slate-200 cursor-pointer hover:bg-rose-100 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');" title="Klik untuk melihat di Data View Absensi Harian">${row.total_sakit || 0}</td>
-                        <td class="px-6 py-3 text-center bg-purple-50/50 text-purple-700 font-bold border-r border-slate-200 cursor-pointer hover:bg-purple-100 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');" title="Klik untuk melihat di Data View Absensi Harian">${row.total_izin || 0}</td>
-                        <td class="px-6 py-3 text-center bg-orange-50/50 text-orange-700 font-bold border-r border-slate-200 cursor-pointer hover:bg-orange-100 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');" title="Klik untuk melihat di Data View Absensi Harian">${row.total_cuti || 0}</td>
+                        <td class="px-6 py-3 text-center bg-rose-50/50 text-rose-700 font-bold border-l border-r border-slate-200 cursor-pointer hover:bg-rose-100 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'SAKIT');" title="Klik untuk melihat di Data View Absensi Harian">${row.total_sakit || 0}</td>
+                        <td class="px-6 py-3 text-center bg-purple-50/50 text-purple-700 font-bold border-r border-slate-200 cursor-pointer hover:bg-purple-100 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'IZIN');" title="Klik untuk melihat di Data View Absensi Harian">${row.total_izin || 0}</td>
+                        <td class="px-6 py-3 text-center bg-orange-50/50 text-orange-700 font-bold border-r border-slate-200 cursor-pointer hover:bg-orange-100 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'CUTI');" title="Klik untuk melihat di Data View Absensi Harian">${row.total_cuti || 0}</td>
                         <td class="px-6 py-3 text-center ${row.alpa > 0 ? 'text-red-600 font-black cursor-pointer hover:underline hover:bg-red-50' : 'text-slate-300 cursor-pointer hover:bg-slate-50'} transition-colors" onclick="event.stopPropagation(); showPelanggaranDates('${row.id_karyawan}', '${escapeHtml(row.nama)}', 'alpa');" title="Klik untuk melihat tanggal Alpa">${row.alpa}</td>
                         <td class="px-6 py-3 text-center font-bold ${persentase >= 95 ? 'text-emerald-600' : (persentase >= 80 ? 'text-blue-600' : 'text-red-600')}">${persentase}%</td>
                         <td class="px-6 py-3 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-black cursor-pointer hover:underline hover:bg-amber-50' : 'text-slate-300 cursor-pointer hover:bg-slate-50'} transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');" title="Klik untuk melihat di Data View Absensi Harian">${row.telat_kali}</td>
@@ -855,7 +858,7 @@ async function loadMonthlyRecap(silent = false) {
                         <td class="px-6 py-3 text-center ${row.psw_kali > 0 ? 'text-amber-600 font-black cursor-pointer hover:underline hover:bg-amber-50' : 'text-slate-300'}" ${row.psw_kali > 0 ? `onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');"` : ''} title="Klik untuk melihat di Data View Absensi Harian">${row.psw_kali || 0}</td>
                         <td class="px-6 py-3 text-center ${row.psw_menit > 0 ? 'text-amber-600' : 'text-slate-300'}">${formatPelanggaranToHHMMSS(row.psw_menit || 0)}</td>
                         <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-200">${formatPelanggaranToHHMMSS(totalMenitPelanggaranBaru)}</td>
-                        <td class="px-6 py-3 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-black cursor-pointer hover:underline hover:bg-red-50' : 'text-slate-300'}" ${row.tanpa_absen_pulang > 0 ? `onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');"` : ''} title="Klik untuk melihat di Data View Absensi Harian">${row.tanpa_absen_pulang}</td>
+                        <td class="px-6 py-3 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-black cursor-pointer hover:underline hover:bg-red-50' : 'text-slate-300'}" ${row.tanpa_absen_pulang > 0 ? `onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'Tanpa Absen Pulang');"` : ''} title="Klik untuk melihat di Data View Absensi Harian">${row.tanpa_absen_pulang}</td>
                         <td class="px-6 py-3 text-center text-red-600">${row.potongan_jam} Jam</td>
                         <td class="px-6 py-3 text-center font-mono text-emerald-600 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
                         <td class="px-6 py-3 text-center print:hidden">
@@ -867,7 +870,7 @@ async function loadMonthlyRecap(silent = false) {
                 `;
             });
 
-            tbody.innerHTML += `
+            htmlContent += `
                 <tr class="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-800 print:bg-gray-200 print:border-black break-inside-avoid group">
                     <td colspan="4" class="px-6 py-3 text-right uppercase text-xs tracking-wider">Total Ringkasan:</td>
                     <td class="px-6 py-3 text-center">${tHadir}</td>
@@ -898,6 +901,7 @@ async function loadMonthlyRecap(silent = false) {
                     <td class="print:hidden"></td>
                 </tr>
             `;
+            tbody.innerHTML = htmlContent;
         } else {
             tbody.innerHTML = '<tr><td colspan="15" class="p-4 text-center text-slate-500">Tidak ada data untuk periode ini.</td></tr>';
         }
@@ -1029,7 +1033,7 @@ function checkDailyFromRecap(dateVal) {
 }
 
 // --- FITUR: SHORTCUT KE DATA VIEW DB DARI REKAP PSW ---
-function jumpToViewDbForEmployee(namaKaryawan) {
+function jumpToViewDbForEmployee(namaKaryawan, extraFilter = '') {
     const month = document.getElementById('filter-month').value;
     
     // Switch to Data View Absensi Harian tab
@@ -1049,9 +1053,9 @@ function jumpToViewDbForEmployee(namaKaryawan) {
     // Set the month
     document.getElementById('filter-view-db-month').value = month;
     
-    // Set the search text
+    // Set the search text dengan extraFilter jika ada
     const searchInput = document.getElementById('search-view-db');
-    searchInput.value = namaKaryawan;
+    searchInput.value = extraFilter ? `${namaKaryawan} ${extraFilter}` : namaKaryawan;
     
     // Load the data and filter
     loadViewDbData().then(() => {
@@ -2479,13 +2483,25 @@ function sortTable(tableBodyId, colIndex) {
 // --- HELPER: TABLE FILTERING ---
 function filterTable(tableBodyId, inputId) {
     const input = document.getElementById(inputId);
-    const filter = input.value.toLowerCase();
+    const filterText = input.value.toLowerCase();
+    const filterTerms = filterText.split(' ').filter(t => t.trim() !== '');
     const tbody = document.getElementById(tableBodyId);
+    if (!tbody) return;
     const rows = tbody.getElementsByTagName('tr');
 
     for (let i = 0; i < rows.length; i++) {
+        // Abaikan baris "Memuat data..." atau "Tidak ada data"
+        if (rows[i].getElementsByTagName('td').length === 1 && rows[i].textContent.includes('data')) continue;
+        
         const text = rows[i].textContent.toLowerCase();
-        rows[i].style.display = text.indexOf(filter) > -1 ? "" : "none";
+        let match = true;
+        for (const term of filterTerms) {
+            if (text.indexOf(term) === -1) {
+                match = false;
+                break;
+            }
+        }
+        rows[i].style.display = match ? "" : "none";
     }
 }
 

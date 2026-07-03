@@ -8,11 +8,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// Konfigurasi Database
-$host = '127.0.0.1';
-$db   = 'biometrik_absensi_wajah_db';
-$user = 'root';
-$pass = ''; // Default password XAMPP biasanya kosong
+// Fungsi untuk meload file .env
+function loadEnv($path) {
+    if (!file_exists($path)) return;
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        if (strpos($line, '=') !== false) {
+            list($name, $value) = explode('=', $line, 2);
+            $_ENV[trim($name)] = trim($value);
+        }
+    }
+}
+loadEnv(__DIR__ . '/.env');
+
+// Konfigurasi Database dari .env
+$host = $_ENV['DB_HOST'] ?? '127.0.0.1';
+$db   = $_ENV['DB_NAME'] ?? 'biometrik_absensi_wajah_db';
+$user = $_ENV['DB_USER'] ?? 'root';
+$pass = $_ENV['DB_PASS'] ?? ''; 
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";

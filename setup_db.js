@@ -1,22 +1,28 @@
 const mysql = require('mysql2/promise');
+require('dotenv').config();
 
 (async () => {
     try {
         console.log('🔌 Menghubungkan ke MySQL...');
         
+        const dbName = process.env.DB_NAME || 'biometrik_absensi_wajah_db';
+        const dbHost = process.env.DB_HOST || '127.0.0.1';
+        const dbUser = process.env.DB_USER || 'root';
+        const dbPass = process.env.DB_PASS || '';
+
         // 1. Koneksi awal (tanpa database spesifik)
         const connection = await mysql.createConnection({
-            host: 'localhost',
-            user: 'root',
-            password: ''
+            host: dbHost,
+            user: dbUser,
+            password: dbPass
         });
 
         // 2. Buat Database jika belum ada
-        await connection.query('CREATE DATABASE IF NOT EXISTS biometrik_absensi_wajah_db');
-        console.log('✅ Database "biometrik_absensi_wajah_db" terdeteksi/dibuat.');
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+        console.log(`✅ Database "${dbName}" terdeteksi/dibuat.`);
 
         // 3. Pindah ke database tersebut
-        await connection.changeUser({ database: 'biometrik_absensi_wajah_db' });
+        await connection.changeUser({ database: dbName });
 
         // 4. Buat Tabel Karyawan
         await connection.query(`
