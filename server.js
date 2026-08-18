@@ -166,13 +166,13 @@ pool.getConnection((err, connection) => {
                 k.nama,
                 k.jabatan,
                 m.periode,
-                m.total_hari_kerja,
+                (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = m.periode AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) AS total_hari_kerja,
                 COUNT(a.jam_masuk) AS total_masuk,
                 SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END) AS total_dl,
                 SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END) AS total_sakit,
                 SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END) AS total_izin,
                 SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END) AS total_cuti,
-                GREATEST(0, m.total_hari_kerja - COUNT(a.jam_masuk) - SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI') THEN 1 ELSE 0 END)) AS alpa, -- [SYNC] Logika Alpa: Total Hari - Hadir - Izin/Sakit
+                GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = m.periode AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) - COUNT(a.jam_masuk) - SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR') THEN 1 ELSE 0 END)) AS alpa, -- [SYNC] Logika Alpa: Total Hari Aktif - Hadir - Izin/Sakit
                 SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END) AS telat_kali,
                 
                 COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
@@ -363,16 +363,16 @@ app.get('/api/rekap', (req, res) => {
             k.nama,
             k.jabatan,
             ? AS periode,
-            (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) AS total_hari_kerja,
+            (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) AS total_hari_kerja,
             COUNT(a.jam_masuk) AS total_masuk,
             COALESCE(SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0) AS total_dl,
             COALESCE(SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END), 0) AS total_sakit,
             COALESCE(SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END), 0) AS total_izin,
             COALESCE(SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END), 0) AS total_cuti,
             GREATEST(0, 
-                (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) 
+                (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) 
                 - COUNT(a.jam_masuk) 
-                - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI') THEN 1 ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR') THEN 1 ELSE 0 END), 0)
             ) AS alpa,
             COALESCE(SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END), 0) AS telat_kali,
             COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
@@ -436,13 +436,13 @@ app.get('/api/slip_gaji/print', (req, res) => {
         SELECT 
             k.no_urut, k.id_karyawan, k.nama, k.jabatan,
             ? AS periode,
-            (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) AS total_hari_kerja,
+            (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) AS total_hari_kerja,
             COUNT(a.jam_masuk) AS total_masuk,
             COALESCE(SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0) AS total_dl,
             COALESCE(SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END), 0) AS total_sakit,
             COALESCE(SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END), 0) AS total_izin,
             COALESCE(SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END), 0) AS total_cuti,
-            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) - COUNT(a.jam_masuk) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI') THEN 1 ELSE 0 END), 0)) AS alpa,
+            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) - COUNT(a.jam_masuk) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR') THEN 1 ELSE 0 END), 0)) AS alpa,
             COALESCE(SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END), 0) AS telat_kali,
             COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
             COALESCE(SUM(CASE WHEN a.psw_menit > 0 THEN 1 ELSE 0 END), 0) AS psw_kali,
@@ -621,13 +621,13 @@ app.get('/api/rekap/bulanan', (req, res) => {
         SELECT 
             k.no_urut, k.id_karyawan, k.nama, k.jabatan,
             ? AS periode,
-            (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) AS total_hari_kerja,
+            (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) AS total_hari_kerja,
             COUNT(a.jam_masuk) AS total_masuk,
             COALESCE(SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0) AS total_dl,
             COALESCE(SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END), 0) AS total_sakit,
             COALESCE(SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END), 0) AS total_izin,
             COALESCE(SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END), 0) AS total_cuti,
-            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ?) - COUNT(a.jam_masuk) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI') THEN 1 ELSE 0 END), 0)) AS alpa,
+            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) - COUNT(a.jam_masuk) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR') THEN 1 ELSE 0 END), 0)) AS alpa,
             COALESCE(SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END), 0) AS telat_kali,
             COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
             COALESCE(SUM(CASE WHEN a.psw_menit > 0 THEN 1 ELSE 0 END), 0) AS psw_kali,

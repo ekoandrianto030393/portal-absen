@@ -755,7 +755,9 @@ async function loadMonthlyRecap(silent = false) {
                 
                 const hMasuk = (parseInt(row.total_masuk) || 0);
                 const hAdmin = (parseInt(row.total_admin) || 0); // Hari tugas tambahan
-                const totalHariKerja = parseInt(row.total_hari_kerja) || 20;
+                let totalHariKerja = parseInt(row.total_hari_kerja) || 20;
+                const totalKehadiranPre = (parseInt(row.total_masuk) || 0) + (parseInt(row.total_izin) || 0) + (parseInt(row.total_sakit) || 0) + (parseInt(row.total_cuti) || 0) + (parseInt(row.alpa) || 0) + (parseInt(row.total_dl) || 0);
+                if (totalHariKerja < totalKehadiranPre) totalHariKerja = totalKehadiranPre;
                 
                 // Rumus Poin: (Poin Variabel * % Hadir) + (Hari Tugas Tambahan * Poin Admin)
                 const persentaseHadir = totalHariKerja > 0 ? hMasuk / totalHariKerja : 0;
@@ -817,7 +819,9 @@ async function loadMonthlyRecap(silent = false) {
                 const varKetenagaan = pJabatan + pPendidikan + pJenis + pStatus;
 
                 const h = (parseInt(row.total_masuk) || 0) + (parseInt(row.total_dl) || 0);
-                const totalHariKerja = parseInt(row.total_hari_kerja) || 20;
+                let totalHariKerja = parseInt(row.total_hari_kerja) || 20;
+                const totalKehadiran = (parseInt(row.total_masuk) || 0) + (parseInt(row.total_izin) || 0) + (parseInt(row.total_sakit) || 0) + (parseInt(row.total_cuti) || 0) + (parseInt(row.alpa) || 0) + (parseInt(row.total_dl) || 0);
+                if (totalHariKerja < totalKehadiran) totalHariKerja = totalKehadiran;
                 const persentaseHadir = totalHariKerja > 0 ? h / totalHariKerja : 0;
                 const totalPoinIndividu = (varKetenagaan * persentaseHadir) + ((parseInt(row.total_admin) || 0) * poinAdminPerHari);
                 const estimasiJaspel = totalPoinIndividu * nilaiPerSatuPoin;
@@ -1002,8 +1006,11 @@ async function showPelanggaranDates(idKaryawan, namaKaryawan, tipe) {
                             </div>
                             <div class="text-xs text-rose-600 mt-1 italic"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${item.keterangan || 'Tanpa Absen Pulang'}</div>
                         </div>
-                        <div class="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
-                            <i class="fa-solid fa-chevron-right"></i>
+                        <div class="flex items-center gap-2">
+                            ${tipe === 'alpa' ? `<button onclick="event.stopPropagation(); hapusAlpaDirect('${idKaryawan}', '${isoDate}');" class="px-3 py-1 bg-rose-100 hover:bg-rose-500 hover:text-white text-rose-600 text-xs font-bold rounded shadow-sm transition-colors z-10 relative">Hapus</button>` : ''}
+                            <div class="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1014,6 +1021,27 @@ async function showPelanggaranDates(idKaryawan, namaKaryawan, tipe) {
         document.getElementById(`${modalId}-content`).innerHTML = html;
     } catch (e) {
         document.getElementById(`${modalId}-content`).innerHTML = `<div class="text-center py-4 text-red-500">Error: ${e.message}</div>`;
+    }
+}
+
+// --- FITUR: HAPUS ALPA LANGSUNG DARI MODAL ---
+async function hapusAlpaDirect(id_karyawan, tanggal) {
+    if(!confirm('Anda yakin ingin menghapus ALPA untuk tanggal ini? (Akan diset menjadi Libur/Dihapus)')) return;
+    try {
+        const response = await fetch(`${API_BASE}/absensi/manual`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_karyawan, status: 'LIBUR', keterangan: 'Penghapusan Alpa (Manual)', tanggal, jam_masuk: null, jam_keluar: null })
+        });
+        const result = await response.json();
+        if (response.ok && result.success) {
+            showToast("Alpa berhasil dihapus!", 'success');
+            if(window._closePelanggaranModal) window._closePelanggaranModal();
+        } else {
+            showToast("Gagal menghapus Alpa: " + result.message, 'error');
+        }
+    } catch(e) {
+        showToast("Error jaringan", 'error');
     }
 }
 

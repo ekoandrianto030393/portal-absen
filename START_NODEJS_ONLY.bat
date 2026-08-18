@@ -14,6 +14,12 @@ echo Tekan [CTRL+C] jika ingin mematikan server secara total.
 echo =======================================================
 echo.
 
+:: === [NEW] START TTS FALLBACK SERVER ===
+echo Memulai Python TTS Fallback Server (Port 5002)...
+start "TTS Fallback Server" cmd /c "venv\Scripts\activate.bat && python tts_server.py"
+:: Tunggu sebentar agar TTS siap
+timeout /t 2 > NUL
+
 :loop
 echo [%date% %time%] Memulai Server Node.js...
 :: Menggunakan node server.js langsung lebih kebal terhadap "Terminate batch job" prompt dibanding npm start
