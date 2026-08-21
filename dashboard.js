@@ -33,6 +33,19 @@ function formatPelanggaranToHHMMSS(totalMinutes) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
 }
 
+// --- HELPER: SKELETON LOADER ---
+function generateSkeletonRows(cols, rows = 5) {
+    let html = '';
+    for (let i = 0; i < rows; i++) {
+        html += `<tr class="animate-pulse">`;
+        for (let j = 0; j < cols; j++) {
+            html += `<td class="p-4"><div class="h-4 bg-slate-200 rounded w-full ${j===1 ? 'w-3/4' : ''}"></div></td>`;
+        }
+        html += `</tr>`;
+    }
+    return html;
+}
+
 // --- INISIALISASI ---
 document.addEventListener('DOMContentLoaded', () => {
     // [NEW] Cek Status Login Terlebih Dahulu
@@ -175,6 +188,7 @@ function switchTab(tabName) {
         if (viewEl) {
             viewEl.classList.add('hidden');
             viewEl.style.display = ''; // Clear inline styles
+            viewEl.classList.remove('animate-fade-in-up');
         }
         const navEl = document.getElementById(`nav-${id}`);
         if (navEl) navEl.classList.remove('active');
@@ -185,6 +199,9 @@ function switchTab(tabName) {
     if (targetView) {
         targetView.classList.remove('hidden');
         targetView.style.display = ''; // Clear inline styles
+        // Trigger reflow to restart animation
+        void targetView.offsetWidth; 
+        targetView.classList.add('animate-fade-in-up');
     }
     const targetNav = document.getElementById(`nav-${tabName}`);
     if (targetNav) targetNav.classList.add('active');
@@ -219,7 +236,7 @@ function updateClock() {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const seconds = String(now.getSeconds()).padStart(2, '0');
     
-    document.getElementById('clock-time').innerHTML = `${hours}:${minutes}<span class="text-slate-400 text-sm animate-pulse ml-1">:${seconds}</span>`;
+    document.getElementById('clock-time').innerHTML = `${hours}:${minutes}<span class="text-emerald-400 text-sm animate-pulse ml-1">:${seconds}</span>`;
     
     // Tanggal bergaya formal Indonesia (contoh: 05 Juni 2026)
     const options = { day: '2-digit', month: 'long', year: 'numeric' };
@@ -264,7 +281,7 @@ async function loadOverviewData(silent = false) {
         // 4. Update Kartu Statistik
         document.getElementById('stat-total-emp').textContent = totalEmployees;
         // Tampilkan total hadir + info DL kecil
-        document.getElementById('stat-present').innerHTML = `${presentCount} <span class="text-sm opacity-80 ml-1">(${dlCount} DL)</span>`;
+        document.getElementById('stat-present').innerHTML = `${presentCount} <span class="text-sm text-white/70 ml-1">(${dlCount} DL)</span>`;
         document.getElementById('stat-late').textContent = lateCount;
         document.getElementById('stat-absent').textContent = absentCount;
 
@@ -293,7 +310,7 @@ function renderRecentActivity(data) {
     const recent = data.slice(0, 10);
 
     if (recent.length === 0) {
-        container.innerHTML = '<div class="text-center text-xs text-slate-500 mt-4">Belum ada aktivitas.</div>';
+        container.innerHTML = '<div class="p-8 text-center text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200"><i class="fa-solid fa-clock-rotate-left text-3xl mb-2 text-slate-300"></i><p class="text-sm font-medium">Belum ada aktivitas hari ini.</p></div>';
         return;
     }
 
@@ -305,12 +322,12 @@ function renderRecentActivity(data) {
             : 'bg-emerald-100 text-emerald-800 border-emerald-200 font-bold';
         
         const html = `
-            <div class="flex items-center gap-4 p-4 rounded bg-white border border-slate-200 hover:shadow-md hover:border-blue-500 transition-all duration-200 group">
-                <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-700 border border-slate-300 group-hover:border-blue-500 group-hover:text-blue-600 transition-colors">
+            <div class="flex items-center gap-4 p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200/80 hover:shadow-lg hover:shadow-emerald-500/10 hover:border-emerald-300 transition-all duration-300 group">
+                <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-sm font-bold text-white shadow-md shadow-emerald-500/20 group-hover:shadow-lg group-hover:shadow-emerald-500/30 transition-all">
                     ${escapeHtml(item.nama_karyawan).substring(0, 1).toUpperCase()}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">${escapeHtml(item.nama_karyawan)}</p>
+                    <p class="text-sm font-bold text-slate-800 truncate group-hover:text-emerald-600 transition-colors">${escapeHtml(item.nama_karyawan)}</p>
                     <p class="text-xs text-slate-500 truncate mt-0.5 uppercase tracking-wide font-semibold">${escapeHtml(item.jabatan || 'Staff')}</p>
                 </div>
                 <div class="text-right">
@@ -326,9 +343,9 @@ function renderRecentActivity(data) {
 async function loadDailyData(silent = false) {
     const tbody = document.getElementById('table-daily-body');
     
-    // Jika silent (auto-refresh), jangan tampilkan spinner full screen, tapi skeleton row di tabel
+    // Skeleton loader instead of full screen spinner
     if (!silent) {
-        showSpinner();
+        tbody.innerHTML = generateSkeletonRows(6, 5); // 6 columns
     }
 
     try {
@@ -369,20 +386,20 @@ async function loadDailyData(silent = false) {
                 const status = row.status;
                 
                 if (status === 'DL' || status === 'DINAS_LUAR') {
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-briefcase"></i> Dinas Luar</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 shadow-sm flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-briefcase"></i> Dinas Luar</span>`;
                     // Tampilkan indikator DL di kolom jam agar jelas
                     row.jam_masuk = '<span class="text-blue-600 font-bold tracking-wider">DL</span>';
                     row.jam_keluar = '<span class="text-blue-600 font-bold tracking-wider">DL</span>';
                 } else if (status === 'SAKIT') {
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-heart-pulse"></i> Sakit</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-sm flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-heart-pulse"></i> Sakit</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
                 } else if (status === 'IZIN') {
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-file-signature"></i> Izin</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 shadow-sm flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-file-signature"></i> Izin</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
                 } else if (status === 'CUTI') {
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-calendar-check"></i> Cuti</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 shadow-sm flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-calendar-check"></i> Cuti</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
                 } else if (status === 'HADIR_MANUAL' || row.jam_masuk) {
@@ -397,7 +414,7 @@ async function loadDailyData(silent = false) {
                     }
                     
                     // UPDATE: Status "Hadir", Keterlambatan "Terlambat/Tepat Waktu"
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-check"></i> Hadir</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-check"></i> Hadir</span>`;
 
                     
                     if (isLate) {
@@ -460,7 +477,7 @@ async function loadDailyData(silent = false) {
                 tbody.innerHTML += tr;
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500 italic">Belum ada data absensi hari ini.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="6" class="p-16 text-center text-slate-400 bg-slate-50/30"><div class="flex flex-col items-center justify-center"><i class="fa-solid fa-inbox text-5xl mb-4 text-emerald-200"></i><p class="text-lg font-bold text-slate-500">Belum Ada Data</p><p class="text-sm mt-1">Data absensi hari ini masih kosong atau tidak ditemukan.</p></div></td></tr>`;
         }
         
         // Update Notifikasi Otomatis
@@ -539,7 +556,7 @@ async function loadViewDbData() {
             result.data.forEach(row => {
                 const dateOnly = row.tanggal ? row.tanggal.split('T')[0] : '-';
                 htmlContent += `
-                    <tr class="hover:bg-slate-50">
+                    <tr class="hover:bg-emerald-50/30 transition-colors">
                         <td class="px-4 py-2 font-mono">${row.id_absensi}</td>
                         <td class="px-4 py-2 font-mono">${row.id_karyawan}</td>
                         <td class="px-4 py-2 font-bold">${row.nama_karyawan}</td>
@@ -657,11 +674,11 @@ async function loadMonthlyRecap(silent = false) {
             <h2 class="text-2xl font-serif font-bold text-slate-900 uppercase tracking-widest print:text-lg print:tracking-normal print:font-bold">LAPORAN REKAPITULASI PRESENSI</h2>
             <p class="text-sm text-slate-600 font-serif italic mt-1 print:hidden">Periode Laporan: ${monthName}</p>
         </caption>
-        <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider bg-slate-800 text-white print:bg-white print:text-black">
+        <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider bg-gradient-to-r from-emerald-800 via-emerald-900 to-slate-900 text-white print:bg-white print:text-black">
             <tr>
-                <th class="md:sticky md:left-0 md:z-40 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 text-center w-16 md:border-r border-slate-700 print:border-black">No.</th>
-                <th onclick="sortTable('table-rekap-body', 1)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-16 md:z-40 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 w-24 md:border-r border-slate-700 print:border-black text-center">ID <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th onclick="sortTable('table-rekap-body', 2)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-40 md:z-40 bg-slate-800 text-white print:bg-white print:text-black print:static px-6 py-3 w-64 md:border-r border-slate-700 print:border-black md:shadow-sm text-left">Nama Pegawai <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="md:sticky md:left-0 md:z-40 bg-emerald-900 text-white print:bg-white print:text-black print:static px-6 py-3 text-center w-16 md:border-r border-slate-700 print:border-black">No.</th>
+                <th onclick="sortTable('table-rekap-body', 1)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-16 md:z-40 bg-emerald-900 text-white print:bg-white print:text-black print:static px-6 py-3 w-24 md:border-r border-slate-700 print:border-black text-center">ID <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 2)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-40 md:z-40 bg-emerald-900 text-white print:bg-white print:text-black print:static px-6 py-3 w-64 md:border-r border-slate-700 print:border-black md:shadow-sm text-left">Nama Pegawai <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
                 <th onclick="sortTable('table-rekap-body', 3)" class="cursor-pointer hover:bg-slate-700 transition-colors pl-16 pr-6 py-3 text-left">Jabatan <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
                 <th onclick="sortTable('table-rekap-body', 4)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
                 <th class="px-6 py-3 text-center">DL</th>
@@ -841,10 +858,10 @@ async function loadMonthlyRecap(silent = false) {
                 const persentase = totalHariKerja > 0 ? Math.round(((parseInt(row.total_masuk) || 0) / totalHariKerja) * 100) : 0; // [FIXED] Cukup hitung dari total_masuk.
 
                 htmlContent += `
-                    <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-slate-50 border-b border-slate-200 last:border-0 group">
-                        <td class="md:sticky md:left-0 md:z-10 sticky-col group-hover:!bg-slate-50 px-6 py-3 text-center font-mono text-slate-800 md:border-r border-slate-200 print:static print:bg-white print:border-b print:border-black">${index + 1}</td>
-                        <td class="md:sticky md:left-16 md:z-10 sticky-col group-hover:!bg-slate-50 px-6 py-3 font-mono text-slate-800 md:border-r border-slate-200 print:static print:bg-white print:border-b print:border-black text-center">${row.id_karyawan}</td>
-                        <td class="md:sticky md:left-40 md:z-10 sticky-col group-hover:!bg-slate-50 px-6 py-3 font-bold text-slate-800 md:border-r border-slate-200 md:shadow-sm print:static print:bg-white print:border-b print:border-black">${row.nama}</td>
+                    <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-emerald-50/30 border-b border-slate-200 last:border-0 group">
+                        <td class="md:sticky md:left-0 md:z-10 sticky-col group-hover:!bg-emerald-50/30 px-6 py-3 text-center font-mono text-slate-800 md:border-r border-slate-200 print:static print:bg-white print:border-b print:border-black">${index + 1}</td>
+                        <td class="md:sticky md:left-16 md:z-10 sticky-col group-hover:!bg-emerald-50/30 px-6 py-3 font-mono text-slate-800 md:border-r border-slate-200 print:static print:bg-white print:border-b print:border-black text-center">${row.id_karyawan}</td>
+                        <td class="md:sticky md:left-40 md:z-10 sticky-col group-hover:!bg-emerald-50/30 px-6 py-3 font-bold text-slate-800 md:border-r border-slate-200 md:shadow-sm print:static print:bg-white print:border-b print:border-black">${row.nama}</td>
                         <td class="pl-16 pr-6 py-3 text-sm text-slate-600 uppercase tracking-wide font-semibold">${row.jabatan || '-'}</td>
                         <td class="px-6 py-3 text-center">
                             <span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
@@ -1143,7 +1160,7 @@ async function loadPerformanceData(silent = false) {
 
                 // Render Card
                 const card = `
-                    <div onclick="openModal('${emp.id_karyawan}')" class="bg-white rounded-lg p-6 border-t-4 ${colorClass} relative overflow-hidden group hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer shadow-sm border border-gray-200">
+                    <div onclick="openModal('${emp.id_karyawan}')" class="bg-white rounded-2xl p-6 border-t-4 ${colorClass} relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1.5 transition-all duration-300 cursor-pointer shadow-md border border-slate-200/80">
                         <div class="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition">
                             <i class="fa-solid ${icon} text-6xl"></i>
                         </div>
@@ -1153,25 +1170,25 @@ async function loadPerformanceData(silent = false) {
                             <p class="text-xs text-gray-500 mb-4 uppercase tracking-wide">${escapeHtml(emp.jabatan || 'Staff')} • ID: ${emp.id_karyawan}</p>
                             
                             <div class="flex items-end gap-2 mb-2">
-                                <span class="text-4xl font-bold text-[#064e3b]">${score}</span>
+                                <span class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-emerald-500">${score}</span>
                                 <span class="text-sm text-gray-400 mb-1">/ 100</span>
                             </div>
                             
-                            <div class="w-full bg-gray-100 h-2 rounded-full mb-4 overflow-hidden">
+                            <div class="w-full bg-slate-100 h-2.5 rounded-full mb-4 overflow-hidden">
                                 <div class="h-full ${colorClass.replace('text', 'bg').split(' ')[1]}" style="width: ${score}%"></div>
                             </div>
 
                             <div class="grid grid-cols-3 gap-2 text-center text-xs">
-                                <div class="bg-gray-50 p-2 rounded border border-gray-200">
+                                <div class="bg-slate-50/80 p-2.5 rounded-lg border border-slate-200/60">
                                     <div class="text-gray-500">Hadir</div>
                                     <div class="font-bold text-[#064e3b]">${emp.total_masuk}</div>
                                     ${emp.total_dl ? `<div class="text-[9px] text-blue-500">(${emp.total_dl} DL)</div>` : ''}
                                 </div>
-                                <div class="bg-gray-50 p-2 rounded border border-gray-200">
+                                <div class="bg-slate-50/80 p-2.5 rounded-lg border border-slate-200/60">
                                     <div class="text-gray-500">Telat</div>
                                     <div class="font-bold text-amber-600">${emp.telat_kali}</div>
                                 </div>
-                                <div class="bg-gray-50 p-2 rounded border border-gray-200">
+                                <div class="bg-slate-50/80 p-2.5 rounded-lg border border-slate-200/60">
                                     <div class="text-gray-500">Alpa</div>
                                     <div class="font-bold text-red-600">${emp.alpa || 0}</div>
                                 </div>
@@ -1258,9 +1275,9 @@ async function loadEmployees(silent = false) {
                 }
 
                 const card = `
-                    <div class="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 group border border-gray-200 overflow-hidden relative flex flex-col">
+                    <div class="bg-white rounded-2xl shadow-sm hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-300 group border border-slate-200/80 overflow-hidden relative flex flex-col">
                         <!-- Decorative Top Bar -->
-                        <div class="h-1.5 w-full bg-[#064e3b]"></div>
+                        <div class="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700"></div>
                         
                         <div class="p-5 flex items-start gap-4">
                             <!-- Avatar -->
@@ -1274,7 +1291,7 @@ async function loadEmployees(silent = false) {
                             <div class="flex-1 min-w-0">
                                 <div class="flex justify-between items-start">
                                     <div onclick="openModal('${emp.id_karyawan}')" class="cursor-pointer flex-1 min-w-0 mr-2">
-                                        <h4 class="text-[#064e3b] font-bold truncate text-base group-hover:text-emerald-600 transition-colors" title="${escapeHtml(emp.nama)}">${escapeHtml(emp.nama)}</h4>
+                                        <h4 class="text-slate-800 font-bold truncate text-base group-hover:text-emerald-600 transition-colors" title="${escapeHtml(emp.nama)}">${escapeHtml(emp.nama)}</h4>
                                         <div class="flex flex-wrap items-center gap-2 mt-1">
                                             <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wide truncate max-w-full">${escapeHtml(emp.jabatan || 'Staff')}</span>
                                             <!-- [NEW] Badge Sampel Wajah -->
@@ -1709,13 +1726,38 @@ function renderPieChart(present, late, absent) {
             datasets: [{
                 data: [present - late, late, absent],
                 backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
-                borderWidth: 0
+                hoverBackgroundColor: ['#059669', '#d97706', '#e11d48'],
+                borderWidth: 2,
+                borderColor: '#ffffff',
+                hoverOffset: 6
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, color: '#475569', font: {family: 'Inter', size: 11} } } }
+            cutout: '70%',
+            plugins: { 
+                legend: { 
+                    position: 'right', 
+                    labels: { usePointStyle: true, padding: 20, boxWidth: 8, color: '#475569', font: {family: 'Inter', size: 11, weight: '500'} } 
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    titleColor: '#0f172a',
+                    bodyColor: '#334155',
+                    bodyFont: { family: 'Inter', size: 13, weight: 'bold' },
+                    borderColor: 'rgba(0,0,0,0.05)',
+                    borderWidth: 1,
+                    padding: 12,
+                    boxPadding: 6,
+                    usePointStyle: true,
+                    callbacks: {
+                        label: function(context) {
+                            return ' ' + context.label + ': ' + context.raw + ' Pegawai';
+                        }
+                    }
+                }
+            }
         }
     });
 }
@@ -1803,6 +1845,16 @@ function initLineChart() {
                 tooltip: {
                     mode: 'index',
                     intersect: false,
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    titleColor: '#0f172a',
+                    bodyColor: '#334155',
+                    titleFont: { family: 'Inter', size: 14, weight: 'bold' },
+                    bodyFont: { family: 'Inter', size: 13, weight: '500' },
+                    borderColor: 'rgba(0,0,0,0.05)',
+                    borderWidth: 1,
+                    padding: 12,
+                    usePointStyle: true,
+                    boxPadding: 6
                 }
             }
         }
@@ -1980,9 +2032,11 @@ function printReport(forceMatrix = false) {
                 }
 
                 if (isMatrix) {
-                    th.className = 'border border-black p-0.5 text-center align-middle uppercase font-bold bg-gray-100 text-[6pt]';
+                    th.className = 'border border-black align-middle uppercase font-bold bg-gray-100 text-center text-black text-xs';
+                    th.style.padding = '2px';
+                    th.style.fontSize = '7pt';
                 } else {
-                    th.className = 'border-2 border-black px-4 py-6 text-center align-middle uppercase font-bold bg-gray-200';
+                    th.className = 'border-2 border-black px-4 py-2 text-center align-middle uppercase font-bold bg-gray-200 text-sm';
                 }
                 th.style.position = 'static'; // Hapus sticky
                 // Hapus ikon sort
@@ -2016,9 +2070,11 @@ function printReport(forceMatrix = false) {
                     }
 
                     if (isMatrix) {
-                        cell.className = 'border border-black p-0.5 align-middle text-center text-black text-[6.5pt]';
+                        cell.className = 'border border-black align-middle text-center text-black text-xs';
+                        cell.style.padding = '2px';
+                        cell.style.fontSize = '7pt';
                     } else {
-                        cell.className = 'border border-black px-4 py-8 align-middle text-black' + extraStyle;
+                        cell.className = 'border border-black px-2 py-2 align-middle text-black' + extraStyle;
                     }
                     cell.style.backgroundColor = 'transparent';
                     cell.style.color = 'black';
@@ -2444,7 +2500,7 @@ function showToast(message, type = 'info') {
         icon = '<i class="fa-solid fa-triangle-exclamation text-amber-500"></i>';
     }
 
-    toast.className = `flex items-center gap-3 p-4 rounded shadow-lg border border-slate-100 ${bgClass} ${borderClass} transform transition-all duration-300 translate-x-full opacity-0 min-w-[300px]`;
+    toast.className = `flex items-center gap-3 p-4 rounded-xl shadow-xl shadow-black/10 border border-slate-200/80 bg-white/95 backdrop-blur-lg ${borderClass} transform transition-all duration-300 translate-x-full opacity-0 min-w-[300px]`;
     toast.innerHTML = `
         <div class="text-lg">${icon}</div>
         <div class="text-sm font-medium text-slate-700">${message}</div>
