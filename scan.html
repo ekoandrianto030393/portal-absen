@@ -309,6 +309,98 @@
         100% { background-position: -200% center; }
     }
 
+    /* ===== BEYOND GOD-TIER: CELESTIAL TITLE SYSTEM ===== */
+    @keyframes sparkleFloat {
+        0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 0; }
+        20% { opacity: 1; transform: translate(var(--tx), var(--ty)) scale(1) rotate(90deg); }
+        80% { opacity: 0.8; }
+        100% { transform: translate(calc(var(--tx) * 2), calc(var(--ty) - 40px)) scale(0) rotate(360deg); opacity: 0; }
+    }
+    @keyframes holographicShift {
+        0% { filter: hue-rotate(0deg) brightness(1.1); }
+        25% { filter: hue-rotate(30deg) brightness(1.3); }
+        50% { filter: hue-rotate(-20deg) brightness(1.2); }
+        75% { filter: hue-rotate(15deg) brightness(1.4); }
+        100% { filter: hue-rotate(0deg) brightness(1.1); }
+    }
+    @keyframes scanBeam {
+        0% { left: -20%; opacity: 0; }
+        5% { opacity: 1; }
+        95% { opacity: 1; }
+        100% { left: 120%; opacity: 0; }
+    }
+    @keyframes textGlitch {
+        0%, 95%, 100% { transform: translate(0); }
+        96% { transform: translate(-2px, 1px); }
+        97% { transform: translate(2px, -1px); }
+        98% { transform: translate(-1px, -1px); }
+        99% { transform: translate(1px, 1px); }
+    }
+    @keyframes borderRotate {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 300% 50%; }
+    }
+    @keyframes starTwinkle {
+        0%, 100% { opacity: 0.2; transform: scale(0.5); }
+        50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    .celestial-frame {
+        position: relative;
+        padding: 15px 20px;
+        border-radius: 16px;
+        background: rgba(0,0,0,0.2);
+        overflow: hidden;
+    }
+    .celestial-frame::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 16px;
+        padding: 2px;
+        background: linear-gradient(90deg, 
+            #a78bfa, #38bdf8, #34d399, #fbbf24, #f472b6,
+            #a78bfa, #38bdf8, #34d399, #fbbf24, #f472b6
+        );
+        background-size: 300% 100%;
+        animation: borderRotate 8s linear infinite;
+        will-change: background-position;
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+        z-index: 1;
+    }
+    .celestial-frame::after {
+        content: '';
+        position: absolute;
+        top: 0; left: -20%;
+        width: 15%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+        animation: scanBeam 8s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 2;
+        will-change: left;
+    }
+
+    .sparkle-field {
+        position: absolute;
+        inset: -20px;
+        pointer-events: none;
+        z-index: 15;
+        overflow: hidden;
+    }
+    .sparkle-field .sparkle {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: white;
+        box-shadow: 0 0 6px 2px rgba(255,255,255,0.8), 0 0 12px 4px var(--spark-color, rgba(56,189,248,0.6));
+        animation: starTwinkle var(--dur, 2s) ease-in-out infinite;
+        animation-delay: var(--delay, 0s);
+    }
     /* ===== GOD-TIER TITLE SYSTEM ===== */
     @keyframes prismaticShine {
         0% { background-position: 300% center; }
@@ -352,31 +444,34 @@
         text-align: center;
         background: linear-gradient(
             90deg,
-            #a78bfa 0%,
-            #38bdf8 10%,
-            #ffffff 18%,
-            #67e8f9 28%,
-            #34d399 40%,
-            #fbbf24 50%,
-            #34d399 60%,
-            #67e8f9 72%,
-            #ffffff 82%,
-            #38bdf8 90%,
-            #a78bfa 100%
+            #c084fc 0%,
+            #f472b6 8%,
+            #fb923c 14%,
+            #fbbf24 20%,
+            #ffffff 28%,
+            #34d399 36%,
+            #22d3ee 44%,
+            #ffffff 50%,
+            #38bdf8 56%,
+            #a78bfa 64%,
+            #ffffff 72%,
+            #fbbf24 80%,
+            #fb923c 86%,
+            #f472b6 92%,
+            #c084fc 100%
         );
-        background-size: 400% auto;
+        background-size: 500% auto;
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
         -webkit-text-fill-color: transparent;
         animation: prismaticShine 6s linear infinite;
         filter:
-            drop-shadow(0 0 30px rgba(56, 189, 248, 0.9))
-            drop-shadow(0 0 60px rgba(168, 85, 247, 0.5))
-            drop-shadow(0 0 80px rgba(52, 211, 153, 0.3))
-            drop-shadow(0 5px 15px rgba(0, 0, 0, 0.9));
+            drop-shadow(0 0 25px rgba(56, 189, 248, 0.7))
+            drop-shadow(0 4px 10px rgba(0, 0, 0, 0.9));
         position: relative;
         z-index: 10;
+        animation: prismaticShine 6s linear infinite, holographicShift 10s ease-in-out infinite, textGlitch 8s ease infinite;
     }
 
     .god-title-main::before {
@@ -466,7 +561,8 @@
         top: 0; bottom: 0;
         width: 40%;
         background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
-        animation: laserLineSweep 3s ease-in-out infinite;
+        animation: laserLineSweep 6s ease-in-out infinite;
+        will-change: transform;
     }
 
     .god-corona {
@@ -485,7 +581,6 @@
         animation: coronaBreath 5s ease-in-out infinite;
         pointer-events: none;
         z-index: 0;
-        filter: blur(30px);
     }
 
     .god-diamond-separator {
@@ -517,6 +612,47 @@
     }
 
     /* === OBSIDIAN PANEL CARD (Emerald Green Glass) === */
+    /* === HOLOGRAPHIC FROSTED GLASS (GOD TIER) === */
+    #cuti-panel, #dl-panel, #hadir-panel {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 100%) !important;
+        backdrop-filter: blur(16px) saturate(120%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(120%) !important;
+        border-radius: 20px !important;
+        border: none !important;
+        position: relative;
+    }
+    
+    /* Holographic Border */
+    #cuti-panel::before, #dl-panel::before, #hadir-panel::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        border-radius: 20px;
+        padding: 1.5px;
+        background: linear-gradient(135deg, 
+            rgba(251, 191, 36, 0.7),
+            rgba(244, 114, 182, 0.7),
+            rgba(56, 189, 248, 0.7),
+            rgba(167, 139, 250, 0.7),
+            rgba(52, 211, 153, 0.7)
+        ) !important;
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        opacity: 0.8;
+    }
+    
+    /* Subtly colored inner glow for each */
+    #cuti-panel { box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255, 0.25), inset 0 0 40px rgba(245, 158, 11, 0.1) !important; }
+    #dl-panel { box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255, 0.25), inset 0 0 40px rgba(139, 92, 246, 0.1) !important; }
+    #hadir-panel { box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255, 0.25), inset 0 0 40px rgba(16, 185, 129, 0.1) !important; }
+    #hadir-panel:hover {
+        border-color: rgba(56, 189, 248, 0.8) !important;
+        box-shadow: 0 35px 70px rgba(0,0,0,0.95), inset 0 2px 10px rgba(56,189,248,0.3), 0 0 40px rgba(56,189,248,0.1) !important;
+        transform: translateY(-2px);
+    }
+
     .dark-panel-card {
         background: linear-gradient(
             145deg,
@@ -708,6 +844,48 @@
         0%, 100% { box-shadow: 0 0 12px rgba(218,165,32,0.08), 0 20px 60px rgba(0,0,0,0.7); }
         50%       { box-shadow: 0 0 25px rgba(255,215,0,0.15), 0 20px 60px rgba(0,0,0,0.7), 0 0 50px rgba(218,165,32,0.04); }
     }
+    /* === ULTIMATE STATIC PREMIUM PANEL COLORS === */
+    /* Cuti Pegawai: Imperial Gold & Obsidian */
+    #cuti-panel {
+        background: linear-gradient(145deg, rgba(35, 25, 5, 0.95) 0%, rgba(55, 40, 10, 0.9) 35%, rgba(255, 215, 0, 0.15) 50%, rgba(45, 30, 8, 0.9) 65%, rgba(10, 5, 0, 0.98) 100%) !important;
+        border: 1px solid rgba(255, 215, 0, 0.3) !important;
+        border-top: 2px solid rgba(255, 215, 0, 0.6) !important;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.9), inset 0 2px 5px rgba(255,215,0,0.2), 0 0 30px rgba(255,215,0,0.05) !important;
+    }
+    
+    /* Dinas Luar: Deep Copper & Bronze */
+    #dl-panel {
+        background: linear-gradient(145deg, rgba(40, 15, 5, 0.95) 0%, rgba(60, 25, 10, 0.9) 35%, rgba(205, 133, 63, 0.15) 50%, rgba(50, 20, 8, 0.9) 65%, rgba(15, 5, 0, 0.98) 100%) !important;
+        border: 1px solid rgba(205, 133, 63, 0.3) !important;
+        border-top: 2px solid rgba(205, 133, 63, 0.6) !important;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.9), inset 0 2px 5px rgba(205,133,63,0.2), 0 0 30px rgba(205,133,63,0.05) !important;
+    }
+    
+    /* Daftar Hadir: Royal Sapphire Blue */
+    #hadir-panel {
+        background: linear-gradient(145deg, rgba(5, 15, 35, 0.95) 0%, rgba(10, 30, 60, 0.9) 35%, rgba(56, 189, 248, 0.15) 50%, rgba(8, 25, 50, 0.9) 65%, rgba(2, 5, 15, 0.98) 100%) !important;
+        border: 1px solid rgba(56, 189, 248, 0.3) !important;
+        border-top: 2px solid rgba(56, 189, 248, 0.6) !important;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.9), inset 0 2px 5px rgba(56,189,248,0.2), 0 0 30px rgba(56,189,248,0.05) !important;
+    }
+    
+    /* Hover effects specifically for them (static enhancement) */
+    #cuti-panel:hover {
+        border-color: rgba(255, 215, 0, 0.8) !important;
+        box-shadow: 0 35px 70px rgba(0,0,0,0.95), inset 0 2px 10px rgba(255,215,0,0.3), 0 0 40px rgba(255,215,0,0.1) !important;
+        transform: translateY(-2px);
+    }
+    #dl-panel:hover {
+        border-color: rgba(205, 133, 63, 0.8) !important;
+        box-shadow: 0 35px 70px rgba(0,0,0,0.95), inset 0 2px 10px rgba(205,133,63,0.3), 0 0 40px rgba(205,133,63,0.1) !important;
+        transform: translateY(-2px);
+    }
+    #hadir-panel:hover {
+        border-color: rgba(56, 189, 248, 0.8) !important;
+        box-shadow: 0 35px 70px rgba(0,0,0,0.95), inset 0 2px 10px rgba(56,189,248,0.3), 0 0 40px rgba(56,189,248,0.1) !important;
+        transform: translateY(-2px);
+    }
+
     .dark-panel-card {
         animation: glowBorder 6s ease-in-out infinite;
     }
@@ -892,24 +1070,24 @@
                     <div class="relative z-10 flex flex-col items-center justify-center text-center pb-2">
                         <!-- HUD Header -->
                         <div class="flex items-center gap-2 w-full mb-2">
-                            <div class="w-1 h-5 rounded-full flex-shrink-0" style="background: linear-gradient(to bottom, #FFD700, #DAA520); box-shadow: 0 0 8px #FFD70060;"></div>
+                            <div class="w-1 h-5 rounded-full flex-shrink-0" style="background: linear-gradient(to bottom, #f59e0b, #e11d48); box-shadow: 0 0 8px rgba(245,158,11,0.6);"></div>
                             <span class="font-black tracking-[0.25em] text-white text-sm font-serif uppercase hud-flicker flex items-center gap-2">
-                                <i class="fa-solid fa-umbrella-beach" style="color: #FFD700;"></i>CUTI PEGAWAI
+                                <i class="fa-solid fa-umbrella-beach" style="color: #f59e0b;"></i>CUTI PEGAWAI
                             </span>
-                            <div class="flex-1 h-[1px]" style="background: linear-gradient(to right, rgba(255,215,0,0.4), transparent);"></div>
+                            <div class="flex-1 h-[1px]" style="background: linear-gradient(to right, rgba(245,158,11,0.4), transparent);"></div>
                         </div>
                         <div class="panel-separator"></div>
                         <div class="flex flex-col items-center justify-center gap-1 mb-1 mt-1">
                             <div class="relative group mt-1 mb-2">
-                                <div class="absolute inset-0 rounded-full blur-md opacity-70" style="background: rgba(255,215,0,0.2);"></div>
-                                <div class="relative inline-flex items-center justify-center min-w-[70px] px-5 py-1.5 rounded-full ring-1" style="background: rgba(6,10,20,0.95); border: 1px solid rgba(255,215,0,0.3); box-shadow: 0 0 20px rgba(255,215,0,0.15), inset 0 1px 0 rgba(218,165,32,0.1);">
-                                    <span id="cuti-counter-badge" class="text-3xl font-serif font-black" style="color: #DAA520; text-shadow: 0 0 15px rgba(255,215,0,0.8);">0</span>
+                                <div class="absolute inset-0 rounded-full blur-md opacity-70" style="background: rgba(245,158,11,0.2);"></div>
+                                <div class="relative inline-flex items-center justify-center min-w-[70px] px-5 py-1.5 rounded-full ring-1" style="background: rgba(6,10,20,0.95); border: 1px solid rgba(245,158,11,0.3); box-shadow: 0 0 20px rgba(245,158,11,0.15), inset 0 1px 0 rgba(245,158,11,0.1);">
+                                    <span id="cuti-counter-badge" class="text-3xl font-serif font-black" style="color: #f59e0b; text-shadow: 0 0 15px rgba(245,158,11,0.8);">0</span>
                                 </div>
                             </div>
                             <span class="text-[10px] text-white/60 font-bold tracking-widest mt-1 uppercase">Cuti/Izin</span>
-                            <div class="w-12 h-[1px] mt-1" style="background: rgba(255,215,0,0.3);"></div>
+                            <div class="w-12 h-[1px] mt-1" style="background: rgba(245,158,11,0.3);"></div>
                         </div>
-                        <div class="text-[10px] font-black tracking-[0.25em] uppercase text-white" style="text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(255,215,0,0.6);">PUSKESMAS WANA</div>
+                        <div class="text-[10px] font-black tracking-[0.25em] uppercase text-white" style="text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(245,158,11,0.6);">PUSKESMAS WANA</div>
                     </div>
                     <div class="roster-ticker-container h-24 relative z-10">
                         <div id="cutiRoster" class="pr-1 text-white font-medium"></div>
@@ -921,25 +1099,25 @@
                     <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4">
                         <!-- HUD Header -->
                         <div class="flex items-center gap-2 w-full mb-2">
-                            <div class="w-1 h-5 rounded-full flex-shrink-0" style="background: linear-gradient(to bottom, #CD853F, #CD853F); box-shadow: 0 0 8px #CD853F60;"></div>
+                            <div class="w-1 h-5 rounded-full flex-shrink-0" style="background: linear-gradient(to bottom, #8b5cf6, #d946ef); box-shadow: 0 0 8px rgba(139,92,246,0.6);"></div>
                             <span class="font-black tracking-[0.25em] text-white text-sm font-serif uppercase hud-flicker flex items-center gap-2">
-                                <i class="fa-solid fa-car" style="color: #CD853F;"></i>DINAS LUAR
+                                <i class="fa-solid fa-car" style="color: #8b5cf6;"></i>DINAS LUAR
                             </span>
-                            <div class="flex-1 h-[1px]" style="background: linear-gradient(to right, rgba(184,134,11,0.4), transparent);"></div>
+                            <div class="flex-1 h-[1px]" style="background: linear-gradient(to right, rgba(139,92,246,0.4), transparent);"></div>
                         </div>
                         <div class="panel-separator"></div>
                         <div class="flex flex-col items-center justify-center gap-1 mb-2 mt-2">
                             <div class="relative group mt-2 mb-2">
-                                <div class="absolute inset-0 rounded-full blur-md opacity-70" style="background: rgba(184,134,11,0.2);"></div>
-                                <div class="relative inline-flex items-center justify-center min-w-[80px] px-6 py-2 rounded-full" style="background: rgba(6,10,20,0.95); border: 1px solid rgba(184,134,11,0.3); box-shadow: 0 0 20px rgba(184,134,11,0.15), inset 0 1px 0 rgba(184,134,11,0.08);">
-                                    <span id="dl-counter-badge" class="text-4xl font-serif font-black" style="color: #CD853F; text-shadow: 0 0 15px rgba(184,134,11,0.8);">0</span>
+                                <div class="absolute inset-0 rounded-full blur-md opacity-70" style="background: rgba(139,92,246,0.2);"></div>
+                                <div class="relative inline-flex items-center justify-center min-w-[80px] px-6 py-2 rounded-full" style="background: rgba(6,10,20,0.95); border: 1px solid rgba(139,92,246,0.3); box-shadow: 0 0 20px rgba(139,92,246,0.15), inset 0 1px 0 rgba(139,92,246,0.1);">
+                                    <span id="dl-counter-badge" class="text-4xl font-serif font-black" style="color: #8b5cf6; text-shadow: 0 0 15px rgba(139,92,246,0.8);">0</span>
                                 </div>
                             </div>
                             <span class="text-xs text-white/60 font-bold tracking-widest mt-2 uppercase">Pegawai</span>
-                            <div class="w-16 h-[1px] mt-1" style="background: rgba(184,134,11,0.3);"></div>
+                            <div class="w-16 h-[1px] mt-1" style="background: rgba(139,92,246,0.3);"></div>
                         </div>
-                        <div class="text-[10px] font-black tracking-[0.25em] uppercase text-white" style="text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(205,133,63,0.6);">PUSKESMAS WANA</div>
-                        <div class="w-24 h-[1px] mt-1.5 mb-1" style="background: rgba(184,134,11,0.15);"></div>
+                        <div class="text-[10px] font-black tracking-[0.25em] uppercase text-white" style="text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(139,92,246,0.6);">PUSKESMAS WANA</div>
+                        <div class="w-24 h-[1px] mt-1.5 mb-1" style="background: rgba(139,92,246,0.15);"></div>
                     </div>
                     <div class="roster-ticker-container h-32 relative z-10">
                         <div id="dlRoster" class="pr-1 text-white font-medium"></div>
@@ -957,7 +1135,7 @@
                         <h2 class="font-black tracking-[0.25em] text-white text-sm font-serif uppercase hud-flicker">
                             <i class="fa-solid fa-id-card mr-2" style="color: #DAA520;"></i>DATA PEGAWAI
                         </h2>
-                        <div class="flex-1 h-[1px] ml-2" style="background: linear-gradient(to right, rgba(255,215,0,0.4), transparent);"></div>
+                        <div class="flex-1 h-[1px] ml-2" style="background: linear-gradient(to right, rgba(245,158,11,0.4), transparent);"></div>
                     </div>
 
                     <!-- Photo Section -->
@@ -1037,57 +1215,69 @@
                 <div class="w-full text-center flex flex-col items-center justify-center pt-0 pb-0 mb-1 mt-1 lg:mt-2 relative god-title-container">
                     <!-- Multi-layer Corona Backglow -->
                     <div class="god-corona"></div>
-                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[60%] h-[120%] rounded-full pointer-events-none z-0" style="background: radial-gradient(ellipse at center, rgba(59,130,246,0.12) 0%, transparent 70%); filter: blur(40px); animation: coronaBreath 7s ease-in-out infinite reverse;"></div>
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[60%] h-[120%] rounded-full pointer-events-none z-0" style="background: radial-gradient(ellipse at center, rgba(251,191,36,0.06) 0%, rgba(59,130,246,0.1) 25%, rgba(168,85,247,0.06) 50%, transparent 70%); animation: coronaBreath 7s ease-in-out infinite reverse;"></div>
 
-                    <!-- Decorative Top Ornament -->
-                    <div class="flex items-center w-full max-w-lg mb-2 relative z-10">
-                        <div class="god-ornament-line" style="--dir: right;"></div>
-                        <div class="god-diamond-separator">
-                            <div class="diamond small"></div>
-                            <div class="diamond"></div>
-                            <div class="diamond small"></div>
-                        </div>
-                        <div class="god-ornament-line" style="--dir: left;"></div>
-                    </div>
-
-                    <!-- Main Title -->
-                    <div class="flex flex-wrap items-center justify-center gap-2 lg:gap-3 mb-1 relative z-10">
-                        <h1 id="mainTitle" class="god-title-main" data-text="PRESENSI BIOMETRIK">
-                            PRESENSI<br>BIOMETRIK
-                        </h1>
-                    </div>
-                    
-                    <!-- Laser Divider + Subtitle -->
-                    <div class="flex items-center justify-center w-full max-w-2xl mb-1 mt-1 relative z-10">
-                        <div class="god-divider" style="--dir: right;"></div>
+                    <!-- CELESTIAL FRAME with animated rainbow border -->
+                    <div class="celestial-frame relative w-full max-w-2xl">
                         
-                        <div class="god-diamond-separator">
-                            <div class="diamond small"></div>
+                        <!-- Sparkle Field -->
+                        <div class="sparkle-field">
+                            <div class="sparkle" style="top:10%; left:5%; --spark-color:rgba(251,191,36,0.8); --dur:2.2s; --delay:0s;"></div>
+                            <div class="sparkle" style="top:20%; left:90%; --spark-color:rgba(56,189,248,0.8); --dur:1.8s; --delay:0.4s;"></div>
+                            <div class="sparkle" style="top:70%; left:15%; --spark-color:rgba(168,85,247,0.8); --dur:2.5s; --delay:0.8s;"></div>
+                            <div class="sparkle" style="top:80%; left:85%; --spark-color:rgba(52,211,153,0.8); --dur:2s; --delay:1.2s;"></div>
                         </div>
 
-                        <h2 class="god-subtitle px-5">
-                            PUSKESMAS WANA
-                        </h2>
+                        <!-- Decorative Top Ornament -->
+                        <div class="flex items-center w-full max-w-lg mx-auto mb-2 relative z-10">
+                            <div class="god-ornament-line" style="--dir: right;"></div>
+                            <div class="god-diamond-separator">
+                                <div class="diamond small"></div>
+                                <div class="diamond"></div>
+                                <div class="diamond small"></div>
+                            </div>
+                            <div class="god-ornament-line" style="--dir: left;"></div>
+                        </div>
 
-                        <div class="god-diamond-separator">
-                            <div class="diamond small"></div>
+                        <!-- Main Title -->
+                        <div class="flex flex-wrap items-center justify-center gap-2 lg:gap-3 mb-1 relative z-10">
+                            <h1 id="mainTitle" class="god-title-main" data-text="PRESENSI BIOMETRIK">
+                                PRESENSI<br>BIOMETRIK
+                            </h1>
                         </div>
                         
-                        <div class="god-divider" style="--dir: left;"></div>
-                    </div>
-                    
-                    <!-- Location with ornamental underline -->
-                    <h3 class="god-location mb-1">
-                        KABUPATEN LAMPUNG TIMUR
-                    </h3>
+                        <!-- Laser Divider + Subtitle -->
+                        <div class="flex items-center justify-center w-full max-w-xl mx-auto mb-1 mt-1 relative z-10">
+                            <div class="god-divider" style="--dir: right;"></div>
+                            
+                            <div class="god-diamond-separator">
+                                <div class="diamond small"></div>
+                            </div>
 
-                    <!-- Bottom Ornament -->
-                    <div class="flex items-center w-full max-w-xs mt-1 mb-0 relative z-10">
-                        <div class="god-ornament-line" style="--dir: right;"></div>
-                        <div class="god-diamond-separator">
-                            <div class="diamond small"></div>
+                            <h2 class="god-subtitle px-4">
+                                PUSKESMAS WANA
+                            </h2>
+
+                            <div class="god-diamond-separator">
+                                <div class="diamond small"></div>
+                            </div>
+                            
+                            <div class="god-divider" style="--dir: left;"></div>
                         </div>
-                        <div class="god-ornament-line" style="--dir: left;"></div>
+                        
+                        <!-- Location -->
+                        <h3 class="god-location mb-1">
+                            KABUPATEN LAMPUNG TIMUR
+                        </h3>
+
+                        <!-- Bottom Ornament -->
+                        <div class="flex items-center w-full max-w-xs mx-auto mt-1 mb-0 relative z-10">
+                            <div class="god-ornament-line" style="--dir: right;"></div>
+                            <div class="god-diamond-separator">
+                                <div class="diamond small"></div>
+                            </div>
+                            <div class="god-ornament-line" style="--dir: left;"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="camera-frame-outer relative w-full max-w-[900px] mt-0 overflow-hidden">
@@ -1140,34 +1330,34 @@
             </div>
  
             <div class="col-span-1 flex flex-col gap-4 order-3 lg:mt-6 mt-4">
-                <div class="dark-panel-card relative flex flex-col gap-4 p-4 lg:p-6 transition-all duration-300">
+                <div id="hadir-panel" class="dark-panel-card relative flex flex-col gap-4 p-4 lg:p-6 transition-all duration-300">
                     <div class="glass-sweep-layer"></div>
                     <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4">
                         <!-- HUD Header -->
                         <div class="flex items-center gap-2 w-full mb-2">
-                            <div class="w-1 h-5 rounded-full flex-shrink-0" style="background: linear-gradient(to bottom, #DAA520, #B8860B); box-shadow: 0 0 8px #DAA52060;"></div>
+                            <div class="w-1 h-5 rounded-full flex-shrink-0" style="background: linear-gradient(to bottom, #10b981, #06b6d4); box-shadow: 0 0 8px rgba(16,185,129,0.6);"></div>
                             <span class="font-black tracking-[0.25em] text-white text-sm font-serif uppercase hud-flicker flex items-center gap-2">
-                                <i class="fa-solid fa-clipboard-check" style="color: #DAA520;"></i>DAFTAR HADIR
+                                <i class="fa-solid fa-clipboard-check" style="color: #10b981;"></i>DAFTAR HADIR
                             </span>
-                            <div class="flex-1 h-[1px]" style="background: linear-gradient(to right, rgba(218,165,32,0.4), transparent);"></div>
+                            <div class="flex-1 h-[1px]" style="background: linear-gradient(to right, rgba(16,185,129,0.4), transparent);"></div>
                         </div>
                         <div class="panel-separator"></div>
                         <div class="flex flex-col items-center justify-center gap-1 mb-2 mt-2">
                             <div class="relative group mt-2 mb-2">
-                                <div class="absolute inset-0 rounded-full blur-md opacity-70" style="background: rgba(218,165,32,0.25);"></div>
-                                <div class="relative inline-flex items-center justify-center min-w-[80px] px-6 py-2 rounded-full" style="background: rgba(6,10,20,0.95); border: 1px solid rgba(218,165,32,0.4); box-shadow: 0 0 25px rgba(218,165,32,0.2), inset 0 1px 0 rgba(218,165,32,0.1);">
-                                    <span id="hadir-counter-badge" class="text-4xl font-serif font-black" style="color: #DAA520; text-shadow: 0 0 15px rgba(218,165,32,0.8);">0</span>
+                                <div class="absolute inset-0 rounded-full blur-md opacity-70" style="background: rgba(16,185,129,0.25);"></div>
+                                <div class="relative inline-flex items-center justify-center min-w-[80px] px-6 py-2 rounded-full" style="background: rgba(6,10,20,0.95); border: 1px solid rgba(16,185,129,0.4); box-shadow: 0 0 25px rgba(16,185,129,0.2), inset 0 1px 0 rgba(16,185,129,0.1);">
+                                    <span id="hadir-counter-badge" class="text-4xl font-serif font-black" style="color: #10b981; text-shadow: 0 0 15px rgba(16,185,129,0.8);">0</span>
                                 </div>
                             </div>
                             <span class="text-xs text-white/60 font-bold tracking-widest mt-2 uppercase">Pegawai</span>
                             <div class="w-16 h-[1px] mt-1" style="background: rgba(218,165,32,0.3);"></div>
                         </div>
-                        <div class="text-[10px] font-black tracking-[0.25em] uppercase text-white" style="text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(218,165,32,0.6);">PUSKESMAS WANA</div>
-                        <div class="w-24 h-[1px] mt-1.5 mb-1" style="background: rgba(218,165,32,0.15);"></div>
+                        <div class="text-[10px] font-black tracking-[0.25em] uppercase text-white" style="text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(16,185,129,0.6);">PUSKESMAS WANA</div>
+                        <div class="w-24 h-[1px] mt-1.5 mb-1" style="background: rgba(16,185,129,0.15);"></div>
                     </div>
-                    <div class="roster-ticker-container h-80 relative z-10">
+                    <div class="roster-ticker-container h-[26rem] relative z-10">
                         <div id="personnelRoster" class="pr-1 text-white font-medium">
-                            <div class="text-[#DAA520]/60 text-sm font-semibold tracking-widest text-center py-6 animate-pulse">MEMUAT DATA KEHADIRAN...</div>
+                            <div class="text-[#10b981]/60 text-sm font-semibold tracking-widest text-center py-6 animate-pulse">MEMUAT DATA KEHADIRAN...</div>
                         </div>
                     </div>
                 </div>
