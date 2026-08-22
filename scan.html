@@ -2,6 +2,9 @@
 <html lang="id">
 
 <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@700;800;900&display=swap" rel="stylesheet">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f172a">
@@ -35,8 +38,8 @@
                             200: '#bae6fd',
                             300: '#7dd3fc',
                             400: '#DAA520',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
+                            500: '#00f2fe',
+                            600: '#4facfe',
                             700: '#0369a1',
                             800: '#075985',
                             900: '#0c4a6e',
@@ -306,36 +309,243 @@
         100% { background-position: -200% center; }
     }
 
+    /* ===== GOD-TIER TITLE SYSTEM ===== */
+    @keyframes prismaticShine {
+        0% { background-position: 300% center; }
+        100% { background-position: -300% center; }
+    }
+    @keyframes coronaBreath {
+        0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+        50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.15); }
+    }
+    @keyframes laserLineSweep {
+        0% { transform: translateX(-100%); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateX(100%); opacity: 0; }
+    }
+    @keyframes floatSubtle {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-3px); }
+    }
+    @keyframes borderGlowPulse {
+        0%, 100% { box-shadow: 0 0 8px rgba(6,182,212,0.3), inset 0 0 8px rgba(6,182,212,0.1); }
+        50% { box-shadow: 0 0 20px rgba(6,182,212,0.6), inset 0 0 15px rgba(6,182,212,0.2); }
+    }
+    @keyframes letterReveal {
+        0% { opacity: 0; transform: translateY(20px) scale(0.8); filter: blur(8px); }
+        100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
+
+    .god-title-container {
+        position: relative;
+        perspective: 1000px;
+    }
+
+    .god-title-main {
+        font-family: 'Cinzel Decorative', 'Playfair Display', 'Georgia', serif;
+        font-size: clamp(1.8rem, 4vw, 3.2rem);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        line-height: 1.1;
+        text-align: center;
+        background: linear-gradient(
+            90deg,
+            #a78bfa 0%,
+            #38bdf8 10%,
+            #ffffff 18%,
+            #67e8f9 28%,
+            #34d399 40%,
+            #fbbf24 50%,
+            #34d399 60%,
+            #67e8f9 72%,
+            #ffffff 82%,
+            #38bdf8 90%,
+            #a78bfa 100%
+        );
+        background-size: 400% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        animation: prismaticShine 6s linear infinite;
+        filter:
+            drop-shadow(0 0 30px rgba(56, 189, 248, 0.9))
+            drop-shadow(0 0 60px rgba(168, 85, 247, 0.5))
+            drop-shadow(0 0 80px rgba(52, 211, 153, 0.3))
+            drop-shadow(0 5px 15px rgba(0, 0, 0, 0.9));
+        position: relative;
+        z-index: 10;
+    }
+
+    .god-title-main::before {
+        content: attr(data-text);
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(255,255,255,0.15) 45%,
+            rgba(255,255,255,0.35) 50%,
+            rgba(255,255,255,0.15) 55%,
+            transparent 100%
+        );
+        background-size: 300% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        animation: prismaticShine 3s linear infinite;
+        z-index: 11;
+        pointer-events: none;
+    }
+
+    .god-subtitle {
+        font-family: 'Cinzel', 'Playfair Display', serif;
+        font-size: clamp(0.8rem, 1.8vw, 1.3rem);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5em;
+        background: linear-gradient(
+            90deg,
+            #c084fc 0%,
+            #22d3ee 15%,
+            #fde68a 35%,
+            #ffffff 50%,
+            #fde68a 65%,
+            #22d3ee 85%,
+            #c084fc 100%
+        );
+        background-size: 300% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        animation: prismaticShine 4s reverse linear infinite, floatSubtle 4s ease-in-out infinite;
+        filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.8)) drop-shadow(0 0 40px rgba(34, 211, 238, 0.6)) drop-shadow(0 4px 10px rgba(0,0,0,0.9));
+        position: relative;
+        z-index: 10;
+    }
+
+    .god-location {
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        font-size: clamp(0.55rem, 1.2vw, 0.8rem);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.7em;
+        background: linear-gradient(90deg, #67e8f9, #fde68a, #a78bfa, #fde68a, #67e8f9);
+        background-size: 300% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        animation: prismaticShine 8s linear infinite, floatSubtle 5s ease-in-out infinite reverse;
+        filter: drop-shadow(0 0 15px rgba(6, 182, 212, 0.7)) drop-shadow(0 0 30px rgba(168, 85, 247, 0.3));
+        position: relative;
+        z-index: 10;
+    }
+
+    .god-divider {
+        position: relative;
+        height: 3px;
+        flex-grow: 1;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .god-divider::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to var(--dir, right), transparent, rgba(168,85,247,0.5), #22d3ee, #fde68a, #ffffff, #fde68a, #22d3ee, rgba(168,85,247,0.5), transparent);
+        box-shadow: 0 0 15px rgba(6,182,212,0.8);
+    }
+    .god-divider::after {
+        content: '';
+        position: absolute;
+        top: 0; bottom: 0;
+        width: 40%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+        animation: laserLineSweep 3s ease-in-out infinite;
+    }
+
+    .god-corona {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 120%;
+        height: 300%;
+        background: radial-gradient(ellipse at center,
+            rgba(251, 191, 36, 0.08) 0%,
+            rgba(6, 182, 212, 0.12) 20%,
+            rgba(168, 85, 247, 0.06) 40%,
+            transparent 65%
+        );
+        animation: coronaBreath 5s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 0;
+        filter: blur(30px);
+    }
+
+    .god-diamond-separator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin: 0 12px;
+    }
+    .god-diamond-separator .diamond {
+        width: 8px;
+        height: 8px;
+        background: linear-gradient(135deg, #fbbf24, #22d3ee, #a78bfa);
+        transform: rotate(45deg);
+        box-shadow: 0 0 12px #fbbf24, 0 0 24px rgba(34,211,238,0.5), 0 0 36px rgba(168,85,247,0.3);
+        animation: borderGlowPulse 2s ease-in-out infinite;
+    }
+    .god-diamond-separator .diamond.small {
+        width: 5px;
+        height: 5px;
+        background: rgba(34,211,238,0.6);
+        box-shadow: 0 0 6px rgba(34,211,238,0.5);
+    }
+
+    .god-ornament-line {
+        height: 1px;
+        flex-grow: 1;
+        background: linear-gradient(to var(--dir, right), transparent, rgba(6,182,212,0.4));
+    }
+
     /* === OBSIDIAN PANEL CARD (Emerald Green Glass) === */
     .dark-panel-card {
         background: linear-gradient(
             145deg,
             rgba(6, 78, 59, 0.8) 0%,
             rgba(5, 150, 105, 0.5) 40%,
-            rgba(16, 185, 129, 0.25) 60%,
+            rgba(224, 242, 254, 0.25) 60%,
             rgba(2, 44, 34, 0.9) 100%
         );
         backdrop-filter: blur(30px) saturate(150%);
         -webkit-backdrop-filter: blur(30px) saturate(150%);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        border-top: 1px solid rgba(52, 211, 153, 0.4);
+        border: 1px solid rgba(224, 242, 254, 0.3);
+        border-top: 1px solid rgba(34, 211, 238, 0.4);
         border-radius: 20px;
         box-shadow:
             0 25px 70px rgba(0, 0, 0, 0.6),
-            0 0 0 1px rgba(16, 185, 129, 0.1),
-            inset 0 1px 0 rgba(52, 211, 153, 0.15);
+            0 0 0 1px rgba(224, 242, 254, 0.1),
+            inset 0 1px 0 rgba(34, 211, 238, 0.15);
         position: relative;
         transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         color: #ffffff;
     }
     .dark-panel-card:hover {
-        border-color: rgba(52, 211, 153, 0.5);
+        border-color: rgba(34, 211, 238, 0.5);
         box-shadow:
-            inset 0 1px 0 rgba(52, 211, 153, 0.2),
+            inset 0 1px 0 rgba(34, 211, 238, 0.2),
             inset 0 -1px 0 rgba(0, 0, 0, 0.2),
             0 30px 80px rgba(0, 0, 0, 0.7),
-            0 0 0 1px rgba(16, 185, 129, 0.2),
-            0 0 40px rgba(16, 185, 129, 0.15);
+            0 0 0 1px rgba(224, 242, 254, 0.2),
+            0 0 40px rgba(224, 242, 254, 0.15);
         transform: translateY(-2px);
     }
     
@@ -642,14 +852,14 @@
     </svg>
 
     <!-- [NEW] RUNNING TEXT TICKER TOP: MOTTO PELAYANAN -->
-    <div class="fixed top-0 left-0 right-0 w-full flex items-stretch border-b border-[#DAA520]/20 bg-[#030712]/90 backdrop-blur-xl overflow-hidden z-50 shadow-[0_4px_20px_rgba(0,0,0,0.6),0_1px_0_rgba(56,189,248,0.1)]">
+    <div class="fixed top-0 left-0 right-0 w-full flex items-stretch border-b border-[#DAA520]/20 bg-white/5 backdrop-blur-[30px]/90 backdrop-blur-xl overflow-hidden z-50 shadow-[0_4px_20px_rgba(0,0,0,0.6),0_1px_0_rgba(56,189,248,0.1)]">
         <!-- Brand / System Name -->
-        <div class="flex items-center px-4 lg:px-6 bg-gradient-to-r from-[#0a0f1a]/90 to-[#12233a]/90 border-r-[3px] border-[#FFD700]/70 relative overflow-hidden group shadow-[4px_0_20px_rgba(255,215,0,0.15)]">
+        <div class="flex items-center px-4 lg:px-6 bg-gradient-to-r from-[#0a0f1a]/90 to-[#12233a]/90 border-r-[3px] border-[#22d3ee]/70 relative overflow-hidden group shadow-[4px_0_20px_rgba(255,215,0,0.15)]">
             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-[#FFD700]/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]"></div>
             
-            <img src="logo.jpg" alt="Logo" class="w-5 h-6 rounded-full object-cover border border-[#FFD700]/60 shadow-[0_0_10px_rgba(255,215,0,0.5)] mr-3">
+            <img src="logo.jpg" alt="Logo" class="w-5 h-6 rounded-full object-cover border border-[#22d3ee]/60 shadow-[0_0_10px_rgba(255,215,0,0.5)] mr-3">
             <h1 class="text-[10px] lg:text-xs font-black tracking-[0.3em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-[#fef3c7] via-[#FFD700] to-[#DAA520] drop-shadow-[0_0_10px_rgba(255,215,0,0.8)]">MOTTO PELAYANAN</h1>
-            <img src="logo.jpg" alt="Logo" class="w-5 h-6 rounded-full object-cover border border-[#FFD700]/60 shadow-[0_0_10px_rgba(255,215,0,0.5)] ml-3">
+            <img src="logo.jpg" alt="Logo" class="w-5 h-6 rounded-full object-cover border border-[#22d3ee]/60 shadow-[0_0_10px_rgba(255,215,0,0.5)] ml-3">
         </div>
         
         <div class="flex-1 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/80 to-[#0a0a0a] py-2.5 relative overflow-hidden flex items-center">
@@ -824,25 +1034,66 @@
                 <!-- POPUP KARTU SUKSES (Tengah Atas Kamera) -->
                 <div id="centerSuccessPopup" class="absolute top-8 left-1/2 transform -translate-x-1/2 z-[300] w-full max-w-[360px] pointer-events-none transition-all duration-[600ms] ease-out opacity-0 scale-50 -translate-y-12"></div>
                 
-                <div class="w-full text-center flex flex-col items-center justify-center pt-0 pb-0 mb-1 mt-2 lg:mt-6">
-                    <div class="flex flex-wrap items-center justify-center gap-3 lg:gap-5 mb-1">
-                        <h1 id="mainTitle" class="text-4xl lg:text-5xl font-serif font-black uppercase tracking-[0.25em] leading-tight text-center" style="background: linear-gradient(135deg, #FDE68A 0%, #FFD700 25%, #DAA520 50%, #CD853F 75%, #ffffff 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 20px rgba(218,165,32,0.4));">
+                <div class="w-full text-center flex flex-col items-center justify-center pt-0 pb-0 mb-1 mt-1 lg:mt-2 relative god-title-container">
+                    <!-- Multi-layer Corona Backglow -->
+                    <div class="god-corona"></div>
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[60%] h-[120%] rounded-full pointer-events-none z-0" style="background: radial-gradient(ellipse at center, rgba(59,130,246,0.12) 0%, transparent 70%); filter: blur(40px); animation: coronaBreath 7s ease-in-out infinite reverse;"></div>
+
+                    <!-- Decorative Top Ornament -->
+                    <div class="flex items-center w-full max-w-lg mb-2 relative z-10">
+                        <div class="god-ornament-line" style="--dir: right;"></div>
+                        <div class="god-diamond-separator">
+                            <div class="diamond small"></div>
+                            <div class="diamond"></div>
+                            <div class="diamond small"></div>
+                        </div>
+                        <div class="god-ornament-line" style="--dir: left;"></div>
+                    </div>
+
+                    <!-- Main Title -->
+                    <div class="flex flex-wrap items-center justify-center gap-2 lg:gap-3 mb-1 relative z-10">
+                        <h1 id="mainTitle" class="god-title-main" data-text="PRESENSI BIOMETRIK">
                             PRESENSI<br>BIOMETRIK
                         </h1>
                     </div>
-                    <div class="flex items-center justify-center w-full max-w-lg mb-1 mt-1">
-                        <div class="h-[1px] flex-grow" style="background: linear-gradient(to right, transparent, rgba(52, 211, 153, 0.8));"></div>
-                        <h2 class="px-5 text-xl font-serif font-extrabold tracking-[0.3em] uppercase" style="background: linear-gradient(90deg, #10b981 0%, #fde047 50%, #34d399 100%); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 15px rgba(52, 211, 153, 0.6)); animation: shine 3s linear infinite;">PUSKESMAS WANA</h2>
-                        <div class="h-[1px] flex-grow" style="background: linear-gradient(to left, transparent, rgba(52, 211, 153, 0.8));"></div>
+                    
+                    <!-- Laser Divider + Subtitle -->
+                    <div class="flex items-center justify-center w-full max-w-2xl mb-1 mt-1 relative z-10">
+                        <div class="god-divider" style="--dir: right;"></div>
+                        
+                        <div class="god-diamond-separator">
+                            <div class="diamond small"></div>
+                        </div>
+
+                        <h2 class="god-subtitle px-5">
+                            PUSKESMAS WANA
+                        </h2>
+
+                        <div class="god-diamond-separator">
+                            <div class="diamond small"></div>
+                        </div>
+                        
+                        <div class="god-divider" style="--dir: left;"></div>
                     </div>
-                    <h3 class="text-sm font-serif font-medium text-white/60 tracking-[0.4em] uppercase mb-2">
+                    
+                    <!-- Location with ornamental underline -->
+                    <h3 class="god-location mb-1">
                         KABUPATEN LAMPUNG TIMUR
                     </h3>
+
+                    <!-- Bottom Ornament -->
+                    <div class="flex items-center w-full max-w-xs mt-1 mb-0 relative z-10">
+                        <div class="god-ornament-line" style="--dir: right;"></div>
+                        <div class="god-diamond-separator">
+                            <div class="diamond small"></div>
+                        </div>
+                        <div class="god-ornament-line" style="--dir: left;"></div>
+                    </div>
                 </div>
-                <div class="camera-frame-outer relative w-full max-w-[900px] mt-1 overflow-hidden">
+                <div class="camera-frame-outer relative w-full max-w-[900px] mt-0 overflow-hidden">
                     <div class="glass-sweep-layer"></div>
                     <div class="absolute top-0 left-10 right-10 h-[2px] bg-gradient-to-r from-transparent via-[#FFD700] to-transparent opacity-80 shadow-[0_0_10px_rgba(255,215,0,0.4)]"></div>
-                    <div id="videoContainer" class="relative w-full pt-[56.25%] bg-[#030712] rounded-[18px] overflow-hidden shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] border border-white/5">
+                    <div id="videoContainer" class="relative w-full pt-[56.25%] bg-white/5 backdrop-blur-[30px] rounded-[18px] overflow-hidden shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] border border-white/5">
                         <video id="videoElement" class="absolute top-0 left-0 w-full h-full object-cover filter brightness-[1.05] contrast-[1.05]" autoplay muted playsinline></video>
                         <div class="absolute inset-0 pointer-events-none z-30">
                             <div class="absolute top-0 left-0 w-10 h-10 border-t-[2px] border-l-[2px] border-white/20 rounded-tl-[18px]"></div>
@@ -853,19 +1104,19 @@
                         <div class="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none z-20 mix-blend-overlay"></div>
                     <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
                         <div class="w-56 h-72 relative">
-                            <div class="absolute top-0 left-0 w-12 h-12 border-t-[3px] border-l-[3px] border-[#FFD700]/80 rounded-tl-2xl shadow-[-5px_-5px_15px_rgba(255,215,0,0.1)]"></div>
-                            <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#FFD700] rounded-tl-lg m-2"></div>
-                            <div class="absolute top-0 right-0 w-12 h-12 border-t-[3px] border-r-[3px] border-[#FFD700]/80 rounded-tr-2xl shadow-[5px_-5px_15px_rgba(255,215,0,0.1)]"></div>
-                            <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#FFD700] rounded-tr-lg m-2"></div>
-                            <div class="absolute bottom-0 left-0 w-12 h-12 border-b-[3px] border-l-[3px] border-[#FFD700]/80 rounded-bl-2xl shadow-[-5px_5px_15px_rgba(255,215,0,0.1)]"></div>
-                            <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#FFD700] rounded-bl-lg m-2"></div>
-                            <div class="absolute bottom-0 right-0 w-12 h-12 border-b-[3px] border-r-[3px] border-[#FFD700]/80 rounded-br-2xl shadow-[5px_5px_15px_rgba(255,215,0,0.1)]"></div>
-                            <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#FFD700] rounded-br-lg m-2"></div>
+                            <div class="absolute top-0 left-0 w-12 h-12 border-t-[3px] border-l-[3px] border-[#22d3ee]/80 rounded-tl-2xl shadow-[-5px_-5px_15px_rgba(34,211,238,0.2)]"></div>
+                            <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#22d3ee] rounded-tl-lg m-2"></div>
+                            <div class="absolute top-0 right-0 w-12 h-12 border-t-[3px] border-r-[3px] border-[#22d3ee]/80 rounded-tr-2xl shadow-[5px_-5px_15px_rgba(34,211,238,0.2)]"></div>
+                            <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#22d3ee] rounded-tr-lg m-2"></div>
+                            <div class="absolute bottom-0 left-0 w-12 h-12 border-b-[3px] border-l-[3px] border-[#22d3ee]/80 rounded-bl-2xl shadow-[-5px_5px_15px_rgba(34,211,238,0.2)]"></div>
+                            <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#22d3ee] rounded-bl-lg m-2"></div>
+                            <div class="absolute bottom-0 right-0 w-12 h-12 border-b-[3px] border-r-[3px] border-[#22d3ee]/80 rounded-br-2xl shadow-[5px_5px_15px_rgba(34,211,238,0.2)]"></div>
+                            <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#22d3ee] rounded-br-lg m-2"></div>
                         </div>
                     </div>
-                    <div class="absolute top-4 left-4 text-xs font-mono font-bold leading-tight pointer-events-none z-20 text-[#FFD700] p-3 min-w-[180px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                        <div class="flex items-center gap-1.5 text-[#FDE68A] mb-2 border-b border-[rgba(255,215,0,0.3)] pb-1.5 uppercase font-sans tracking-widest text-[9px] animate-breathing">
-                            <i class="fa-solid fa-crosshairs text-[#FFD700]"></i> BIOSCAN_V5.0
+                    <div class="absolute top-4 left-4 text-xs font-mono font-bold leading-tight pointer-events-none z-20 text-[#22d3ee] p-3 min-w-[180px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                        <div class="flex items-center gap-1.5 text-[#e0f2fe] mb-2 border-b border-[rgba(34,211,238,0.3)] pb-1.5 uppercase font-sans tracking-widest text-[9px] animate-breathing">
+                            <i class="fa-solid fa-crosshairs text-[#22d3ee]"></i> BIOSCAN_V5.0
                         </div>
                         <div class="text-[10px] space-y-0.5 tracking-wider font-sans">
                             <span class="text-white/60">SYS_KEY:</span> <span id="teleKey" class="text-white/90">0x0000</span><br>
@@ -880,12 +1131,12 @@
                 </div>
                 </div>
                 <div class="dark-panel-card w-full p-4 text-center relative overflow-hidden">
-                    <p id="statusMessage" class="text-2xl lg:text-3xl font-extrabold text-white transition-colors duration-300 font-serif tracking-wide relative z-10" style="text-shadow: 0 0 20px rgba(218,165,32,0.3);">
+                    <p id="statusMessage" class="text-2xl lg:text-3xl font-extrabold text-white transition-colors duration-300 font-serif tracking-wide relative z-10" style="background: linear-gradient(90deg, #22d3ee 0%, #3b82f6 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 25px rgba(34,211,238,0.8));">
                         SISTEM SIAP
                     </p>
                     <div class="panel-separator mt-2"></div>
                 </div>
-                <canvas id="aiVoiceVisualizer" class="w-full h-6 opacity-90 rounded-lg border-2 border-[#FFD700]/20 shadow-sm bg-[#030712]/80" width="600" height="40"></canvas>
+                <canvas id="aiVoiceVisualizer" class="w-full h-6 opacity-90 rounded-lg border-2 border-[#22d3ee]/20 shadow-sm bg-white/5 backdrop-blur-[30px]/80" width="600" height="40"></canvas>
             </div>
  
             <div class="col-span-1 flex flex-col gap-4 order-3 lg:mt-6 mt-4">
@@ -925,8 +1176,8 @@
         </div>
     </div>
 
-    <div id="adminOverlay" class="fixed inset-0 z-[99999] hidden items-center justify-center bg-black/90 backdrop-blur-sm transition-opacity duration-300">
-        <div class="widget-panel w-full max-w-md border-[#DAA520] shadow-[0_0_30px_rgba(255,215,0,0.5)] bg-gray-900/90">
+    <div id="adminOverlay" class="fixed inset-0 z-[99999] hidden items-center justify-center bg-black/60 backdrop-blur-md backdrop-blur-sm transition-opacity duration-300">
+        <div class="widget-panel w-full max-w-md border-[#DAA520] shadow-[0_0_30px_rgba(255,215,0,0.5)] bg-black/40 backdrop-blur-[40px]">
             <div class="flex justify-between items-center border-b border-[#DAA520]/50 pb-2 mb-4">
                 <h2 class="text-xl font-bold text-[#DAA520] tracking-widest flex items-center gap-2">
                     <span class="w-2 h-2 bg-[#DAA520] rounded-full animate-pulse"></span>
@@ -962,7 +1213,7 @@
                 </div>
             </div>
         </div>
-        <div id="corner-profile-card" class="fixed bottom-12 right-6 z-[100] hidden flex items-center gap-4 bg-[#0a0f1a]/95 border border-[#DAA520]/40 p-4 rounded-r-none rounded-l-xl shadow-2xl backdrop-blur-md transition-all duration-500 transform translate-x-full max-w-sm">
+        <div id="corner-profile-card" class="fixed bottom-12 right-6 z-[100] hidden flex items-center gap-4 bg-[#0a0a0a]/95 border border-[#DAA520]/40 p-4 rounded-r-none rounded-l-xl shadow-2xl backdrop-blur-md transition-all duration-500 transform translate-x-full max-w-sm">
             <div class="relative w-20 h-20 flex-shrink-0">
                 <img id="corner-photo" src="" class="w-full h-full object-cover rounded-md border border-white/30 shadow-lg" onerror="this.style.display='none'">
                 <div class="absolute -bottom-2 -right-2 bg-[#DAA520] text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider shadow-sm">ID</div>
@@ -975,7 +1226,7 @@
                 <h3 id="corner-name" class="text-lg font-bold text-white font-sans leading-tight truncate">NAMA</h3>
                 <p id="corner-jabatan" class="text-xs text-white/70 font-sans truncate mt-0.5">JABATAN</p>
                 <div class="flex items-center gap-2 mt-2">
-                    <span id="corner-id" class="text-[10px] text-white/80 font-mono bg-[#0a0f1a]/60 px-1.5 py-0.5 rounded border border-[#DAA520]/30">0000</span>
+                    <span id="corner-id" class="text-[10px] text-white/80 font-mono bg-[#0a0a0a]/60 px-1.5 py-0.5 rounded border border-[#DAA520]/30">0000</span>
                     <span id="corner-status" class="text-[10px] font-bold text-white bg-[#DAA520] px-2 py-0.5 rounded">ACTIVE</span>
                 </div>
             </div>
@@ -999,8 +1250,8 @@
         <div class="ambient-particle" style="left: 92%; --duration: 23s; --delay: -7s;"></div>
     
     <!-- Ticker Status Bawah -->
-    <div class="fixed bottom-0 left-0 right-0 z-[9999] flex items-stretch h-9 border-t border-[#DAA520]/20 bg-[#030712]/92 backdrop-blur-xl" style="box-shadow: 0 -4px 20px rgba(0,0,0,0.6), 0 -1px 0 rgba(255,215,0,0.08);">
-        <div class="flex items-center px-4 bg-[#0a0f1a]/90 border-r border-[#DAA520]/20 whitespace-nowrap">
+    <div class="fixed bottom-0 left-0 right-0 z-[9999] flex items-stretch h-9 border-t border-[#DAA520]/20 bg-white/5 backdrop-blur-[30px]/92 backdrop-blur-xl" style="box-shadow: 0 -4px 20px rgba(0,0,0,0.6), 0 -1px 0 rgba(255,215,0,0.08);">
+        <div class="flex items-center px-4 bg-[#0a0a0a]/90 border-r border-[#DAA520]/20 whitespace-nowrap">
             <div class="flex items-center gap-2">
                 <img src="logo.jpg" class="w-5 h-5 rounded-full object-cover border border-[#DAA520]/30" alt="Logo" style="box-shadow: 0 0 6px rgba(255,215,0,0.3);">
                 <span class="text-[10px] font-black tracking-[0.2em] uppercase text-white font-serif">WANA <span style="color: #DAA520;">OS</span></span>
@@ -1020,7 +1271,7 @@
                 V.2.0.4-OBSIDIAN
             </div>
         </div>
-        <div class="flex items-center px-4 bg-[#0a0f1a]/90 border-l border-[#DAA520]/20 gap-2 whitespace-nowrap">
+        <div class="flex items-center px-4 bg-[#0a0a0a]/90 border-l border-[#DAA520]/20 gap-2 whitespace-nowrap">
             <div class="w-1.5 h-1.5 rounded-full animate-pulse" style="background: #DAA520; box-shadow: 0 0 8px rgba(218,165,32,1), 0 0 16px rgba(218,165,32,0.5);"></div>
             <span class="text-[10px] font-mono tracking-widest" style="color: rgba(218,165,32,0.7);">ONLINE</span>
         </div>
@@ -1061,7 +1312,7 @@
         </script>
     </div>
 
-    <div id="bootScreen" class="fixed inset-0 bg-[#030712] z-[9999] flex flex-col items-center justify-center transition-opacity duration-1000">
+    <div id="bootScreen" class="fixed inset-0 bg-white/5 backdrop-blur-[30px] z-[9999] flex flex-col items-center justify-center transition-opacity duration-1000">
         <div class="text-yellow-300 font-mono text-sm md:text-lg tracking-[0.2em] flex flex-col items-start w-[80%] max-w-lg">
             <div class="flex items-center justify-center w-full mb-8">
                 <i class="fa-solid fa-shield-halved text-5xl text-yellow-500 animate-pulse drop-shadow-[0_0_15px_rgba(234,179,8,0.8)]"></i>
@@ -1094,29 +1345,7 @@
             }
 
             async function runBoot() {
-                if(window.location.hash) {
-                    bootScreen.style.display = 'none';
-                    return;
-                }
-
-                await new Promise(r => setTimeout(r, 50)); // Dipercepat dari 500ms
-                await typeText(boot1, 'Menginisiasi sistem keamanan biometrik...');
-                
-                await new Promise(r => setTimeout(r, 50)); // Dipercepat dari 300ms
-                await typeText(boot2, 'Koneksi ke server pusat terenkripsi... OK');
-                
-                progressContainer.style.opacity = '1';
-                progressBar.style.transition = 'width 0.2s ease-in-out'; // Dipercepat dari 1.5s
-                progressBar.style.width = '100%';
-                
-                await new Promise(r => setTimeout(r, 150)); // Dipercepat dari 1500ms
-                await typeText(boot3, 'AKSES DIBERIKAN', 10); // Dipercepat dari 50ms ke 10ms
-                
-                await new Promise(r => setTimeout(r, 100)); // Dipercepat dari 800ms
-                bootScreen.style.opacity = '0';
-                setTimeout(() => {
-                    bootScreen.style.display = 'none';
-                }, 200); // Dipercepat dari 1000ms
+                bootScreen.style.display = 'none';
             }
             
             runBoot();

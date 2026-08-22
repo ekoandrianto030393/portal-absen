@@ -1,4 +1,4 @@
-﻿//
+//
 /**
  * scan.js - Advanced Biometric Gateway (PUSKESMAS WANA)
  * FINAL STABILIZATION & CUSTOMIZATION: Disesuaikan 100% untuk UI FUTURISTIK Anda.
@@ -60,9 +60,18 @@ let currentStream = null; // Variabel untuk stream kamera aktif
 const offscreenCanvas = document.createElement('canvas'); // [NEW] Canvas tersembunyi untuk pre-processing
 const offCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
 // [OPTIMIZED] Naikkan interval untuk hemat CPU. 150ms = ~7fps deteksi, cukup untuk Absensi.
-const DETECTION_INTERVAL_MS = 150; // Interval scan dalam milidetik
-const DEFAULT_PHOTO = ''; // Path ke foto default/placeholder jika diperlukan
-const SUCCESS_COOLDOWN_MS = 10000; // Jeda 10 detik setelah berhasil scan (Sesuai Permintaan User)
+const DETECTION_INTERVAL_MS     = 150; // Interval normal (ms)
+const DETECTION_INTERVAL_FAST   = 50;  // [NEW] Interval turbo saat wajah terdeteksi
+const DETECTION_INTERVAL_IDLE   = 300; // [NEW] Interval hemat CPU saat kamera kosong
+const SUCCESS_COOLDOWN_MS = 10000; // Jeda 10 detik setelah berhasil scan
+const DEFAULT_PHOTO = ''; // Path ke foto default/placeholder
+
+let currentDetectionInterval = DETECTION_INTERVAL_MS; // [NEW] Adaptive interval aktif
+let consecutiveEmptyFrames   = 0;                     // [NEW] Counter frame kosong berturut
+let consecutiveFaceFrames    = 0;                     // [NEW] Counter frame ada wajah
+const EMPTY_TO_IDLE_THRESHOLD = 10; // [NEW] Setelah 10 frame kosong → masuk mode idle
+const FACE_TO_TURBO_THRESHOLD = 2;  // [NEW] Setelah 2 frame ada wajah → masuk mode turbo
+
 
 // VARS UNTUK EFEK DECRYPT TEXT
 let targetLabel = '';
@@ -90,39 +99,244 @@ let trackingMissCount = 0;   // [NEW] Counter jika tracking hilang
 let stabilityCounter = 0;    // [NEW] Counter frame stabil
 let userScanCounters = {};   // [NEW] Counter scan per user session
 
-// --- LIVENESS DETECTION ENGINE (ANTI-SPOOFING) ---
+// --- LIVENESS DETECTION ENGINE (ANTI-SPOOFING: DETEKSI GERAKAN KEPALA) ---
+// Sistem ini hanya memastikan user menggerakkan kepala sedikit saja (ke arah manapun).
+// Jika kepala tidak bergerak sama sekali (foto/video statis), absen ditolak.
 class LivenessDetector {
     constructor() {
-        this.movementDetected = false;
+        this.isLive = false;
         this.lastYaw = 0;
+        this.lastPitch = 0;
+        
+        // Baseline (posisi awal kepala saat pertama terdeteksi)
+        this.baselineYaw = 0;
+        this.baselinePitch = 0;
+        this.baselineSet = false;
+        this.baselineFrames = 0;
+        this.BASELINE_FRAMES_NEEDED = 3; // Frame untuk menentukan posisi awal
+        
+        // Tracking pergerakan
+        this.yawSamples = [];       // Riwayat yaw beberapa frame terakhir
+        this.pitchSamples = [];     // Riwayat pitch beberapa frame terakhir
+        this.MAX_SAMPLES = 20;      // Buffer riwayat
+        
+        // Threshold gerakan (sangat kecil — cukup gerak sedikit)
+        this.MOVEMENT_THRESHOLD = 0.08; // Threshold untuk deteksi bebas (kiri/kanan/atas/bawah)/ Delta yaw/pitch minimal — gerak sedikit namun pasti
+        this.movementScore = 0;     // Akumulasi skor gerakan
+        this.SCORE_TO_PASS = 2;     // Cukup 2 frame gerakan terdeteksi
+        
+        // TTS
+        this.instructionSpoken = false;
+        this.warningSpoken = false;
+        this.startTime = 0;
+        this.TIMEOUT_MS = 10000;    // 10 detik timeout
     }
 
     reset() {
-        this.movementDetected = false;
+        this.isLive = false;
+        this.baselineSet = false;
+        this.baselineFrames = 0;
+        this.baselineYaw = 0;
+        this.baselinePitch = 0;
+        this.yawSamples = [];
+        this.pitchSamples = [];
+        this.movementScore = 0;
         this.lastYaw = 0;
+        this.lastPitch = 0;
+        this.instructionSpoken = false;
+        this.warningSpoken = false;
+        this.startTime = 0;
     }
 
-    update(landmarks) {
-        const leftEye = landmarks.getLeftEye();
-        const rightEye = landmarks.getRightEye();
-        
-        // Estimasi Yaw (Rotasi Kepala) untuk UI AR
+    // Hitung Yaw (rotasi horizontal) dari landmarks
+    computeYaw(landmarks) {
         const nose = landmarks.getNose()[3];
-        const leftEyeCenter = leftEye[0]; 
-        const rightEyeCenter = rightEye[3]; 
-        const faceWidth = Math.abs(rightEyeCenter.x - leftEyeCenter.x);
-        if (faceWidth > 0) {
-            const noseRel = (nose.x - leftEyeCenter.x) / faceWidth;
-            this.lastYaw = (noseRel - 0.5) * 2; 
+        const leftEye = landmarks.getLeftEye()[0];
+        const rightEye = landmarks.getRightEye()[3];
+        const faceWidth = Math.abs(rightEye.x - leftEye.x);
+        if (faceWidth <= 0) return 0;
+        return ((nose.x - leftEye.x) / faceWidth - 0.5) * 2;
+    }
+
+    // Hitung Pitch (rotasi vertikal) dari landmarks  
+    computePitch(landmarks) {
+        const nose = landmarks.getNose()[3];
+        const leftEye = landmarks.getLeftEye()[0];
+        const rightEye = landmarks.getRightEye()[3];
+        const eyeCenterY = (leftEye.y + rightEye.y) / 2;
+        const jaw = landmarks.getJawOutline()[8];
+        const faceHeight = Math.abs(jaw.y - eyeCenterY);
+        if (faceHeight <= 0) return 0;
+        const noseRelY = (nose.y - eyeCenterY) / faceHeight;
+        return (noseRelY - 0.5) * 2;
+    }
+
+    // Update per frame
+    update(landmarks) {
+        if (!landmarks) return false;
+        if (this.isLive) return true;
+        
+        const yaw = this.computeYaw(landmarks);
+        const pitch = this.computePitch(landmarks);
+        this.lastYaw = yaw;
+        this.lastPitch = pitch;
+
+        // Fase 1: Kumpulkan baseline posisi awal
+        if (!this.baselineSet) {
+            this.baselineFrames++;
+            if (this.baselineFrames >= this.BASELINE_FRAMES_NEEDED) {
+                this.baselineYaw = yaw;
+                this.baselinePitch = pitch;
+                this.baselineSet = true;
+                this.startTime = Date.now();
+            }
+            return false;
         }
 
-        // Logika Deteksi Gerakan Kepala (Yaw)
-        // Jika kepala menoleh ke kiri/kanan (Threshold 0.2)
-        if (Math.abs(this.lastYaw) > 0.2) {
-            this.movementDetected = true;
+        // Ucapkan instruksi sekali
+        if (!this.instructionSpoken) {
+            this.instructionSpoken = true;
+            if (typeof SoundFX !== 'undefined' && SoundFX.speak) {
+                // SoundFX.speak('Gerakkan kepala Anda sedikit untuk verifikasi'); // [DISABLED]
+            }
         }
 
-        return this.movementDetected;
+        // Simpan sample
+        this.yawSamples.push(yaw);
+        this.pitchSamples.push(pitch);
+        if (this.yawSamples.length > this.MAX_SAMPLES) this.yawSamples.shift();
+        if (this.pitchSamples.length > this.MAX_SAMPLES) this.pitchSamples.shift();
+
+        // Cek delta dari baseline
+        const deltaYaw = Math.abs(yaw - this.baselineYaw);
+        const deltaPitch = Math.abs(pitch - this.baselinePitch);
+
+        if (deltaYaw > this.MOVEMENT_THRESHOLD || deltaPitch > this.MOVEMENT_THRESHOLD) {
+            this.movementScore++;
+        }
+
+        // Lulus jika cukup frame mendeteksi gerakan
+        if (this.movementScore >= this.SCORE_TO_PASS) {
+            this.isLive = true;
+            console.log('[LIVENESS] PASSED — gerakan kepala terdeteksi');
+            return true;
+        }
+
+        // Timeout warning
+        if (!this.warningSpoken && Date.now() - this.startTime > 5000) {
+            this.warningSpoken = true;
+            if (typeof SoundFX !== 'undefined' && SoundFX.speak) {
+                // SoundFX.speak('Kepala Anda belum bergerak. Silakan gerakkan sedikit.'); // [DISABLED]
+            }
+        }
+
+        // Timeout → reset dan coba lagi
+        if (Date.now() - this.startTime > this.TIMEOUT_MS) {
+            console.log('[LIVENESS] Timeout — reset');
+            this.baselineSet = false;
+            this.baselineFrames = 0;
+            this.movementScore = 0;
+            this.yawSamples = [];
+            this.pitchSamples = [];
+            this.instructionSpoken = false;
+            this.warningSpoken = false;
+            return false;
+        }
+
+        return false;
+    }
+
+    // Gambar overlay instruksi di canvas
+    drawLivenessOverlay(ctx, box) {
+        if (this.isLive) return;
+        if (!this.baselineSet) return;
+
+        const cx = box.x + box.width / 2;
+        const cy = box.y - 45;
+        const instruction = 'Gerakkan kepala Anda sedikit';
+        const remaining = Math.max(0, Math.ceil((this.TIMEOUT_MS - (Date.now() - this.startTime)) / 1000));
+        const progress = Math.min(1, (Date.now() - this.startTime) / this.TIMEOUT_MS);
+
+        ctx.save();
+
+        // --- Pill background ---
+        const pillW = 310;
+        const pillH = 38;
+        const pillX = cx - pillW / 2;
+        const pillY = cy - pillH / 2;
+        const pillR = pillH / 2;
+
+        ctx.beginPath();
+        ctx.moveTo(pillX + pillR, pillY);
+        ctx.lineTo(pillX + pillW - pillR, pillY);
+        ctx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + pillR, pillR);
+        ctx.arcTo(pillX + pillW, pillY + pillH, pillX + pillW - pillR, pillY + pillH, pillR);
+        ctx.lineTo(pillX + pillR, pillY + pillH);
+        ctx.arcTo(pillX, pillY + pillH, pillX, pillY + pillR, pillR);
+        ctx.arcTo(pillX, pillY, pillX + pillR, pillY, pillR);
+        ctx.closePath();
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fill();
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // --- Ikon gerak + teks ---
+        const pulse = 0.7 + 0.3 * Math.abs(Math.sin(Date.now() / 300));
+        ctx.globalAlpha = pulse;
+        ctx.font = 'bold 13px "Outfit", sans-serif';
+        ctx.fillStyle = '#FFD700';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`↔  ${instruction}`, cx, cy);
+        ctx.globalAlpha = 1;
+
+        // --- Progress bar ---
+        const barW = pillW - 16;
+        const barH = 3;
+        const barX = pillX + 8;
+        const barY = pillY + pillH + 5;
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(barX, barY, barW, barH);
+
+        const r = Math.floor(255 * progress);
+        const g = Math.floor(255 * (1 - progress));
+        ctx.fillStyle = `rgb(${r}, ${g}, 50)`;
+        ctx.fillRect(barX, barY, barW * (1 - progress), barH);
+
+        // --- Timer ---
+        ctx.font = '10px "Courier New", monospace';
+        ctx.fillStyle = remaining <= 3 ? '#FF4444' : 'rgba(255, 215, 0, 0.7)';
+        ctx.fillText(`${remaining}s`, cx, barY + barH + 12);
+
+        // --- Movement score indicator (titik-titik) ---
+        const dotY = barY + barH + 24;
+        const dotSpacing = 14;
+        const totalDots = this.SCORE_TO_PASS;
+        const startX = cx - ((totalDots - 1) * dotSpacing) / 2;
+
+        for (let i = 0; i < totalDots; i++) {
+            const dx = startX + i * dotSpacing;
+            ctx.beginPath();
+            ctx.arc(dx, dotY, 4, 0, Math.PI * 2);
+            if (i < this.movementScore) {
+                ctx.fillStyle = '#00FF88';
+                ctx.shadowColor = '#00FF88';
+                ctx.shadowBlur = 6;
+            } else {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.shadowBlur = 0;
+            }
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        ctx.restore();
     }
 }
 // Inisialisasi Global Liveness Check
@@ -310,32 +524,50 @@ const SoundFX = {
     speak: async (text) => {
         if (isStealthMode) return; // Mute jika Stealth Mode aktif
 
+        const runBrowserTTS = () => {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); 
+                const utterance = new SpeechSynthesisUtterance(text);
+                const voices = window.speechSynthesis.getVoices();
+                
+                // Pencarian suara Bahasa Indonesia yang lebih akurat
+                const preferredVoice = voices.find(v => v.name.includes('Google Bahasa Indonesia')) 
+                                    || voices.find(v => v.lang.startsWith('id')) 
+                                    || voices.find(v => v.name.includes('Indonesian'))
+                                    || voices[0];
+
+                if (preferredVoice) utterance.voice = preferredVoice;
+                utterance.lang = 'id-ID';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        };
+
+        // Jika Online, langsung gunakan bawaan browser (seperti Google Voice yg natural)
+        if (navigator.onLine) {
+            // Fix Chrome bug: getVoices() sering kosong saat dipanggil pertama kali
+            if (window.speechSynthesis.getVoices().length === 0) {
+                window.speechSynthesis.onvoiceschanged = runBrowserTTS;
+            } else {
+                runBrowserTTS();
+            }
+            return;
+        }
+
+        // --- FALLBACK OFFLINE ---
         try {
-            // [FIX] Langsung gunakan Browser TTS (Cloudflare Worker & ElevenLabs dinonaktifkan)
-            // Cloudflare Worker: Error 500 (server rusak)
-            // ElevenLabs: Error 402 (quota habis)
-            // Solusi: Gunakan browser speech synthesis yang gratis dan offline
-            throw new Error('Direct to browser TTS');
-            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${SoundFX.elevenLabs.voiceId}`, {
+            // Gunakan Local Python TTS Server (Piper)
+            const response = await fetch('http://localhost:5002/tts', {
                 method: 'POST',
-                signal: controller.signal,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'xi-api-key': SoundFX.elevenLabs.apiKey,
-                    'accept': 'audio/mpeg'
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    text: text,
-                    model_id: "eleven_multilingual_v2",
-                    voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-                })
+                body: JSON.stringify({ text: text })
             });
 
-            clearTimeout(timeoutId);
-
             if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(`HTTP ${response.status}: ${errData.detail?.message || 'API Key Invalid'}`);
+                throw new Error(`Local TTS HTTP error! status: ${response.status}`);
             }
 
             SoundFX.play('comms_open'); // Play entry chime only on successful response
@@ -348,41 +580,14 @@ const SoundFX = {
             source.start(0);
 
         } catch (e) {
-            // Log error to system HUD instead of crashing console
-            if (e.message.includes('402') || e.message.includes('quota')) {
-                SoundFX.elevenLabs.quotaExceeded = true; // [FIX] Tandai agar tidak coba lagi
-                logSystem(`VOICE MODULE: Quota Exceeded. Menggunakan Browser TTS.`, 'text-champagne-400');
-            } else {
-                logSystem(`VOICE MODULE: Link failed (${e.message})`, 'text-red-400');
-            }
+            logSystem(`VOICE MODULE: Local TTS failed (${e.message}). Menggunakan Browser TTS.`, 'text-sky-400');
             console.warn("TTS fallback engaged:", e.message);
 
-            // --- FALLBACK: Browser Web Speech API ---
-            if ('speechSynthesis' in window) {
-                const runFallbackSpeak = () => {
-                    window.speechSynthesis.cancel(); 
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    const voices = window.speechSynthesis.getVoices();
-                    
-                    // Pencarian suara Bahasa Indonesia yang lebih akurat
-                    const preferredVoice = voices.find(v => v.name.includes('Google Bahasa Indonesia')) 
-                                        || voices.find(v => v.lang.startsWith('id')) 
-                                        || voices.find(v => v.name.includes('Indonesian'))
-                                        || voices[0];
-
-                    if (preferredVoice) utterance.voice = preferredVoice;
-                    utterance.lang = 'id-ID';
-                    utterance.rate = 1.0;
-                    utterance.pitch = 1.0;
-                    window.speechSynthesis.speak(utterance);
-                };
-
-                // Fix Chrome bug: getVoices() seringkali kosong saat dipanggil pertama kali
-                if (window.speechSynthesis.getVoices().length === 0) {
-                    window.speechSynthesis.onvoiceschanged = runFallbackSpeak;
-                } else {
-                    runFallbackSpeak();
-                }
+            // Jika Piper mati saat offline, coba panggil Browser TTS lagi (pakai suara lokal spt Microsoft Gadis)
+            if (window.speechSynthesis.getVoices().length === 0) {
+                window.speechSynthesis.onvoiceschanged = runBrowserTTS;
+            } else {
+                runBrowserTTS();
             }
         }
     }
@@ -413,9 +618,16 @@ function initAudioVisualizer() {
             barHeight = dataArray[i] / 2; // Scale height
             total += dataArray[i];
             
-            // Warna Gradient Cyan ke Ungu
-            ctx.fillStyle = `rgba(221, 188, 130, ${barHeight / 100})`;
-            ctx.fillRect(x, (canvas.height - barHeight) / 2, barWidth, barHeight); // Center vertical
+            // Liquid Gold Wave Effect
+            const grad = ctx.createLinearGradient(0, (canvas.height - barHeight) / 2, 0, (canvas.height + barHeight) / 2);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            grad.addColorStop(0.3, 'rgba(20, 184, 166, 0.9)');
+            grad.addColorStop(1, 'rgba(167, 139, 250, 0.2)');
+            ctx.fillStyle = grad;
+            ctx.shadowColor = 'rgba(20, 184, 166, 0.5)';
+            ctx.shadowBlur = 8;
+            ctx.fillRect(x, (canvas.height - barHeight) / 2, barWidth - 1, barHeight); // Center vertical
+            ctx.shadowBlur = 0; // reset
             x += barWidth + 1;
         }
         window.audioLevel = total / bufferLength; // Rata-rata level suara (0-255)
@@ -432,9 +644,9 @@ function drawIdleRadar(ctx, x, y, radius) {
     // Rotating Radar Sweep
     ctx.rotate(time);
     const gradient = ctx.createConicGradient(0, 0, 0);
-    gradient.addColorStop(0, 'rgba(221, 188, 130, 0)');
-    gradient.addColorStop(0.8, 'rgba(221, 188, 130, 0)');
-    gradient.addColorStop(1, 'rgba(221, 188, 130, 0.1)');
+    gradient.addColorStop(0, 'rgba(20, 184, 166, 0)');
+    gradient.addColorStop(0.8, 'rgba(20, 184, 166, 0)');
+    gradient.addColorStop(1, 'rgba(20, 184, 166, 0.1)');
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -458,20 +670,20 @@ if (stealthToggle) {
         } else {
             // MODE NORMAL
             stealthToggle.textContent = '[ OFF ]';
-            stealthToggle.className = 'bg-transparent border border-champagne-500/50 text-champagne-400 text-[10px] px-3 py-1 font-mono hover:bg-cyan-900/30 transition-all duration-300';
+            stealthToggle.className = 'bg-transparent border border-sky-500/50 text-sky-400 text-[10px] px-3 py-1 font-mono hover:bg-sky-900/30 transition-all duration-300';
             if(stealthIcon) stealthIcon.className = 'w-2 h-2 rounded-full bg-gray-600';
-            logSystem('STEALTH MODE: DISENGAGED. Audio Online.', 'text-champagne-500');
+            logSystem('STEALTH MODE: DISENGAGED. Audio Online.', 'text-sky-400');
         }
     });
 }
 
 let FACE_MATCHING_THRESHOLD = 0.45; // [UPDATE] Diperketat ke 0.40 untuk Akurasi Tinggi (Anti-Acak)
-// --- DEFINISI WARNA (Futuristik) ---
-const PROFESSIONAL_STATUS_COLOR = '#F59E0B'; 
-const NAME_HIGHLIGHT_COLOR = '#FFD700'; // Kuning Emas Neon
-const HEADER_COLOR = '#FBBF24'; 
-const ABSEN_GANDA_BG = 'radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(204,133,0,0.95) 100%)'; 
-const ABSEN_NORMAL_BG = 'radial-gradient(circle, rgba(0,255,127,0.8) 0%, rgba(0,100,0,0.95) 100%)';
+// --- DEFINISI WARNA (Mewah & Berwibawa) ---
+const PROFESSIONAL_STATUS_COLOR = '#DAA520'; // Royal Gold
+const NAME_HIGHLIGHT_COLOR = '#1a1500'; // Deep Gold Black
+const HEADER_COLOR = '#B8860B'; // Dark Goldenrod
+const ABSEN_GANDA_BG = 'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(220,38,38,0.2) 100%)'; 
+const ABSEN_NORMAL_BG = 'linear-gradient(135deg, rgba(218,165,32,0.15) 0%, rgba(255,215,0,0.2) 100%)';
 const AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
 
 // --- NEW FEATURE: DYNAMIC SYSTEM THEME ---
@@ -481,16 +693,16 @@ function setSystemTheme(status) {
     
     switch(status) {
         case 'SUCCESS': 
-            primary = '#F59E0B'; secondary = '#008800'; glow = 'rgba(210, 164, 93, 0.6)'; 
+            primary = '#FFD700'; secondary = '#DAA520'; glow = 'rgba(255,215,0,0.4)'; 
             break;
         case 'ERROR': 
-            primary = '#FF0055'; secondary = '#880000'; glow = 'rgba(255, 0, 85, 0.6)'; 
+            primary = '#ef4444'; secondary = '#b91c1c'; glow = 'rgba(239, 68, 68, 0.4)'; 
             break;
         case 'SCANNING': 
-            primary = '#FBBF24'; secondary = '#0088FF'; glow = 'rgba(221, 188, 130, 0.6)'; 
+            primary = '#DAA520'; secondary = '#B8860B'; glow = 'rgba(218,165,32,0.4)'; 
             break;
         default: // IDLE
-            primary = '#FBBF24'; secondary = '#0088FF'; glow = 'rgba(221, 188, 130, 0.3)';
+            primary = '#FFD700'; secondary = '#DAA520'; glow = 'rgba(255,215,0,0.2)';
     }
     root.style.setProperty('--hud-primary', primary);
     root.style.setProperty('--hud-secondary', secondary);
@@ -515,7 +727,7 @@ window.setVisionMode = (mode) => {
         v.style.filter = 'url(#night-vision) brightness(1.2) contrast(1.1)';
         logSystem('SENSOR: NIGHT VISION ENGAGED', 'text-green-500');
     } else {
-        logSystem('SENSOR: STANDARD OPTICS RESTORED', 'text-champagne-500');
+        logSystem('SENSOR: STANDARD OPTICS RESTORED', 'text-sky-400');
     }
     SoundFX.play('comms_open');
 };
@@ -707,13 +919,13 @@ function drawHolographicMesh(ctx, landmarks) {
             // Putih terang memudar ke Cyan
             const intensity = 1 - (dist / 25);
             ctx.strokeStyle = `rgba(255, 255, 255, ${intensity})`; 
-            ctx.fillStyle = `rgba(221, 188, 130, ${intensity * 0.6})`;
+            ctx.fillStyle = `rgba(20, 184, 166, ${intensity * 0.6})`;
             ctx.fill();
             ctx.lineWidth = 1.5;
         } else {
             // Sudah stabil (Cyan redup)
-            ctx.strokeStyle = 'rgba(221, 188, 130, 0.15)';
-            ctx.fillStyle = 'rgba(221, 188, 130, 0.02)'; 
+            ctx.strokeStyle = 'rgba(20, 184, 166, 0.15)';
+            ctx.fillStyle = 'rgba(20, 184, 166, 0.02)'; 
             ctx.lineWidth = 0.5;
         }
         ctx.stroke();
@@ -753,7 +965,7 @@ function drawHolographicMesh(ctx, landmarks) {
                 ctx.lineTo(p2.x, p2.y);
             }
         }
-        ctx.strokeStyle = `rgba(221, 188, 130, 0.5)`;
+        ctx.strokeStyle = `rgba(20, 184, 166, 0.5)`;
         ctx.stroke();
     });
 
@@ -772,7 +984,7 @@ function drawHolographicMesh(ctx, landmarks) {
              ctx.shadowBlur = 8;
              ctx.shadowColor = '#FFFFFF';
         } else {
-             ctx.fillStyle = '#FBBF24';
+             ctx.fillStyle = '#DAA520';
              ctx.shadowBlur = 0;
         }
         ctx.fill();
@@ -782,9 +994,9 @@ function drawHolographicMesh(ctx, landmarks) {
     ctx.beginPath();
     ctx.moveTo(points[0].x - 25, scanY);
     ctx.lineTo(points[16].x + 25, scanY);
-    ctx.strokeStyle = 'rgba(221, 188, 130, 0.9)';
+    ctx.strokeStyle = 'rgba(218, 165, 32, 0.9)';
     ctx.lineWidth = 2;
-    ctx.shadowColor = '#FBBF24';
+    ctx.shadowColor = '#FFD700';
     ctx.shadowBlur = 15;
     ctx.stroke();
     
@@ -846,14 +1058,14 @@ function drawBiometricProgress(ctx, box, progress, color) {
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
     // 2. Progress Arc
     ctx.beginPath();
     ctx.arc(cx, cy, radius, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * progress));
     ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 1.5;
     ctx.shadowColor = color;
     ctx.shadowBlur = 15;
     ctx.stroke();
@@ -952,8 +1164,8 @@ function drawGuideOverlay(ctx, w, h, isCentered = false) {
     const radius = Math.min(w, h) * 0.28; // Ukuran target (sesuai area deteksi optimal)
 
     // [UPDATE] Logika Warna Dinamis (Amber = Standby, Emerald = Pas)
-    const baseColor = isCentered ? '16, 185, 129' : '251, 191, 36'; // RGB: Emerald vs Amber
-    const strokeStyle = `rgba(${baseColor}, ${isCentered ? 0.8 : 0.15})`; // Lebih terang jika pas
+    const baseColor = isCentered ? '210, 164, 93' : '197, 139, 69'; // RGB: Light Gold vs Deep Gold
+    const strokeStyle = `rgba(${baseColor}, ${isCentered ? 0.8 : 0.25})`; // Lebih terang jika pas
 
     ctx.save();
     // 1. Lingkaran Target (Putus-putus)
@@ -966,7 +1178,7 @@ function drawGuideOverlay(ctx, w, h, isCentered = false) {
 
     // 2. Crosshair Tengah
     ctx.setLineDash([]);
-    ctx.strokeStyle = 'rgba(221, 188, 130, 0.3)';
+    ctx.strokeStyle = 'rgba(20, 184, 166, 0.3)';
     ctx.beginPath();
     ctx.moveTo(cx - 15, cy); ctx.lineTo(cx + 15, cy);
     ctx.moveTo(cx, cy - 15); ctx.lineTo(cx, cy + 15);
@@ -1047,7 +1259,7 @@ function drawDynamicScreenCorners(ctx, w, h, box, color) {
 
     ctx.save();
     ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 1.5;
     ctx.shadowColor = color;
     ctx.shadowBlur = 15;
     ctx.lineCap = 'square';
@@ -1078,7 +1290,7 @@ function drawTargetLock(ctx, x, y, radius) {
     ctx.rotate(time * 1.5);
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 1.5); // Lingkaran tidak penuh
-    ctx.strokeStyle = 'rgba(221, 188, 130, 0.6)';
+    ctx.strokeStyle = 'rgba(20, 184, 166, 0.6)';
     ctx.lineWidth = 2;
     ctx.stroke();
     
@@ -1280,13 +1492,13 @@ function drawHolographicMesh(ctx, landmarks) {
             // Putih terang memudar ke Cyan
             const intensity = 1 - (dist / 25);
             ctx.strokeStyle = `rgba(255, 255, 255, ${intensity})`; 
-            ctx.fillStyle = `rgba(221, 188, 130, ${intensity * 0.6})`;
+            ctx.fillStyle = `rgba(20, 184, 166, ${intensity * 0.6})`;
             ctx.fill();
             ctx.lineWidth = 1.5;
         } else {
             // Sudah stabil (Cyan redup)
-            ctx.strokeStyle = 'rgba(221, 188, 130, 0.15)';
-            ctx.fillStyle = 'rgba(221, 188, 130, 0.02)'; 
+            ctx.strokeStyle = 'rgba(20, 184, 166, 0.15)';
+            ctx.fillStyle = 'rgba(20, 184, 166, 0.02)'; 
             ctx.lineWidth = 0.5;
         }
         ctx.stroke();
@@ -1699,31 +1911,31 @@ function showToast(message, type = 'info') {
 
     const toast = document.createElement('div');
     
-    let bgColor = 'bg-slate-800/80';
-    let borderColor = 'border-champagne-500';
-    let textColor = 'text-champagne-300';
+    let bgColor = 'bg-emerald-900/90';
+    let borderColor = 'border-emerald-400';
+    let textColor = 'text-white';
     let icon = '<i class="fa-solid fa-circle-info"></i>';
-
+ 
     if (type === 'success') {
-        borderColor = 'border-green-500';
+        borderColor = 'border-green-400';
         textColor = 'text-green-300';
         icon = '<i class="fa-solid fa-circle-check"></i>';
     } else if (type === 'error') {
-        borderColor = 'border-red-500';
+        borderColor = 'border-red-400';
         textColor = 'text-red-300';
         icon = '<i class="fa-solid fa-circle-xmark"></i>';
     } else if (type === 'warning') {
-        borderColor = 'border-champagne-500';
-        textColor = 'text-champagne-300';
+        borderColor = 'border-amber-400';
+        textColor = 'text-amber-300';
         icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
     }
-
+ 
     toast.className = `flex items-center gap-4 p-4 rounded-lg shadow-2xl border ${bgColor} border-l-4 ${borderColor} transform transition-all duration-300 translate-x-full opacity-0 min-w-[350px] backdrop-blur-md`;
     toast.innerHTML = `
         <div class="text-xl ${textColor}">${icon}</div>
         <div class="flex-1">
             <p class="font-bold text-white">${message}</p>
-            <p class="text-xs text-slate-400 font-mono">${new Date().toLocaleTimeString('id-ID')}</p>
+            <p class="text-xs text-white/50 font-mono">${new Date().toLocaleTimeString('id-ID')}</p>
         </div>
     `;
 
@@ -1752,21 +1964,21 @@ async function runBootSequence() {
         "SYSTEM READY. WELCOME ADMIN."
     ];
     
-    // Voice Greeting
-    setTimeout(() => SoundFX.speak("Sistem Online. Sensor Optik Dikalibrasi."), 1000);
+    // Voice Greeting (dipercepat)
+    setTimeout(() => SoundFX.speak("Sistem Online. Sensor Optik Dikalibrasi."), 100);
 
     for (const line of lines) {
         const p = document.createElement('div');
         p.className = 'boot-line';
         p.innerHTML = `> ${line}`;
         bootLog.appendChild(p);
-        await new Promise(r => setTimeout(r, Math.random() * 200 + 100)); // Random delay
+        await new Promise(r => setTimeout(r, Math.random() * 20 + 10)); // Dipercepat dari 100-300ms ke 10-30ms
     }
 
-    await new Promise(r => setTimeout(r, 600));
-    bootScreen.style.transition = "opacity 0.8s ease-out";
+    await new Promise(r => setTimeout(r, 100)); // Dipercepat dari 600ms
+    bootScreen.style.transition = "opacity 0.2s ease-out";
     bootScreen.style.opacity = "0";
-    setTimeout(() => bootScreen.remove(), 800);
+    setTimeout(() => bootScreen.remove(), 250); // Dipercepat dari 800ms
 }
 
 // --- NEW FEATURE: SMART HUD LABEL ---
@@ -1801,7 +2013,7 @@ function drawSmartHUD(ctx, box, label, color, confidence, emotion = '-', gender 
     ctx.fillText(label.length > 15 ? label.substring(0, 15) + '...' : label, tagX + 15, tagY + 25);
 
     // 5. Sub-info — ID statis per session (tidak Math.random() setiap frame)
-    ctx.fillStyle = '#FBBF24';
+    ctx.fillStyle = '#DAA520';
     ctx.font = '11px "Courier New", monospace';
     ctx.fillText(`MATCH-CONF: ${Math.min(100, Math.max(0, confidence)).toFixed(0)}%`, tagX + 15, tagY + 45);
 
@@ -1836,18 +2048,20 @@ function logSystem(message, color = 'text-green-500') {
 function setStatusVisual(message, colorClass, isPulsing = false) {
     if (!statusMessage) return;
     statusMessage.textContent = message;
-    
+
     // Selalu gunakan font serif dan efek teks emas metalik untuk kesan premium
     statusMessage.className = 'text-2xl lg:text-3xl font-serif font-bold transition-all duration-500 uppercase tracking-widest text-metallic-gold';
     
     // Tentukan warna shadow berdasarkan colorClass untuk efek glow
-    let shadowColor = '#d2a45d'; // Default untuk text-metallic-gold
+    let shadowColor = '#FFD700'; // Default untuk text-metallic-gold
     
     // Terapkan font-family dan text-shadow untuk kedalaman dan glow
-    statusMessage.style.filter = `drop-shadow(0 0 12px ${shadowColor}80)`; 
+            statusMessage.style.filter = `drop-shadow(0 0 8px ${shadowColor}60)`; // Tambahan drop-shadow untuk efek lebih tebal
 
     if (isPulsing) {
         statusMessage.classList.add('animate-pulse');
+    } else {
+        statusMessage.className = "text-xl lg:text-2xl font-bold transition-colors duration-300";
     }
 }
 
@@ -1869,7 +2083,7 @@ function resizeCanvas() {
 
         // PENTING: Untuk Face-API
         faceapi.matchDimensions(canvas, { width: W, height: videoH});
-        logSystem(`Canvas resized to ${W}x${videoH}.`, 'text-champagne-500');
+        logSystem(`Canvas resized to ${W}x${videoH}.`, 'text-sky-400');
     }
 }
 
@@ -1894,13 +2108,13 @@ function logAttendance(name, time) {
     if (placeholder) placeholder.remove();
 
     const entry = document.createElement('div');
-    entry.className = 'flex justify-between items-center border-b border-champagne-900/30 pb-1 mb-1 animate-[fadeIn_0.5s_ease-out]';
+    entry.className = 'flex justify-between items-center border-b border-white/10 pb-1.5 mb-1.5 animate-[fadeIn_0.5s_ease-out]';
     entry.innerHTML = `
-        <span class="text-champagne-400 font-bold truncate w-2/3 flex items-center gap-2">
-            <span class="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_5px_#00FF00]"></span>
+        <span class="text-white font-bold truncate w-2/3 flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_5px_rgba(218,165,32,0.6)]"></span>
             ${name}
         </span>
-        <span class="text-gray-400 text-[10px] font-mono">${time}</span>
+        <span class="text-white/60 text-[10px] font-mono font-bold">${time}</span>
     `;
     
     attendanceLog.prepend(entry);
@@ -1983,20 +2197,20 @@ function animateTitle() {
             max-width: 800px; 
             margin: 0 auto; 
             padding: 16px; 
-            border: 1px solid rgba(221, 188, 130, 0.5); 
-            background: linear-gradient(135deg, rgba(2, 44, 34, 0.9) 0%, rgba(2, 44, 34, 0.95) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.5); 
+            background: linear-gradient(135deg, rgba(3, 7, 18, 0.9) 0%, rgba(3, 7, 18, 0.95) 100%);
             backdrop-filter: blur(20px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(221, 188, 130, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(251, 191, 36, 0.05);
             position: relative;
             border-radius: 12px;
         ">
             <div style="display: flex; flex-direction: row; align-items: stretch; justify-content: center; width: 100%; gap: 15px;">
                 
                 <!-- CHRONO MODULE (ACADEMIC) -->
-                <div style="flex: 1.6; border: 1px solid rgba(221, 188, 130, 0.3); padding: 15px; background: rgba(0,0,0,0.3); position: relative; display: flex; align-items: center; gap: 20px; border-radius: 8px;">
+                <div style="flex: 1.6; border: 1px solid rgba(251, 191, 36, 0.3); padding: 15px; background: rgba(0,0,0,0.3); position: relative; display: flex; align-items: center; gap: 20px; border-radius: 8px;">
                     <div style="width: 90px; height: 90px; position: relative;">
                         <svg viewBox="0 0 100 100" style="width: 100%; height: 100%; transform: rotate(-90deg);">
-                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(221,188,130,0.1)" stroke-width="2" />
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,215,0,0.1)" stroke-width="2" />
                             <circle id="clock-ring-sec" cx="50" cy="50" r="45" fill="none" stroke="#FBBF24" stroke-width="4" stroke-dasharray="0 283" style="transition: stroke-dasharray 0.1s linear;" stroke-linecap="round" />
                         </svg>
                         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; pointer-events: none;">
@@ -2007,7 +2221,7 @@ function animateTitle() {
                     
                     <div style="display: flex; flex-direction: column;">
                         <div style="font-size: 11px; color: #FBBF24; letter-spacing: 2px; font-family: 'Inter', sans-serif; opacity: 0.8; margin-bottom: 4px;">WAKTU SISTEM</div>
-                        <div style="display: flex; align-items: baseline; font-family: 'Lora', serif; font-weight: 700; color: #FFF; text-shadow: 0 0 15px rgba(221,188,130,0.4);">
+                        <div style="display: flex; align-items: baseline; font-family: 'Lora', serif; font-weight: 700; color: #FFF; text-shadow: 0 0 15px rgba(255,215,0,0.4);">
                             <span id="clock-h" style="font-size: 58px; line-height: 1;">--</span>
                             <span style="font-size: 42px; margin: 0 4px; animation: blink 1s infinite; opacity: 0.8;">:</span>
                             <span id="clock-m" style="font-size: 58px; line-height: 1;">--</span>
@@ -2016,7 +2230,7 @@ function animateTitle() {
                 </div>
 
                 <!-- TELEMETRY & IMAGE (ACADEMIC) -->
-                <div style="flex: 2.2; height: 125px; position: relative; border: 1px solid rgba(221,188,130,0.5); overflow: hidden; background: #022c22; border-radius: 8px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
+                <div style="flex: 2.2; height: 125px; position: relative; border: 1px solid rgba(255,215,0,0.5); overflow: hidden; background: #022c22; border-radius: 8px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
                     <img src="pkm.jpg" alt="PKM" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.85; filter: contrast(1.1) sepia(0.2) hue-rotate(-10deg);">
                 </div>
             </div>
@@ -2051,7 +2265,7 @@ function animateTitle() {
             mainLogo.style.borderRadius = '50%'; 
             mainLogo.style.objectFit = 'cover';
             mainLogo.style.zIndex = '101';
-            mainLogo.style.filter = 'drop-shadow(0 0 8px rgba(221,188,130,0.6))';
+            mainLogo.style.filter = 'drop-shadow(0 0 8px rgba(255,215,0,0.6))';
         }
 
         // --- POSISI JUDUL: POJOK KIRI ATAS (HUD STYLE) ---
@@ -2090,8 +2304,8 @@ function animateTitle() {
             }
             
             // Style dasar span
-            span.style.color = '#FBBF24'; 
-            span.style.textShadow = '0 0 10px rgba(221, 188, 130, 0.5)';
+            span.style.color = '#DAA520'; 
+            span.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
             span.style.color = '#FFD700'; 
             span.style.textShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
             span.style.transition = 'transform 0.1s, color 0.1s, text-shadow 0.1s';
@@ -2122,8 +2336,8 @@ function animateTitle() {
             if (original === ' ') continue;
 
             let char = original;
-            let color = '#FBBF24'; // Base: Cyan Neon
-            let textShadow = '0 0 8px rgba(221, 188, 130, 0.6)';
+            let color = '#DAA520'; 
+            let textShadow = '0 0 8px rgba(251, 191, 36, 0.6)';
             let transform = 'scale(1) translateZ(0px)';
             let opacity = 0.8 + (Math.sin(time * 3 + i) * 0.1); // Breathing effect
 
@@ -2131,26 +2345,14 @@ function animateTitle() {
             const dist = Math.abs(i - wavePos);
 
             // Efek Highlight (Passing Beam)
-            if (dist < 1.5) {
-                color = '#FFFFFF'; // White Hot
-                textShadow = '0 0 20px #FFFFFF, 0 0 40px #FBBF24, 0 0 60px #0088FF';
-                textShadow = '0 0 20px #FFFFFF, 0 0 40px #FFD700, 0 0 60px #FF4500';
-                transform = 'scale(1.2) translateZ(20px)';
-                opacity = '1';
-            } else if (dist < 3) {
-                color = '#0088FF'; // Blue Trail
-                textShadow = '0 0 15px #0088FF';
-                color = '#FFA500'; // Orange Trail
-                textShadow = '0 0 15px #FFA500';
-                transform = 'scale(1.1) translateZ(10px)';
-            }
+            if (dist < 1.5) {} else if (dist < 3) {}
 
             // Efek Glitch Acak (Digital Noise)
             if (Math.random() < 0.01) {
                 const glitchChars = "X@#$%=+<>?01";
                 char = glitchChars[Math.floor(Math.random() * glitchChars.length)];
                 color = '#FF0055'; // Error Red
-                textShadow = '2px 0 0 #FBBF24, -2px 0 0 #FF0055'; // Chromatic Aberration
+                textShadow = '2px 0 0 #DAA520, -2px 0 0 #FF0055'; 
                 transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
                 opacity = '1';
             }
@@ -2216,9 +2418,9 @@ async function updatePersonnelRoster() {
         if (cutiRoster) cutiRoster.innerHTML = '';
         
         if (!data || data.length === 0) {
-            personnelRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Belum ada data kehadiran hari ini.</div>';
-            if (dlRoster) dlRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data dinas luar.</div>';
-            if (cutiRoster) cutiRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data cuti.</div>';
+            personnelRoster.innerHTML = '<div style="color:rgba(0,229,160,0.5);" class="text-xs italic text-center py-4">Belum ada data kehadiran hari ini.</div>';
+            if (dlRoster) dlRoster.innerHTML = '<div style="color:rgba(255,215,0,0.5);" class="text-sm italic text-center py-4">Tidak ada data dinas luar.</div>';
+            if (cutiRoster) cutiRoster.innerHTML = '<div style="color:rgba(255,215,0,0.5);" class="text-sm italic text-center py-4">Tidak ada data cuti.</div>';
             
             // Reset counter badges
             const hadirBadge = document.getElementById('hadir-counter-badge');
@@ -2288,10 +2490,10 @@ async function updatePersonnelRoster() {
                 bgHover = '';
             } else {
                 timeDisplay = isOut ? `OUT: ${row.jam_keluar ? row.jam_keluar.substring(0,5) : '--:--'}` : `IN: ${row.jam_masuk ? row.jam_masuk.substring(0,5) : '--:--'}`;
-                statusColor = isOut ? 'bg-[#f43f5e] shadow-[0_0_12px_#f43f5e]' : 'bg-[#FBBF24] shadow-[0_0_12px_#FBBF24]';
+                statusColor = isOut ? 'bg-[#f43f5e] shadow-[0_0_12px_#f43f5e]' : 'bg-[#DAA520] shadow-[0_0_12px_#DAA520]';
                 statusText = isOut ? 'SUDAH PULANG' : 'HADIR';
-                borderColor = isOut ? 'border-[#f43f5e]' : 'border-[#FBBF24]';
-                cardBorderClass = isOut ? 'border-[#f43f5e]' : 'border-[#FBBF24]';
+                borderColor = isOut ? 'border-[#f43f5e]' : 'border-[#DAA520]';
+                cardBorderClass = isOut ? 'border-[#f43f5e]' : 'border-[#DAA520]';
                 bgHover = '';
             }
 
@@ -2299,97 +2501,129 @@ async function updatePersonnelRoster() {
             const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-[#f97316] ml-1.5 text-sm flex-shrink-0 shadow-[0_2px_8px_rgba(249,115,22,0.5)]" title="Cuti"></i>' : '';
             
             if (isCuti) {
-                bgGradient = 'linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(249,115,22,0.05) 50%, rgba(15,8,3,1) 100%)';
+                bgGradient = 'linear-gradient(135deg, rgba(249,115,22,0.12) 0%, rgba(255,255,255,0.7) 100%)';
                 glowColor = '#f97316';
                 badgeStyle = 'bg-[#f97316] text-white border-[#f97316]';
-                timeGradient = 'text-[#f97316] bg-black/75 border-[#f97316]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(249,115,22,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">CUTI</span>`;
+                timeGradient = 'text-[#f97316] bg-white border-[#f97316]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(249,115,22,0.3)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">CUTI</span>`;
             } else if (isDL) {
-                bgGradient = 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.05) 50%, rgba(3,12,15,1) 100%)';
+                bgGradient = 'linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(255,255,255,0.7) 100%)';
                 glowColor = '#3b82f6';
                 badgeStyle = 'bg-[#3b82f6] text-white border-[#3b82f6]';
-                timeGradient = 'text-[#3b82f6] bg-black/75 border-[#3b82f6]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(59,130,246,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">DINAS LUAR</span>`;
+                timeGradient = 'text-[#3b82f6] bg-white border-[#3b82f6]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(59,130,246,0.3)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">DINAS LUAR</span>`;
             } else if (isOut) {
-                bgGradient = 'linear-gradient(135deg, rgba(244,63,94,0.15) 0%, rgba(244,63,94,0.05) 50%, rgba(15,12,3,1) 100%)';
+                bgGradient = 'linear-gradient(135deg, rgba(244,63,94,0.12) 0%, rgba(255,255,255,0.7) 100%)';
                 glowColor = '#f43f5e';
                 badgeStyle = 'bg-[#f43f5e] text-white border-[#f43f5e]';
-                timeGradient = 'text-[#f43f5e] bg-black/75 border-[#f43f5e]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(244,63,94,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">PULANG</span>`;
+                timeGradient = 'text-[#f43f5e] bg-white border-[#f43f5e]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(244,63,94,0.3)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">PULANG</span>`;
             } else {
-                bgGradient = 'linear-gradient(135deg, rgba(221,188,130,0.15) 0%, rgba(221,188,130,0.05) 50%, rgba(2,44,34,1) 100%)';
-                glowColor = '#FBBF24';
-                badgeStyle = 'bg-[#FBBF24] text-black border-[#FBBF24]';
-                timeGradient = 'text-[#FBBF24] bg-black/75 border-[#FBBF24]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(221,188,130,0.6)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">HADIR</span>`;
+                bgGradient = 'linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(255,255,255,0.7) 100%)';
+                glowColor = '#D4AF37';
+                badgeStyle = 'bg-[#D4AF37] text-white border-[#D4AF37]';
+                timeGradient = 'text-[#D4AF37] bg-white border-[#D4AF37]';
+                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(212,175,55,0.3)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">HADIR</span>`;
             }
 
-            const solidStatusBg = isDL ? 'bg-[#3b82f6]' : isCuti ? 'bg-[#f97316]' : isOut ? 'bg-[#f43f5e]' : 'bg-[#FBBF24]';
+            const solidStatusBg = isDL ? 'bg-[#3b82f6]' : isCuti ? 'bg-[#f97316]' : isOut ? 'bg-[#f43f5e]' : 'bg-[#D4AF37]';
 
             const item = document.createElement('div');
-            item.className = `group flex items-center p-3 rounded-lg border border-champagne-500/10 transition-all duration-300 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden bg-black/40 hover:bg-black/60 hover:-translate-y-0.5 select-none cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.6)] hover:border-champagne-500/30`;
-            
-            item.style.background = bgGradient;
+            item.className = `roster-card-3d group flex items-center p-2.5 rounded-xl border transition-all duration-400 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden select-none cursor-pointer mb-2 mx-1 hex-bg-pattern`;
+
+            // Aurora card style sesuai status
+            const cardBg = isDL
+                ? 'linear-gradient(135deg, rgba(3,15,10,0.95) 0%, rgba(5,25,40,0.95) 100%)'
+                : isCuti
+                ? 'linear-gradient(135deg, rgba(3,15,10,0.95) 0%, rgba(30,15,5,0.95) 100%)'
+                : isOut
+                ? 'linear-gradient(135deg, rgba(3,15,10,0.95) 0%, rgba(35,10,15,0.95) 100%)'
+                : 'linear-gradient(135deg, rgba(2,10,7,0.95) 0%, rgba(3,25,18,0.95) 100%)';
+
+            item.style.cssText = `
+                background: ${cardBg};
+                border-color: ${glowColor}30;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 ${glowColor}20;
+            `;
+
+            // Style border berbeda untuk CUTI (dashed)
+            if (isCuti) {
+                item.style.borderStyle = 'dashed';
+                item.style.borderWidth = '1px';
+            }
+
+            // Radar Ping element only for DL
+            const radarPingHTML = isDL ? `<div class="absolute inset-0 rounded-xl" style="border: 1px solid ${glowColor}; animation: radarPing 3s infinite ease-out; pointer-events:none;"></div>` : '';
 
             // Aksen highlight saat hover
-            const hoverGlowClass = isCuti ? 'group-hover:text-[#FF9000]' : isDL ? 'group-hover:text-[#00FFD2]' : isOut ? 'group-hover:text-[#FFD000]' : 'group-hover:text-[#00E5FF]';
+            const hoverGlowClass = '';
             const nameColor = 'text-white';
 
             item.innerHTML = `
-                <!-- Left Accent Status Bar (Solid Glow) -->
-                <div class="absolute left-0 top-0 bottom-0 w-[4px] z-20" style="background-color: ${glowColor}; box-shadow: 0 0 10px ${glowColor};"></div>
+                ${radarPingHTML}
 
-                <!-- HOVER LIGHT EFFECT (Crystal Shine) -->
-                <div class="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-all pointer-events-none transform -translate-x-full group-hover:translate-x-full ease-in-out z-20" style="transition-duration: 1.2s;"></div>
-                
-                <!-- AVATAR SECTION -->
-                <div class="relative w-[64px] h-[64px] flex-shrink-0 group-hover:scale-105 transition-transform duration-500 z-10 ml-2">
-                    <!-- Elegant Metallic/Glass Frame Wrapper -->
-                    <div class="absolute -inset-[2px] rounded-xl bg-gradient-to-br from-champagne-400 via-emerald-600 to-[#021a14] opacity-80 group-hover:opacity-100 transition-opacity z-0 shadow-[0_4px_15px_rgba(0,0,0,0.6)]"></div>
+                <!-- Left Accent Neon Bar -->
+                <div class="absolute left-0 top-0 bottom-0 w-[4px] z-20 rounded-r-full" style="background: linear-gradient(to bottom, ${glowColor}, ${glowColor}80); box-shadow: 0 0 10px ${glowColor}, 0 0 20px ${glowColor}60;"></div>
+
+                <!-- Aurora Shimmer Sweep -->
+                <div class="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none z-20" style="background: linear-gradient(105deg, transparent 20%, ${glowColor}10 50%, transparent 80%); transition: opacity 0.6s ease;"></div>
+
+                <!-- AVATAR & TELEMETRY -->
+                <div class="relative flex items-center justify-center flex-shrink-0 z-10 ml-3 transition-transform duration-500 group-hover:scale-105">
                     
-                    <!-- Dark Inner Bezel -->
-                    <div class="absolute inset-0 rounded-[10px] bg-[#040812] z-0"></div>
-                    
-                    <!-- Status Color Glow Accent -->
-                    <div class="absolute inset-0 rounded-[10px] opacity-40 group-hover:opacity-80 transition-opacity z-20 pointer-events-none mix-blend-screen" style="box-shadow: inset 0 0 15px ${glowColor};"></div>
-                    
-                    <img src="${photoSrc}" class="w-full h-full rounded-[10px] object-cover relative z-10 border border-white/5" style="filter: brightness(1.1) contrast(1.1) saturate(1.1); image-rendering: high-quality;">
-                    
-                    <!-- Elegant Status Dot -->
-                    <div class="absolute -bottom-1.5 -right-1.5 w-[18px] h-[18px] ${solidStatusBg} rounded-full border-[2px] border-[#0A0F14] shadow-[0_0_12px_${glowColor}] z-40" title="${statusText}">
-                        <span class="absolute -inset-[2px] rounded-full ${solidStatusBg} opacity-60 animate-[pulse_2s_ease-in-out_infinite] z-0"></span>
+                    <!-- Telemetry Equalizer Bars -->
+                    <div class="absolute -left-3 top-1/2 -translate-y-1/2 flex items-end gap-[2px] h-[30px] w-[8px]">
+                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 1.2s infinite ease-in-out; animation-delay: 0.1s;"></div>
+                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 1.5s infinite ease-in-out; animation-delay: 0.3s;"></div>
+                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 0.9s infinite ease-in-out; animation-delay: 0.5s;"></div>
+                    </div>
+
+                    <div class="relative w-[65px] h-[65px]">
+                        <!-- Neon Glow Frame -->
+                        <div class="absolute -inset-[2px] rounded-xl z-0" style="background: linear-gradient(135deg, ${glowColor}90, ${glowColor}40, ${glowColor}80); box-shadow: 0 0 15px ${glowColor}50;"></div>
+
+                        <!-- Inner bezel -->
+                        <div class="absolute inset-[1.5px] rounded-[10px] z-0" style="background: rgba(1,6,4,0.9);"></div>
+
+                        <!-- Photo -->
+                        <img src="${photoSrc}" class="w-full h-full rounded-[10px] object-cover relative z-10" style="filter: brightness(1.1) contrast(1.1); image-rendering: high-quality;">
+
+                        <!-- Status Dot -->
+                        <div class="absolute -bottom-2 -right-2 w-[22px] h-[22px] rounded-full border-[2.5px] z-40 flex items-center justify-center" style="background: ${glowColor}; border-color: rgba(1,6,4,1); box-shadow: 0 0 10px ${glowColor}, 0 0 20px ${glowColor}80;" title="${statusText}">
+                            <span class="absolute -inset-[2px] rounded-full animate-[pulse_2s_ease-in-out_infinite] z-0" style="background: ${glowColor}; opacity: 0.6;"></span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- INFO SECTION -->
-                <div class="flex-grow min-w-0 z-10 ml-4">
-                    <div class="flex items-center justify-between mb-1">
-                        <p class="font-extrabold text-[15px] ${nameColor} truncate leading-tight tracking-wider ${hoverGlowClass} transition-colors" style="text-shadow: 0 1px 3px rgba(0,0,0,0.9);">${row.nama}</p>
+                <div class="flex-grow min-w-0 z-10 ml-5">
+                    <div class="flex items-center justify-between mb-0.5">
+                        <p class="font-black text-[15px] text-white truncate leading-tight tracking-wide transition-colors duration-300" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${row.nama}</p>
                         ${dlIcon || cutiIcon || ''}
                     </div>
-                    <p class="text-[10px] text-champagne-400 font-extrabold truncate mb-2.5 uppercase tracking-[0.2em] drop-shadow-sm">${row.jabatan || '-'}</p>
-                    
-                    <!-- Pocket Data Container -->
-                    <div class="grid grid-cols-2 gap-2 bg-[#02050a]/90 p-2 rounded border border-white/5">
-                        <!-- Timestamp Box -->
+                    <p class="text-[11px] font-bold truncate mb-2 uppercase tracking-widest text-white/80" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">${row.jabatan || '-'}</p>
+
+                    <!-- Data Grid -->
+                    <div class="grid grid-cols-2 gap-2 p-2 rounded-lg" style="background: rgba(0,0,0,0.6); border: 1px solid ${glowColor}40; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);">
+                        <!-- Timestamp -->
                         <div class="flex flex-col justify-center">
-                            <span class="text-[7.5px] text-gray-400 uppercase font-black tracking-widest mb-1 flex items-center gap-1">
-                                <i class="fa-solid fa-clock text-gray-500"></i> Waktu
+                            <span class="text-[8px] uppercase font-black tracking-[0.25em] mb-1 flex items-center gap-1" style="color: rgba(255,255,255,0.6);">
+                                <i class="fa-solid fa-clock" style="color: ${glowColor}; text-shadow: 0 0 5px ${glowColor};"></i> WAKTU
                             </span>
-                            <p class="text-[10.5px] font-mono font-black ${isDL || isCuti ? 'text-gray-400' : isOut ? 'text-[#FFB703]' : 'text-[#00E5FF]'} tracking-widest leading-none">${timeDisplay}</p>
+                            <p class="text-[13px] font-mono font-black tracking-widest leading-none" style="background: linear-gradient(90deg, #ffffff, ${glowColor}); -webkit-background-clip: text; color: transparent; filter: drop-shadow(0 2px 4px rgba(0,0,0,1));">${timeDisplay}</p>
                         </div>
-                        <!-- Status Box -->
+                        <!-- Status Badge -->
                         <div class="flex flex-col justify-center items-end">
-                            <span class="text-[7.5px] text-gray-400 uppercase font-black tracking-widest mb-1 flex items-center gap-1">
-                                <i class="fa-solid fa-shield-halved text-gray-500"></i> Status
+                            <span class="text-[8px] uppercase font-black tracking-[0.25em] mb-1 flex items-center gap-1" style="color: rgba(255,255,255,0.6);">
+                                <i class="fa-solid fa-shield-halved" style="color: ${glowColor}; text-shadow: 0 0 5px ${glowColor};"></i> STATUS
                             </span>
-                            ${statusLabelHtml}
+                            <span class="text-[10px] px-2.5 py-0.5 rounded border font-black tracking-[0.15em] uppercase text-white" style="background: linear-gradient(135deg, ${glowColor}90, ${glowColor}40); border-color: ${glowColor}; text-shadow: 0 1px 3px rgba(0,0,0,0.9); box-shadow: 0 0 10px ${glowColor}40;">${statusText === 'SUDAH PULANG' ? 'PULANG' : statusText}</span>
                         </div>
                     </div>
                 </div>
             `;
             
-            if (isDL && dlRoster) {
+            if (isDL && dlRoster) { // Restored
                 dlWrapper.appendChild(item);
                 hasDL = true;
                 dlCount++;
@@ -2397,7 +2631,7 @@ async function updatePersonnelRoster() {
                 cutiWrapper.appendChild(item);
                 hasCuti = true;
                 cutiCount++;
-            } else {
+            } else { // Restored
                 regularWrapper.appendChild(item);
                 hadirCount++;
             }
@@ -2421,7 +2655,7 @@ async function updatePersonnelRoster() {
             if (hasDL) {
                 dlRoster.appendChild(dlWrapper);
             } else {
-                dlRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data dinas luar.</div>';
+                dlRoster.innerHTML = '<div class="text-gray-500 text-sm italic text-center py-4">Tidak ada data dinas luar.</div>';
             }
         }
 
@@ -2431,7 +2665,7 @@ async function updatePersonnelRoster() {
                 cutiRoster.appendChild(cutiWrapper);
                 cutiRoster.scrollTop = 0; // [NEW] Auto-scroll ke atas setelah update
             } else {
-                cutiRoster.innerHTML = '<div class="text-gray-500 text-xs italic text-center py-4">Tidak ada data cuti.</div>';
+                cutiRoster.innerHTML = '<div class="text-gray-500 text-sm italic text-center py-4">Tidak ada data cuti.</div>';
             }
         }
 
@@ -2442,7 +2676,7 @@ async function updatePersonnelRoster() {
 
 
 const api = {
-    getDescriptors: async () => {
+    getDescriptors: async () => { // Restored
         // Safety check: Jangan fetch jika dibuka via file:// (Local)
         if (window.location.protocol === 'file:') {
             throw new Error("Local File Mode (No Backend)");
@@ -2462,7 +2696,7 @@ const api = {
                 if (!data.success) throw new Error(data.message || 'API returned failure.');
                 return data.descriptors;
             } catch (e) {
-                console.warn("DIAGNOSTIK: Respons server bukan format JSON yang valid.");
+                console.warn("DIAGNOSTIK: Respons server bukan format JSON yang valid."); // Restored
                 throw new Error(`Invalid JSON received. Cek Console (F12) untuk melihat respons server.`);
             }
         } catch (error) {
@@ -2470,7 +2704,7 @@ const api = {
             // console.error('Error loading descriptors:', error); // Suppress duplicate logging
             throw error; // Lemparkan error agar bisa ditangkap oleh pemanggil
         }
-    },
+    }, // Restored
     getConfig: async () => {
         try {
             const response = await fetch('/api/config');
@@ -2491,60 +2725,12 @@ const api = {
         let pythonScore = 0;
         let pythonEngine = 'none';
 
-        // --- STEP 1: Verifikasi InsightFace (Python Server) ---
-        try {
-            const pyResponse = await fetch('http://localhost:5000/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    id_karyawan: karyawanId,
-                    image: imageBase64 
-                }),
-                signal: AbortSignal.timeout(10000) // Timeout 10 detik
-            });
-
-            if (pyResponse.ok) {
-                const pyResult = await pyResponse.json();
-                pythonVerified = pyResult.verified;
-                pythonScore = pyResult.score || 0;
-                pythonEngine = pyResult.engine || 'insightface';
-
-                console.log(`🐍 [PYTHON] Verifikasi ${karyawanId}: ${pythonVerified ? '✅ COCOK' : '❌ TIDAK COCOK'} (Score: ${pythonScore}, Engine: ${pythonEngine})`);
-                logSystem(`AI VERIFY: ${pythonVerified ? 'MATCH' : 'NO MATCH'} [Score: ${pythonScore}] Engine: ${pythonEngine}`, 
-                    pythonVerified ? 'text-green-400' : 'text-red-400');
-
-                // Jika InsightFace menolak (wajah tidak cocok), TOLAK absensi
-                if (!pythonVerified) {
-                    return {
-                        success: false,
-                        message: `⚠️ Verifikasi AI GAGAL: Wajah tidak cocok dengan data biometrik (Score: ${pythonScore})`,
-                        statusColor: 'red',
-                        result_code: 'PYTHON_VERIFY_FAILED',
-                        nama: pyResult.nama || karyawanId,
-                        jabatan: pyResult.jabatan || ''
-                    };
-                }
-            } else if (pyResponse.status === 403) {
-                // KASUS KHUSUS: Anti-Spoofing (Deteksi HP/Foto)
-                const pyResult = await pyResponse.json();
-                console.error("🐍 [PYTHON] Anti-Spoofing Rejection:", pyResult.message);
-                logSystem(`SECURITY ALERT: SPOOFING DETECTED!`, 'text-red-500');
-                
-                return {
-                    success: false,
-                    message: pyResult.message || "⚠️ TERDETEKSI SPOOFING! Gunakan wajah asli.",
-                    statusColor: 'red',
-                    result_code: 'SPOOFING_DETECTED',
-                    nama: 'SECURITY ALERT',
-                    jabatan: 'REJECTED'
-                };
-            }
-        } catch (pyErr) {
-            // Python server tidak tersedia - lanjut ke Node.js saja
-            console.warn('🐍 [PYTHON] Server tidak tersedia, menggunakan Node.js saja:', pyErr.message);
-            logSystem('AI ENGINE: Python offline, fallback Node.js', 'text-champagne-400');
-            pythonEngine = 'fallback_nodejs';
-        }
+        // --- STEP 1: Verifikasi InsightFace (Python Server) DIBAYPASS SESUAI PERMINTAAN ---
+        pythonVerified = true;
+        pythonScore = 100;
+        pythonEngine = 'nodejs_only';
+        console.log('🐍 [PYTHON] Verifikasi dibypass, menggunakan Node.js (server.js) saja.');
+        logSystem('AI ENGINE: Menggunakan Node.js', 'text-sky-400');
 
         // --- STEP 2: Catat Absensi via Node.js ---
         try {
@@ -2572,7 +2758,7 @@ const api = {
             throw e;
         }
     },
-    getTodayAttendance: async () => {
+    getTodayAttendance: async () => { // Restored
         if (window.location.protocol === 'file:') return [];
         try {
             // Mengambil data absensi hari ini untuk Kernel Diagnostic
@@ -2585,29 +2771,29 @@ const api = {
             // console.warn("Gagal mengambil data absensi hari ini:", e); // Silent fail
             return [];
         }
-    }
+    } // Restored
 };
 
 async function loadLabeledImages() {
-    setStatusVisual('BOOT SEQUENCE: Memuat Database Wajah...', 'text-champagne-500', true);
+    setStatusVisual('BOOT SEQUENCE: Memuat Database Wajah...', 'text-sky-400', true); // Restored
     if(dbStatus) {
         dbStatus.textContent = 'LOADING...';
-        dbStatus.className = 'text-champagne-500 font-bold';
+        dbStatus.className = 'text-sky-400 font-bold';
     }
-    logSystem('Database Sync Initiated.', 'text-champagne-500');
+    logSystem('Database Sync Initiated.', 'text-sky-400'); // Restored
     
     try {
         const descriptorsData = await api.getDescriptors();
         // console.log("DEBUG SERVER DATA:", descriptorsData);
-        logSystem(`DIAGNOSTIK: Diterima ${descriptorsData ? descriptorsData.length : 0} data dari server.`, 'text-champagne-400');
+        logSystem(`DIAGNOSTIK: Diterima ${descriptorsData ? descriptorsData.length : 0} data dari server.`, 'text-sky-400'); // Restored
         
         if (!descriptorsData || descriptorsData.length === 0) {
-            setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-champagne-500');
+            setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-sky-400'); // Restored
             if(dbStatus) {
                 dbStatus.textContent = 'EMPTY';
-                dbStatus.className = 'text-champagne-500 font-bold';
+                dbStatus.className = 'text-sky-400 font-bold';
             }
-            logSystem(`Database loaded: 0 records.`, 'text-champagne-500');
+            logSystem(`Database loaded: 0 records.`, 'text-sky-400');
             return [];
         }
 
@@ -2664,12 +2850,12 @@ async function loadLabeledImages() {
         
         // FIX: Jika server merespon error "Database is empty", anggap sebagai KOSONG (Amber), bukan OFFLINE (Merah)
         if (error.message && (error.message.includes('empty') || error.message.includes('Database is empty'))) {
-            setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-champagne-500');
+            setStatusVisual(`⚠️ DB KOSONG. Mode Deteksi Saja.`, 'text-sky-400'); // Restored
             if(dbStatus) {
                 dbStatus.textContent = 'EMPTY';
-                dbStatus.className = 'text-champagne-500 font-bold';
+                dbStatus.className = 'text-sky-400 font-bold';
             }
-            logSystem(`Database loaded: 0 records (Server Message).`, 'text-champagne-500');
+            logSystem(`Database loaded: 0 records (Server Message).`, 'text-sky-400'); // Restored
             return [];
         }
 
@@ -2698,7 +2884,7 @@ function stopCamera() {
 async function startCamera(deviceId = null) {
     stopCamera(); 
     
-    logSystem('Camera stream starting...', 'text-champagne-500');
+    logSystem('Camera stream starting...', 'text-sky-400'); // Restored
 
     try {
         const constraints = {
@@ -2736,7 +2922,7 @@ async function loadTodayAttendance() {
     try {
         const data = await api.getTodayAttendance();
         if (data && data.length > 0) {
-            logSystem(`KERNEL DIAGNOSTIC: Loading ${data.length} records...`, 'text-champagne-500');
+            logSystem(`KERNEL DIAGNOSTIC: Loading ${data.length} records...`, 'text-sky-400');
             // Loop data (Asumsi urut waktu ASC dari server)
             // logAttendance melakukan prepend, jadi data terakhir akan muncul paling atas
             data.forEach(row => {
@@ -2759,8 +2945,8 @@ async function initializeApp() {
     if (isAppInitialized) return;
     isAppInitialized = true;
 
-    setStatusVisual('BOOT SEQUENCE: Loading Neural Engine...', 'text-champagne-500', true);
-    logSystem('Application boot sequence initiated.', 'text-champagne-500');
+    setStatusVisual('BOOT SEQUENCE: Loading Neural Engine...', 'text-sky-400', true);
+    logSystem('Application boot sequence initiated.', 'text-sky-400');
 
     // [FIX] Suppress TensorFlow.js Backend/Platform Overwrite Warnings
     if (window.faceapi && faceapi.tf) {
@@ -2769,56 +2955,63 @@ async function initializeApp() {
     }
 
     try {
-        // Memuat Model Face-API.js
-        // [OPTIMIZED] Hanya load model yang diperlukan untuk Absensi Biometrik.
-        // AgeGenderNet & FaceExpressionNet dinonaktifkan untuk performa lebih cepat.
-        await Promise.all([
+        // =====================================================================
+        // [OPTIMIZED] PARALLEL BOOT: Model + Kamera + Data dimuat BERSAMAAN
+        // Sebelumnya berurutan (model selesai → kamera → data).
+        // Sekarang semua jalan paralel → boot time turun drastis.
+        // =====================================================================
+        const modelLoad = Promise.all([
             faceapi.nets.tinyFaceDetector.loadFromUri('./models'),
             faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
             faceapi.nets.faceRecognitionNet.loadFromUri('./models')
         ]);
-        
-        // [NEW] Load BlazeFace Model dengan error handling
-        try {
-            // Memuat dari folder lokal untuk mode 100% offline
-            blazeModel = await blazeface.load({ modelUrl: './models/blazeface/model.json' });
-            logSystem('ENGINE: BLAZEFACE ACCELERATOR ONLINE', 'text-purple-400');
-        } catch (blazeErr) {
-            console.warn("BlazeFace local load failed, using TinyFace fallback.", blazeErr);
-            logSystem('ENGINE: BLAZEFACE OFFLINE (Using Fallback)', 'text-champagne-500');
-        }
 
+        // Muat BlazeFace PARALEL dengan model lain (tidak perlu tunggu)
+        const blazeLoad = blazeface.load({ modelUrl: './models/blazeface/model.json' })
+            .then(model => {
+                blazeModel = model;
+                logSystem('ENGINE: BLAZEFACE ACCELERATOR ONLINE', 'text-purple-400');
+            })
+            .catch(err => {
+                console.warn('BlazeFace load failed, fallback mode.', err);
+                logSystem('ENGINE: BLAZEFACE OFFLINE (Fallback)', 'text-orange-400');
+            });
+
+        // Muat konfigurasi server PARALEL (tidak bloking)
+        const configLoad = api.getConfig()
+            .then(configData => {
+                if (configData && configData.success) {
+                    SoundFX.elevenLabs.apiKey = configData.config.elevenlabs_api_key || SoundFX.elevenLabs.apiKey;
+                    SoundFX.elevenLabs.voiceId = configData.config.elevenlabs_voice_id || SoundFX.elevenLabs.voiceId;
+                    SoundFX.cfWorkerUrl = configData.config.cf_worker_tts_url || null;
+                    logSystem(`VOICE MODULE: Sync OK (Voice: ${SoundFX.elevenLabs.voiceId.substring(0, 6)}...)`, 'text-purple-400');
+                }
+            })
+            .catch(() => {});
+
+        // Muat data absensi hari ini PARALEL (tidak bloking)
+        const attendanceLoad = loadTodayAttendance().catch(() => {});
+
+        // Tunggu model face-api selesai (WAJIB sebelum kamera bisa aktif)
+        await modelLoad;
         logSystem('Neural Network Models Loaded.', 'text-green-500');
-        setStatusVisual('Models Loaded. Starting Camera Stream...', 'text-champagne-400', true);
+        setStatusVisual('Models Loaded. Starting Camera...', 'text-sky-400', true);
 
-        // [NEW] Inisialisasi ONNX Runtime sebagai Fallback Engine
-        // Mengatur thread WASM agar pemrosesan neural lebih cepat jika WebGL bermasalah
+        // Kamera bisa start sekarang (tidak perlu tunggu blaze & config)
+        await startCamera(null);
+
+        // Tunggu sisanya di background (tidak bloking UI)
+        Promise.all([blazeLoad, configLoad, attendanceLoad]).catch(() => {});
+
+        // ONNX Runtime (opsional, tidak bloking)
         if (window.ort) {
-            // Memberitahu engine lokasi file .wasm pendukung
             ort.env.wasm.wasmPaths = {
                 'ort-wasm-simd.wasm': './node_modules/onnxruntime-web/dist/ort-wasm-simd.wasm',
                 'ort-wasm.wasm': './node_modules/onnxruntime-web/dist/ort-wasm.wasm'
             };
             ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
-            ort.env.wasm.proxy = true; // Jalankan di web worker agar UI tidak freeze
-            logSystem('ENGINE: ONNX RUNTIME INITIALIZED (WASM READY)', 'text-blue-400');
+            ort.env.wasm.proxy = true;
         }
-
-        // Langsung mulai kamera default
-        await startCamera(null); 
-
-        // [NEW] Sinkronisasi konfigurasi ElevenLabs dari server (.env)
-        const configData = await api.getConfig();
-        if (configData && configData.success) {
-            SoundFX.elevenLabs.apiKey = configData.config.elevenlabs_api_key || SoundFX.elevenLabs.apiKey;
-            SoundFX.elevenLabs.voiceId = configData.config.elevenlabs_voice_id || SoundFX.elevenLabs.voiceId;
-            SoundFX.cfWorkerUrl = configData.config.cf_worker_tts_url || null;
-            logSystem(`VOICE MODULE: Sync successful (Voice ID: ${SoundFX.elevenLabs.voiceId.substring(0, 6)}...)`, 'text-purple-400');
-        }
-
-        // Load data absensi hari ini ke panel Diagnostic/Log
-        loadTodayAttendance();
-        // Catatan: loadTodayAttendance ditiadakan di sini karena sudah dipanggil oleh updatePersonnelRoster
 
     } catch (err) {
         setStatusVisual(`❌ FATAL ERROR: Gagal Init Model. Cek folder /models.`, 'text-red-500');
@@ -2827,32 +3020,81 @@ async function initializeApp() {
 }
 
 video.addEventListener('play', async () => {
-    resizeCanvas(); 
+    resizeCanvas();
 
     if (!labeledDescriptors) {
+        // [OPTIMIZED] Load labeled images PARALEL — tidak bloking UI
         labeledDescriptors = await loadLabeledImages();
-
-       // Tambahkan style/class di sini untuk frame video saat scanning dimulai
-       videoContainer.classList.add('scanning-border');
-
+        videoContainer.classList.add('scanning-border');
     }
-    
-    resetTargetData(); // Reset data saat video mulai
 
-    // FIX: Gunakan Recursive Timeout menggantikan setInterval untuk mencegah Memory Leak
+    resetTargetData();
+
     if (!isDetectionActive) {
         isDetectionActive = true;
+        // [NEW] Reset adaptive counters saat detection dimulai
+        currentDetectionInterval = DETECTION_INTERVAL_MS;
+        consecutiveEmptyFrames   = 0;
+        consecutiveFaceFrames    = 0;
         detectFaceLoop();
         setStatusVisual('SYSTEM READY. AWAITING TARGET...', 'text-gray-300', true);
-        logSystem('Scanning Loop Activated.', 'text-green-500');
+        logSystem('Scanning Loop Activated [ADAPTIVE MODE].', 'text-green-500');
     }
 });
 
+// =========================================================================
+// [NEW] ADAPTIVE DETECTION LOOP
+// Logika: BlazeFace (ringan) jalan selalu.
+// - Tidak ada wajah  → interval melambat (IDLE) untuk hemat CPU
+// - Wajah muncul     → interval dipercepat (TURBO) untuk respons instan
+// - face-api.js penuh hanya dijalankan dalam mode NORMAL & TURBO
+// =========================================================================
 async function detectFaceLoop() {
     if (!isDetectionActive) return;
-    await detectFace();
+
+    // Cek cepat apakah ada wajah menggunakan BlazeFace sebelum jalankan face-api
+    let facePresent = false;
+    if (blazeModel && video.videoWidth > 0 && !video.paused) {
+        try {
+            const quickCheck = await blazeModel.estimateFaces(video, false);
+            facePresent = quickCheck.length > 0;
+        } catch (_) {
+            facePresent = true; // Jika error, tetap jalankan deteksi penuh
+        }
+    } else {
+        facePresent = true; // Fallback: selalu deteksi jika BlazeFace tidak tersedia
+    }
+
+    if (facePresent) {
+        // ── Ada wajah: jalankan deteksi penuh + percepat interval
+        consecutiveFaceFrames++;
+        consecutiveEmptyFrames = 0;
+
+        if (consecutiveFaceFrames >= FACE_TO_TURBO_THRESHOLD &&
+            currentDetectionInterval !== DETECTION_INTERVAL_FAST) {
+            currentDetectionInterval = DETECTION_INTERVAL_FAST;
+            logSystem('⚡ TURBO MODE: Wajah terdeteksi — interval dipersingkat ke 50ms', 'text-cyan-400');
+        }
+
+        await detectFace(); // Jalankan face-api.js penuh
+
+    } else {
+        // ── Tidak ada wajah: lewati face-api, perlambat interval
+        consecutiveEmptyFrames++;
+        consecutiveFaceFrames = 0;
+
+        if (consecutiveEmptyFrames >= EMPTY_TO_IDLE_THRESHOLD &&
+            currentDetectionInterval !== DETECTION_INTERVAL_IDLE) {
+            currentDetectionInterval = DETECTION_INTERVAL_IDLE;
+            // Bersihkan canvas saat idle
+            const ctx = canvas.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            handleNoFace(ctx); // Update status UI
+        }
+    }
+
     if (isDetectionActive) {
-        setTimeout(detectFaceLoop, DETECTION_INTERVAL_MS);
+        setTimeout(detectFaceLoop, currentDetectionInterval);
     }
 }
 
@@ -2916,7 +3158,7 @@ function drawSciFiHUD(ctx, box, landmarks, color, label, status) {
         const end = start + segLen * 0.4; // Celah antar segmen
         ctx.arc(cx, cy, radius, start, end);
     }
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.stroke();
 
     // 2. Cincin Dalam Berlawanan Arah
@@ -2930,7 +3172,7 @@ function drawSciFiHUD(ctx, box, landmarks, color, label, status) {
     // 3. Bracket Sudut Taktis
     const bLen = 25;
     const bGap = 15; // Jarak dari wajah
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 1.5;
     
     // Gambar 4 Sudut
     const drawCorner = (px, py, dx, dy) => {
@@ -2954,7 +3196,7 @@ async function detectFace() {
 
     // [NEW] Gambar Lingkaran Target di Tengah Layar (Panduan Posisi)
     // [UPDATE] Gunakan status frame sebelumnya agar warna responsif
-    // drawGuideOverlay(context, canvas.width, canvas.height, isLastFaceCentered);
+    // drawGuideOverlay(context, canvas.width, canvas.height, isLastFaceCentered); // Restored
 
     if (isProcessing) return; // Jangan lakukan apapun jika sedang memproses absensi
     if (video.paused || video.ended || !faceapi.nets.tinyFaceDetector.params || !labeledDescriptors) return;
@@ -3032,7 +3274,7 @@ async function detectFace() {
         const { box } = resizedDetections.detection;
         const { landmarks } = resizedDetections;
 
-        // [DISABLED] AgeGenderNet & FaceExpressionNet dinonaktifkan untuk performa Absensi.
+        // [DISABLED] AgeGenderNet & FaceExpressionNet dinonaktifkan untuk performa Absensi. // Restored
         const dominantEmotion = '-';
         const gender = '-';
         const age = '-';
@@ -3044,14 +3286,13 @@ async function detectFace() {
         // --- GAMBAR EFEK CANGGIH BARU ---
 
         // GAMBAR KONEKTOR BIOMETRIK (NEW)
-        // drawBiometricConnectors(context, box, landmarks, '#FBBF24');
+        // drawBiometricConnectors(context, box, landmarks, '#DAA520'); // Restored
 
         // GAMBAR RETINAL SCAN (NEW)
-        // drawRetinalScan(context, landmarks, '#FBBF24');
+        // drawRetinalScan(context, landmarks, '#DAA520'); // Restored
 
         // --- GAMBAR EFEK BARU ---
-        // [UPDATE] Gunakan HUD Sci-Fi Baru yang lebih canggih
-        drawSciFiHUD(context, box, landmarks, '#FBBF24', '', 'SCANNING');
+        // [UPDATE] Gunakan HUD Sci-Fi Baru yang lebih canggih di akhir frame
         
         // const nose = landmarks.getNose()[3]; // Titik tengah hidung
         // drawTargetLock(context, nose.x, nose.y, box.width * 0.3); // Diganti Sci-Fi HUD
@@ -3065,13 +3306,13 @@ async function detectFace() {
         // --- LOGIKA BARU: RECOGNITION DULU -> BARU LIVENESS ---
         // 1. Lakukan Pengenalan Wajah Terlebih Dahulu (Agar nama langsung muncul)
         let faceLabel = 'UNKNOWN';
-        let faceColor = '#FF0055'; 
+        let faceColor = '#E2E8F0'; // Platinum/Silver
         let confidence = 0;
         let recognizedId = null;
         let employee = null;
         let bestMatch = null; // Define bestMatch scope
 
-        // --- FILTER AKURASI TINGGI (STRICT MODE) ---
+        // --- FILTER AKURASI TINGGI (STRICT MODE) --- // Restored
         // 1. Filter Ukuran: Wajah harus cukup besar (> 130px) agar detail terlihat jelas
         const isQualityFace = box.width > 110;
         
@@ -3118,8 +3359,8 @@ async function detectFace() {
 
         } else {
             // DB Offline
-            faceLabel = 'DB OFFLINE';
-            faceColor = '#FF00FF';
+            faceLabel = 'DB OFFLINE'; // Restored
+            faceColor = '#B59A72'; // Brushed Brass
             updateSystemDiagnostics(0);
         }
 
@@ -3165,7 +3406,7 @@ async function detectFace() {
             
             employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
             faceLabel = employee.nama;
-            faceColor = '#F59E0B'; // Hijau (Match)
+            faceColor = '#10B981'; // Mint Green (Match)
         } else {
             // [NEW] Grace Period Logic (Anti-Acak)
             // Jika hasil jadi unknown tapi kita punya lock baru-baru ini, pertahankan hasil lama sebentar
@@ -3175,7 +3416,7 @@ async function detectFace() {
                 
                 employee = employeeMap[recognizedId] || { nama: `ID:${recognizedId}`, jabatan: 'N/A' };
                 faceLabel = employee.nama; // Tetap tampilkan nama (Stabil)
-                faceColor = '#F59E0B';
+                faceColor = '#10B981'; // Mint Green
             } else {
                 // Benar-benar unknown atau grace period habis
                 recognizedId = null;
@@ -3183,14 +3424,20 @@ async function detectFace() {
                 
                 if (maxCount > 1) {
                     faceLabel = "VERIFYING...";
-                    faceColor = "#FBBF24"; 
+                    faceColor = "#B59A72"; // Brushed Brass
                 }
             }
         }
 
-        // 2. Cek Liveness (Gerakan/Kedipan) secara background
+        // 2. Cek Liveness (Gerakan Kepala Challenge-Response) secara background
 
-        const isLive = true; // MODIFIKASI: Bypass sensor gerakan kepala (Normal Mode)
+        // Update liveness detector dengan landmarks wajah saat ini
+        if (window.LivenessCheck) {
+            window.LivenessCheck.update(landmarks);
+        }
+        
+        // [MODIFIED] Menonaktifkan liveness (selalu true). Hapus "true || " untuk mengaktifkan kembali.
+        const isLive = true || (window.LivenessCheck ? window.LivenessCheck.isLive : true);
 
         // 3. Logika UI & Eksekusi
         if (recognizedId) {
@@ -3213,7 +3460,7 @@ async function detectFace() {
                 
                 // [NEW] Update Ambulance Status to DISPATCHED (Green)
                 const ambStatus = document.getElementById('amb-status');
-                if (ambStatus) {
+                if (ambStatus) { // Restored
                     ambStatus.textContent = 'DISPATCHED';
                     ambStatus.style.color = '#F59E0B';
                     ambStatus.style.textShadow = '0 0 10px #00FF00';
@@ -3231,17 +3478,17 @@ async function detectFace() {
             }
 
             // [DISABLED] Emotion display dinonaktifkan (AgeGenderNet & FaceExpressionNet off)
-            if(userEmotionDisplay) userEmotionDisplay.textContent = '-';
+            if(userEmotionDisplay) userEmotionDisplay.textContent = '-'; // Restored
 
             // CEK LIVENESS UNTUK EKSEKUSI
             if (isLive) {
                 // SUDAH BERGERAK -> PROSES ABSEN
                 userStatusDisplay.textContent = 'VERIFYING...';
-                userStatusDisplay.className = 'text-lg font-bold text-champagne-500';
-                setSystemTheme('SUCCESS');
+                userStatusDisplay.className = 'text-lg font-bold text-sky-400';
+                setSystemTheme('SUCCESS'); // Restored
 
                 if (!isProcessing) { 
-                    setStatusVisual(`AUTHORIZING ${employee.nama}...`, 'text-champagne-400', true);
+                    setStatusVisual(`AUTHORIZING ${employee.nama}...`, 'text-sky-400', true);
                     isProcessing = true;
                     // Simpan match terakhir sebelum proses absensi
                     lastKnownMatch = { id: recognizedId, box: resizedDetections.detection.box, landmarks: resizedDetections.landmarks, faceLabel: faceLabel, faceColor: faceColor };
@@ -3263,14 +3510,25 @@ async function detectFace() {
                     await processAttendance(recognizedId, imageBase64);
                 }
             } else {
-                // BELUM BERGERAK -> MINTA GERAKAN (TAPI NAMA SUDAH MUNCUL)
-                setStatusVisual(`HALO ${employee.nama}. GERAKKAN KEPALA UNTUK ABSEN`, 'text-yellow-400', true);
-                userStatusDisplay.textContent = 'MOVE HEAD';
+                // BELUM BERGERAK -> TAMPILKAN INSTRUKSI LIVENESS
+                const remaining = window.LivenessCheck ? Math.max(0, Math.ceil((window.LivenessCheck.TIMEOUT_MS - (Date.now() - window.LivenessCheck.startTime)) / 1000)) : 0;
+                
+                if (window.LivenessCheck && window.LivenessCheck.baselineSet) {
+                    setStatusVisual(`🛡️ GERAKKAN KEPALA SEDIKIT UNTUK VERIFIKASI (${remaining}s)`, 'text-yellow-400', true);
+                } else {
+                    setStatusVisual(`HALO ${employee.nama}. VERIFIKASI ANTI-SPOOFING...`, 'text-yellow-400', true);
+                }
+                userStatusDisplay.textContent = 'LIVENESS CHECK';
                 userStatusDisplay.className = 'text-lg font-bold text-yellow-400 animate-pulse';
                 setSystemTheme('SCANNING');
                 
+                // Gambar overlay instruksi liveness di canvas
+                if (window.LivenessCheck) {
+                    window.LivenessCheck.drawLivenessOverlay(context, box);
+                }
+                
                 // Ubah warna HUD jadi Kuning (Waiting)
-                faceColor = '#FFD700'; 
+                faceColor = '#E6D0A8'; // Soft Gold for Liveness waiting
             }
 
         } else {
@@ -3302,26 +3560,26 @@ async function detectFace() {
                 videoContainer.classList.remove('scanning-border-error');
                 if (labeledDescriptors && labeledDescriptors.length > 0) {
                     // Unknown Face
-                    setStatusVisual('SCANNING..', 'text-champagne-500');
+                    setStatusVisual('SCANNING..', 'text-sky-400');
                     userStatusDisplay.textContent = 'UNKNOWN TARGET';
                     faceLabel = 'UNKNOWN';
-                    faceColor = '#FBBF24';
+                    faceColor = '#B59A72'; // Brushed Brass for Unknown
                     
                     // Gunakan warna Cyan stabil untuk status Unknown
-                    faceColor = '#FBBF24'; 
+                    faceColor = '#B59A72'; // Restored
 
                     // Trigger Glitch Effect on Unknown Face (Interference)
                     if (Math.random() < 0.15) triggerGlitch();
                 } else {
                     // DB Offline
-                    setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-champagne-500');
+                    setStatusVisual('WARNING: NO BIOMETRIC DATABASE FOUND.', 'text-sky-400');
                     userStatusDisplay.textContent = 'OFFLINE';
                 }
             }
             
             if(userEmotionDisplay) userEmotionDisplay.textContent = '-';
             targetLabel = '';
-            lastKnownMatch = null;
+            lastKnownMatch = null; // Restored
         }
         
         // drawTechBracket(context, box.x, box.y, box.width, box.height, faceColor); // Diganti Sci-Fi HUD
@@ -3334,11 +3592,11 @@ async function detectFace() {
 
         drawSmartHUD(context, box, faceLabel, faceColor, confidence, dominantEmotion, gender, age);
 
-        // [DISABLED - CPU OPTIMIZATION] Efek berat dinonaktifkan untuk performa Absensi:
-        // drawHolographicMesh  -> 68-titik triangulasi, sangat berat
-        // drawFaceShape        -> gambar ulang outline wajah tiap frame
-        // drawEyeParticles     -> sistem partikel aktif setiap frame
-        // triggerGlitch random -> overhead tidak perlu
+        // [DISABLED - CPU OPTIMIZATION] Efek berat dinonaktifkan untuk performa Absensi: // Restored
+        // drawHolographicMesh  -> 68-titik triangulasi, sangat berat // Restored
+        // drawFaceShape        -> gambar ulang outline wajah tiap frame // Restored
+        // drawEyeParticles     -> sistem partikel aktif setiap frame // Restored
+        // triggerGlitch random -> overhead tidak perlu // Restored
 
     } else {
         handleNoFace(context);
@@ -3372,7 +3630,7 @@ function handleNoFace(context) {
     if (userEmotionDisplay) userEmotionDisplay.textContent = '-';
     targetLabel = '';
     setSystemTheme('IDLE');
-    lastKnownMatch = null; 
+    lastKnownMatch = null; // Restored
     isLastFaceCentered = false;
 }
 
@@ -3394,7 +3652,7 @@ document.addEventListener('mousemove', (e) => {
 // =============================================================================
 
 async function processAttendance(karyawanId, imageBase64) {
-    logSystem(`Sending attendance request for ID: ${karyawanId}`, 'text-champagne-500');
+    logSystem(`Sending attendance request for ID: ${karyawanId}`, 'text-sky-400');
 
     if(successOverlay) {
         successOverlay.style.opacity = 0;
@@ -3403,19 +3661,19 @@ async function processAttendance(karyawanId, imageBase64) {
         // INIT OVERLAY BARU
         // Menggunakan style holo-card sederhana untuk loading
         successOverlay.innerHTML = `
-            <div class="holo-card" style="border-color: ${HEADER_COLOR}; text-align: center; justify-content: center;">
+            <div class="holo-card" style="border-color: ${HEADER_COLOR}; text-align: center; justify-content: center; backdrop-filter: blur(20px);">
                 <div class="holo-header" style="justify-content: center;">
-                    <span class="text-champagne-400 font-mono tracking-[0.5em] text-2xl animate-pulse">MENGHUBUNGKAN SERVER...</span>
+                    <span class="text-emerald-200 font-mono tracking-[0.5em] text-2xl animate-pulse font-bold">MENGHUBUNGKAN SERVER...</span>
                 </div>
                 <div class="p-20 flex flex-col items-center justify-center h-full">
                     <h1 class="text-6xl font-black text-white mb-8 tracking-widest glitch-text">MEMPROSES BIOMETRIK</h1>
-                    <div class="w-full bg-gray-800 h-1 mt-4 rounded overflow-hidden">
-                        <div class="h-full bg-champagne-400 animate-[loading_1s_infinite]"></div>
+                    <div class="w-full bg-emerald-950 h-1 mt-4 rounded overflow-hidden">
+                        <div class="h-full bg-emerald-400 animate-[loading_1s_infinite]"></div>
                     </div>
                 </div>
             </div>
         `;
-        successOverlay.style.background = `rgba(0, 0, 0, 0.95)`;
+        successOverlay.style.background = `rgba(4, 30, 20, 0.9)`;
         successOverlay.style.opacity = 1;
     }
 
@@ -3450,7 +3708,7 @@ async function processAttendance(karyawanId, imageBase64) {
         const serverTimestamp = new Date().toLocaleTimeString('id-ID');
 
         const statusColor = result.statusColor || 'red';
-        const displayColor = (statusColor === 'green' ? 'text-green-500' : (statusColor === 'yellow' ? 'text-champagne-500' : 'text-red-500'));
+        const displayColor = (statusColor === 'green' ? 'text-green-500' : (statusColor === 'yellow' ? 'text-sky-400' : 'text-red-500'));
         
         const cleanMessage = result.message.replace(/\*\*|✅\s*/g, '');
 
@@ -3490,7 +3748,7 @@ async function processAttendance(karyawanId, imageBase64) {
         // LOGIKA SUKSES/GAGAL
         if (result.success) {
             // AUDIO & VISUAL SUCCESS
-            SoundFX.play('success');
+            SoundFX.play('success'); // Restored
             showToast(cleanMessage, 'success'); // [NEW] Toast Notification
             
             // [NEW] Sapaan Waktu Otomatis
@@ -3500,119 +3758,34 @@ async function processAttendance(karyawanId, imageBase64) {
             else if (hour >= 15 && hour < 19) timeGreeting = 'Sore';
             else if (hour >= 19 || hour < 4) timeGreeting = 'Malam';
             
-            // [NEW] Pesan Motivasi Acak
-            const quotes = [
-                "Semoga harimu menyenangkan.",
-                "Tetap semangat melayani masyarakat.",
-                "Jaga kesehatan dan tetap fokus.",
-                "Mari berikan pelayanan terbaik.",
-                "Jangan lupa senyum, sapa, salam, sopan, dan santun.",
-                "Kerja ikhlas adalah ibadah.",
-                "Semangat mengabdi untuk negeri.",
-                "Setiap langkah kecil menuju pelayanan yang lebih baik adalah sebuah kemenangan.",
-                "Dedikasi Anda hari ini adalah harapan bagi esok hari.",
-                "Terima kasih atas kontribusi Anda dalam menjaga kesehatan bersama.",
-                "Kebaikan yang Anda tebar akan kembali dalam bentuk yang tak terduga.",
-                "Profesionalisme adalah kunci kepercayaan masyarakat.",
-                "Satu pasien sehat, satu kebahagiaan untuk kita semua.",
-                "Energi positif Anda menular, sebarkan selalu.",
-                "Hari ini adalah kesempatan baru untuk membuat perbedaan.",
-                "Kesehatan adalah investasi terbaik, mari kita jaga bersama.",
-                "Senyum Anda adalah obat bagi pasien.",
-                "Bekerjalah dengan hati, hasilnya akan sampai ke hati.",
-                "Setiap tantangan adalah peluang untuk belajar dan tumbuh.",
-                "Keikhlasan dalam bekerja akan membawa keberkahan.",
-                "Jadilah alasan seseorang tersenyum hari ini.",
-                "Pelayanan prima dimulai dari diri kita sendiri.",
-                "Bersama kita bisa mewujudkan masyarakat yang lebih sehat.",
-                "Jangan lelah berbuat baik.",
-                "Kesabaran adalah kunci dalam melayani.",
-                "Hari ini luar biasa, mari buat menjadi lebih bermakna.",
-                "Anda adalah pahlawan kesehatan bagi mereka yang membutuhkan.",
-                "Tetaplah bersinar dan memberikan yang terbaik.",
-                "Semangat pagi! Mari awali hari dengan doa dan senyuman.",
-                "Kerja keras tidak akan mengkhianati hasil.",
-                "Kesehatan masyarakat adalah prioritas utama kita.",
-                "Lelahmu hari ini akan menjadi berkah di masa depan.",
-                "Setiap senyumanmu meringankan beban pasien.",
-                "Bekerja dengan hati, melayani dengan empati.",
-                "Jadilah inspirasi bagi rekan kerja dan pasien.",
-                "Ketulusan adalah bahasa yang dimengerti oleh semua orang.",
-                "Hari ini adalah lembaran baru untuk menulis cerita kebaikan.",
-                "Tangan yang melayani lebih mulia dari bibir yang berdoa.",
-                "Kesehatan adalah harta yang paling berharga.",
-                "Mari ciptakan lingkungan kerja yang positif dan harmonis.",
-                "Setiap tindakan kecilmu berdampak besar bagi orang lain.",
-                "Teruslah belajar dan tingkatkan kompetensi diri.",
-                "Kebahagiaan sejati ditemukan dalam memberi.",
-                "Jaga semangat, jaga integritas.",
-                "Bersyukur atas kesempatan untuk melayani sesama.",
-                "Kesembuhan pasien adalah kebahagiaan kita.",
-                "Mari bekerja sama untuk Puskesmas yang lebih baik.",
-                "Disiplin adalah jembatan antara tujuan dan pencapaian.",
-                "Waktu adalah aset berharga, gunakan sebaik mungkin.",
-                "Tetap tenang dan hadapi setiap tantangan dengan bijak.",
-                "Kesehatan adalah anugerah, melayani adalah amanah.",
-                "Setiap detik pelayananmu sangat berarti bagi mereka.",
-                "Jadikan pekerjaanmu sebagai ladang pahala.",
-                "Senyum tulusmu adalah awal kesembuhan pasien.",
-                "Bekerja cerdas, bekerja tuntas, bekerja ikhlas.",
-                "Kualitas pelayanan cermin kualitas diri.",
-                "Bersama kita wujudkan masyarakat sehat dan sejahtera.",
-                "Ketelitian dan kesabaran adalah kunci keselamatan pasien.",
-                "Hari ini adalah kesempatan untuk menjadi lebih baik dari kemarin.",
-                "Tebarkan kebaikan melalui pelayanan kesehatan yang prima.",
-                "Semangatmu adalah energi bagi kesembuhan pasien.",
-                "Melayani dengan hati, menyentuh dengan kasih.",
-                "Jaga integritas, junjung tinggi profesionalitas.",
-                "Kesehatan pasien adalah prioritas, kepuasan mereka adalah kebanggaan.",
-                "Setiap tetes keringatmu dalam melayani bernilai ibadah.",
-                "Jadilah pelita yang menerangi harapan pasien.",
-                "Kerjasama tim yang solid menghasilkan pelayanan yang hebat.",
-                "Jangan pernah lelah untuk peduli dan berbagi.",
-                "Kepercayaan pasien adalah amanah yang harus dijaga.",
-                "Awali hari dengan niat baik, akhiri dengan rasa syukur."
-            ];
-            
-            // [UPDATE] Randomizer Pintar: Pastikan tidak ada pengulangan kata yang sama berturut-turut
-            let quoteIndex;
-            do {
-                quoteIndex = Math.floor(Math.random() * quotes.length);
-            } while (quoteIndex === lastQuoteIndex && quotes.length > 1);
-            lastQuoteIndex = quoteIndex;
-            const randomQuote = quotes[quoteIndex];
-            
-            // [UPDATE] Logika Pesan Suara Berbeda untuk Masuk vs Pulang
+            // [UPDATE] Logika Pesan Suara Baku & Formal
             if (result.result_code === 'CHECK_OUT_SUCCESS') {
-                // Cek apakah PSW (Pulang Sebelum Waktunya)
                 const pswMenit = result.psw_menit || 0;
                 if (pswMenit > 0) {
-                    // [PSW] Pesan tegas namun sopan, menyebut nama & menit
-                    const pswPhrases = [
-                        `Perhatian, ${display_name}. Anda tercatat pulang lebih awal ${pswMenit} menit dari jadwal yang seharusnya. Mohon diperhatikan kedisiplinan jam kerja. Tetap jaga keselamatan di jalan.`,
-                        `${display_name}, Anda pulang sebelum waktunya, lebih cepat ${pswMenit} menit dari jadwal. Data Anda telah dicatat sebagai PSW. Hati-hati di jalan, dan semoga besok lebih tepat waktu.`,
-                        `Kepada ${display_name}, Anda tercatat meninggalkan kantor ${pswMenit} menit lebih awal dari jadwal pulang. Kedisiplinan adalah kunci pelayanan prima. Sampai jumpa besok, hati-hati di jalan.`,
-                    ];
-                    const pswMsg = pswPhrases[Math.floor(Math.random() * pswPhrases.length)];
-                    SoundFX.speak(pswMsg);
+                    SoundFX.speak(`Perhatian, ${display_name} Anda tercatat meninggalkan kantor lebih awal ${pswMenit} menit. Mohon untuk selalu disiplin terhadap waktu kerja.`);
                 } else {
-                    // Checkout normal, tepat waktu atau setelah jam pulang
-                    SoundFX.speak(`Sampai jumpa, ${display_name}. Terima kasih atas dedikasi dan pelayanan Anda hari ini. Hati-hati di jalan.`);
+                    SoundFX.speak(`Sampai jumpa, ${display_name}. Data kehadiran pulang atas nama ${display_name} berhasil dicatat. terima kasih.`);
+                }
+            } else if (result.result_code === 'ALREADY_CHECKED_IN' || result.result_code === 'ALREADY_IN_CONFIRMATION') {
+                let jamMasukAudio = result.jam_masuk || '';
+                if (!jamMasukAudio && result.message) {
+                    const matchAudio = result.message.match(/(?:pukul|jam)\s+([0-9:]+)/i);
+                    if (matchAudio) jamMasukAudio = matchAudio[1];
+                }
+                if (jamMasukAudio) {
+                    SoundFX.speak(`${display_name}, Anda sudah melakukan absen masuk pada jam ${jamMasukAudio}.`);
+                } else {
+                    SoundFX.speak(`${display_name}, Anda sudah melakukan absen masuk sebelumnya.`);
                 }
             } else {
-                // [MODIFIKASI] Pesan Khusus untuk ID H87
-                if (karyawanId === 'H87') {
-                    SoundFX.speak(`Halo ${display_name}, yang cantik dan cerewet.`);
-                } else if (result.telat_menit > 0) {
-                    // [NEW] Sapaan Khusus Terlambat
-                    SoundFX.speak(`Halo ${display_name}. Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
+                if (result.telat_menit > 0) {
+                    SoundFX.speak(`${display_name}, Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
                 } else {
-                    // [UPDATE] Greeting lebih ramah dengan sapaan "Halo"
-                    SoundFX.speak(`Halo, Selamat Datang di Puskesmas Wana. Selamat ${timeGreeting}, ${display_name}. ${randomQuote}`);
+                    SoundFX.speak(`Selamat datang di Puskesmas Wana, ${display_name}. Data kehadiran masuk atas nama ${display_name} berhasil dicatat. terima kasih.`);
                 }
             }
             
-            setSystemTheme('SUCCESS'); // Theme Green
+            setSystemTheme('SUCCESS'); // Theme Green // Restored
             if(window.setWarpMode) window.setWarpMode(true); // Trigger 3D Warp
 
             // Update panel "TARGET DATA" di sisi kiri
@@ -3638,7 +3811,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     } else {
                         finalStatusText = 'TEPAT WAKTU';
                         finalStatusText = 'ABSEN MASUK BERHASIL';
-                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi MASUK Terkonfirmasi.</div><span style="font-weight:950; font-size: 2.2rem; display:block; margin-top:10px; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5); transform: perspective(500px) rotateX(15deg); letter-spacing: 4px;">SELAMAT BEKERJA</span>`;
+                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi MASUK Terkonfirmasi.</div><span style="font-weight:950; font-size: 2.2rem; display:block; margin-top:10px; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5); transform: perspective(500px) rotateX(15deg); letter-spacing: 4px;">SELAMAT BEKERJA</span>`; // Restored
                         finalBackground = ABSEN_NORMAL_BG;
                         finalStatusColor = '#10B981'; // Hijau Spring
                     }
@@ -3652,12 +3825,12 @@ async function processAttendance(karyawanId, imageBase64) {
                     if (statusColor === 'yellow') {
                         finalStatusText = 'PULANG CEPAT (PSW)';
                         // Gunakan pesan dari server yang berisi detail menit PSW
-                        finalMessageHTML = `<span style="font-weight:bold; text-shadow: 0 0 15px rgba(255,255,255,0.3);">${cleanMessage}</span>`;
+                        finalMessageHTML = `<span style="font-weight:bold; text-shadow: 0 0 15px rgba(255,255,255,0.3);">${cleanMessage}</span>`; // Restored
                         finalStatusColor = '#10B981'; // Diubah dari Kuning Emas menjadi Hijau
                         finalBackground = ABSEN_NORMAL_BG;
                     } else {
                         finalStatusText = 'CHECK-OUT BERHASIL';
-                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi PULANG Terkonfirmasi.</div><span style="font-weight:900; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">Hati-hati di jalan.</span>`;
+                        finalMessageHTML = `<div style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px;">Absensi PULANG Terkonfirmasi.</div><span style="font-weight:900; font-size: 1.8rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">Hati-hati di jalan.</span>`; // Restored
                         finalStatusColor = '#10B981'; // Hijau Spring (Sama seperti Check-In)
                         finalBackground = ABSEN_NORMAL_BG;
                     }
@@ -3667,7 +3840,7 @@ async function processAttendance(karyawanId, imageBase64) {
                 case 'ALREADY_IN_CONFIRMATION':
                     finalStatusText = 'SUDAH ABSEN MASUK';
                     finalMessageHTML = `<span style="font-weight:950; font-size: 2rem; text-shadow: 0 1px 0 #555, 0 2px 0 #444, 0 10px 20px rgba(0,0,0,0.5);">DATA TERKONFIRMASI</span><br><span style="font-size: 1.1rem; opacity: 0.8;">Anda sudah melakukan absen masuk.</span>`;
-                    finalBackground = ABSEN_NORMAL_BG;
+                    finalBackground = ABSEN_NORMAL_BG; // Restored
                     finalStatusColor = '#10B981';
                     break;
                 case 'STATUS_CONFIRMED':
@@ -3678,6 +3851,52 @@ async function processAttendance(karyawanId, imageBase64) {
                     finalStatusColor = NAME_HIGHLIGHT_COLOR; 
             }
 
+            // --- [NEW] ANIMASI KARTU POPUP DI TENGAH ATAS KAMERA ---
+            const centerSuccessPopup = document.getElementById('centerSuccessPopup');
+            if (centerSuccessPopup) {
+                const photoSrc = employeeData.foto ? `data:image/jpeg;base64,${employeeData.foto}` : 'logo.jpg'; // Restored
+                const statusColorPop = result.result_code === 'CHECK_IN_SUCCESS' || result.result_code === 'ALREADY_IN_CONFIRMATION' ? 'bg-[#10B981]' : 'bg-[#f43f5e]';
+                const glowColorPop = result.result_code === 'CHECK_IN_SUCCESS' || result.result_code === 'ALREADY_IN_CONFIRMATION' ? '#10B981' : '#f43f5e';
+                
+                centerSuccessPopup.innerHTML = `
+                    <div class="flex items-center p-4 rounded-xl border border-emerald-600/50 bg-emerald-900/95 backdrop-blur-xl shadow-[0_15px_40px_rgba(0,0,0,0.5),0_0_20px_${glowColorPop}40] overflow-hidden relative w-full">
+                        <div class="absolute left-0 top-0 bottom-0 w-[5px] z-20" style="background-color: ${glowColorPop}; box-shadow: 0 0 10px ${glowColorPop};"></div>
+                        <div class="absolute -inset-[2px] rounded-xl bg-gradient-to-br from-sky-400 via-emerald-800 to-emerald-950 opacity-50 z-0"></div>
+                        <div class="absolute inset-0 rounded-[10px] bg-emerald-950 z-0"></div>
+                        <div class="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%] animate-[shine_2s_linear_infinite] z-20 pointer-events-none"></div>
+ 
+                        <div class="relative w-[72px] h-[72px] flex-shrink-0 z-10 ml-3 shadow-[0_0_15px_${glowColorPop}40] rounded-[12px]">
+                            <img src="${photoSrc}" class="w-full h-full rounded-[12px] object-cover border-2 border-white/30">
+                            <div class="absolute -bottom-2 -right-2 w-5 h-5 ${statusColorPop} rounded-full border-2 border-emerald-950 shadow-[0_0_8px_${glowColorPop}] z-40 flex items-center justify-center">
+                                <i class="fa-solid fa-check text-[10px] text-white"></i>
+                            </div>
+                        </div>
+ 
+                        <div class="flex-grow min-w-0 z-10 ml-5">
+                            <p class="font-extrabold text-[17px] text-white truncate leading-tight tracking-wider" style="text-shadow: 0 2px 5px rgba(0,0,0,0.5);">${display_name}</p>
+                            <p class="text-[11px] text-emerald-300 font-extrabold truncate mb-2 uppercase tracking-[0.2em]">${display_jabatan}</p>
+                            
+                            <div class="inline-block bg-emerald-800/80 px-3 py-1.5 rounded-lg border border-emerald-600/40 mt-1">
+                                <p class="text-[12px] font-black tracking-widest text-white leading-none"><span style="color: ${glowColorPop}; text-shadow: 0 0 8px ${glowColorPop};">${finalStatusText}</span></p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Tampilkan Popup
+                centerSuccessPopup.style.opacity = '1';
+                centerSuccessPopup.style.transform = 'translate(-50%, 0) scale(1.05)';
+                setTimeout(() => {
+                    centerSuccessPopup.style.transform = 'translate(-50%, 0) scale(1)';
+                }, 300);
+
+                // Sembunyikan setelah 4 detik
+                setTimeout(() => {
+                    centerSuccessPopup.style.opacity = '0';
+                    centerSuccessPopup.style.transform = 'translate(-50%, -48px) scale(0.8)';
+                }, 4000);
+            }
+
             // UPDATE DIAGNOSTIC PANEL (Full Name List)
             if (diagnosticList) {
                 // Hapus placeholder jika ada
@@ -3686,10 +3905,7 @@ async function processAttendance(karyawanId, imageBase64) {
                 const diagItem = document.createElement('div');
                 diagItem.className = 'flex justify-between items-center bg-gray-800/50 p-2 rounded border-l-2 border-green-500 animate-[fadeIn_0.5s_ease-out]';
                 diagItem.innerHTML = `
-                    <div class="flex flex-col overflow-hidden">
-                        <span class="text-champagne-300 font-bold text-xs break-words leading-tight" title="${display_name}">${display_name}</span>
-                        <span class="text-[9px] text-gray-400 mt-0.5">${display_jabatan}</span>
-                    </div>
+            <div class="flex flex-col overflow-hidden"><span class="text-amber-300 font-bold text-xs break-words leading-tight" title="${display_name}">${display_name}</span><span class="text-[9px] text-gray-400 mt-0.5">${display_jabatan}</span></div>
                     <span class="text-[10px] font-mono text-green-400 ml-2 whitespace-nowrap font-bold bg-green-900/20 px-1 rounded">${result.result_code.includes('IN') ? 'IN' : 'OUT'}</span>
                 `;
                 diagnosticList.prepend(diagItem);
@@ -3794,11 +4010,11 @@ async function processAttendance(karyawanId, imageBase64) {
                 }
             }
             await SoundFX.speak(warningSpeakText);
-            setSystemTheme('ERROR'); 
+            setSystemTheme('ERROR'); // Restored
 
-            setStatusVisual(`${display_name}: ${cleanMessage}`, isWarning ? 'text-champagne-500' : 'text-red-500');
+            setStatusVisual(`${display_name}: ${cleanMessage}`, isWarning ? 'text-sky-400' : 'text-red-500');
             userStatusDisplay.textContent = isWarning ? 'NOTICE' : 'DENIED';
-            userStatusDisplay.className = 'text-lg font-bold ' + (isWarning ? 'text-champagne-500' : 'text-red-500');
+            userStatusDisplay.className = 'text-lg font-bold ' + (isWarning ? 'text-sky-400' : 'text-red-500');
 
             // Background: Kuning untuk Warning (Waktu), Merah untuk Error (Wajah Tidak Dikenal)
             finalBackground = isWarning 
@@ -3811,7 +4027,7 @@ async function processAttendance(karyawanId, imageBase64) {
         // --- GENERATE VISUAL EFFECTS (From Admin ID Card) ---
         // Generate random QR blocks
         const qrBlocks = Array(25).fill(0).map(() => 
-            `<div class="w-full h-full bg-champagne-900/50 ${Math.random() > 0.5 ? 'bg-champagne-400' : 'opacity-20'}"></div>`
+            `<div class="w-full h-full bg-emerald-950/50 ${Math.random() > 0.5 ? 'bg-emerald-400' : 'opacity-20'}"></div>`
         ).join('');
 
         // Generate floating digital particles
@@ -3821,13 +4037,13 @@ async function processAttendance(karyawanId, imageBase64) {
             const delay = Math.random() * 5;
             const duration = Math.random() * 3 + 2;
             const size = Math.random() * 3 + 1;
-            return `<div class="absolute bg-champagne-400 rounded-sm opacity-0" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation: float-particle ${duration}s linear infinite; animation-delay: -${delay}s; box-shadow: 0 0 4px #FBBF24;"></div>`;
+            return `<div class="absolute bg-emerald-400 rounded-sm opacity-0" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation: float-particle ${duration}s linear infinite; animation-delay: -${delay}s; box-shadow: 0 0 4px #D4AF37;"></div>`;
         }).join('');
 
         // --- NEW: LOGIKA WARNA & ICON STATUS (CUSTOMIZATION) ---
         // Membedakan warna Nama & Box berdasarkan hasil
         // FIX: Jika statusColor kuning (PSW), nama juga ikut kuning meskipun success=true
-        let finalNameColor = statusColor === 'green' ? '#F59E0B' : (statusColor === 'yellow' ? '#FFD700' : '#FF0055');
+        let finalNameColor = statusColor === 'green' ? '#D4AF37' : (statusColor === 'yellow' ? '#f97316' : '#FF0055'); // Restored
         
         let statusIconSVG = '';
         let statusBoxStyle = '';
@@ -3848,7 +4064,7 @@ async function processAttendance(karyawanId, imageBase64) {
         // FINAL OVERLAY RENDER (Profesional & Pesan Sambutan)
         if (successOverlay) {
             // --- [NEW] Academic & Advanced Stamp SVGs ---
-            const guillocheSvg = `<svg width='100' height='100' xmlns='http://www.w3.org/2000/svg'><path d='M 0,50 C 25,0 75,100 100,50 M 0,50 C 25,100 75,0 100,50' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/><path d='M 50,0 C 0,25 100,75 50,100 M 50,0 C 100,25 0,75 50,100' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/></svg>`;
+            const guillocheSvg = `<svg width='100' height='100' xmlns='http://www.w3.org/2000/svg'><path d='M 0,50 C 25,0 75,100 100,50 M 0,50 C 25,100 75,0 100,50' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/><path d='M 50,0 C 0,25 100,75 50,100 M 50,0 C 100,25 0,75 50,100' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/></svg>`; // Restored
             const watermarkSvg = `<svg width='300' height='300' xmlns='http://www.w3.org/2000/svg'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='"Times New Roman", serif' font-size='30' font-weight='bold' fill='${finalStatusColor}' opacity='0.06' transform='rotate(-45 150 150)'>PUSKESMAS WANA</text></svg>`;
 
             // [IDE BARU] DNA Pulse Curve with Glitch & Color Shift (God-Level Custom)
@@ -3971,15 +4187,14 @@ async function processAttendance(karyawanId, imageBase64) {
                             <!-- Subtle carbon pattern for header -->
                             <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 5px); background-size: 10px 10px;"></div>
                             
-
                             <div class="w-14 h-14 rounded-full flex items-center justify-center border border-[#FFD700]/40 mr-5 shadow-[0_0_20px_rgba(255,215,0,0.15)] bg-black relative z-10">
                                 <img src="logo.jpg" class="w-full h-full object-cover rounded-full opacity-90">
                             </div>
                             <div class="z-10">
-                                <h2 class="text-2xl font-serif text-white tracking-widest uppercase leading-none drop-shadow-md" style="font-family: 'Times New Roman', serif;">PUSKESMAS WANA</h2>
+                                <h2 class="text-xl font-black text-white tracking-wider uppercase leading-none whitespace-nowrap" style="font-family: 'Times New Roman', serif; text-shadow: 2px 2px 0px #000;">PUSKESMAS WANA</h2>
                                 <div class="flex items-center gap-2 mt-2">
-                                    <div class="h-[1px] w-8 bg-[#FFD700]"></div>
-                                    <p class="text-[10px] text-[#FFD700] tracking-[0.3em] uppercase font-bold">KARTU IDENTITAS PEGAWAI</p>
+                                    <div class="h-[2px] w-8 bg-[#FFD700]"></div>
+                                    <p class="text-[11px] text-[#FFD700] tracking-[0.3em] uppercase font-black" style="text-shadow: 1px 1px 0px #000;">KARTU IDENTITAS PEGAWAI</p>
                                 </div>
                             </div>
                         </div>
@@ -3996,19 +4211,18 @@ async function processAttendance(karyawanId, imageBase64) {
                                     </div>
                                 </div>
                                 <div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-black border border-[#FFD700] px-3 py-0.5 rounded-full shadow-lg z-20">
-                                    <span class="text-[8px] font-bold text-[#FFD700] tracking-widest">VERIFIED</span>
-                                    <span class="text-[8px] font-bold text-[#FFD700] tracking-widest">TERVERIFIKASI</span>
+                                    <span class="text-[9px] font-black text-[#FFD700] tracking-widest">VERIFIED</span>
                                 </div>
                             </div>
 
                             <!-- Info -->
-                            <div class="flex-1 flex flex-col justify-between h-40 py-1">
+                            <div class="flex-1 flex flex-col justify-between h-40 py-1 relative z-10">
                                 <div>
-                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-bold font-serif" style="text-shadow: 1px 1px 2px #000;">Nama Pegawai</p>
-                                    <h1 class="text-3xl font-extrabold text-white leading-tight mb-3 tracking-wide font-serif" style="text-shadow: 2px 2px 4px #000, 0 0 15px rgba(255,215,0,0.2);">${display_name}</h1>
+                                    <p class="text-[11px] text-gray-300 uppercase tracking-widest mb-1 font-black" style="text-shadow: 1px 1px 0px #000;">Nama Pegawai</p>
+                                    <h1 class="text-3xl font-black text-white leading-tight mb-3 tracking-wide" style="font-family: 'Arial', sans-serif; text-shadow: 2px 2px 0px #000;">${display_name}</h1>
                                     
-                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-bold font-serif" style="text-shadow: 1px 1px 2px #000;">Jabatan</p>
-                                    <p class="text-base font-extrabold text-[#FFD700] tracking-wider border-l-2 border-[#FFD700] pl-3" style="text-shadow: 1px 1px 3px #000;">${display_jabatan}</p>
+                                    <p class="text-[11px] text-gray-300 uppercase tracking-widest mb-1 font-black" style="text-shadow: 1px 1px 0px #000;">Jabatan</p>
+                                    <p class="text-lg font-black text-[#FFD700] tracking-wider border-l-4 border-[#FFD700] pl-3" style="text-shadow: 1px 1px 0px #000;">${display_jabatan}</p>
                                 </div>
 
                                 <!-- Digital Signature Overlay -->
@@ -4020,10 +4234,10 @@ async function processAttendance(karyawanId, imageBase64) {
                                     <p class="text-[6px] text-[#FFD700] text-center uppercase tracking-tighter">Verified Authority</p>
                                 </div>
                                 
-                                <div class="mt-auto pt-3 border-t border-white/10 flex justify-between items-end">
+                                <div class="mt-auto pt-3 border-t-2 border-white/20 flex justify-between items-end">
                                     <div> 
-                                        <p class="text-[10px] text-gray-400 uppercase tracking-wider font-bold" style="text-shadow: 1px 1px 2px #000;">ID Number</p>
-                                        <p class="text-3xl font-mono text-white tracking-widest font-extrabold" style="text-shadow: 2px 2px 4px #000, 0 0 10px rgba(255,255,255,0.5);">${karyawanId}</p>
+                                        <p class="text-[11px] text-gray-300 uppercase tracking-wider font-black" style="text-shadow: 1px 1px 0px #000;">ID Number</p>
+                                        <p class="text-3xl font-mono text-white tracking-widest font-black" style="text-shadow: 2px 2px 0px #000;">${karyawanId}</p>
                                     </div>
                                     <!-- Realistic Barcode -->
                                     <div class="flex flex-col items-end opacity-90">
@@ -4041,7 +4255,7 @@ async function processAttendance(karyawanId, imageBase64) {
                                             <!-- Hologram Overlay -->
                                             <div class="absolute inset-0" style="background: linear-gradient(115deg, transparent 30%, rgba(0,255,255,0.3) 40%, rgba(255,0,255,0.3) 50%, rgba(255,255,0,0.3) 60%, transparent 70%); background-size: 200% 100%; animation: holo-bar 3s linear infinite; mix-blend-mode: multiply;"></div>
                                             
-                                            <p class="text-[6px] font-mono text-black tracking-[0.2em] leading-none mt-0.5 relative z-10">${karyawanId}</p>
+                                            <p class="text-[7px] font-mono font-bold text-black tracking-[0.2em] leading-none mt-0.5 relative z-10">${karyawanId}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -4053,13 +4267,16 @@ async function processAttendance(karyawanId, imageBase64) {
                             <!-- Subtle carbon pattern for footer -->
                             <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 5px); background-size: 10px 10px;"></div>
                             
-                            <span class="text-[10px] text-[#FFD700] tracking-[0.25em] font-serif uppercase relative z-10 font-extrabold" style="text-shadow: 0 0 8px rgba(255,215,0,0.6), 1px 1px 2px #000;">KARTU INI MILIK UPTD PUSKESMAS WANA</span>
+                            <span class="text-[11px] text-[#FFD700] tracking-[0.25em] font-serif uppercase relative z-10 font-black" style="text-shadow: 1px 1px 0px #000;">KARTU INI MILIK UPTD PUSKESMAS WANA</span>
                         </div>
                     </div>
                 </div>
             `;
             // Latar belakang dikembalikan ke mode high-tech gelap (agar rumus fisika & nadi terlihat kontras)
-            successOverlay.style.background = 'radial-gradient(circle at center, rgba(5, 10, 20, 0.98) 0%, #000000 100%)';
+            successOverlay.style.backgroundImage = 'linear-gradient(rgba(5, 10, 20, 0.8), rgba(0, 0, 0, 0.95)), url("medis.jpg")';
+            successOverlay.style.backgroundSize = 'cover'; // Restored
+            successOverlay.style.backgroundPosition = 'center';
+            successOverlay.style.backgroundRepeat = 'no-repeat';
             successOverlay.innerHTML = `
                 <style>
                     .shutter-layer {
@@ -4077,8 +4294,8 @@ async function processAttendance(karyawanId, imageBase64) {
                         transition: transform 1s cubic-bezier(0.85, 0, 0.15, 1);
                         z-index: 10;
                     }
-                    .shutter-left { left: 0; border-right: 4px solid #FBBF24; transform: translateX(0); }
-                    .shutter-right { right: 0; border-left: 4px solid #FBBF24; transform: translateX(0); }
+                    .shutter-left { left: 0; border-right: 4px solid #DAA520; transform: translateX(0); }
+                    .shutter-right { right: 0; border-left: 4px solid #DAA520; transform: translateX(0); }
                     
                     /* Digital Lock Seal */
                     .digital-lock-seal {
@@ -4280,31 +4497,102 @@ async function processAttendance(karyawanId, imageBase64) {
                     }
 
                     /* --- HIGH-TECH STAMP & CARD STYLES --- */
-                    .academic-stamp {
+                    /* --- HIGH-TECH STAMP & CARD STYLES --- */
+                    .glass-card {
                         position: relative;
-                        width: 450px;
-                        padding: 30px;
-                        /* Luxury Carbon Fiber Shutter Material */
+                        width: 440px;
+                        padding: 35px;
+                        /* Premium Glassmorphism Obsidian Aurora + Micro-Grid */
                         background: 
-                            radial-gradient(circle, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                            repeating-linear-gradient(60deg, rgba(20, 20, 20, 0.8) 0, rgba(20, 20, 20, 0.8) 1px, transparent 1px, transparent 15px),
-                            repeating-linear-gradient(-60deg, rgba(20, 20, 20, 0.8) 0, rgba(20, 20, 20, 0.8) 1px, transparent 1px, transparent 15px),
-                            linear-gradient(to bottom, #0a0a0a 0%, #000 50%, #0a0a0a 100%);
-                        background-size: 20px 20px, 30px 52px, 30px 52px, 100% 100%;
-                        backdrop-filter: blur(20px);
-                        -webkit-backdrop-filter: blur(20px);
-                        border: 1px solid rgba(255, 255, 255, 0.1);
-                        border-top: 1px solid rgba(255, 255, 255, 0.2);
-                        border-left: 1px solid rgba(255, 255, 255, 0.2);
-                        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-                        border-radius: 4px;
-                        
-                        font-family: 'Times New Roman', serif;
+                            linear-gradient(135deg, rgba(2, 6, 23, 0.4) 0%, rgba(15, 23, 42, 0.7) 100%),
+                            linear-gradient(rgba(20, 184, 166, 0.03) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(20, 184, 166, 0.03) 1px, transparent 1px);
+                        background-size: 100% 100%, 20px 20px, 20px 20px;
+                        backdrop-filter: blur(30px);
+                        -webkit-backdrop-filter: blur(30px);
+                        border: 1px solid rgba(20, 184, 166, 0.15);
+                        border-top: 1px solid rgba(167, 139, 250, 0.4);
+                        border-left: 1px solid rgba(20, 184, 166, 0.3);
+                        box-shadow: 0 40px 80px rgba(0,0,0,0.9), inset 0 0 60px rgba(255,215,0,0.05);
+                        border-radius: 24px;
+                        font-family: 'Inter', sans-serif;
                         color: #FFF;
                         overflow: hidden;
                         transform: translateY(-600px) scale(2);
                         opacity: 0;
-                        animation: stampDescend 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards 1.2s;
+                        animation: stampGlassDescend 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards 1.2s;
+                        /* 3D context for inner elements */
+                        transform-style: preserve-3d;
+                    }
+                    /* SVG Noise Overlay */
+                    .glass-card::after {
+                        content: '';
+                        position: absolute; inset: 0;
+                        background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)"/></svg>');
+                        opacity: 0.15;
+                        mix-blend-mode: overlay;
+                        pointer-events: none;
+                        z-index: 1;
+                    }
+                    /* Iridescent Glow Edge */
+                    .glass-card::before {
+                        content: '';
+                        position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+                        background: conic-gradient(from 0deg, transparent 70%, rgba(255,215,0,0.4) 80%, rgba(184,134,11,0.4) 90%, transparent 100%);
+                        animation: spin-cw 6s linear infinite;
+                        z-index: 0; pointer-events: none;
+                    }
+                    @keyframes stampGlassDescend {
+                        0% { transform: translateY(-600px) scale(2); opacity: 0; }
+                        50% { transform: translateY(20px) scale(0.95); opacity: 0.8; }
+                        75% { transform: translateY(-10px) scale(1.02); opacity: 1; }
+                        100% { transform: translateY(0) scale(1); opacity: 1; box-shadow: 0 40px 80px rgba(0,0,0,0.9), 0 0 50px rgba(255,215,0,0.2); }
+                    }
+                    /* Scanner Line */
+                    .scanner-laser {
+                        position: absolute;
+                        left: 0; top: -10px; width: 100%; height: 2px;
+                        background: linear-gradient(90deg, transparent, ${finalStatusColor}, transparent);
+                        box-shadow: 0 0 15px ${finalStatusColor}, 0 0 30px ${finalStatusColor};
+                        z-index: 10;
+                        opacity: 0;
+                        animation: scanSweep 3s ease-in-out infinite 2s;
+                    }
+                    @keyframes scanSweep {
+                        0% { top: -10px; opacity: 0; }
+                        10% { opacity: 1; }
+                        90% { opacity: 1; }
+                        100% { top: 100%; opacity: 0; }
+                    }
+                    /* Dynamic Holographic Glare */
+                    .glass-glare {
+                        position: absolute; inset: 0;
+                        background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.15) 25%, transparent 30%);
+                        background-size: 200% 200%;
+                        animation: glareSweep 4s infinite linear;
+                        pointer-events: none; z-index: 5; mix-blend-mode: overlay;
+                    }
+                    @keyframes glareSweep {
+                        0% { background-position: -100% -100%; }
+                        100% { background-position: 200% 200%; }
+                    }
+                    @keyframes streamScroll {
+                        0% { transform: translateY(-50%); }
+                        100% { transform: translateY(0%); }
+                    }
+                    /* Staggered Reveal with Snap to Focus */
+                    .reveal-item {
+                        opacity: 0;
+                        transform: translateY(20px) translateZ(10px);
+                        filter: blur(12px);
+                        animation: itemReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    }
+                    @keyframes itemReveal {
+                        100% { opacity: 1; transform: translateY(0) translateZ(30px); filter: blur(0px); }
+                    }
+                    @keyframes pulseGlow {
+                        0%, 100% { box-shadow: 0 0 5px ${finalStatusColor}20; }
+                        50% { box-shadow: 0 0 20px ${finalStatusColor}60; }
                     }
                     .guilloche-bg {
                         position: absolute; inset: 0;
@@ -4359,7 +4647,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     }
                     .stamp-details > div { display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
                     .stamp-details > div:last-child { border-bottom: none; }
-                    .stamp-details > div span:first-child { font-weight: 800; color: #FBBF24; text-shadow: 1px 1px 2px #000; letter-spacing: 1px; }
+                    .stamp-details > div span:first-child { font-weight: 800; color: #DAA520; text-shadow: 1px 1px 2px #000; letter-spacing: 1px; }
                     .stamp-details > div span:last-child { font-weight: 800; color: #FFF; text-shadow: 1px 1px 2px #000; letter-spacing: 1px; }
                     .stamp-footer {
                         font-family: 'Courier New', monospace; font-size: 10px; color: #C0C0C0; /* Chrome-like gray */
@@ -4799,7 +5087,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     }
                     .stamp-details > div { display: flex; justify-content: space-between; padding: 6px 15px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
                     .stamp-details > div:last-child { border-bottom: none; }
-                    .stamp-details > div span:first-child { font-weight: 900; color: #FBBF24; text-shadow: 1px 1px 2px #000, 0 0 8px rgba(0,255,255,0.5); letter-spacing: 1px; } /* Cyan Glow */
+                    .stamp-details > div span:first-child { font-weight: 900; color: #DAA520; text-shadow: 1px 1px 2px #000, 0 0 8px rgba(0,255,255,0.5); letter-spacing: 1px; } /* Cyan Glow */
                     .stamp-details > div span:last-child { font-weight: 800; color: #FFF; text-shadow: 1px 1px 3px #000, 0 0 10px rgba(255,255,255,0.4); letter-spacing: 1px; }
                     
                     .stamp-footer {
@@ -5295,7 +5583,6 @@ async function processAttendance(karyawanId, imageBase64) {
                 </div>
 
                 <div class="holographic-container" style="perspective: 2000px; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; z-index: 10;">
-                <div class="render-line"></div>
                 <div style="display: flex; justify-content: center; align-items: center; gap: 40px; width: 100%; transform-style: preserve-3d;">
                     <!-- [FIXED] Kolom Kiri: ID Card (Ditampilkan kembali) -->
                     <div style="transform: translateZ(20px); position: relative;">
@@ -5304,45 +5591,68 @@ async function processAttendance(karyawanId, imageBase64) {
                         ${idCardHTML}
                     </div>
 
-                    <div class="academic-stamp">
-                        <!-- No Futuristic Overlays in Classic Design -->
-                        <div class="stamp-content">
-                            <!-- Minimalist Line -->
-                            <div style="width: 60px; height: 1px; background: rgba(255,255,255,0.8); margin: 0 auto 30px;"></div>
-                            <div class="stamp-header">
-                                <div class="emblem">
-                                    <img src="logo.jpg" alt="Logo" onerror="this.style.display='none'">
+                    <div class="glass-card">
+                        <!-- Holographic Glare Sweep -->
+                        <div class="glass-glare"></div>
+
+                        <!-- Data Stream Strip (Encrypted Hash simulation) -->
+                        <div style="position: absolute; right: 8px; top: 15px; bottom: 15px; width: 14px; overflow: hidden; opacity: 0.15; font-family: 'Courier New', monospace; font-size: 0.45rem; color: ${finalStatusColor}; word-break: break-all; line-height: 1.1; text-align: center; z-index: 1;">
+                            <div style="animation: streamScroll 10s linear infinite;">
+                                0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 0A 1B 2C 3D 4E 5F 67 89 
+                            </div>
+                        </div>
+
+                        <!-- Glow Aura -->
+                        <div style="position:absolute; inset:0; background: radial-gradient(circle at 50% 0%, ${finalStatusColor}15, transparent 80%); z-index:0; pointer-events:none;"></div>
+                        
+                        <!-- Transparent Watermark Logo -->
+                        <div style="position:absolute; inset:0; display:flex; justify-content:center; align-items:center; z-index:2; pointer-events:none; opacity: 0.03; mix-blend-mode: screen; animation: spin-slow 60s linear infinite;">
+                            <img src="logo.jpg" style="width: 250px; height: 250px; object-fit: contain; filter: grayscale(100%) contrast(200%);" onerror="this.style.display='none'">
+                        </div>
+
+                        <!-- Scanner Laser -->
+                        <div class="scanner-laser"></div>
+                        
+                        <div class="glass-content" style="border: none; padding: 0; position:relative; z-index:4; transform-style: preserve-3d; transform: translateZ(10px);">
+                            <div class="glass-header reveal-item" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom:20px; margin-bottom: 20px; display:flex; align-items:center; gap: 12px; animation-delay: 1.5s;">
+                                <div class="emblem" style="background: rgba(0,0,0,0.6); padding: 6px; border-radius: 50%; box-shadow: 0 0 15px ${finalStatusColor}40, inset 0 0 8px rgba(255,255,255,0.1);">
+                                    <img src="logo.jpg" alt="Logo" style="border-radius:50%; width: 50px; height: 50px; object-fit: cover;" onerror="this.style.display='none'">
                                 </div>
-                                <div class="emblem-text">
-                                    <span>UPTD Puskesmas Wana</span>
+                                <div class="emblem-text" style="font-family: 'Rajdhani', sans-serif; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                                    <span style="font-size: 1.3rem; font-weight: 800; background: linear-gradient(90deg, #DAA520, #DAA520); -webkit-background-clip: text; color: transparent; letter-spacing: 1px; text-shadow: 0 0 20px rgba(255,215,0,0.3);">UPTD PUSKESMAS WANA</span>
+                                    <div style="font-size: 0.55rem; color: #94a3b8; letter-spacing: 5px; text-transform: uppercase; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">Biometric Clearance System</div>
                                 </div>
                             </div>
-                             <div class="stamp-status">
-                                ${finalStatusText} 
-                            </div>
-                            <div class="text-sm mt-1 mb-4 text-center" style="line-height: 1.4; min-height: 30px; background: #FFF; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent; font-weight: 900; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.8)); max-width: 90%; margin-left: auto; margin-right: auto; font-size: 1.2rem; letter-spacing: 1px; text-shadow: 0 0 1px rgba(0,0,0,1);">
-                                ${finalMessageHTML}
-                            </div>
-                            <div class="stamp-details">
-                                <div style="position: absolute; top: -15px; left: 20px; background: #000; padding: 0 10px; font-size: 9px; color: ${finalStatusColor};">CEK INTEGRITAS DATA</div>
-                                <div><span>Nama Pegawai</span><span>${display_name}</span></div>
-                                <div><span>Tanggal Verifikasi</span><span>${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
-                                <div><span>Waktu Verifikasi</span><span>${serverTimestamp}</span></div>
-                                <div><span>Protokol Keamanan</span><span style="color:#F59E0B; font-weight:bold; animation: blink 1s infinite;">100% AMAN</span></div>
-                                <div><span>Kernel Sistem</span><span>AETHER BIOMETRIC v4.5</span></div>
-                                
-                                <!-- NEW: Digital Barcode Decoration -->
-                                <div style="margin-top: 15px; height: 30px; display: flex; gap: 2px; align-items: flex-end; justify-content: center; opacity: 0.6;">
-                                    ${Array.from({length: 40}, () => `<div style="width: ${Math.random() * 4 + 1}px; height: ${Math.random() * 100}%; background: ${finalStatusColor};"></div>`).join('')}
+                            
+                            <div class="glass-status reveal-item" style="border: none; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: inset 0 2px 20px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05); position: relative; animation-delay: 1.7s;">
+                                <div style="position: absolute; top:0; left:0; width:4px; height:100%; background: ${finalStatusColor}; box-shadow: 0 0 15px ${finalStatusColor}; border-radius: 12px 0 0 12px;"></div>
+                                <div style="font-family: 'Rajdhani', sans-serif; font-size: 2.2rem; font-weight: 800; color: ${finalStatusColor}; text-shadow: 0 0 15px ${finalStatusColor}80; display: flex; align-items: center; justify-content: center; gap: 15px; letter-spacing: 2px;">
+                                    ${finalStatusText} 
+                                </div>
+                                <div class="text-sm mt-4 mb-2 text-center" style="font-family: 'Inter', sans-serif; color: #ffffff; font-weight: 700; letter-spacing: 0.5px; text-shadow: 0 2px 10px rgba(0,0,0,1);">
+                                    ${finalMessageHTML}
                                 </div>
                             </div>
-                            <div class="stamp-footer">
-                                <div style="font-size: 8px; opacity: 0.7; margin-bottom: 2px;">Kunci Validasi Digital (SHA-256)</div>
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;"> 
-                                    <div style="font-size: 8px; opacity: 0.7;">Kunci Validasi Digital (SHA-256)</div>
-                                    <div style="font-size: 8px; color:#F59E0B; font-weight:bold; letter-spacing:1px; animation:blink 1s infinite;">[ DATA_RETAINED ]</div>
+                            
+                            <div class="glass-details" style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.03); display: flex; flex-direction: column; gap: 12px; text-align: left; transform-style: preserve-3d;">
+                                <div class="reveal-item" style="display:flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 10px; animation-delay: 1.9s;">
+                                    <span style="color:#64748b; font-size:0.75rem; letter-spacing: 1px; font-weight:600; text-transform:uppercase;">Identitas Pegawai</span>
+                                    <span style="color:#fff; font-weight:800; font-size:0.85rem; letter-spacing: 0.5px; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">${display_name}</span>
                                 </div>
-                                <div id="validation-hash">GENERATING...</div>
+                                <div class="reveal-item" style="display:flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 10px; animation-delay: 2.0s;">
+                                    <span style="color:#64748b; font-size:0.75rem; letter-spacing: 1px; font-weight:600; text-transform:uppercase;">Tanggal Validasi</span>
+                                    <span style="color:#e2e8f0; font-size:0.85rem; font-family:'Courier New', monospace; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}</span>
+                                </div>
+                                <div class="reveal-item" style="display:flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 10px; animation-delay: 2.1s;">
+                                    <span style="color:#64748b; font-size:0.75rem; letter-spacing: 1px; font-weight:600; text-transform:uppercase;">Waktu Sistem</span>
+                                    <span style="color:#e2e8f0; font-size:0.85rem; font-family:'Courier New', monospace; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">${serverTimestamp}</span>
+                                </div>
+                                <div class="reveal-item" style="display:flex; justify-content: space-between; align-items: center; padding-top: 5px; animation-delay: 2.2s;">
+                                    <span style="color:#64748b; font-size:0.7rem; letter-spacing: 1px; font-weight:600; text-transform:uppercase;">Keamanan</span>
+                                    <span style="color:${finalStatusColor}; background: ${finalStatusColor}15; padding: 4px 10px; border-radius: 4px; font-weight:bold; font-size:0.75rem; border: 1px solid ${finalStatusColor}40; letter-spacing: 1px; box-shadow: 0 0 10px ${finalStatusColor}20; animation: pulseGlow 2s infinite;">
+                                        <i class="fa-solid fa-lock" style="margin-right: 4px;"></i> ENCRYPTED (SHA-256)
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -5501,7 +5811,7 @@ async function processAttendance(karyawanId, imageBase64) {
         lastKnownMatch = null;
         targetLabel = '';
         confidenceHistory = [];
-        isTargetLocked = false;
+        isTargetLocked = false; // Restored
         resetTargetData(); // Reset UI Teks
 
         if(successOverlay) {
@@ -5515,7 +5825,7 @@ async function processAttendance(karyawanId, imageBase64) {
         }
         logSystem('System ready for next scan.', 'text-gray-300');
         videoContainer.classList.remove('scan-success');
-        setSystemTheme('IDLE'); // Reset Theme
+        setSystemTheme('IDLE'); // Reset Theme // Restored
         if(window.setWarpMode) window.setWarpMode(false); // Stop Warp
     }
 }
@@ -5916,7 +6226,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // CSS ADJUSTMENT: Geser area scan (Video Container) sedikit ke atas
     if (videoContainer) {
-        // Disabled: videoContainer.style.marginTop = "-90px"; 
+        // Disabled: videoContainer.style.marginTop = "-90px"; // Restored
         videoContainer.style.marginTop = "0px";
     }
 });
@@ -5961,8 +6271,8 @@ function injectScanningStyles() {
     }
     @keyframes strobe-pulse {
         0% {
-            box-shadow: 0 0 15px #FBBF24, inset 0 0 10px #FBBF24;
-            border-color: #FBBF24;
+            box-shadow: 0 0 15px #DAA520, inset 0 0 10px #DAA520;
+            border-color: #DAA520;
         }
         15% {
             box-shadow: 0 0 30px #ff00ff, inset 0 0 20px #ff00ff;
@@ -6013,6 +6323,41 @@ function injectScanningStyles() {
             linear-gradient(0deg, #FF0055 50%, transparent 50%);
         box-shadow: 0 0 25px rgba(255, 0, 85, 0.6), inset 0 0 15px rgba(255, 0, 85, 0.3) !important;
         border: 1px solid rgba(255, 0, 85, 0.1) !important;
+    }
+
+    /* --- GOD-TIER ROSTER STYLES --- */
+    @keyframes miniScanline {
+        0% { transform: translateY(-100%); opacity: 0; }
+        20% { opacity: 1; }
+        80% { opacity: 1; }
+        100% { transform: translateY(300%); opacity: 0; }
+    }
+    @keyframes telemetryBar {
+        0%, 100% { height: 30%; }
+        20% { height: 100%; }
+        40% { height: 50%; }
+        60% { height: 80%; }
+        80% { height: 20%; }
+    }
+    @keyframes radarPing {
+        0% { transform: scale(0.8); opacity: 0.8; }
+        100% { transform: scale(2.5); opacity: 0; }
+    }
+    .roster-card-3d {
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease, border-color 0.4s ease;
+        transform-style: preserve-3d;
+        perspective: 1000px;
+    }
+    .roster-card-3d:hover {
+        transform: scale(1.02) rotateX(4deg) rotateY(-4deg) translateZ(15px);
+        z-index: 50;
+    }
+    .hex-bg-pattern {
+        background-image: 
+            radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        background-position: 0 0, 5px 5px;
+        background-size: 10px 10px;
     }
     `;
     const style = document.createElement('style');

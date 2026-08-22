@@ -2050,10 +2050,10 @@ function setStatusVisual(message, colorClass, isPulsing = false) {
     statusMessage.textContent = message;
 
     // Selalu gunakan font serif dan efek teks emas metalik untuk kesan premium
-    statusMessage.className = 'text-2xl lg:text-3xl font-serif font-bold transition-all duration-500 uppercase tracking-widest text-metallic-gold';
+    statusMessage.className = 'text-2xl lg:text-3xl font-serif font-bold transition-all duration-500 uppercase tracking-widest text-cyan-300';
     
     // Tentukan warna shadow berdasarkan colorClass untuk efek glow
-    let shadowColor = '#FFD700'; // Default untuk text-metallic-gold
+    let shadowColor = '#06b6d4'; // Default untuk text-cyan-300
     
     // Terapkan font-family dan text-shadow untuk kedalaman dan glow
             statusMessage.style.filter = `drop-shadow(0 0 8px ${shadowColor}60)`; // Tambahan drop-shadow untuk efek lebih tebal
@@ -2489,7 +2489,7 @@ async function updatePersonnelRoster() {
                 cardBorderClass = 'border-[#f97316]';
                 bgHover = '';
             } else {
-                timeDisplay = isOut ? `OUT: ${row.jam_keluar ? row.jam_keluar.substring(0,5) : '--:--'}` : `IN: ${row.jam_masuk ? row.jam_masuk.substring(0,5) : '--:--'}`;
+                timeDisplay = isOut ? `${row.jam_keluar ? row.jam_keluar.substring(0,5) : '--:--'}` : `${row.jam_masuk ? row.jam_masuk.substring(0,5) : '--:--'}`;
                 statusColor = isOut ? 'bg-[#f43f5e] shadow-[0_0_12px_#f43f5e]' : 'bg-[#DAA520] shadow-[0_0_12px_#DAA520]';
                 statusText = isOut ? 'SUDAH PULANG' : 'HADIR';
                 borderColor = isOut ? 'border-[#f43f5e]' : 'border-[#DAA520]';
@@ -2519,7 +2519,7 @@ async function updatePersonnelRoster() {
                 timeGradient = 'text-[#f43f5e] bg-white border-[#f43f5e]';
                 statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(244,63,94,0.3)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">PULANG</span>`;
             } else {
-                bgGradient = 'linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(255,255,255,0.7) 100%)';
+                bgGradient = 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(255,255,255,0.7) 100%)';
                 glowColor = '#10b981';
                 badgeStyle = 'bg-[#10b981] text-white border-[#10b981]';
                 timeGradient = 'text-[#10b981] bg-white border-[#10b981]';
@@ -2540,84 +2540,92 @@ async function updatePersonnelRoster() {
                 ? 'linear-gradient(135deg, rgba(3,15,10,0.95) 0%, rgba(35,10,15,0.95) 100%)'
                 : 'linear-gradient(135deg, rgba(2,10,7,0.95) 0%, rgba(3,25,18,0.95) 100%)';
 
+// Pola motif geometris mewah (Holographic Hex)
+            const motifBg = `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0l20 10v20L20 40 0 30V10z' fill-rule='evenodd' stroke='%23ffffff' stroke-width='0.5' stroke-opacity='0.08' fill='none'/%3E%3C/svg%3E")`;
+
             item.style.cssText = `
-                background: ${cardBg};
-                border-color: ${glowColor}30;
-                box-shadow: 0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 ${glowColor}20;
+                background: ${cardBg}, ${motifBg};
+                background-blend-mode: overlay;
+                background-size: cover, 40px 40px;
+                border-color: rgba(255,255,255,0.1);
+                box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 0 20px ${glowColor}20;
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                transform-style: preserve-3d;
             `;
 
-            // Style border berbeda untuk CUTI (dashed)
             if (isCuti) {
                 item.style.borderStyle = 'dashed';
                 item.style.borderWidth = '1px';
             }
 
-            // Radar Ping element only for DL
-            const radarPingHTML = isDL ? `<div class="absolute inset-0 rounded-xl" style="border: 1px solid ${glowColor}; animation: radarPing 3s infinite ease-out; pointer-events:none;"></div>` : '';
-
-            // Aksen highlight saat hover
-            const hoverGlowClass = '';
-            const nameColor = 'text-white';
+            const radarPingHTML = isDL ? `<div class="absolute inset-0 rounded-xl" style="border: 2px solid ${glowColor}; animation: radarPing 3s infinite ease-out; pointer-events:none;"></div>` : '';
 
             item.innerHTML = `
                 ${radarPingHTML}
 
-                <!-- Left Accent Neon Bar -->
-                <div class="absolute left-0 top-0 bottom-0 w-[4px] z-20 rounded-r-full" style="background: linear-gradient(to bottom, ${glowColor}, ${glowColor}80); box-shadow: 0 0 10px ${glowColor}, 0 0 20px ${glowColor}60;"></div>
+                <!-- Ultra Premium Left Accent Glow -->
+                <div class="absolute left-0 top-0 bottom-0 w-[5px] z-20 rounded-l-xl" style="background: linear-gradient(to bottom, #ffffff, ${glowColor}, #ffffff); box-shadow: 0 0 15px ${glowColor}, 0 0 30px ${glowColor}80;"></div>
 
-                <!-- Aurora Shimmer Sweep -->
-                <div class="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none z-20" style="background: linear-gradient(105deg, transparent 20%, ${glowColor}10 50%, transparent 80%); transition: opacity 0.6s ease;"></div>
+                <!-- Glass Shimmer Sweep on Hover -->
+                <div class="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none z-20" style="background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.1) 50%, transparent 80%); transition: opacity 0.4s ease; transform: translateZ(10px);"></div>
 
                 <!-- AVATAR & TELEMETRY -->
-                <div class="relative flex items-center justify-center flex-shrink-0 z-10 ml-3 transition-transform duration-500 group-hover:scale-105">
+                <div class="relative flex items-center justify-center flex-shrink-0 z-10 ml-3 transition-transform duration-500 group-hover:scale-110" style="transform: translateZ(20px);">
                     
+                    <!-- Tech Ring Backglow -->
+                    <div class="absolute inset-[-10px] rounded-full opacity-50" style="background: radial-gradient(circle, ${glowColor}60 0%, transparent 70%);"></div>
+
                     <!-- Telemetry Equalizer Bars -->
-                    <div class="absolute -left-3 top-1/2 -translate-y-1/2 flex items-end gap-[2px] h-[30px] w-[8px]">
-                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 1.2s infinite ease-in-out; animation-delay: 0.1s;"></div>
-                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 1.5s infinite ease-in-out; animation-delay: 0.3s;"></div>
-                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 0.9s infinite ease-in-out; animation-delay: 0.5s;"></div>
+                    <div class="absolute -left-3 top-1/2 -translate-y-1/2 flex items-end gap-[2px] h-[35px] w-[10px]">
+                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 1.2s infinite ease-in-out; animation-delay: 0.1s; box-shadow: 0 0 5px ${glowColor};"></div>
+                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 1.5s infinite ease-in-out; animation-delay: 0.3s; box-shadow: 0 0 5px ${glowColor};"></div>
+                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 0.9s infinite ease-in-out; animation-delay: 0.5s; box-shadow: 0 0 5px ${glowColor};"></div>
                     </div>
 
-                    <div class="relative w-[65px] h-[65px]">
-                        <!-- Neon Glow Frame -->
-                        <div class="absolute -inset-[2px] rounded-xl z-0" style="background: linear-gradient(135deg, ${glowColor}90, ${glowColor}40, ${glowColor}80); box-shadow: 0 0 15px ${glowColor}50;"></div>
-
+                    <div class="relative w-[70px] h-[70px] rounded-[14px] p-[2px]" style="background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, ${glowColor} 50%, rgba(0,0,0,0.8) 100%); box-shadow: 0 10px 20px rgba(0,0,0,0.6), 0 0 15px ${glowColor}40;">
                         <!-- Inner bezel -->
-                        <div class="absolute inset-[1.5px] rounded-[10px] z-0" style="background: rgba(1,6,4,0.9);"></div>
+                        <div class="w-full h-full rounded-[12px] bg-black relative overflow-hidden">
+                            <!-- Photo -->
+                            <img src="${photoSrc}" class="w-full h-full object-cover relative z-10 transition-transform duration-700 group-hover:scale-110" style="filter: brightness(1.15) contrast(1.1) saturate(1.2);">
+                            <!-- Glass overlay on photo -->
+                            <div class="absolute inset-0 z-20 pointer-events-none" style="background: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(0,0,0,0.4) 100%);"></div>
+                        </div>
 
-                        <!-- Photo -->
-                        <img src="${photoSrc}" class="w-full h-full rounded-[10px] object-cover relative z-10" style="filter: brightness(1.1) contrast(1.1); image-rendering: high-quality;">
-
-                        <!-- Status Dot -->
-                        <div class="absolute -bottom-2 -right-2 w-[22px] h-[22px] rounded-full border-[2.5px] z-40 flex items-center justify-center" style="background: ${glowColor}; border-color: rgba(1,6,4,1); box-shadow: 0 0 10px ${glowColor}, 0 0 20px ${glowColor}80;" title="${statusText}">
-                            <span class="absolute -inset-[2px] rounded-full animate-[pulse_2s_ease-in-out_infinite] z-0" style="background: ${glowColor}; opacity: 0.6;"></span>
+                        <!-- Advanced Status Dot -->
+                        <div class="absolute -bottom-1 -right-1 w-[24px] h-[24px] rounded-full border-2 z-40 flex items-center justify-center overflow-hidden" style="background: ${glowColor}; border-color: #000; box-shadow: 0 0 15px ${glowColor}, inset 0 2px 4px rgba(255,255,255,0.5);" title="${statusText}">
+                            <div class="absolute top-0 left-0 w-full h-1/2 bg-white/40 rounded-t-full"></div>
+                            <span class="absolute -inset-[2px] rounded-full animate-[pulse_1.5s_ease-in-out_infinite] z-0" style="background: ${glowColor}; opacity: 0.8;"></span>
                         </div>
                     </div>
                 </div>
 
                 <!-- INFO SECTION -->
-                <div class="flex-grow min-w-0 z-10 ml-5">
-                    <div class="flex items-center justify-between mb-0.5">
-                        <p class="font-black text-[15px] text-white truncate leading-tight tracking-wide transition-colors duration-300" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${row.nama}</p>
+                <div class="flex-grow min-w-0 z-10 ml-5" style="transform: translateZ(15px);">
+                    <div class="flex items-center justify-between mb-1">
+                        <p class="font-black text-[16px] truncate leading-tight tracking-wider" style="background: linear-gradient(to right, #ffffff, #e2e8f0); -webkit-background-clip: text; color: transparent; text-shadow: 0 4px 10px rgba(0,0,0,0.8); filter: drop-shadow(0 0 2px rgba(255,255,255,0.2));">${row.nama}</p>
                         ${dlIcon || cutiIcon || ''}
                     </div>
-                    <p class="text-[11px] font-bold truncate mb-2 uppercase tracking-widest text-white/80" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">${row.jabatan || '-'}</p>
+                    <p class="text-[10px] font-extrabold truncate mb-2.5 uppercase tracking-[0.25em]" style="color: ${glowColor}; text-shadow: 0 2px 4px rgba(0,0,0,0.9);">${row.jabatan || '-'}</p>
 
-                    <!-- Data Grid -->
-                    <div class="grid grid-cols-2 gap-2 p-2 rounded-lg" style="background: rgba(0,0,0,0.6); border: 1px solid ${glowColor}40; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);">
+                    <!-- Advanced Data Grid -->
+                    <div class="grid grid-cols-2 gap-1 p-1.5 rounded-lg w-full relative overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 6px rgba(0,0,0,0.4);">
+                        <div class="absolute inset-0 opacity-10 pointer-events-none" style="background: linear-gradient(90deg, transparent, ${glowColor});"></div>
+                        
                         <!-- Timestamp -->
-                        <div class="flex flex-col justify-center">
-                            <span class="text-[8px] uppercase font-black tracking-[0.25em] mb-1 flex items-center gap-1" style="color: rgba(255,255,255,0.6);">
-                                <i class="fa-solid fa-clock" style="color: ${glowColor}; text-shadow: 0 0 5px ${glowColor};"></i> WAKTU
+                        <div class="flex flex-col justify-center pl-1 relative z-10 border-r border-white/10">
+                            <span class="text-[7.5px] uppercase font-black tracking-widest mb-0.5 text-white/60">
+                                <i class="fa-solid fa-clock mr-0.5" style="color: ${glowColor}; filter: drop-shadow(0 0 3px ${glowColor});"></i> WAKTU
                             </span>
-                            <p class="text-[13px] font-mono font-black tracking-widest leading-none" style="background: linear-gradient(90deg, #ffffff, ${glowColor}); -webkit-background-clip: text; color: transparent; filter: drop-shadow(0 2px 4px rgba(0,0,0,1));">${timeDisplay}</p>
+                            <p class="text-[12px] font-mono font-black tracking-wider leading-none text-white whitespace-nowrap" style="text-shadow: 0 2px 5px rgba(0,0,0,0.9), 0 0 10px ${glowColor}60;">${timeDisplay}</p>
                         </div>
+                        
                         <!-- Status Badge -->
-                        <div class="flex flex-col justify-center items-end">
-                            <span class="text-[8px] uppercase font-black tracking-[0.25em] mb-1 flex items-center gap-1" style="color: rgba(255,255,255,0.6);">
-                                <i class="fa-solid fa-shield-halved" style="color: ${glowColor}; text-shadow: 0 0 5px ${glowColor};"></i> STATUS
+                        <div class="flex flex-col justify-center items-end pr-1 relative z-10">
+                            <span class="text-[7.5px] uppercase font-black tracking-widest mb-0.5 text-white/60">
+                                <i class="fa-solid fa-shield-halved mr-0.5" style="color: ${glowColor}; filter: drop-shadow(0 0 3px ${glowColor});"></i> STATUS
                             </span>
-                            <span class="text-[10px] px-2.5 py-0.5 rounded border font-black tracking-[0.15em] uppercase text-white" style="background: linear-gradient(135deg, ${glowColor}90, ${glowColor}40); border-color: ${glowColor}; text-shadow: 0 1px 3px rgba(0,0,0,0.9); box-shadow: 0 0 10px ${glowColor}40;">${statusText === 'SUDAH PULANG' ? 'PULANG' : statusText}</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded font-black tracking-widest uppercase text-white whitespace-nowrap" style="background: linear-gradient(135deg, ${glowColor}dd, ${glowColor}80); border: 1px solid ${glowColor}; text-shadow: 0 1px 2px rgba(0,0,0,0.8); box-shadow: 0 0 10px ${glowColor}50;">${statusText === 'SUDAH PULANG' ? 'PULANG' : statusText}</span>
                         </div>
                     </div>
                 </div>
@@ -3073,7 +3081,7 @@ async function detectFaceLoop() {
         if (consecutiveFaceFrames >= FACE_TO_TURBO_THRESHOLD &&
             currentDetectionInterval !== DETECTION_INTERVAL_FAST) {
             currentDetectionInterval = DETECTION_INTERVAL_FAST;
-            logSystem('⚡ TURBO MODE: Wajah terdeteksi — interval dipersingkat ke 50ms', 'text-cyan-400');
+            logSystem('⚡ TURBO MODE: Wajah terdeteksi — interval dipersingkat ke 50ms', 'text-cyan-300');
         }
 
         await detectFace(); // Jalankan face-api.js penuh
@@ -4037,13 +4045,13 @@ async function processAttendance(karyawanId, imageBase64) {
             const delay = Math.random() * 5;
             const duration = Math.random() * 3 + 2;
             const size = Math.random() * 3 + 1;
-            return `<div class="absolute bg-emerald-400 rounded-sm opacity-0" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation: float-particle ${duration}s linear infinite; animation-delay: -${delay}s; box-shadow: 0 0 4px #10b981;"></div>`;
+            return `<div class="absolute bg-emerald-400 rounded-sm opacity-0" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation: float-particle ${duration}s linear infinite; animation-delay: -${delay}s; box-shadow: 0 0 4px #e0f2fe;"></div>`;
         }).join('');
 
         // --- NEW: LOGIKA WARNA & ICON STATUS (CUSTOMIZATION) ---
         // Membedakan warna Nama & Box berdasarkan hasil
         // FIX: Jika statusColor kuning (PSW), nama juga ikut kuning meskipun success=true
-        let finalNameColor = statusColor === 'green' ? '#10b981' : (statusColor === 'yellow' ? '#f97316' : '#FF0055'); // Restored
+        let finalNameColor = statusColor === 'green' ? '#e0f2fe' : (statusColor === 'yellow' ? '#f97316' : '#FF0055'); // Restored
         
         let statusIconSVG = '';
         let statusBoxStyle = '';
@@ -5030,7 +5038,7 @@ async function processAttendance(karyawanId, imageBase64) {
                     }
                     .emblem {
                         width: 100px; height: 100px; border-radius: 0;
-                        border: 2px solid #D4AF37; padding: 10px; background: #FFF;
+                        border: 2px solid #e0f2fe; padding: 10px; background: #FFF;
                         box-shadow: 0 15px 30px rgba(0,0,0,0.8);
                     }
                     .emblem img { width: 100%; height: 100%; object-fit: contain; }
@@ -5039,9 +5047,9 @@ async function processAttendance(karyawanId, imageBase64) {
                         display: block; text-transform: uppercase; font-weight: 800;
                         font-family: 'Playfair Display', serif;
                         /* Combination: Gold + White Shine */
-                        background: linear-gradient(to bottom, #FFF 0%, #D4AF37 50%, #B8860B 100%);
+                        background: linear-gradient(to bottom, #FFF 0%, #e0f2fe 50%, #B8860B 100%);
                         -webkit-background-clip: text; background-clip: text; color: transparent; 
-                        border-bottom: 2px solid #D4AF37; padding-bottom: 10px;
+                        border-bottom: 2px solid #e0f2fe; padding-bottom: 10px;
                         font-size: 38px; letter-spacing: 6px; line-height: 1;
                     }
                     .stamp-status {
@@ -5050,7 +5058,7 @@ async function processAttendance(karyawanId, imageBase64) {
                         text-transform: uppercase;
                         font-family: 'Playfair Display', serif;
                         /* Pure Platinum & High-Glow Gold */
-                        background: linear-gradient(to bottom, #FFF 0%, #FFF 40%, #D4AF37 100%);
+                        background: linear-gradient(to bottom, #FFF 0%, #FFF 40%, #e0f2fe 100%);
                         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
                         
                         /* Sharp 'Stroke' Effect for Maximum Visibility */
@@ -5065,8 +5073,8 @@ async function processAttendance(karyawanId, imageBase64) {
                     .stamp-status::after {
                         content: '';
                         position: absolute; bottom: -20px; left: 25%; right: 25%;
-                        height: 3px; background: linear-gradient(90deg, transparent, #D4AF37, #FFF, #D4AF37, transparent);
-                        box-shadow: 0 0 15px #D4AF37;
+                        height: 3px; background: linear-gradient(90deg, transparent, #e0f2fe, #FFF, #e0f2fe, transparent);
+                        box-shadow: 0 0 15px #e0f2fe;
                     }
                     @keyframes status-pulse {
                         0%, 100% { filter: drop-shadow(0 0 15px rgba(255,255,255,0.4)); transform: perspective(1000px) rotateX(15deg) translateZ(50px) scale(1); }
