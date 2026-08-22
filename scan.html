@@ -349,10 +349,12 @@
         position: relative;
         padding: 15px 20px;
         border-radius: 16px;
-        background: rgba(0,0,0,0.2);
+        background: transparent;
         overflow: hidden;
     }
     .celestial-frame::before {
+        display: none !important;
+        display: none !important;
         content: '';
         position: absolute;
         inset: 0;
@@ -372,6 +374,8 @@
         z-index: 1;
     }
     .celestial-frame::after {
+        display: none !important;
+        display: none !important;
         content: '';
         position: absolute;
         top: 0; left: -20%;
