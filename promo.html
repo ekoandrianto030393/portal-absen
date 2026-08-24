@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Promo Trailer - Biometrik</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .scene {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1.5s ease-in-out, transform 2s cubic-bezier(0.25, 1, 0.5, 1);
+            transform: scale(0.9);
+        }
+
+        .scene.active {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        .scene.exit {
+            opacity: 0;
+            transform: scale(1.1);
+        }
+
+        .cinematic-text {
+            font-size: 3rem;
+            font-weight: 800;
+            text-align: center;
+            letter-spacing: 0.1em;
+            background: linear-gradient(135deg, #fff 0%, #888 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            text-shadow: 0 10px 30px rgba(255,255,255,0.2);
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .scene.active .cinematic-text {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.6;
+            animation: float 10s ease-in-out infinite alternate;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, -50px); }
+        }
+
+        /* 3D App Showcase */
+        .app-showcase {
+            position: relative;
+            width: 80vw;
+            max-width: 1200px;
+            aspect-ratio: 16/9;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8), 0 0 100px rgba(16, 185, 129, 0.3);
+            opacity: 0;
+            transform: perspective(1200px) rotateY(-15deg) rotateX(10deg) scale(0.8);
+            transition: all 2.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .scene.active .app-showcase {
+            opacity: 1;
+            transform: perspective(1200px) rotateY(0deg) rotateX(0deg) scale(1);
+        }
+
+        .app-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(1.1) contrast(1.1);
+        }
+
+        /* Epic Full-Screen Scanner Line */
+        .epic-scanner-line {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: #10b981;
+            box-shadow: 0 0 20px #10b981, 0 0 60px #10b981, 0 -20px 40px rgba(16, 185, 129, 0.2);
+            top: -10%;
+            left: 0;
+            animation: epicScan 3s ease-in-out infinite alternate;
+            z-index: 10;
+        }
+
+        @keyframes epicScan {
+            0% { top: -10%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 110%; opacity: 0; }
+        }
+
+        /* HUD Overlay Elements */
+        .hud-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            background: 
+                linear-gradient(rgba(16, 185, 129, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(16, 185, 129, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .hud-corner {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border: 3px solid #10b981;
+            opacity: 0.8;
+            animation: pulseHud 2s infinite alternate;
+        }
+        .hud-tl { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+        .hud-tr { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+        .hud-bl { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+        .hud-br { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+
+        @keyframes pulseHud {
+            0% { opacity: 0.4; }
+            100% { opacity: 1; box-shadow: 0 0 20px rgba(16, 185, 129, 0.5); }
+        }
+
+        .play-btn {
+            padding: 15px 40px;
+            background: #fff;
+            color: #000;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255,255,255,0.5);
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Scene 0: Start Screen -->
+    <div id="scene-0" class="scene active">
+        <h1 class="text-4xl font-bold mb-4 text-gray-400">Siapkan Aplikasi Perekam Layar (OBS/Bandicam)</h1>
+        <p class="mb-4 text-emerald-400 font-bold text-center">PENTING: Pastikan Anda telah menyimpan foto screenshot tadi ke folder ini dengan nama "screenshot.png"</p>
+        <p class="mb-8 text-gray-500 text-center max-w-xl">Layar akan menjadi hitam sesaat, lalu animasi akan diputar otomatis. Mulailah merekam saat layar hitam!</p>
+        <button class="play-btn" onclick="startPromo()">▶ MULAI PUTAR VIDEO</button>
+    </div>
+
+    <!-- Scene 1: Introduction -->
+    <div id="scene-1" class="scene">
+        <div class="orb" style="width:300px; height:300px; background:#475569; top:10%; left:20%;"></div>
+        <div class="cinematic-text text-gray-300">TINGGALKAN CARA LAMA...</div>
+    </div>
+
+    <!-- Scene 2: The Setup -->
+    <div id="scene-2" class="scene">
+        <div class="orb" style="width:400px; height:400px; background:#64748b; bottom:10%; right:10%;"></div>
+        <div class="cinematic-text text-gray-300" style="font-size: 2.5rem;">SAMBUT MASA DEPAN KEDISIPLINAN</div>
+    </div>
+
+    <!-- Scene 3: The Screenshot App Showcase (Epic Scan) -->
+    <div id="scene-3" class="scene">
+        <div class="orb" style="width:600px; height:600px; background:#10b981; top:50%; left:50%; transform:translate(-50%,-50%); opacity:0.3;"></div>
+        
+        <div class="app-showcase" id="app-box">
+            <!-- This image needs to be named screenshot.png in the same folder -->
+            <img src="screenshot.png" alt="App Interface" class="app-image" onerror="this.src='https://via.placeholder.com/1200x675.png?text=SIMPAN+FOTO+DENGAN+NAMA+screenshot.png'">
+            
+            <div class="hud-overlay"></div>
+            <div class="hud-corner hud-tl"></div>
+            <div class="hud-corner hud-tr"></div>
+            <div class="hud-corner hud-bl"></div>
+            <div class="hud-corner hud-br"></div>
+            
+            <div class="epic-scanner-line"></div>
+        </div>
+        
+        <div class="cinematic-text mt-8 text-emerald-400" style="font-size: 3rem; text-shadow: 0 0 20px rgba(16,185,129,0.8);">PRESENSI BIOMETRIK 4.0</div>
+    </div>
+
+    <!-- Scene 4: Features -->
+    <div id="scene-4" class="scene">
+        <div class="orb" style="width:500px; height:500px; background:#3b82f6; top:20%; left:20%;"></div>
+        <div class="flex flex-col gap-8 text-center">
+            <h2 class="cinematic-text text-blue-400" style="font-size: 3rem; transition-delay: 0.1s;">✅ AI FACE RECOGNITION</h2>
+            <h2 class="cinematic-text text-blue-400" style="font-size: 3rem; transition-delay: 0.5s;">✅ REAL-TIME SPATIAL UI</h2>
+            <h2 class="cinematic-text text-blue-400" style="font-size: 3rem; transition-delay: 0.9s;">✅ CLOUD INTEGRATION</h2>
+        </div>
+    </div>
+
+    <!-- Scene 5: Outro -->
+    <div id="scene-5" class="scene">
+        <div class="orb" style="width:800px; height:800px; background:#ffffff; top:50%; left:50%; transform:translate(-50%,-50%); opacity:0.1;"></div>
+        <div class="cinematic-text mb-4" style="font-size: 4rem;">TINGKATKAN EFISIENSI</div>
+        <div class="cinematic-text mb-12 text-emerald-400" style="font-size: 4rem; transition-delay: 0.5s;">SEKARANG JUGA</div>
+        <div class="cinematic-text" style="font-size: 1.5rem; font-weight: 400; text-transform:none; transition-delay: 1.5s;">Hubungi kami untuk Demo Eksklusif</div>
+        
+        <button id="replay-btn" class="play-btn mt-12 opacity-0 transition-opacity duration-1000" onclick="location.reload()" style="pointer-events:none;">ULANGI VIDEO</button>
+    </div>
+
+    <script>
+        function switchScene(fromIdx, toIdx) {
+            if(fromIdx >= 0) {
+                const prev = document.getElementById(`scene-${fromIdx}`);
+                prev.classList.remove('active');
+                prev.classList.add('exit');
+            }
+            if(toIdx >= 0) {
+                const next = document.getElementById(`scene-${toIdx}`);
+                next.classList.remove('exit');
+                next.classList.add('active');
+            }
+        }
+
+        async function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function startPromo() {
+            switchScene(0, -1);
+            await sleep(2000); // 2s black screen
+
+            switchScene(-1, 1);
+            await sleep(3000);
+
+            switchScene(1, 2);
+            await sleep(3500);
+
+            // Epic App Showcase Scene
+            switchScene(2, 3);
+            await sleep(7000); // Stay longer to watch the scanner
+
+            switchScene(3, 4);
+            await sleep(4500);
+
+            switchScene(4, 5);
+            await sleep(4000);
+            
+            const btn = document.getElementById('replay-btn');
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'auto';
+        }
+    </script>
+</body>
+</html>

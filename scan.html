@@ -616,39 +616,85 @@
     }
 
     /* === OBSIDIAN PANEL CARD (Emerald Green Glass) === */
-    /* === HOLOGRAPHIC FROSTED GLASS (GOD TIER) === */
+    /* === APPLE VISION-OS AURORA GLASS PANELS === */
     #cuti-panel, #dl-panel, #hadir-panel {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 100%) !important;
-        backdrop-filter: blur(16px) saturate(120%) !important;
-        -webkit-backdrop-filter: blur(16px) saturate(120%) !important;
-        border-radius: 20px !important;
-        border: none !important;
+        backdrop-filter: blur(40px) saturate(200%) !important;
+        -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+        border-radius: 30px !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+        border-left: 1px solid rgba(255, 255, 255, 0.25) !important;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.2) !important;
         position: relative;
+        overflow: hidden;
     }
     
-    /* Holographic Border */
+    #hadir-panel { 
+        background: 
+            radial-gradient(circle at 10% 0%, rgba(16, 185, 129, 0.3) 0%, transparent 60%),
+            radial-gradient(circle at 90% 100%, rgba(6, 182, 212, 0.25) 0%, transparent 60%),
+            rgba(10, 15, 20, 0.5) !important;
+    }
+    #cuti-panel { 
+        background: 
+            radial-gradient(circle at 10% 0%, rgba(245, 158, 11, 0.3) 0%, transparent 60%),
+            radial-gradient(circle at 90% 100%, rgba(225, 29, 72, 0.25) 0%, transparent 60%),
+            rgba(20, 10, 10, 0.5) !important;
+    }
+    #dl-panel { 
+        background: 
+            radial-gradient(circle at 10% 0%, rgba(139, 92, 246, 0.3) 0%, transparent 60%),
+            radial-gradient(circle at 90% 100%, rgba(217, 70, 239, 0.25) 0%, transparent 60%),
+            rgba(15, 10, 25, 0.5) !important;
+    }
+        backdrop-filter: blur(24px) saturate(150%) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+        border-radius: 24px !important;
+        border: 1px solid rgba(255, 255, 255, 0.03) !important;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Subtle inner noise texture */
+    #cuti-panel::after, #dl-panel::after, #hadir-panel::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        opacity: 0.15;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* Holographic Top Rim */
     #cuti-panel::before, #dl-panel::before, #hadir-panel::before {
         content: '';
         position: absolute;
         inset: 0;
         pointer-events: none;
-        border-radius: 20px;
+        border-radius: 24px;
         padding: 1.5px;
-        background: linear-gradient(135deg, 
-            rgba(251, 191, 36, 0.7),
-            rgba(244, 114, 182, 0.7),
-            rgba(56, 189, 248, 0.7),
-            rgba(167, 139, 250, 0.7),
-            rgba(52, 211, 153, 0.7)
-        ) !important;
+        background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%) !important;
         -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
         -webkit-mask-composite: xor;
         mask-composite: exclude;
-        opacity: 0.8;
+        opacity: 1;
+        z-index: 1;
     }
     
-    /* Subtly colored inner glow for each */
-    #cuti-panel { box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255, 0.25), inset 0 0 40px rgba(245, 158, 11, 0.1) !important; }
+    /* Specific glowing bottom lips and ultra-deep shadows */
+    #cuti-panel { 
+        border-bottom: 2px solid rgba(245, 158, 11, 0.8) !important;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.9), inset 0 30px 60px -30px rgba(245, 158, 11, 0.15), 0 15px 45px rgba(245, 158, 11, 0.15) !important; 
+    }
+    #dl-panel { 
+        border-bottom: 2px solid rgba(139, 92, 246, 0.8) !important;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.9), inset 0 30px 60px -30px rgba(139, 92, 246, 0.15), 0 15px 45px rgba(139, 92, 246, 0.15) !important; 
+    }
+    #hadir-panel { 
+        border-bottom: 2px solid rgba(16, 185, 129, 0.8) !important;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.9), inset 0 30px 60px -30px rgba(16, 185, 129, 0.15), 0 15px 45px rgba(16, 185, 129, 0.15) !important; 
+    }
     #dl-panel { box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255, 0.25), inset 0 0 40px rgba(139, 92, 246, 0.1) !important; }
     #hadir-panel { box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255, 0.25), inset 0 0 40px rgba(16, 185, 129, 0.1) !important; }
     #hadir-panel:hover {
@@ -1128,6 +1174,36 @@
                     </div>
                 </div>
 
+                <div id="izin-panel" class="hidden dark-panel-card relative flex flex-col gap-4 p-4 transition-all duration-300">
+                    <div class="glass-sweep-layer"></div>
+                    <div class="relative z-10 flex flex-col items-center justify-center text-center pb-4">
+                        <!-- HUD Header -->
+                        <div class="flex items-center gap-2 w-full mb-2">
+                            <div class="w-1 h-5 rounded-full flex-shrink-0" style="background: linear-gradient(to bottom, #0ea5e9, #3b82f6); box-shadow: 0 0 8px rgba(14,165,233,0.6);"></div>
+                            <span class="font-black tracking-[0.25em] text-white text-sm font-serif uppercase hud-flicker flex items-center gap-2">
+                                <i class="fa-solid fa-envelope-open-text" style="color: #0ea5e9;"></i>IZIN
+                            </span>
+                            <div class="flex-1 h-[1px]" style="background: linear-gradient(to right, rgba(14,165,233,0.4), transparent);"></div>
+                        </div>
+                        <div class="panel-separator"></div>
+                        <div class="flex flex-col items-center justify-center gap-1 mb-2 mt-2">
+                            <div class="relative group mt-2 mb-2">
+                                <div class="absolute inset-0 rounded-full blur-md opacity-70" style="background: rgba(14,165,233,0.2);"></div>
+                                <div class="relative inline-flex items-center justify-center min-w-[80px] px-6 py-2 rounded-full" style="background: rgba(6,10,20,0.95); border: 1px solid rgba(14,165,233,0.3); box-shadow: 0 0 20px rgba(14,165,233,0.15), inset 0 1px 0 rgba(14,165,233,0.1);">
+                                    <span id="izin-counter-badge" class="text-4xl font-serif font-black" style="color: #0ea5e9; text-shadow: 0 0 15px rgba(14,165,233,0.8);">0</span>
+                                </div>
+                            </div>
+                            <span class="text-xs text-white/60 font-bold tracking-widest mt-2 uppercase">Pegawai</span>
+                            <div class="w-16 h-[1px] mt-1" style="background: rgba(14,165,233,0.3);"></div>
+                        </div>
+                        <div class="text-[10px] font-black tracking-[0.25em] uppercase text-white" style="text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(14,165,233,0.6);">PUSKESMAS WANA</div>
+                        <div class="w-24 h-[1px] mt-1.5 mb-1" style="background: rgba(14,165,233,0.15);"></div>
+                    </div>
+                    <div class="roster-ticker-container h-32 relative z-10">
+                        <div id="izinRoster" class="pr-1 text-white font-medium"></div>
+                    </div>
+                </div>
+
                 <div id="target-data-panel" class="dark-panel-card p-5 transition-all duration-500 opacity-0 scale-95 blur-sm pointer-events-none relative overflow-hidden">
 
                     <!-- Aurora glow accent top -->
@@ -1474,6 +1550,40 @@
             window.ELEVENLABS_API_KEY = "025c2bccb58bdbefdf2401b8355f3e30a0237800ef79520bc68faad5108d843e";
             window.ELEVENLABS_VOICE_ID = "GdyFAZdMpKMBHw5pc1Bu";
         </script>
+        <!-- Manual Input (NIP) / Barcode Scanner Buffer -->
+        <div class="fixed bottom-4 left-4 z-50">
+            <input type="text" id="manualNipInput" placeholder="NIP (Manual Input)" class="bg-black/40 border border-white/20 text-white font-mono text-xs px-3 py-1.5 rounded outline-none focus:border-emerald-500 transition-colors opacity-30 hover:opacity-100 focus:opacity-100 w-48 shadow-lg">
+        </div>
+
+        <!-- FIXED FLOATING CYBERNETIC CLOCK (BOTTOM LEFT) -->
+        <div id="cybernetic-clock-panel" class="fixed bottom-16 left-6 z-40 flex flex-col items-center justify-center transition-all duration-300 pointer-events-none drop-shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+            <!-- HUD Header Mini -->
+            <div class="relative z-10 flex items-center justify-center gap-1 w-full mb-3">
+                <span class="font-black tracking-[0.2em] text-[#22d3ee]/80 text-[8px] font-serif uppercase hud-flicker flex items-center gap-1">
+                    <i class="fa-solid fa-satellite-dish"></i> SYS_TIME
+                </span>
+            </div>
+
+            <!-- Cybernetic Ring Container -->
+            <div class="relative w-36 h-36 flex items-center justify-center z-10">
+                <!-- Outer Rotating Ring -->
+                <div class="absolute inset-0 rounded-full border-[2px] border-dashed border-[#22d3ee]/40 animate-[spin_15s_linear_infinite]"></div>
+                <!-- Inner Counter-Rotating Ring -->
+                <div class="absolute inset-2 rounded-full border-[1px] border-[#0ea5e9]/60 border-t-transparent border-b-transparent animate-[spin_8s_linear_infinite_reverse]"></div>
+                <!-- Core Glow -->
+                <div class="absolute inset-4 rounded-full bg-[#22d3ee]/5 shadow-[0_0_30px_rgba(34,211,238,0.3)] backdrop-blur-sm"></div>
+                <!-- Equalizer / Radar Marks -->
+                <div class="absolute inset-[-10px] rounded-full border-[1px] border-[#22d3ee]/10" style="background: repeating-conic-gradient(from 0deg, transparent 0deg, transparent 10deg, rgba(34,211,238,0.15) 10deg, rgba(34,211,238,0.15) 11deg);"></div>
+                
+                <!-- Time Display -->
+                <div class="relative z-20 flex flex-col items-center justify-center mt-1">
+                    <div id="cyberClockTime" class="text-3xl font-black text-white font-mono tracking-widest drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" style="text-shadow: 0 0 15px #22d3ee, 0 0 5px #fff;">00:00</div>
+                    <div id="cyberClockSecs" class="text-[9px] font-bold text-[#22d3ee] tracking-[0.3em] mt-1">00 SEC</div>
+                    <div id="cyberClockDate" class="text-[7px] font-bold text-[#0ea5e9] tracking-[0.2em] mt-2 bg-[#22d3ee]/10 px-1.5 py-0.5 rounded uppercase border border-[#22d3ee]/20 text-center">SENIN, 1 JAN</div>
+                </div>
+            </div>
+        </div>
+        
         <script src="scan.js?v=2.0"></script>
         <script>
             if ('serviceWorker' in navigator) {
@@ -1492,14 +1602,32 @@
             function generateRandomIP() { return `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`; }
             
             function updateCommandClock() {
+                const now = new Date();
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                const ss = String(now.getSeconds()).padStart(2, '0');
+                
+                // Old clock (if exists)
                 const clockEl = document.getElementById('commandCenterClock');
                 if(clockEl) {
-                    const now = new Date();
-                    const hh = String(now.getHours()).padStart(2, '0');
-                    const mm = String(now.getMinutes()).padStart(2, '0');
-                    const ss = String(now.getSeconds()).padStart(2, '0');
                     clockEl.textContent = `${hh}:${mm}:${ss}`;
                 }
+
+                // New Cybernetic Clock
+                const cyberTime = document.getElementById('cyberClockTime');
+                const cyberSecs = document.getElementById('cyberClockSecs');
+                const cyberDate = document.getElementById('cyberClockDate');
+                
+                if (cyberTime) {
+                    cyberTime.textContent = `${hh}:${mm}`;
+                    if (cyberSecs) cyberSecs.textContent = `${ss} SEC`;
+                    if (cyberDate) {
+                        const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+                        const months = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'];
+                        cyberDate.textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+                    }
+                }
+
                 requestAnimationFrame(updateCommandClock);
             }
             updateCommandClock();

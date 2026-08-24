@@ -18,8 +18,16 @@ const express = require('express');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
 const path = require('path');
+const cors = require('cors');
+const crypto = require('crypto');
 const { exec } = require('child_process'); // [NEW] Untuk menjalankan mysqldump
 const fs = require('fs'); // [NEW] Untuk manajemen file backup
+
+// Helper fungsi untuk hashing password pegawai
+function hashPassword(password) {
+    return crypto.createHash('sha256').update(password).digest('hex');
+}
+
 const app = express();
 const port = 3000;
 
@@ -841,11 +849,30 @@ app.get('/api/karyawan/:id', (req, res) => {
         
         const data = results[0];
         if (data.foto) data.foto = data.foto.toString('base64');
-        res.json({ success: true, data });
+        res.json({ success: true, data: data });
     });
 });
 
-// Endpoint: Update Data Karyawan (Edit Nama/Jabatan)
+// 3. API Hapus Akun Pegawai (Untuk reset akun portal)
+app.delete('/api/pegawai/akun/:id_karyawan', (req, res) => {
+    const id = req.params.id_karyawan;
+    pool.query('DELETE FROM akun_pegawai WHERE id_karyawan = ?', [id], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
+        if (results.affectedRows === 0) return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
+        res.json({ success: true, message: 'Akun portal berhasil dihapus.' });
+    });
+});
+
+// 4. API Riwayat Rekap Bulanan Karyawan
+app.get('/api/riwayat/rekap/:id_karyawan', (req, res) => {
+    const id = req.params.id_karyawan;
+    pool.query('SELECT * FROM view_rekap_bulanan WHERE id_karyawan = ? ORDER BY periode DESC', [id], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Server error' });
+        res.json({ success: true, data: results });
+    });
+});
+
+// Endpoint untuk Dashboard Karyawan (Edit Nama/Jabatan)
 app.put('/api/karyawan/:id', (req, res) => {
     const id = req.params.id;
     const { nama, jabatan, no_urut } = req.body;
@@ -1456,6 +1483,75 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
     console.error('❌ FATAL: Unhandled Rejection at:', promise, 'reason:', reason);
 });
+
+// ==========================================
+// API KHUSUS PORTAL PWA PEGAWAI
+// ==========================================
+
+// 1. API Registrasi Akun Pegawai
+app.post('/api/pegawai/register', (req, res) => {
+    const { id_karyawan, nama, username, password } = req.body;
+    
+    // Cek apakah ID dan Nama cocok di database karyawan
+    pool.query('SELECT * FROM karyawan WHERE id_karyawan = ?', [id_karyawan], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
+        if (results.length === 0) return res.status(400).json({ success: false, message: 'ID Karyawan tidak ditemukan.' });
+        
+        // Kita bandingkan nama case-insensitive
+        const dbName = results[0].nama.trim().toLowerCase();
+        const inputName = nama.trim().toLowerCase();
+        if (dbName !== inputName && !dbName.includes(inputName) && !inputName.includes(dbName)) {
+            return res.status(400).json({ success: false, message: 'Nama tidak cocok dengan data kepegawaian.' });
+        }
+        
+        const hashedPassword = hashPassword(password);
+        
+        // Buat Akun
+        pool.query('INSERT INTO akun_pegawai (id_karyawan, username, password) VALUES (?, ?, ?)', 
+        [id_karyawan, username, hashedPassword], (err2) => {
+            if (err2) {
+                if (err2.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'Username sudah digunakan atau akun untuk ID ini sudah ada.' });
+                return res.status(500).json({ success: false, message: err2.message });
+            }
+            res.json({ success: true, message: 'Registrasi berhasil! Silakan login.' });
+        });
+    });
+});
+
+// 2. API Login Pegawai
+app.post('/api/pegawai/login', (req, res) => {
+    const { username, password } = req.body;
+    const hashedPassword = hashPassword(String(password));
+    
+    const sql = `
+        SELECT a.id_karyawan, a.username, k.nama, k.jabatan 
+        FROM akun_pegawai a 
+        JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
+        WHERE (a.username = ? OR a.id_karyawan = ?) AND a.password = ?
+    `;
+    
+    pool.query(sql, [username, username, hashedPassword], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
+        if (results.length === 0) return res.status(401).json({ success: false, message: 'Username/ID atau Password salah!' });
+        
+        res.json({ success: true, data: results[0] });
+    });
+});
+
+// 3. API Dashboard Pegawai (Data Hari Ini)
+app.get('/api/pegawai/dashboard/today/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = `
+        SELECT jam_masuk, jam_keluar, status, keterangan 
+        FROM absensi 
+        WHERE id_karyawan = ? AND tanggal = CURDATE()
+    `;
+    pool.query(sql, [id], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, data: results[0] || null });
+    });
+});
+
 
 // Jalankan Server
 app.listen(port, () => {

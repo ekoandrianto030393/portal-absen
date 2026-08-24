@@ -37,6 +37,8 @@ const dlRoster = document.getElementById('dlRoster'); // [NEW]
 const dlPanel = document.getElementById('dl-panel');   // [NEW]
 const cutiRoster = document.getElementById('cutiRoster'); // [NEW]
 const cutiPanel = document.getElementById('cuti-panel');   // [NEW]
+const izinRoster = document.getElementById('izinRoster'); // [NEW]
+const izinPanel = document.getElementById('izin-panel');   // [NEW]
 let lastQuoteIndex = -1; // [NEW] Variabel global untuk mencegah pengulangan motivasi
 
 // CORNER CARD ELEMENTS
@@ -366,14 +368,29 @@ const SoundFX = {
         const now = audioCtx.currentTime;
 
         if (type === 'scan') {
-            // High tech chirp
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(1200, now);
-            osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
-            gain.gain.setValueAtTime(0.05, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            // [UPGRADED] Cybernetic Radar Sweep
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioAnalyser);
+            
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(150, now + 0.15); // Sweep down fast
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(4000, now);
+            filter.frequency.linearRampToValueAtTime(500, now + 0.15);
+            
+            gain.gain.setValueAtTime(0.0, now);
+            gain.gain.linearRampToValueAtTime(0.08, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            
             osc.start(now);
-            osc.stop(now + 0.05);
+            osc.stop(now + 0.15);
         } else if (type === 'comms_open') {
             // Suara "bip" sebelum AI bicara
             const osc = audioCtx.createOscillator();
@@ -388,15 +405,41 @@ const SoundFX = {
             osc.start(now);
             osc.stop(now + 0.08);
         } else if (type === 'success') {
-            // Ascending Chime
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(440, now); // A4
-            osc.frequency.setValueAtTime(554, now + 0.1); // C#5
-            osc.frequency.setValueAtTime(659, now + 0.2); // E5
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.linearRampToValueAtTime(0, now + 0.6);
-            osc.start(now);
-            osc.stop(now + 0.6);
+            // [UPGRADED] Holographic Success Chime (Premium Glass Sound)
+            
+            // Layer 1: The Main Bell (Sine)
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            osc1.connect(gain1); gain1.connect(audioAnalyser);
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(880, now); // A5
+            osc1.frequency.setValueAtTime(1108.73, now + 0.1); // C#6
+            gain1.gain.setValueAtTime(0, now);
+            gain1.gain.linearRampToValueAtTime(0.1, now + 0.05);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+            osc1.start(now); osc1.stop(now + 1.2);
+
+            // Layer 2: The Sparkle (High pitched triangle)
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.connect(gain2); gain2.connect(audioAnalyser);
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(1760, now); // A6
+            gain2.gain.setValueAtTime(0, now);
+            gain2.gain.linearRampToValueAtTime(0.03, now + 0.05);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+            osc2.start(now); osc2.stop(now + 0.8);
+
+            // Layer 3: The Bass Support (Warm low frequency)
+            const osc3 = audioCtx.createOscillator();
+            const gain3 = audioCtx.createGain();
+            osc3.connect(gain3); gain3.connect(audioAnalyser);
+            osc3.type = 'sine';
+            osc3.frequency.setValueAtTime(220, now); // A3
+            gain3.gain.setValueAtTime(0, now);
+            gain3.gain.linearRampToValueAtTime(0.08, now + 0.1);
+            gain3.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+            osc3.start(now); osc3.stop(now + 1.5);
         } else if (type === 'error') {
             // Low Buzz
             osc.type = 'sawtooth';
@@ -2416,11 +2459,13 @@ async function updatePersonnelRoster() {
         // [NEW] Reset DL Roster
         if (dlRoster) dlRoster.innerHTML = '';
         if (cutiRoster) cutiRoster.innerHTML = '';
+        if (izinRoster) izinRoster.innerHTML = '';
         
         if (!data || data.length === 0) {
             personnelRoster.innerHTML = '<div style="color:rgba(0,229,160,0.5);" class="text-xs italic text-center py-4">Belum ada data kehadiran hari ini.</div>';
             if (dlRoster) dlRoster.innerHTML = '<div style="color:rgba(255,215,0,0.5);" class="text-sm italic text-center py-4">Tidak ada data dinas luar.</div>';
             if (cutiRoster) cutiRoster.innerHTML = '<div style="color:rgba(255,215,0,0.5);" class="text-sm italic text-center py-4">Tidak ada data cuti.</div>';
+            if (izinRoster) izinRoster.innerHTML = '<div style="color:rgba(255,215,0,0.5);" class="text-sm italic text-center py-4">Tidak ada data izin.</div>';
             
             // Reset counter badges
             const hadirBadge = document.getElementById('hadir-counter-badge');
@@ -2429,6 +2474,8 @@ async function updatePersonnelRoster() {
             if (cutiBadge) cutiBadge.textContent = '0';
             const dlBadge = document.getElementById('dl-counter-badge');
             if (dlBadge) dlBadge.textContent = '0';
+            const izinBadge = document.getElementById('izin-counter-badge');
+            if (izinBadge) izinBadge.textContent = '0';
             return;
         }
 
@@ -2455,10 +2502,15 @@ async function updatePersonnelRoster() {
         const cutiWrapper = document.createElement('div');
         cutiWrapper.className = 'w-full flex flex-col gap-1';
 
+        const izinWrapper = document.createElement('div');
+        izinWrapper.className = 'w-full flex flex-col gap-1';
+
         let hasDL = false;
         let hasCuti = false;
+        let hasIzin = false;
         let cutiCount = 0;
         let dlCount = 0;
+        let izinCount = 0;
         let hadirCount = 0;
 
         data.forEach(row => {
@@ -2469,169 +2521,112 @@ async function updatePersonnelRoster() {
             const statusRaw = row.status ? row.status.toUpperCase().trim() : '';
             const isDL = ['DL', 'DINAS_LUAR', 'DINAS LUAR'].includes(statusRaw);
             const isCuti = ['CUTI'].includes(statusRaw);
+            const isIzin = ['IZIN', 'I', 'SAKIT', 'S', 'IJIN', 'SICK'].includes(statusRaw);
             const isOut = !!row.jam_keluar;
             
-            let timeDisplay, statusColor, statusText, borderColor, bgHover, statusLabelHtml, bgGradient, glowColor, badgeStyle, timeGradient;
+            let timeDisplay = '', statusColor, statusText = '', borderColor, bgHover, statusLabelHtml, bgGradient, glowColor = '', badgeStyle, timeGradient;
             let cardBorderClass = '';
 
             if (isDL) {
                 timeDisplay = 'DINAS LUAR';
-                statusColor = 'bg-[#3b82f6] shadow-[0_0_12px_#3b82f6]';
                 statusText = 'DINAS LUAR';
-                borderColor = 'border-[#3b82f6]';
-                cardBorderClass = 'border-[#3b82f6]';
-                bgHover = '';
             } else if (isCuti) {
-                timeDisplay = 'SEDANG CUTI';
-                statusColor = 'bg-[#f97316] shadow-[0_0_12px_#f97316]';
+                timeDisplay = 'CUTI';
                 statusText = 'CUTI';
-                borderColor = 'border-[#f97316]';
-                cardBorderClass = 'border-[#f97316]';
-                bgHover = '';
-            } else {
-                timeDisplay = isOut ? `${row.jam_keluar ? row.jam_keluar.substring(0,5) : '--:--'}` : `${row.jam_masuk ? row.jam_masuk.substring(0,5) : '--:--'}`;
-                statusColor = isOut ? 'bg-[#f43f5e] shadow-[0_0_12px_#f43f5e]' : 'bg-[#DAA520] shadow-[0_0_12px_#DAA520]';
-                statusText = isOut ? 'SUDAH PULANG' : 'HADIR';
-                borderColor = isOut ? 'border-[#f43f5e]' : 'border-[#DAA520]';
-                cardBorderClass = isOut ? 'border-[#f43f5e]' : 'border-[#DAA520]';
-                bgHover = '';
-            }
-
-            const dlIcon = isDL ? '<i class="fa-solid fa-briefcase text-[#3b82f6] ml-1.5 text-[10px] flex-shrink-0" title="Dinas Luar"></i>' : '';
-            const cutiIcon = isCuti ? '<i class="fa-solid fa-calendar-check text-[#f97316] ml-1.5 text-sm flex-shrink-0 shadow-[0_2px_8px_rgba(249,115,22,0.5)]" title="Cuti"></i>' : '';
-            
-            if (isCuti) {
-                bgGradient = 'linear-gradient(135deg, rgba(249,115,22,0.12) 0%, rgba(255,255,255,0.7) 100%)';
-                glowColor = '#f97316';
-                badgeStyle = 'bg-[#f97316] text-white border-[#f97316]';
-                timeGradient = 'text-[#f97316] bg-white border-[#f97316]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(249,115,22,0.3)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">CUTI</span>`;
-            } else if (isDL) {
-                bgGradient = 'linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(255,255,255,0.7) 100%)';
-                glowColor = '#3b82f6';
-                badgeStyle = 'bg-[#3b82f6] text-white border-[#3b82f6]';
-                timeGradient = 'text-[#3b82f6] bg-white border-[#3b82f6]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(59,130,246,0.3)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">DINAS LUAR</span>`;
+            } else if (isIzin) {
+                timeDisplay = 'IZIN';
+                statusText = 'IZIN';
             } else if (isOut) {
-                bgGradient = 'linear-gradient(135deg, rgba(244,63,94,0.12) 0%, rgba(255,255,255,0.7) 100%)';
-                glowColor = '#f43f5e';
-                badgeStyle = 'bg-[#f43f5e] text-white border-[#f43f5e]';
-                timeGradient = 'text-[#f43f5e] bg-white border-[#f43f5e]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(244,63,94,0.3)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">PULANG</span>`;
+                timeDisplay = row.jam_keluar ? row.jam_keluar.substring(0,5) : '-';
+                statusText = 'PULANG';
             } else {
-                bgGradient = 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(255,255,255,0.7) 100%)';
-                glowColor = '#10b981';
-                badgeStyle = 'bg-[#10b981] text-white border-[#10b981]';
-                timeGradient = 'text-[#10b981] bg-white border-[#10b981]';
-                statusLabelHtml = `<span class="text-[10px] px-2.5 py-0.5 rounded-md border ${badgeStyle} shadow-[0_2px_8px_rgba(16,185,129,0.3)] font-black tracking-[0.2em] uppercase" style="text-shadow: none;">HADIR</span>`;
+                timeDisplay = row.jam_masuk ? row.jam_masuk.substring(0,5) : '-';
+                statusText = 'HADIR';
             }
 
-            const solidStatusBg = isDL ? 'bg-[#3b82f6]' : isCuti ? 'bg-[#f97316]' : isOut ? 'bg-[#f43f5e]' : 'bg-[#10b981]';
+            // === BEYOND GOD-TIER CARD STYLING ===
+            const statusConfig = {
+                cuti:  { glow: '#f59e0b', accent: '#fbbf24', text: 'CUTI', bg1: 'rgba(245, 158, 11, 0.15)', bg2: 'rgba(245, 158, 11, 0.05)' },
+                izin:  { glow: '#0ea5e9', accent: '#38bdf8', text: 'IZIN', bg1: 'rgba(14, 165, 233, 0.15)', bg2: 'rgba(14, 165, 233, 0.05)' },
+                dl:    { glow: '#8b5cf6', accent: '#c084fc', text: 'DINAS LUAR', bg1: 'rgba(139, 92, 246, 0.15)', bg2: 'rgba(139, 92, 246, 0.05)' },
+                out:   { glow: '#f43f5e', accent: '#fb7185', text: 'PULANG', bg1: 'rgba(244, 63, 94, 0.3)', bg2: 'rgba(244, 63, 94, 0.1)' },
+                hadir: { glow: '#10b981', accent: '#34d399', text: 'HADIR', bg1: 'rgba(16, 185, 129, 0.15)', bg2: 'rgba(16, 185, 129, 0.05)' }
+            };
+
+            const cfg = isCuti ? statusConfig.cuti : isIzin ? statusConfig.izin : isDL ? statusConfig.dl : isOut ? statusConfig.out : statusConfig.hadir;
+            
+            glowColor = cfg.glow;
 
             const item = document.createElement('div');
-            item.className = `roster-card-3d group flex items-center p-2.5 rounded-xl border transition-all duration-400 animate-[fadeIn_0.5s_ease-out] relative overflow-hidden select-none cursor-pointer mb-2 mx-1 hex-bg-pattern`;
+            item.className = `roster-card-3d group flex items-center p-2.5 rounded-xl border transition-all duration-500 animate-[fadeIn_0.6s_cubic-bezier(0.16,1,0.3,1)] relative overflow-hidden select-none cursor-pointer mb-2 mx-1`;
 
-            // Aurora card style sesuai status
-            const cardBg = isDL
-                ? 'linear-gradient(135deg, rgba(3,15,10,0.95) 0%, rgba(5,25,40,0.95) 100%)'
-                : isCuti
-                ? 'linear-gradient(135deg, rgba(3,15,10,0.95) 0%, rgba(30,15,5,0.95) 100%)'
-                : isOut
-                ? 'linear-gradient(135deg, rgba(3,15,10,0.95) 0%, rgba(35,10,15,0.95) 100%)'
-                : 'linear-gradient(135deg, rgba(2,10,7,0.95) 0%, rgba(3,25,18,0.95) 100%)';
-
-// Pola motif geometris mewah (Holographic Hex)
-            const motifBg = `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0l20 10v20L20 40 0 30V10z' fill-rule='evenodd' stroke='%23ffffff' stroke-width='0.5' stroke-opacity='0.08' fill='none'/%3E%3C/svg%3E")`;
-
+            const cardBg = `linear-gradient(135deg, ${cfg.bg1} 0%, ${cfg.bg2} 100%)`;
+            
             item.style.cssText = `
-                background: ${cardBg}, ${motifBg};
-                background-blend-mode: overlay;
-                background-size: cover, 40px 40px;
-                border-color: rgba(255,255,255,0.1);
-                box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 0 20px ${glowColor}20;
+                background: ${cardBg};
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-top: 1px solid rgba(255, 255, 255, 0.3);
+                border-left: 1px solid rgba(255, 255, 255, 0.25);
+                box-shadow: 0 15px 35px rgba(0,0,0,0.4), 0 5px 15px rgba(0,0,0,0.2);
                 backdrop-filter: blur(20px);
                 -webkit-backdrop-filter: blur(20px);
+                border-radius: 18px;
                 transform-style: preserve-3d;
             `;
 
-            if (isCuti) {
+            if (isCuti || isIzin) {
                 item.style.borderStyle = 'dashed';
                 item.style.borderWidth = '1px';
             }
 
             const radarPingHTML = isDL ? `<div class="absolute inset-0 rounded-xl" style="border: 2px solid ${glowColor}; animation: radarPing 3s infinite ease-out; pointer-events:none;"></div>` : '';
+            const dlIcon = isDL ? `<i class="fa-solid fa-car-side text-purple-400 opacity-70 text-sm" title="Dinas Luar"></i>` : '';
+            const cutiIcon = isCuti ? `<i class="fa-solid fa-umbrella-beach text-amber-400 opacity-70 text-sm" title="Cuti"></i>` : '';
+            const izinIcon = isIzin ? `<i class="fa-solid fa-envelope-open-text text-sky-400 opacity-70 text-sm" title="Izin"></i>` : '';
 
             item.innerHTML = `
                 ${radarPingHTML}
 
-                <!-- Ultra Premium Left Accent Glow -->
-                <div class="absolute left-0 top-0 bottom-0 w-[5px] z-20 rounded-l-xl" style="background: linear-gradient(to bottom, #ffffff, ${glowColor}, #ffffff); box-shadow: 0 0 15px ${glowColor}, 0 0 30px ${glowColor}80;"></div>
+                <!-- Left Accent Glow -->
+                <div class="absolute left-0 top-0 bottom-0 w-[4px] z-20 rounded-l-xl" style="background: ${glowColor}; box-shadow: 0 0 10px ${glowColor};"></div>
 
-                <!-- Glass Shimmer Sweep on Hover -->
-                <div class="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none z-20" style="background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.1) 50%, transparent 80%); transition: opacity 0.4s ease; transform: translateZ(10px);"></div>
+                <!-- Hover Shimmer -->
+                <div class="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none z-20 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-opacity duration-300"></div>
 
-                <!-- AVATAR & TELEMETRY -->
-                <div class="relative flex items-center justify-center flex-shrink-0 z-10 ml-3 transition-transform duration-500 group-hover:scale-110" style="transform: translateZ(20px);">
-                    
-                    <!-- Tech Ring Backglow -->
-                    <div class="absolute inset-[-10px] rounded-full opacity-50" style="background: radial-gradient(circle, ${glowColor}60 0%, transparent 70%);"></div>
-
-                    <!-- Telemetry Equalizer Bars -->
-                    <div class="absolute -left-3 top-1/2 -translate-y-1/2 flex items-end gap-[2px] h-[35px] w-[10px]">
-                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 1.2s infinite ease-in-out; animation-delay: 0.1s; box-shadow: 0 0 5px ${glowColor};"></div>
-                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 1.5s infinite ease-in-out; animation-delay: 0.3s; box-shadow: 0 0 5px ${glowColor};"></div>
-                        <div class="w-[2px] rounded-t-sm" style="background: ${glowColor}; animation: telemetryBar 0.9s infinite ease-in-out; animation-delay: 0.5s; box-shadow: 0 0 5px ${glowColor};"></div>
-                    </div>
-
-                    <div class="relative w-[70px] h-[70px] rounded-[14px] p-[2px]" style="background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, ${glowColor} 50%, rgba(0,0,0,0.8) 100%); box-shadow: 0 10px 20px rgba(0,0,0,0.6), 0 0 15px ${glowColor}40;">
-                        <!-- Inner bezel -->
-                        <div class="w-full h-full rounded-[12px] bg-black relative overflow-hidden">
-                            <!-- Photo -->
-                            <img src="${photoSrc}" class="w-full h-full object-cover relative z-10 transition-transform duration-700 group-hover:scale-110" style="filter: brightness(1.15) contrast(1.1) saturate(1.2);">
-                            <!-- Glass overlay on photo -->
-                            <div class="absolute inset-0 z-20 pointer-events-none" style="background: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(0,0,0,0.4) 100%);"></div>
-                        </div>
-
-                        <!-- Advanced Status Dot -->
-                        <div class="absolute -bottom-1 -right-1 w-[24px] h-[24px] rounded-full border-2 z-40 flex items-center justify-center overflow-hidden" style="background: ${glowColor}; border-color: #000; box-shadow: 0 0 15px ${glowColor}, inset 0 2px 4px rgba(255,255,255,0.5);" title="${statusText}">
-                            <div class="absolute top-0 left-0 w-full h-1/2 bg-white/40 rounded-t-full"></div>
-                            <span class="absolute -inset-[2px] rounded-full animate-[pulse_1.5s_ease-in-out_infinite] z-0" style="background: ${glowColor}; opacity: 0.8;"></span>
-                        </div>
+                <!-- PHOTO AVATAR -->
+                <div class="relative flex-shrink-0 z-10 ml-3">
+                    <img src="${photoSrc}" class="w-16 h-16 rounded-full object-cover border-[3px] border-white shadow-[0_0_15px_rgba(0,0,0,0.8)] z-10 relative">
+                    <div class="absolute inset-0 rounded-full blur-md opacity-60 -z-10" style="background: ${glowColor};"></div>
+                    <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-[#1a1a1a] flex items-center justify-center shadow-lg z-20" style="background: ${glowColor};">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style="background: ${glowColor};"></span>
                     </div>
                 </div>
 
                 <!-- INFO SECTION -->
-                <div class="flex-grow min-w-0 z-10 ml-5" style="transform: translateZ(15px);">
-                    <div class="flex items-center justify-between mb-1">
-                        <p class="font-black text-[16px] truncate leading-tight tracking-wider" style="background: linear-gradient(to right, #ffffff, #e2e8f0); -webkit-background-clip: text; color: transparent; text-shadow: 0 4px 10px rgba(0,0,0,0.8); filter: drop-shadow(0 0 2px rgba(255,255,255,0.2));">${row.nama}</p>
-                        ${dlIcon || cutiIcon || ''}
+                <div class="flex-grow min-w-0 z-10 ml-4">
+                    <div class="flex items-center justify-between">
+                        <p class="font-extrabold text-white text-lg truncate drop-shadow-lg tracking-wide leading-tight">${row.nama}</p>
+                        ${dlIcon || cutiIcon || izinIcon || ''}
                     </div>
-                    <p class="text-[10px] font-extrabold truncate mb-2.5 uppercase tracking-[0.25em]" style="color: ${glowColor}; text-shadow: 0 2px 4px rgba(0,0,0,0.9);">${row.jabatan || '-'}</p>
+                    
+                    <p class="text-xs font-bold truncate uppercase tracking-widest mt-0.5 drop-shadow-md" style="color: ${glowColor};">${row.jabatan || '-'}</p>
 
-                    <!-- Advanced Data Grid -->
-                    <div class="grid grid-cols-2 gap-1 p-1.5 rounded-lg w-full relative overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 6px rgba(0,0,0,0.4);">
-                        <div class="absolute inset-0 opacity-10 pointer-events-none" style="background: linear-gradient(90deg, transparent, ${glowColor});"></div>
-                        
-                        <!-- Timestamp -->
-                        <div class="flex flex-col justify-center pl-1 relative z-10 border-r border-white/10">
-                            <span class="text-[7.5px] uppercase font-black tracking-widest mb-0.5 text-white/60">
-                                <i class="fa-solid fa-clock mr-0.5" style="color: ${glowColor}; filter: drop-shadow(0 0 3px ${glowColor});"></i> WAKTU
-                            </span>
-                            <p class="text-[12px] font-mono font-black tracking-wider leading-none text-white whitespace-nowrap" style="text-shadow: 0 2px 5px rgba(0,0,0,0.9), 0 0 10px ${glowColor}60;">${timeDisplay}</p>
+                    <div class="flex items-center gap-1.5 mt-2.5">
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-md border shadow-inner" style="background: rgba(0,0,0,0.6); border-color: ${glowColor}50;">
+                            <i class="${isOut ? 'fa-solid fa-arrow-right-from-bracket' : isDL || isCuti || isIzin ? 'fa-solid fa-calendar-check' : 'fa-solid fa-arrow-right-to-bracket'} text-[10px]" style="color: ${glowColor};"></i>
+                            <span class="text-[11px] font-mono font-bold tracking-widest text-white">${timeDisplay}</span>
                         </div>
                         
-                        <!-- Status Badge -->
-                        <div class="flex flex-col justify-center items-end pr-1 relative z-10">
-                            <span class="text-[7.5px] uppercase font-black tracking-widest mb-0.5 text-white/60">
-                                <i class="fa-solid fa-shield-halved mr-0.5" style="color: ${glowColor}; filter: drop-shadow(0 0 3px ${glowColor});"></i> STATUS
+                        <div class="flex items-center px-2 py-1 rounded-md shadow-lg border border-white/20 ml-auto" style="background: ${glowColor};">
+                            <span class="text-[9px] font-black tracking-widest uppercase text-white drop-shadow-md" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                                ${statusText === 'SUDAH PULANG' ? 'PULANG' : statusText}
                             </span>
-                            <span class="text-[10px] px-1.5 py-0.5 rounded font-black tracking-widest uppercase text-white whitespace-nowrap" style="background: linear-gradient(135deg, ${glowColor}dd, ${glowColor}80); border: 1px solid ${glowColor}; text-shadow: 0 1px 2px rgba(0,0,0,0.8); box-shadow: 0 0 10px ${glowColor}50;">${statusText === 'SUDAH PULANG' ? 'PULANG' : statusText}</span>
                         </div>
                     </div>
                 </div>
             `;
             
-            if (isDL && dlRoster) { // Restored
+            if (isDL && dlRoster) {
                 dlWrapper.appendChild(item);
                 hasDL = true;
                 dlCount++;
@@ -2639,14 +2634,18 @@ async function updatePersonnelRoster() {
                 cutiWrapper.appendChild(item);
                 hasCuti = true;
                 cutiCount++;
-            } else { // Restored
+            } else if (isIzin && izinRoster) {
+                izinWrapper.appendChild(item);
+                hasIzin = true;
+                izinCount++;
+            } else {
                 regularWrapper.appendChild(item);
                 hadirCount++;
             }
         });
         
         personnelRoster.appendChild(regularWrapper);
-        personnelRoster.scrollTop = 0; // [NEW] Auto-scroll ke atas setelah update
+        personnelRoster.scrollTop = 0;
 
         // Update counter badges
         const hadirBadge = document.getElementById('hadir-counter-badge');
@@ -2658,22 +2657,37 @@ async function updatePersonnelRoster() {
         const dlBadge = document.getElementById('dl-counter-badge');
         if (dlBadge) dlBadge.textContent = `${dlCount} `;
 
-        // [NEW] Update Panel DL
+        const izinBadge = document.getElementById('izin-counter-badge');
+        if (izinBadge) izinBadge.textContent = `${izinCount} `;
+
+        // [NEW] Update Panels
         if (dlRoster && dlPanel) {
             if (hasDL) {
                 dlRoster.appendChild(dlWrapper);
+                dlPanel.classList.remove('hidden');
             } else {
                 dlRoster.innerHTML = '<div class="text-gray-500 text-sm italic text-center py-4">Tidak ada data dinas luar.</div>';
             }
         }
 
-        // [NEW] Update Panel Cuti
         if (cutiRoster && cutiPanel) {
             if (hasCuti) {
                 cutiRoster.appendChild(cutiWrapper);
-                cutiRoster.scrollTop = 0; // [NEW] Auto-scroll ke atas setelah update
+                cutiRoster.scrollTop = 0;
+                cutiPanel.classList.remove('hidden');
             } else {
                 cutiRoster.innerHTML = '<div class="text-gray-500 text-sm italic text-center py-4">Tidak ada data cuti.</div>';
+            }
+        }
+
+        if (izinRoster && izinPanel) {
+            if (hasIzin) {
+                izinRoster.appendChild(izinWrapper);
+                izinRoster.scrollTop = 0;
+                izinPanel.classList.remove('hidden');
+            } else {
+                izinRoster.innerHTML = '<div class="text-gray-500 text-sm italic text-center py-4">Tidak ada data izin.</div>';
+                izinPanel.classList.add('hidden');
             }
         }
 
@@ -2682,9 +2696,8 @@ async function updatePersonnelRoster() {
     }
 }
 
-
 const api = {
-    getDescriptors: async () => { // Restored
+    getDescriptors: async () => {
         // Safety check: Jangan fetch jika dibuka via file:// (Local)
         if (window.location.protocol === 'file:') {
             throw new Error("Local File Mode (No Backend)");
@@ -3057,7 +3070,26 @@ video.addEventListener('play', async () => {
 // - Wajah muncul     → interval dipercepat (TURBO) untuk respons instan
 // - face-api.js penuh hanya dijalankan dalam mode NORMAL & TURBO
 // =========================================================================
+
+// [OPTIMIZATION 2: TAB SLEEPER] 
+// Prevent heavy AI calculations when the user minimizes the browser or switches tabs
+let isTabActive = true;
+document.addEventListener("visibilitychange", () => {
+    isTabActive = !document.hidden;
+    if (isTabActive) {
+        console.log("[OPTIMIZATION] Tab active, waking up AI...");
+    } else {
+        console.log("[OPTIMIZATION] Tab hidden, pausing AI to save CPU/RAM...");
+    }
+});
+
 async function detectFaceLoop() {
+    if (!isTabActive) {
+        // Just sleep for a second and check again later
+        setTimeout(detectFaceLoop, 1000);
+        return;
+    }
+
     if (!isDetectionActive) return;
 
     // Cek cepat apakah ada wajah menggunakan BlazeFace sebelum jalankan face-api
@@ -3213,12 +3245,15 @@ async function detectFace() {
 
     // --- TEKNIK 3: CLAHE (NORMALISASI CAHAYA) ---
     if (!video.videoWidth) return;
-    offscreenCanvas.width = video.videoWidth;
-    offscreenCanvas.height = video.videoHeight;
+    
+    // [OPTIMIZATION 1: AUTO DOWNSCALE] Cap processing resolution to 640px max
+    const scaleFactor = Math.min(1, 640 / video.videoWidth);
+    offscreenCanvas.width = video.videoWidth * scaleFactor;
+    offscreenCanvas.height = video.videoHeight * scaleFactor;
 
     // Normalisasi kontras agar fitur wajah tetap tajam meski cahaya redup
     offCtx.filter = 'brightness(1.1) contrast(1.2) saturate(1.0) grayscale(0.2)';
-    offCtx.drawImage(video, 0, 0);
+    offCtx.drawImage(video, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
     const aiInput = offscreenCanvas;
 
     let detections = null;
@@ -6375,3 +6410,59 @@ function injectScanningStyles() {
 }
 
 injectScanningStyles();
+
+// =============================================================================
+// 9. MANUAL NIP INPUT & BARCODE SCANNER INTEGRATION
+// =============================================================================
+const manualNipInput = document.getElementById('manualNipInput');
+if (manualNipInput) {
+    // Tangkap input saat tombol Enter ditekan
+    manualNipInput.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const nip = manualNipInput.value.trim();
+            if (nip) {
+                console.log(`[MANUAL INPUT] Memproses NIP: ${nip}`);
+                manualNipInput.value = ''; // Bersihkan input
+                
+                try {
+                    // Cari nama pegawai berdasarkan NIP dari database wajah
+                    let employeeName = nip; 
+                    const db = await initDB();
+                    const tx = db.transaction('faces', 'readonly');
+                    const store = tx.objectStore('faces');
+                    const request = store.get(nip);
+                    
+                    request.onsuccess = async () => {
+                        if (request.result && request.result.name) {
+                            employeeName = request.result.name;
+                        }
+                        // Jalankan proses absensi (karyawanId, imageBase64)
+                        // Karena manual, imageBase64 kita kirim null/kosong
+                        await processAttendance(nip, '');
+                    };
+                    
+                    request.onerror = async () => {
+                        console.warn("Gagal cek DB, melanjutkan proses manual.");
+                        await processAttendance(nip, '');
+                    };
+                    
+                } catch(err) {
+                    console.error("Error manual input DB:", err);
+                    await processAttendance(nip, '');
+                }
+            }
+        }
+    });
+
+    // Auto-focus input supaya saat mengetik atau memakai barcode scanner langsung masuk
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            // Abaikan jika pakai shortcut admin (CTRL + SHIFT)
+            if (!(e.ctrlKey || e.metaKey || e.altKey)) {
+                manualNipInput.focus();
+            }
+        }
+    });
+}
+

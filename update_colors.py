@@ -1,36 +1,58 @@
 import os
 import re
 
-def update_file(filename):
-    with open(filename, 'r', encoding='utf-8') as f:
-        content = f.read()
+# 1. Update scan.html Panel Backgrounds
+with open('scan.html', 'r', encoding='utf-8') as f:
+    html_text = f.read()
 
-    # 1. Emerald green lighter:
-    content = content.replace('#022c22', '#065f46')
-    content = content.replace('emerald-950', 'emerald-800')
-    content = content.replace('emerald-900', 'emerald-700')
-    
-    # 2. Make gold borders shinier in HTML/JS:
-    # Replace amber-500 with amber-400 for brighter gold
-    content = content.replace('border-amber-500', 'border-amber-400')
-    
-    # Replace rgba(251,191,36) with rgba(255,215,0) (Brighter Gold)
-    content = content.replace('rgba(251,191,36', 'rgba(255,215,0')
-    content = content.replace('rgba(251, 191, 36', 'rgba(255, 215, 0')
-    
-    # Increase shadow opacity/size
-    content = content.replace('border border-amber-400/30', 'border-2 border-amber-400/80 shadow-[0_0_20px_rgba(255,215,0,0.6)]')
-    content = content.replace('border border-amber-400/20', 'border border-amber-400/50 shadow-[0_0_15px_rgba(255,215,0,0.5)]')
-    
-    # JS specific Canvas gold
-    content = content.replace('#FBBF24', '#FFD700')
-    
-    # Make glowing rings even shinier in HTML
-    content = content.replace('border-[2px] border-amber-400 shadow-[0_0_20px_rgba(255,215,0,0.6)]', 'border-[3px] border-amber-400 shadow-[0_0_30px_rgba(255,215,0,0.8),inset_0_0_15px_rgba(255,215,0,0.6)]')
+# Replace the specific backgrounds for cuti, dl, hadir panels
+# Since we grouped them together with `#cuti-panel, #dl-panel, #hadir-panel { background: ... }` we need to split them to have individual vibrant colors.
 
-    with open(filename, 'w', encoding='utf-8') as f:
-        f.write(content)
-    print(f"Updated {filename}")
+# Let's replace the grouped CSS rule in scan.html
+old_css_rule = r"""    /\* === GOD-TIER OBSIDIAN PRISM PANELS === \*/
+    #cuti-panel, #dl-panel, #hadir-panel \{
+        background: linear-gradient\(180deg, rgba\(15, 15, 20, 0\.4\) 0%, rgba\(5, 5, 10, 0\.9\) 100%\) !important;"""
 
-update_file('scan.html')
-update_file('scan.js')
+new_css_rule = """    /* === GOD-TIER JEWEL GLASS PANELS === */
+    #cuti-panel, #dl-panel, #hadir-panel {
+        backdrop-filter: blur(24px) saturate(200%) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+        border-radius: 24px !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        position: relative;
+        overflow: hidden;
+    }
+    #cuti-panel { background: linear-gradient(160deg, rgba(120, 53, 15, 0.4) 0%, rgba(67, 20, 7, 0.8) 100%) !important; }
+    #dl-panel { background: linear-gradient(160deg, rgba(76, 29, 149, 0.4) 0%, rgba(46, 16, 101, 0.8) 100%) !important; }
+    #hadir-panel { background: linear-gradient(160deg, rgba(6, 78, 59, 0.4) 0%, rgba(2, 44, 34, 0.8) 100%) !important; }"""
+
+html_text = re.sub(old_css_rule, new_css_rule, html_text, flags=re.DOTALL)
+
+with open('scan.html', 'w', encoding='utf-8') as f:
+    f.write(html_text)
+
+
+# 2. Update scan.js Roster Card Colors
+with open('scan.js', 'r', encoding='utf-8') as f:
+    js_text = f.read()
+
+old_config_block = r"""            const statusConfig = \{
+                cuti:  \{ glow: '#f59e0b', accent: '#fbbf24', text: 'CUTI', bg1: 'rgba\(40, 20, 0, 0\.85\)', bg2: 'rgba\(20, 5, 0, 0\.95\)' \},
+                dl:    \{ glow: '#8b5cf6', accent: '#c084fc', text: 'DINAS LUAR', bg1: 'rgba\(25, 10, 45, 0\.85\)', bg2: 'rgba\(10, 0, 20, 0\.95\)' \},
+                out:   \{ glow: '#f43f5e', accent: '#fb7185', text: 'PULANG', bg1: 'rgba\(45, 10, 15, 0\.85\)', bg2: 'rgba\(20, 0, 5, 0\.95\)' \},
+                hadir: \{ glow: '#10b981', accent: '#34d399', text: 'HADIR', bg1: 'rgba\(5, 30, 20, 0\.85\)', bg2: 'rgba\(0, 10, 5, 0\.95\)' \}
+            \};"""
+
+new_config_block = """            const statusConfig = {
+                cuti:  { glow: '#f97316', accent: '#fdba74', text: 'CUTI', bg1: 'rgba(255, 237, 213, 0.15)', bg2: 'rgba(255, 255, 255, 0.05)' },
+                dl:    { glow: '#8b5cf6', accent: '#d8b4fe', text: 'DINAS LUAR', bg1: 'rgba(243, 232, 255, 0.15)', bg2: 'rgba(255, 255, 255, 0.05)' },
+                out:   { glow: '#f43f5e', accent: '#fda4af', text: 'PULANG', bg1: 'rgba(255, 228, 230, 0.15)', bg2: 'rgba(255, 255, 255, 0.05)' },
+                hadir: { glow: '#10b981', accent: '#6ee7b7', text: 'HADIR', bg1: 'rgba(209, 250, 229, 0.15)', bg2: 'rgba(255, 255, 255, 0.05)' }
+            };"""
+
+js_text = re.sub(old_config_block, new_config_block, js_text, flags=re.DOTALL)
+
+with open('scan.js', 'w', encoding='utf-8') as f:
+    f.write(js_text)
+
+print("Colors updated successfully to Jewel Glass theme!")

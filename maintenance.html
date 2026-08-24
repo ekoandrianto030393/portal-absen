@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Maintenance - Biometrik Wana</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        
+        body {
+            background-color: #050505;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(16, 185, 129, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.08), transparent 25%);
+            min-height: 100vh;
+        }
+
+        /* Glass Panel */
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 25, 0.6) 0%, rgba(10, 10, 15, 0.9) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .action-btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: skewX(-20deg);
+            transition: all 0.5s ease;
+        }
+        .action-btn:hover::after {
+            left: 150%;
+        }
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+
+        /* Progress Bar */
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #10b981;
+            transition: width 0.2s ease;
+        }
+
+        /* Terminal Log */
+        .terminal {
+            font-family: 'Courier New', Courier, monospace;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            color: #10b981;
+        }
+        .terminal p { margin: 0 0 5px 0; }
+        .log-error { color: #ef4444; }
+        .log-warn { color: #f59e0b; }
+        .log-info { color: #3b82f6; }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex justify-center items-center">
+
+    <div class="w-full max-w-6xl flex flex-col gap-6">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <h1 class="text-3xl font-black tracking-widest uppercase bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-500">
+                    Sistem Maintenance
+                </h1>
+                <p class="text-gray-400 text-sm mt-1">Control Panel Perawatan Aplikasi Presensi Biometrik</p>
+            </div>
+            <a href="scan.html" class="px-5 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 transition-colors font-bold text-sm">
+                <i class="fa-solid fa-arrow-left mr-2"></i> Kembali ke App
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- System Status (Left) -->
+            <div class="glass-panel p-6 col-span-1">
+                <h2 class="text-lg font-bold mb-5 flex items-center border-b border-white/10 pb-3">
+                    <i class="fa-solid fa-server mr-3 text-blue-400"></i> Status Server
+                </h2>
+                
+                <div class="flex flex-col gap-5">
+                    <div>
+                        <div class="flex justify-between text-xs font-bold text-gray-400 mb-1">
+                            <span>KAPASITAS PENYIMPANAN (Wajah & Log)</span>
+                            <span class="text-emerald-400">45% (Aman)</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div class="bg-emerald-500 h-2 rounded-full" style="width: 45%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-bold text-gray-400 mb-1">
+                            <span>MEMORY RAM SERVER</span>
+                            <span class="text-amber-400">78%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div class="bg-amber-500 h-2 rounded-full" style="width: 78%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold text-blue-300">AI Face Model</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ONLINE</span>
+                        </div>
+                        <p class="text-xs text-blue-400/70">Model: SSD Mobilenet V1<br>Latency: 45ms</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Maintenance Actions (Right) -->
+            <div class="glass-panel p-6 col-span-2">
+                <h2 class="text-lg font-bold mb-5 flex items-center border-b border-white/10 pb-3">
+                    <i class="fa-solid fa-screwdriver-wrench mr-3 text-amber-400"></i> Tindakan Perawatan
+                </h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    
+                    <!-- Backup DB -->
+                    <div class="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                        <h3 class="font-bold text-emerald-400 mb-1"><i class="fa-solid fa-database mr-2"></i> Backup Database</h3>
+                        <p class="text-xs text-gray-400 mb-4 h-8">Mencadangkan seluruh data pegawai, absensi, dan wajah ke file SQL/ZIP lokal.</p>
+                        <button onclick="runTask('backup')" class="action-btn w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-sm">
+                            Jalankan Backup
+                        </button>
+                        <div class="progress-bar-container" id="progress-container-backup">
+                            <div class="progress-bar" id="progress-backup"></div>
+                        </div>
+                    </div>
+
+                    <!-- Clear Cache -->
+                    <div class="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                        <h3 class="font-bold text-cyan-400 mb-1"><i class="fa-solid fa-broom mr-2"></i> Bersihkan Cache AI</h3>
+                        <p class="text-xs text-gray-400 mb-4 h-8">Menghapus cache model AI yang tersangkut di memori agar scan kembali cepat.</p>
+                        <button onclick="runTask('cache')" class="action-btn w-full py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-bold text-sm">
+                            Bersihkan Cache
+                        </button>
+                        <div class="progress-bar-container" id="progress-container-cache">
+                            <div class="progress-bar" id="progress-cache" style="background:#06b6d4;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Archive Logs -->
+                    <div class="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                        <h3 class="font-bold text-amber-400 mb-1"><i class="fa-solid fa-box-archive mr-2"></i> Arsip Log Tahunan</h3>
+                        <p class="text-xs text-gray-400 mb-4 h-8">Memindahkan data presensi tahun lalu ke tabel arsip agar aplikasi tetap ringan.</p>
+                        <button onclick="runTask('archive')" class="action-btn w-full py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 font-bold text-sm">
+                            Mulai Arsip
+                        </button>
+                        <div class="progress-bar-container" id="progress-container-archive">
+                            <div class="progress-bar" id="progress-archive" style="background:#f59e0b;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Restart Camera -->
+                    <div class="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                        <h3 class="font-bold text-purple-400 mb-1"><i class="fa-solid fa-video mr-2"></i> Reset Layanan Kamera</h3>
+                        <p class="text-xs text-gray-400 mb-4 h-8">Mereset modul kamera dan WebGL jika terjadi freeze/layar hitam saat scan.</p>
+                        <button onclick="runTask('camera')" class="action-btn w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 font-bold text-sm">
+                            Reset Kamera
+                        </button>
+                        <div class="progress-bar-container" id="progress-container-camera">
+                            <div class="progress-bar" id="progress-camera" style="background:#8b5cf6;"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Terminal -->
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Terminal Logs</h3>
+                <div class="terminal" id="terminalLog">
+                    <p class="log-info">> Sistem siap. Menunggu perintah maintenance...</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulasi Sistem Maintenance (Visual & Logic)
+        
+        function appendLog(message, type = 'normal') {
+            const term = document.getElementById('terminalLog');
+            const p = document.createElement('p');
+            const time = new Date().toLocaleTimeString('id-ID', { hour12: false });
+            
+            p.innerHTML = `<span style="color:#6b7280">[${time}]</span> ${message}`;
+            if(type === 'error') p.className = 'log-error';
+            else if(type === 'warn') p.className = 'log-warn';
+            else if(type === 'info') p.className = 'log-info';
+            
+            term.appendChild(p);
+            term.scrollTop = term.scrollHeight; // Auto scroll
+        }
+
+        async function runTask(taskId) {
+            // Cek apakah sedang jalan
+            const container = document.getElementById(`progress-container-${taskId}`);
+            const bar = document.getElementById(`progress-${taskId}`);
+            
+            if (container.style.display === 'block') {
+                appendLog(`Task '${taskId}' sudah sedang berjalan!`, 'warn');
+                return;
+            }
+
+            container.style.display = 'block';
+            bar.style.width = '0%';
+            
+            const btn = container.parentElement.querySelector('button');
+            const originalText = btn.innerText;
+            btn.innerText = 'Memproses...';
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            appendLog(`> Memulai tugas: ${taskId.toUpperCase()}...`, 'info');
+
+            // Simulasi proses asinkron
+            try {
+                if (taskId === 'backup') {
+                    await simulateProgress(bar, 2000, 30);
+                    appendLog('Mengekspor tabel presensi...');
+                    await simulateProgress(bar, 2000, 60);
+                    appendLog('Mengompres data wajah...');
+                    await simulateProgress(bar, 1000, 90);
+                    appendLog('Menyimpan file: backup_biometrik_' + new Date().getTime() + '.sql.zip');
+                    await simulateProgress(bar, 500, 100);
+                } 
+                else if (taskId === 'cache') {
+                    await simulateProgress(bar, 1000, 50);
+                    appendLog('Membersihkan WebGL memory buffers...');
+                    await simulateProgress(bar, 1000, 100);
+                    appendLog('Face-API tensors dibersihkan.');
+                }
+                else if (taskId === 'archive') {
+                    appendLog('Menghitung data absen tahun 2024 ke bawah...', 'warn');
+                    await simulateProgress(bar, 2000, 40);
+                    appendLog('Memindahkan 15,420 baris data ke tabel arsip...');
+                    await simulateProgress(bar, 3000, 100);
+                }
+                else if (taskId === 'camera') {
+                    appendLog('Menutup paksa stream media (MediaDevices)...');
+                    await simulateProgress(bar, 1500, 50);
+                    appendLog('Melepaskan akses perangkat USB Camera...');
+                    await simulateProgress(bar, 1500, 100);
+                    appendLog('Kamera siap digunakan kembali.');
+                }
+
+                appendLog(`[SUKSES] Tugas ${taskId.toUpperCase()} selesai!`, 'normal');
+                
+            } catch (err) {
+                appendLog(`[GAGAL] Tugas ${taskId} error: ${err}`, 'error');
+            }
+
+            // Reset UI
+            setTimeout(() => {
+                container.style.display = 'none';
+                bar.style.width = '0%';
+                btn.innerText = originalText;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }, 1000);
+        }
+
+        function simulateProgress(barElement, ms, targetPercent) {
+            return new Promise(resolve => {
+                barElement.style.width = targetPercent + '%';
+                setTimeout(resolve, ms);
+            });
+        }
+    </script>
+</body>
+</html>
