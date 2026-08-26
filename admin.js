@@ -287,7 +287,7 @@ btnRegister.addEventListener('click', async () => {
                             </div>
                             <!-- Professional Emblem -->
                             <div class="w-12 h-12 border border-slate-700 rounded-lg flex items-center justify-center bg-slate-900 relative">
-                                <img src="logo.jpg" class="w-8 h-8 object-contain opacity-80">
+                                <div class="w-8 h-8 flex items-center justify-center text-teal-600 bg-white/20 rounded-full"><i class="fa-solid fa-hospital"></i></div>
                             </div>
                         </div>
                         

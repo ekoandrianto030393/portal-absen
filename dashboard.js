@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dashboard.js - Logika Dashboard Puskesmas Wana
  * Mengelola data statistik, tabel, dan grafik kinerja.
  */
@@ -270,18 +270,28 @@ async function loadOverviewData(silent = false) {
         const totalEmployees = jsonEmp.descriptors ? jsonEmp.descriptors.length : 0;
 
         // 3. Hitung Statistik Hari Ini
-        const presentCount = dailyData.length; // Asumsi 1 baris per orang per hari (karena view)
-        // Hitung DL secara spesifik
+        // Filter Hadir sejati (tidak termasuk Izin/Sakit/Cuti/DL/Libur)
+        const activeData = dailyData.filter(d => !['IZIN', 'SAKIT', 'CUTI', 'DL', 'DINAS_LUAR', 'LIBUR'].includes(d.status));
+        const presentCount = activeData.length;
+        
+        // Hitung status lainnya
         const dlCount = dailyData.filter(d => ['DL', 'DINAS_LUAR'].includes(d.status)).length;
-        // Hitung terlambat (exclude DL)
-        // [FIX] Gunakan data 'telat_menit' dari DB agar 100% sinkron dengan aturan .env di server
-        const lateCount = dailyData.filter(d => d.telat_menit > 0).length;
-        const absentCount = Math.max(0, totalEmployees - presentCount);
+        const iscCount = dailyData.filter(d => ['IZIN', 'SAKIT', 'CUTI'].includes(d.status)).length;
+        
+        // Hitung terlambat (dari yang hadir)
+        const lateCount = activeData.filter(d => d.telat_menit > 0).length;
+        
+        // Alpa / Belum Hadir (Orang yang tidak ada record sama sekali hari ini)
+        const absentCount = Math.max(0, totalEmployees - dailyData.length);
 
         // 4. Update Kartu Statistik
         document.getElementById('stat-total-emp').textContent = totalEmployees;
-        // Tampilkan total hadir + info DL kecil
-        document.getElementById('stat-present').innerHTML = `${presentCount} <span class="text-sm text-white/70 ml-1">(${dlCount} DL)</span>`;
+        // Tampilkan total hadir + info DL/Izin kecil
+        let subText = [];
+        if (dlCount > 0) subText.push(`${dlCount} DL`);
+        if (iscCount > 0) subText.push(`${iscCount} Izin/Sakit/Cuti`);
+        
+        document.getElementById('stat-present').innerHTML = `${presentCount} ${subText.length > 0 ? `<span class="text-sm text-white/70 ml-1">(${subText.join(', ')})</span>` : ''}`;
         document.getElementById('stat-late').textContent = lateCount;
         document.getElementById('stat-absent').textContent = absentCount;
 
@@ -770,7 +780,8 @@ async function loadMonthlyRecap(silent = false) {
                 
                 const poinVariabelKetenagaan = pJabatan + pPendidikan + pJenis + pStatus;
                 
-                const hMasuk = (parseInt(row.total_masuk) || 0);
+                // [FIX] DL dihitung sebagai bagian dari kehadiran (Persentase % Hadir)
+                const hMasuk = (parseInt(row.total_masuk) || 0) + (parseInt(row.total_dl) || 0);
                 const hAdmin = (parseInt(row.total_admin) || 0); // Hari tugas tambahan
                 let totalHariKerja = parseInt(row.total_hari_kerja) || 20;
                 const totalKehadiranPre = (parseInt(row.total_masuk) || 0) + (parseInt(row.total_izin) || 0) + (parseInt(row.total_sakit) || 0) + (parseInt(row.total_cuti) || 0) + (parseInt(row.alpa) || 0) + (parseInt(row.total_dl) || 0);
@@ -853,9 +864,9 @@ async function loadMonthlyRecap(silent = false) {
                 totalGaji += Math.max(0, totalPendapatan - totalPotongan);
 
                 // Hitung Persentase Kehadiran
-                // [FIX] Logika ini salah karena `total_masuk` dari view sudah mencakup DL.
-                // const persentase = Math.round(((parseInt(row.total_masuk) + parseInt(row.total_dl)) / totalHariKerja) * 100);
-                const persentase = totalHariKerja > 0 ? Math.round(((parseInt(row.total_masuk) || 0) / totalHariKerja) * 100) : 0; // [FIXED] Cukup hitung dari total_masuk.
+                // [FIX] DL kembali digabung ke dalam persentase karena total_masuk murni sudah tidak memuat DL.
+                const totalMasukDanDL = (parseInt(row.total_masuk) || 0) + (parseInt(row.total_dl) || 0);
+                const persentase = totalHariKerja > 0 ? Math.round((totalMasukDanDL / totalHariKerja) * 100) : 0;
 
                 htmlContent += `
                     <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-emerald-50/30 border-b border-slate-200 last:border-0 group">
@@ -1313,6 +1324,9 @@ async function loadEmployees(silent = false) {
                                         <button onclick="window.location.href='admin.html?id=${emp.id_karyawan}&name=${encodeURIComponent(emp.nama)}&role=${encodeURIComponent(emp.jabatan || '')}'" class="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all border border-transparent hover:border-emerald-100" title="Rekam Wajah / Update Descriptor">
                                             <i class="fa-solid fa-camera text-xs"></i>
                                         </button>
+                                        <button onclick="resetPasswordPortal('${emp.id_karyawan}', this.dataset.name)" data-name="${escapeHtml(emp.nama)}" class="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-all border border-transparent hover:border-purple-100" title="Reset Password Portal">
+                                            <i class="fa-solid fa-key text-xs"></i>
+                                        </button>
                                         <button onclick="openEditModal('${emp.id_karyawan}')" class="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100" title="Edit">
                                             <i class="fa-solid fa-pen-to-square text-xs"></i>
                                         </button>
@@ -1386,6 +1400,24 @@ async function deleteEmployee(id, nama) {
         }
     } catch(e) {
         showToast(`Error: ${e.message}`, 'error');
+    }
+}
+
+// --- FITUR: RESET PASSWORD PORTAL PEGAWAI ---
+async function resetPasswordPortal(id, nama) {
+    if(!confirm(`Apakah Anda yakin ingin me-reset password Portal Pegawai untuk "${nama}"?\n\nPassword akan di-reset menjadi default: 123456`)) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/pegawai/reset_password/${id}`, { method: 'PUT' });
+        const result = await response.json();
+        
+        if(result.success) {
+            showToast(result.message, 'success');
+        } else {
+            showToast(`Gagal mereset: ${result.message}`, 'warning');
+        }
+    } catch(e) {
+        showToast(`Error koneksi: ${e.message}`, 'error');
     }
 }
 
@@ -2738,7 +2770,7 @@ function printSalarySlip(id) {
                     <h1>UPTD PUSKESMAS WANA</h1>
                     <p>Jl. Pengiran Iro Kusumo Wana Kecamatan Melinting</p>
                 </div>
-                <img src="logo.jpg" class="logo" alt="Logo PKM">
+                <div class="logo" style="display:flex; align-items:center; justify-content:center; font-size:40px; color:#10b981;"><i class="fa-solid fa-hospital"></i></div>
             </div>
             
             <div style="text-align: center; margin-bottom: 30px;">

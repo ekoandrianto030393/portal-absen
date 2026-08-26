@@ -7,93 +7,113 @@
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <meta name="theme-color" content="#064e3b">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
         * {
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
             user-select: none;
+            box-sizing: border-box;
         }
         input, textarea {
             user-select: auto;
         }
-        ::-webkit-scrollbar {
-            display: none;
-        }
+        
+        /* Modern Scrollbar Hide */
+        ::-webkit-scrollbar { display: none; }
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif;
             -ms-overflow-style: none;
             scrollbar-width: none;
+            background-color: #f1f5f9; /* slate-100 */
         }
+        
+        /* Premium Glassmorphism */
         .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.08);
         }
         .premium-shadow {
-            box-shadow: 0 20px 40px -15px rgba(4, 47, 46, 0.15);
+            box-shadow: 0 15px 35px -10px rgba(13, 148, 136, 0.15);
         }
+        
+        /* Gradients */
         .gradient-text {
-            background: linear-gradient(135deg, #0d9488, #059669);
+            background: linear-gradient(135deg, #0f766e, #059669);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
         .bg-gradient-premium {
-            background: linear-gradient(135deg, #064e3b 0%, #0d9488 100%);
+            background: linear-gradient(135deg, #022c22 0%, #0d9488 100%);
+            position: relative;
         }
+        
+        /* Form Inputs */
         .input-premium {
-            background: #f8fafc;
+            background: rgba(255,255,255,0.9);
             border: 2px solid transparent;
-            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .input-premium:focus {
             background: #ffffff;
-            border-color: #0d9488;
-            box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.15);
+            transform: translateY(-2px);
         }
+        
+        /* Background Blobs Animation */
+        @keyframes float-blob-1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(30px, -30px) scale(1.1); } }
+        @keyframes float-blob-2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-30px, 30px) scale(0.9); } }
         .blob {
             position: absolute;
-            filter: blur(80px);
+            filter: blur(60px);
             z-index: -1;
-            opacity: 0.4;
+            opacity: 0.6;
+            border-radius: 50%;
         }
-        /* Loader */
+        .blob-1 { animation: float-blob-1 12s infinite ease-in-out; }
+        .blob-2 { animation: float-blob-2 15s infinite ease-in-out reverse; }
+        
+        /* Initial Loader */
         #loader {
-            position: fixed; inset: 0; background: white; z-index: 9999;
-            display: flex; justify-content: center; align-items: center;
-            transition: opacity 0.5s ease;
+            position: fixed; inset: 0; background: #f8fafc; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .spinner {
-            width: 50px; height: 50px; border: 5px solid #e2e8f0;
-            border-top-color: #3b82f6; border-radius: 50%;
+        
+        /* Modern Spinner */
+        .spinner-modern {
+            width: 48px; height: 48px;
+            border: 4px solid rgba(13, 148, 136, 0.2);
+            border-left-color: #0d9488;
+            border-radius: 50%;
             animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         
         /* Marquee Animation */
-        @keyframes marquee {
-            0% { transform: translateX(100vw); }
-            100% { transform: translateX(-100%); }
-        }
-        .animate-marquee {
-            display: inline-block;
-            white-space: nowrap;
-            animation: marquee 25s linear infinite;
-        }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-150%); } }
+        .animate-marquee { display: inline-block; white-space: nowrap; animation: marquee 20s linear infinite; }
+        
+        /* Table row hover fx */
+        .table-row-hover:hover { background-color: #f0fdfa !important; transform: scale(1.01); transition: all 0.2s ease; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 relative overflow-x-hidden min-h-screen">
+<body class="bg-slate-100 text-slate-800 relative overflow-x-hidden min-h-screen antialiased selection:bg-teal-200 selection:text-teal-900">
 
     <!-- Decorative Background Blobs -->
-    <div class="blob bg-teal-200 w-96 h-96 rounded-full -top-20 -left-20 mix-blend-multiply"></div>
-    <div class="blob bg-emerald-200 w-96 h-96 rounded-full top-40 -right-20 mix-blend-multiply animation-delay-2000"></div>
+    <div class="blob blob-1 bg-teal-200 w-96 h-96 -top-20 -left-20 mix-blend-multiply"></div>
+    <div class="blob blob-2 bg-emerald-200 w-96 h-96 top-40 -right-20 mix-blend-multiply"></div>
 
     <!-- Initial Loader -->
     <div id="loader">
-        <div class="spinner"></div>
+        <div class="spinner-modern mb-4"></div>
+        <p class="text-sm font-semibold text-slate-500 tracking-widest uppercase animate-pulse">Memuat Portal...</p>
     </div>
 
     <!-- HALAMAN LOGIN / REGISTER -->
@@ -154,30 +174,40 @@
     <div id="dashboard-page" class="hidden min-h-screen pb-24 opacity-0 transition-opacity duration-500">
         
         <!-- Premium Curved Header -->
-        <div class="bg-gradient-premium pt-10 pb-24 px-6 rounded-b-[3rem] shadow-2xl shadow-teal-900/20 relative overflow-hidden">
+        <div class="bg-gradient-premium pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-[0_15px_40px_-10px_rgba(20,184,166,0.3)] relative overflow-hidden">
             <!-- Decorative overlay -->
-            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-20"></div>
-            <div class="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
-            <div class="absolute -left-20 top-10 w-40 h-40 bg-teal-400/20 rounded-full blur-2xl"></div>
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-30 mix-blend-overlay"></div>
+            <div class="absolute -right-10 -top-20 w-80 h-80 bg-gradient-to-br from-teal-400/20 to-transparent rounded-full blur-3xl"></div>
+            <div class="absolute -left-10 top-10 w-48 h-48 bg-gradient-to-tr from-emerald-400/20 to-transparent rounded-full blur-2xl"></div>
             
-            <div class="relative z-10 flex justify-between items-start">
-                <div class="flex items-center gap-4">
-                    <div class="w-16 h-16 bg-white/20 backdrop-blur-md border border-white/40 rounded-2xl flex items-center justify-center text-2xl font-bold text-white shadow-xl overflow-hidden relative">
-                        <img id="user-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10" alt="Foto Pegawai">
-                        <i id="user-foto-icon" class="fa-regular fa-face-smile relative z-0"></i>
-                    </div>
-                    <div>
-                        <p class="text-teal-100 text-xs font-semibold mb-0.5 uppercase tracking-wider">Selamat datang,</p>
-                        <h2 id="user-nama" class="font-extrabold text-2xl leading-tight text-white tracking-wide">Nama Pegawai</h2>
-                        <div class="flex items-center gap-2 mt-2">
-                            <span id="user-jabatan" class="text-[10px] bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-lg font-bold border border-white/20 uppercase tracking-widest">Jabatan</span>
-                            <span id="user-id" class="text-[10px] bg-black/20 text-white px-2.5 py-1 rounded-lg font-mono tracking-widest">ID</span>
-                        </div>
+            <div class="relative z-10">
+                <!-- Top Centered Badge -->
+                <div class="flex justify-center mb-6">
+                    <div class="flex items-center gap-2 bg-black/20 pr-4 pl-1.5 py-1.5 rounded-full border border-white/20 shadow-sm backdrop-blur-sm">
+                        <div class="w-5 h-5 rounded-full bg-white/20 text-white flex items-center justify-center"><i class="fa-solid fa-hospital"></i></div>
+                        <span class="text-white text-[11px] font-extrabold uppercase tracking-[0.25em] drop-shadow-sm pl-1">Puskesmas Wana</span>
                     </div>
                 </div>
-                <button onclick="logout()" class="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white transition-all shadow-md">
-                    <i class="fa-solid fa-power-off"></i>
-                </button>
+
+                <div class="flex justify-between items-start">
+                    <div class="flex items-center gap-4">
+                        <div class="w-16 h-16 bg-white/10 backdrop-blur-xl border border-white/30 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-2xl overflow-hidden relative group">
+                            <img id="user-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-transform duration-500 group-hover:scale-110" alt="Foto Pegawai">
+                            <i id="user-foto-icon" class="fa-regular fa-face-smile relative z-0"></i>
+                        </div>
+                        <div>
+                            <p class="text-teal-100 text-[10px] font-medium mb-0.5 uppercase tracking-[0.1em] opacity-80">Selamat datang,</p>
+                            <h2 id="user-nama" class="font-extrabold text-2xl leading-tight text-white tracking-wide drop-shadow-md">Nama Pegawai</h2>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span id="user-jabatan" class="text-[9px] bg-white/20 backdrop-blur-md text-white px-2.5 py-1 rounded-md font-bold border border-white/20 uppercase tracking-widest shadow-sm">Jabatan</span>
+                                <span id="user-id" class="text-[9px] bg-black/30 text-white px-2.5 py-1 rounded-md font-mono tracking-widest shadow-sm">ID</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="w-10 h-10 bg-white/10 hover:bg-rose-500/20 hover:text-rose-200 border border-transparent hover:border-rose-500/30 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all duration-300 shadow-md">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -241,88 +271,109 @@
                 <span onclick="toggleDetailModal()" class="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-3 py-1.5 rounded-full cursor-pointer hover:bg-teal-100 transition active:scale-95 shadow-sm tracking-wider uppercase">Lihat Detail</span>
             </div>
 
-            <!-- Grid Rekap -->
-            <div class="grid grid-cols-2 gap-4">
+            <!-- Grid Rekap (Premium Widget Style) -->
+            <div class="grid grid-cols-4 gap-3 pb-2">
                 
                 <!-- Card Hadir -->
-                <div class="glass-card p-5 rounded-[1.5rem] premium-shadow hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-3">
-                        <i class="fa-solid fa-check-double text-lg"></i>
+                <div class="bg-gradient-to-b from-white to-emerald-50/30 p-2.5 rounded-[1.25rem] border border-emerald-100/50 shadow-[0_8px_16px_-6px_rgba(16,185,129,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-check-double text-xs"></i>
                     </div>
-                    <p class="text-3xl font-black text-slate-800 mb-1" id="rekap-hadir">0</p>
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hadir</p>
+                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-hadir">0</p>
+                    <p class="text-[9px] font-bold text-emerald-700/80 uppercase tracking-widest leading-tight">Hadir</p>
                 </div>
 
                 <!-- Card Alpa -->
-                <div class="glass-card p-5 rounded-[1.5rem] premium-shadow hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-10 h-10 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center mb-3">
-                        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                <div class="bg-gradient-to-b from-white to-rose-50/30 p-2.5 rounded-[1.25rem] border border-rose-100/50 shadow-[0_8px_16px_-6px_rgba(244,63,94,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-8 h-8 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-triangle-exclamation text-xs"></i>
                     </div>
-                    <p class="text-3xl font-black text-slate-800 mb-1" id="rekap-alpa">0</p>
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Alpa</p>
+                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-alpa">0</p>
+                    <p class="text-[9px] font-bold text-rose-700/80 uppercase tracking-widest leading-tight">Alpa</p>
                 </div>
 
-                <!-- Card Telat -->
-                <div class="glass-card p-5 rounded-[1.5rem] premium-shadow hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center mb-3">
-                        <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+                <!-- Card Telat (X) -->
+                <div class="bg-gradient-to-b from-white to-amber-50/30 p-2.5 rounded-[1.25rem] border border-amber-100/50 shadow-[0_8px_16px_-6px_rgba(245,158,11,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-8 h-8 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-clock-rotate-left text-xs"></i>
                     </div>
-                    <p class="text-3xl font-black text-slate-800 mb-1" id="rekap-telat">0</p>
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Telat (Kali)</p>
-                </div>
-
-                <!-- Card Izin/Cuti -->
-                <div class="glass-card p-5 rounded-[1.5rem] premium-shadow hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-3">
-                        <i class="fa-solid fa-suitcase-medical text-lg"></i>
-                    </div>
-                    <p class="text-3xl font-black text-slate-800 mb-1" id="rekap-isc">0</p>
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Izin/Sakit/DL</p>
-                </div>
-
-                <!-- Card Tanpa Absen Pulang -->
-                <div class="glass-card p-5 rounded-[1.5rem] premium-shadow hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-10 h-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mb-3">
-                        <i class="fa-solid fa-door-open text-lg"></i>
-                    </div>
-                    <p class="text-3xl font-black text-slate-800 mb-1" id="rekap-tap">0</p>
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tanpa Pulang</p>
+                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-telat">0</p>
+                    <p class="text-[9px] font-bold text-amber-700/80 uppercase tracking-widest leading-tight">Telat (x)</p>
                 </div>
 
                 <!-- Card Telat Menit -->
-                <div class="glass-card p-5 rounded-[1.5rem] premium-shadow hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-3">
-                        <i class="fa-solid fa-stopwatch text-lg"></i>
+                <div class="bg-gradient-to-b from-white to-orange-50/30 p-2.5 rounded-[1.25rem] border border-orange-100/50 shadow-[0_8px_16px_-6px_rgba(249,115,22,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-8 h-8 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-stopwatch text-xs"></i>
                     </div>
-                    <p class="text-3xl font-black text-slate-800 mb-1"><span id="rekap-telat-menit">0</span><span class="text-sm font-bold text-slate-500 ml-1">mnt</span></p>
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Telat (Menit)</p>
+                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none flex items-baseline tracking-tight"><span id="rekap-telat-menit">0</span><span class="text-[10px] font-bold text-slate-400 ml-0.5">m</span></p>
+                    <p class="text-[9px] font-bold text-orange-700/80 uppercase tracking-widest leading-tight">Telat Min</p>
                 </div>
 
-                <!-- Card PSW Kali -->
-                <div class="glass-card p-5 rounded-[1.5rem] premium-shadow hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-10 h-10 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-3">
-                        <i class="fa-solid fa-person-running text-lg"></i>
+                <!-- Card Izin/Cuti -->
+                <div class="bg-gradient-to-b from-white to-blue-50/30 p-2.5 rounded-[1.25rem] border border-blue-100/50 shadow-[0_8px_16px_-6px_rgba(59,130,246,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-8 h-8 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-suitcase-medical text-xs"></i>
                     </div>
-                    <p class="text-3xl font-black text-slate-800 mb-1" id="rekap-psw-kali">0</p>
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">PSW (Kali)</p>
+                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-isc">0</p>
+                    <p class="text-[9px] font-bold text-blue-700/80 uppercase tracking-widest leading-tight">Izin/Cuti</p>
+                </div>
+
+                <!-- Card TAP -->
+                <div class="bg-gradient-to-b from-white to-red-50/30 p-2.5 rounded-[1.25rem] border border-red-100/50 shadow-[0_8px_16px_-6px_rgba(239,68,68,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-8 h-8 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-door-open text-xs"></i>
+                    </div>
+                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-tap">0</p>
+                    <p class="text-[9px] font-bold text-red-700/80 uppercase tracking-widest leading-tight">Tanpa Pulang</p>
+                </div>
+
+                <!-- Card PSW (X) -->
+                <div class="bg-gradient-to-b from-white to-purple-50/30 p-2.5 rounded-[1.25rem] border border-purple-100/50 shadow-[0_8px_16px_-6px_rgba(168,85,247,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-8 h-8 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-person-running text-xs"></i>
+                    </div>
+                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-psw-kali">0</p>
+                    <p class="text-[9px] font-bold text-purple-700/80 uppercase tracking-widest leading-tight">PSW (x)</p>
                 </div>
 
                 <!-- Card PSW Menit -->
-                <div class="glass-card p-5 rounded-[1.5rem] premium-shadow hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-10 h-10 bg-fuchsia-100 text-fuchsia-600 rounded-xl flex items-center justify-center mb-3">
-                        <i class="fa-solid fa-person-walking-arrow-right text-lg"></i>
+                <div class="bg-gradient-to-b from-white to-fuchsia-50/30 p-2.5 rounded-[1.25rem] border border-fuchsia-100/50 shadow-[0_8px_16px_-6px_rgba(217,70,239,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-8 h-8 bg-fuchsia-100 text-fuchsia-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-person-walking-arrow-right text-xs"></i>
                     </div>
-                    <p class="text-3xl font-black text-slate-800 mb-1"><span id="rekap-psw-menit">0</span><span class="text-sm font-bold text-slate-500 ml-1">mnt</span></p>
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">PSW (Menit)</p>
+                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none flex items-baseline tracking-tight"><span id="rekap-psw-menit">0</span><span class="text-[10px] font-bold text-slate-400 ml-0.5">m</span></p>
+                    <p class="text-[9px] font-bold text-fuchsia-700/80 uppercase tracking-widest leading-tight">PSW Min</p>
                 </div>
 
             </div>
+
+            <!-- Header Tabel Harian -->
+            <div class="flex justify-between items-center px-1 pt-6 mt-2 border-t border-slate-200">
+                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-days text-teal-600"></i> Metrik Harian
+                </h3>
+                <input type="month" id="filter-bulan" class="text-xs border border-slate-200 rounded-lg px-2 py-1 text-slate-600 bg-slate-50 focus:outline-none focus:border-teal-500 font-semibold" onchange="onMonthFilterChange(this.value)">
+            </div>
             
-            <!-- Tombol Hapus Akun -->
-            <div class="mt-8 flex justify-center">
-                <button onclick="hapusAkun()" class="text-xs font-semibold text-rose-500 hover:text-rose-700 bg-white border border-rose-100 hover:bg-rose-50 px-4 py-2 rounded-xl transition-all shadow-sm">
-                    <i class="fa-solid fa-trash-can mr-1"></i> Hapus Akun Portal
-                </button>
+            <!-- Tabel Harian -->
+            <div class="bg-white rounded-[1.5rem] overflow-hidden shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] border border-slate-100 mt-3">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50/80 border-b border-slate-100 text-slate-600">
+                                <th class="p-3.5 font-bold uppercase tracking-wider text-center w-10">Tgl</th>
+                                <th class="p-3.5 font-bold uppercase tracking-wider text-center whitespace-nowrap">Masuk</th>
+                                <th class="p-3.5 font-bold uppercase tracking-wider text-center whitespace-nowrap">Pulang</th>
+                                <th class="p-3.5 font-bold uppercase tracking-wider text-center w-12" title="PSW (Menit)">P</th>
+                                <th class="p-3.5 font-bold uppercase tracking-wider text-center w-12" title="Telat (Menit)">T</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daily-metrics-tbody" class="text-slate-700 font-medium divide-y divide-slate-50">
+                            <tr><td colspan="5" class="text-center p-8 text-slate-400">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Bottom spacing -->
@@ -440,20 +491,77 @@
             <div class="h-8"></div>
         </div>
     </div>
+    <!-- HALAMAN PROFIL -->
+    <div id="profil-page" class="hidden min-h-screen pb-24 opacity-0 transition-opacity duration-500 bg-slate-50">
+        <!-- Premium Curved Header -->
+        <div class="bg-gradient-premium pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-[0_15px_40px_-10px_rgba(20,184,166,0.3)] relative overflow-hidden">
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-30 mix-blend-overlay"></div>
+            <div class="absolute -right-20 -top-20 w-72 h-72 bg-gradient-to-br from-teal-400/20 to-transparent rounded-full blur-3xl"></div>
+            <div class="absolute -left-10 top-20 w-48 h-48 bg-gradient-to-tr from-emerald-400/20 to-transparent rounded-full blur-2xl"></div>
+            <div class="relative z-10 text-center flex flex-col items-center">
+                <div class="w-24 h-24 bg-white/10 backdrop-blur-xl border border-white/30 rounded-[1.5rem] flex items-center justify-center text-4xl font-bold text-white shadow-2xl overflow-hidden relative mb-5 group">
+                    <img id="profil-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-transform duration-500 group-hover:scale-110" alt="Foto Profil">
+                    <i id="profil-foto-icon" class="fa-solid fa-user-astronaut relative z-0"></i>
+                </div>
+                <h2 id="profil-nama" class="font-extrabold text-2xl text-white tracking-wide leading-tight drop-shadow-md">Nama Pegawai</h2>
+                <p id="profil-jabatan" class="text-teal-50 text-[10px] font-bold mt-2 uppercase tracking-[0.2em] bg-black/20 px-4 py-1.5 rounded-md border border-white/10 shadow-inner">Jabatan</p>
+            </div>
+        </div>
 
-    <!-- Bottom Navigation Bar (Mobile App Style) -->
-    <div id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-100 pb-5 pt-3 px-8 flex justify-between items-center z-40 shadow-[0_-15px_40px_rgba(0,0,0,0.06)] rounded-t-[2.5rem] hidden opacity-0 translate-y-full transition-all duration-500">
-        <button id="nav-beranda" onclick="switchTab('beranda')" class="flex flex-col items-center gap-1.5 p-2 text-teal-600 w-16 active:scale-95 transition-transform">
-            <i class="fa-solid fa-house text-xl mb-0.5"></i>
-            <span class="text-[9px] font-extrabold uppercase tracking-widest">Beranda</span>
+        <div class="px-5 -mt-8 relative z-20 space-y-4">
+            
+            <div class="glass-card rounded-[1.5rem] p-5 premium-shadow">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Informasi Akun</h3>
+                
+                <div class="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center"><i class="fa-solid fa-id-badge"></i></div>
+                        <span class="text-sm font-semibold text-slate-700">ID Pegawai</span>
+                    </div>
+                    <span id="profil-id" class="text-sm font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg">ID</span>
+                </div>
+                
+                <div class="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center"><i class="fa-solid fa-server"></i></div>
+                        <span class="text-sm font-semibold text-slate-700">Status Server</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-full uppercase tracking-wider">Terhubung</span>
+                </div>
+            </div>
+            
+            <div class="glass-card rounded-[1.5rem] p-5 premium-shadow">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Pengaturan</h3>
+                
+                <button onclick="hapusAkun()" class="w-full flex items-center justify-between py-3 group">
+                    <div class="flex items-center gap-3 text-rose-500 group-hover:text-rose-600 transition-colors">
+                        <div class="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center"><i class="fa-solid fa-trash-can"></i></div>
+                        <div class="text-left">
+                            <p class="text-sm font-bold">Hapus Akun Perangkat</p>
+                            <p class="text-[10px] font-medium text-slate-400">Hapus sesi login dari HP ini</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+                </button>
+            </div>
+            
+        </div>
+        <div class="h-6"></div>
+    </div>
+
+    <!-- Bottom Navigation Bar (Modern Apple Floating Dock Style) -->
+    <div id="bottom-nav" class="fixed bottom-6 left-6 right-6 bg-white/80 backdrop-blur-xl border border-white/60 py-2.5 px-4 flex justify-around items-center z-40 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] rounded-3xl hidden opacity-0 translate-y-full transition-all duration-500">
+        <button id="nav-beranda" onclick="switchTab('beranda')" class="flex flex-col items-center justify-center gap-1 p-2 text-teal-600 bg-teal-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all">
+            <i class="fa-solid fa-house text-lg"></i>
+            <span class="text-[9px] font-bold uppercase tracking-wider">Beranda</span>
         </button>
-        <button id="nav-riwayat" onclick="switchTab('riwayat')" class="flex flex-col items-center gap-1.5 p-2 text-slate-400 hover:text-teal-500 transition-colors w-16 active:scale-95 transition-transform">
-            <i class="fa-solid fa-clock-rotate-left text-xl mb-0.5"></i>
-            <span class="text-[9px] font-bold uppercase tracking-widest">Riwayat</span>
+        <button id="nav-riwayat" onclick="switchTab('riwayat')" class="flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-teal-600 hover:bg-slate-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all">
+            <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+            <span class="text-[9px] font-bold uppercase tracking-wider">Riwayat</span>
         </button>
-        <button class="flex flex-col items-center gap-1.5 p-2 text-slate-400 hover:text-teal-500 transition-colors w-16 active:scale-95 transition-transform">
-            <i class="fa-solid fa-user text-xl mb-0.5"></i>
-            <span class="text-[9px] font-bold uppercase tracking-widest">Profil</span>
+        <button id="nav-profil" onclick="switchTab('profil')" class="flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-teal-600 hover:bg-slate-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all">
+            <i class="fa-solid fa-user text-lg"></i>
+            <span class="text-[9px] font-bold uppercase tracking-wider">Profil</span>
         </button>
     </div>
 
@@ -463,6 +571,6 @@
             navigator.serviceWorker.register('/sw.js');
         }
     </script>
-    <script src="/portal.js?v=7"></script>
+    <script src="/portal.js?v=18"></script>
 </body>
 </html>
