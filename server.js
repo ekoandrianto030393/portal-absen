@@ -70,9 +70,11 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // Serve file statis dengan optimasi caching untuk file model
 app.use(express.static(path.join(__dirname, '.'), {
-    setHeaders: (res, path) => {
-        if (path.endsWith('.bin') || path.endsWith('.json') || path.endsWith('.onnx') || path.endsWith('.wasm')) {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.bin') || filePath.endsWith('.onnx') || filePath.endsWith('.wasm')) {
             res.setHeader('Cache-Control', 'public, max-age=31536000');
+        } else if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
     }
 }));
@@ -95,9 +97,11 @@ app.use((req, res, next) => {
 // Pool akan otomatis menyambung ulang jika koneksi putus (wait_timeout)
 const pool = mysql.createPool({
     host: process.env.DB_HOST || '127.0.0.1',
+    port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASS || '',
     database: process.env.DB_NAME || 'biometrik_absensi_wajah_db',
+    ssl: process.env.DB_HOST && process.env.DB_HOST.includes('aivencloud') ? { rejectUnauthorized: false } : undefined,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
@@ -114,6 +118,14 @@ pool.getConnection((err, connection) => {
         console.log('💡 Pastikan XAMPP MySQL sudah di-Start!');
     } else {
         console.log('✅ Terkoneksi ke Database MySQL (Pool)');
+        
+        // Mulai Layanan Sinkronisasi Offline-First (HANYA JALAN DI LAPTOP LOKAL)
+        if (process.env.DB_HOST === '127.0.0.1' || process.env.DB_HOST === 'localhost') {
+            require('./sync_service.js');
+        } else {
+            console.log('☁️ Mode Cloud Aktif: Menjalankan API untuk Portal 24 Jam (Tanpa Sync)');
+        }
+
         console.log('📋 Konfigurasi Absensi (dari .env):');
         console.log(`   - Jam Masuk: ${JAM_MASUK_START} s/d ${JAM_MASUK_END}`);
         console.log(`   - Jam Kerja Mulai: ${JAM_KERJA_MULAI}`);
@@ -175,12 +187,12 @@ pool.getConnection((err, connection) => {
                 k.jabatan,
                 m.periode,
                 (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = m.periode AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) AS total_hari_kerja,
-                COUNT(a.jam_masuk) AS total_masuk,
+                COALESCE(SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_masuk != '-' AND a.status NOT IN ('IZIN', 'SAKIT', 'CUTI', 'DL', 'DINAS_LUAR', 'LIBUR') THEN 1 ELSE 0 END), 0) AS total_masuk,
                 SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END) AS total_dl,
                 SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END) AS total_sakit,
                 SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END) AS total_izin,
                 SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END) AS total_cuti,
-                GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = m.periode AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) - COUNT(a.jam_masuk) - SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR') THEN 1 ELSE 0 END)) AS alpa, -- [SYNC] Logika Alpa: Total Hari Aktif - Hadir - Izin/Sakit
+                GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = m.periode AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) - COALESCE(SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_masuk != '-' AND a.status NOT IN ('IZIN', 'SAKIT', 'CUTI', 'DL', 'DINAS_LUAR', 'LIBUR') THEN 1 ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR', 'DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0)) AS alpa, -- [SYNC] Logika Alpa: Total Hari Aktif - Hadir - Izin/Sakit
                 SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END) AS telat_kali,
                 
                 COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
@@ -372,16 +384,12 @@ app.get('/api/rekap', (req, res) => {
             k.jabatan,
             ? AS periode,
             (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) AS total_hari_kerja,
-            COUNT(a.jam_masuk) AS total_masuk,
+            COALESCE(SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_masuk != '-' AND a.status NOT IN ('IZIN', 'SAKIT', 'CUTI', 'DL', 'DINAS_LUAR', 'LIBUR') THEN 1 ELSE 0 END), 0) AS total_masuk,
             COALESCE(SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0) AS total_dl,
             COALESCE(SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END), 0) AS total_sakit,
             COALESCE(SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END), 0) AS total_izin,
             COALESCE(SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END), 0) AS total_cuti,
-            GREATEST(0, 
-                (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) 
-                - COUNT(a.jam_masuk) 
-                - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR') THEN 1 ELSE 0 END), 0)
-            ) AS alpa,
+            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) - COALESCE(SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_masuk != '-' AND a.status NOT IN ('IZIN', 'SAKIT', 'CUTI', 'DL', 'DINAS_LUAR', 'LIBUR') THEN 1 ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR', 'DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0)) AS alpa,
             COALESCE(SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END), 0) AS telat_kali,
             COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
             COALESCE(SUM(CASE WHEN a.psw_menit > 0 THEN 1 ELSE 0 END), 0) AS psw_kali,
@@ -445,12 +453,12 @@ app.get('/api/slip_gaji/print', (req, res) => {
             k.no_urut, k.id_karyawan, k.nama, k.jabatan,
             ? AS periode,
             (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) AS total_hari_kerja,
-            COUNT(a.jam_masuk) AS total_masuk,
+            COALESCE(SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_masuk != '-' AND a.status NOT IN ('IZIN', 'SAKIT', 'CUTI', 'DL', 'DINAS_LUAR', 'LIBUR') THEN 1 ELSE 0 END), 0) AS total_masuk,
             COALESCE(SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0) AS total_dl,
             COALESCE(SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END), 0) AS total_sakit,
             COALESCE(SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END), 0) AS total_izin,
             COALESCE(SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END), 0) AS total_cuti,
-            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) - COUNT(a.jam_masuk) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR') THEN 1 ELSE 0 END), 0)) AS alpa,
+            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) - COALESCE(SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_masuk != '-' AND a.status NOT IN ('IZIN', 'SAKIT', 'CUTI', 'DL', 'DINAS_LUAR', 'LIBUR') THEN 1 ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR', 'DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0)) AS alpa,
             COALESCE(SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END), 0) AS telat_kali,
             COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
             COALESCE(SUM(CASE WHEN a.psw_menit > 0 THEN 1 ELSE 0 END), 0) AS psw_kali,
@@ -630,12 +638,12 @@ app.get('/api/rekap/bulanan', (req, res) => {
             k.no_urut, k.id_karyawan, k.nama, k.jabatan,
             ? AS periode,
             (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) AS total_hari_kerja,
-            COUNT(a.jam_masuk) AS total_masuk,
+            COALESCE(SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_masuk != '-' AND a.status NOT IN ('IZIN', 'SAKIT', 'CUTI', 'DL', 'DINAS_LUAR', 'LIBUR') THEN 1 ELSE 0 END), 0) AS total_masuk,
             COALESCE(SUM(CASE WHEN a.status IN ('DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0) AS total_dl,
             COALESCE(SUM(CASE WHEN a.status = 'SAKIT' THEN 1 ELSE 0 END), 0) AS total_sakit,
             COALESCE(SUM(CASE WHEN a.status = 'IZIN' THEN 1 ELSE 0 END), 0) AS total_izin,
             COALESCE(SUM(CASE WHEN a.status = 'CUTI' THEN 1 ELSE 0 END), 0) AS total_cuti,
-            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) - COUNT(a.jam_masuk) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR') THEN 1 ELSE 0 END), 0)) AS alpa,
+            GREATEST(0, (SELECT COUNT(DISTINCT tanggal) FROM absensi WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? AND (k.tanggal_registrasi IS NULL OR tanggal >= DATE(k.tanggal_registrasi))) - COALESCE(SUM(CASE WHEN a.jam_masuk IS NOT NULL AND a.jam_masuk != '-' AND a.status NOT IN ('IZIN', 'SAKIT', 'CUTI', 'DL', 'DINAS_LUAR', 'LIBUR') THEN 1 ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN a.status IN ('IZIN', 'SAKIT', 'CUTI', 'LIBUR', 'DL', 'DINAS_LUAR') THEN 1 ELSE 0 END), 0)) AS alpa,
             COALESCE(SUM(CASE WHEN a.telat_menit > 0 THEN 1 ELSE 0 END), 0) AS telat_kali,
             COALESCE(SUM(a.telat_menit), 0) AS telat_menit,
             COALESCE(SUM(CASE WHEN a.psw_menit > 0 THEN 1 ELSE 0 END), 0) AS psw_kali,
@@ -700,23 +708,25 @@ app.get('/api/absensi/history/:id_karyawan', (req, res) => {
     
     if (tipe === 'alpa') {
         const sql = `
-            SELECT DISTINCT tanggal, '-' AS jam_masuk, '-' AS jam_keluar, 'Tidak Hadir Tanpa Keterangan (Alpa)' AS keterangan, 'ALPA' AS status 
-            FROM absensi 
-            WHERE DATE_FORMAT(tanggal, '%Y-%m') = ? 
-              AND tanggal <= CURDATE()
-              AND tanggal NOT IN (
+            SELECT DISTINCT a.tanggal, '-' AS jam_masuk, '-' AS jam_keluar, 'Tidak Hadir Tanpa Keterangan (Alpa)' AS keterangan, 'ALPA' AS status 
+            FROM absensi a
+            JOIN karyawan k ON k.id_karyawan = ?
+            WHERE DATE_FORMAT(a.tanggal, '%Y-%m') = ? 
+              AND a.tanggal <= CURDATE()
+              AND (k.tanggal_registrasi IS NULL OR a.tanggal >= DATE(k.tanggal_registrasi))
+              AND a.tanggal NOT IN (
                   SELECT tanggal FROM absensi WHERE id_karyawan = ? AND DATE_FORMAT(tanggal, '%Y-%m') = ?
               )
-            ORDER BY tanggal ASC
+            ORDER BY a.tanggal ASC
         `;
-        pool.query(sql, [periode, id_karyawan, periode], (err, results) => {
+        pool.query(sql, [id_karyawan, periode, id_karyawan, periode], (err, results) => {
             if (err) return res.status(500).json({ success: false, message: err.message });
             res.json({ success: true, data: results });
         });
         return;
     }
 
-    let sql = "SELECT tanggal, jam_masuk, jam_keluar, keterangan, status FROM view_absensi_harian WHERE id_karyawan = ? AND DATE_FORMAT(tanggal, '%Y-%m') = ?";
+    let sql = "SELECT tanggal, jam_masuk, jam_keluar, keterangan, status, psw_menit, telat_menit FROM view_absensi_harian WHERE id_karyawan = ? AND DATE_FORMAT(tanggal, '%Y-%m') = ?";
     let params = [id_karyawan, periode];
     
     if (tipe === 'tanpa_pulang') {
@@ -1538,7 +1548,30 @@ app.post('/api/pegawai/login', (req, res) => {
     });
 });
 
-// 3. API Dashboard Pegawai (Data Hari Ini)
+// 3. API Reset Password Pegawai (Dari Admin Dashboard)
+app.put('/api/pegawai/reset_password/:id', (req, res) => {
+    const id_karyawan = req.params.id;
+    const defaultPassword = '123456';
+    const hashedPassword = hashPassword(defaultPassword);
+    
+    // Cek dulu apakah pegawai sudah punya akun portal
+    pool.query('SELECT id_karyawan FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [id_karyawan], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
+        
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'Pegawai belum memiliki akun portal (Belum Registrasi).' });
+        }
+        
+        // Update password
+        pool.query('UPDATE akun_pegawai SET password = ? WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [hashedPassword, id_karyawan], (err2, result) => {
+            if (err2) return res.status(500).json({ success: false, message: 'Gagal mereset password.' });
+            
+            res.json({ success: true, message: 'Password portal berhasil direset menjadi 123456' });
+        });
+    });
+});
+
+// 4. API Dashboard Pegawai (Data Hari Ini)
 app.get('/api/pegawai/dashboard/today/:id', (req, res) => {
     const id = req.params.id;
     const sql = `
