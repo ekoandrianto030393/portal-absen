@@ -1,4 +1,4 @@
-const CACHE_NAME = 'portal-absen-v18';
+const CACHE_NAME = 'portal-absen-v52';
 const urlsToCache = [
   '/portal.html',
   '/portal.js',
@@ -27,11 +27,22 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Selalu utamakan mengambil dari jaringan (Network-First) agar terhindar dari cache bandel di APK
   event.respondWith(
-    caches.match(event.request).then(response => {
-      // Jika ada di cache, gunakan itu, jika tidak fetch dari jaringan
-      // Atau bisa pakai network-first approach untuk portal.html/js
-      return response || fetch(event.request);
-    })
+    fetch(event.request)
+      .then(response => {
+        // Jika berhasil ambil dari internet, simpan/perbarui ke cache
+        if (response && response.status === 200 && response.type === 'basic') {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+                cache.put(event.request, responseClone);
+            });
+        }
+        return response;
+      })
+      .catch(() => {
+        // Jika offline atau jaringan gagal, BARU ambil dari cache
+        return caches.match(event.request);
+      })
   );
 });

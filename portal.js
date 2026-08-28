@@ -2,6 +2,33 @@ const API_BASE = '/api';
 
 // Cek Sesi Login
 window.onload = () => {
+    // Inisialisasi Dark Mode
+    if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        const toggle = document.getElementById('dark-mode-toggle');
+        if (toggle) toggle.checked = true;
+    }
+
+    // Clock & Greeting Engine
+    setInterval(() => {
+        const now = new Date();
+        const clockEl = document.getElementById('realtime-clock');
+        const greetEl = document.getElementById('greeting-text');
+        
+        if (clockEl) {
+            clockEl.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+        }
+        
+        if (greetEl) {
+            const hour = now.getHours();
+            let greet = 'Selamat Malam 🌙';
+            if (hour >= 5 && hour < 11) greet = 'Selamat Pagi 🌅';
+            else if (hour >= 11 && hour < 15) greet = 'Selamat Siang ☀️';
+            else if (hour >= 15 && hour < 18) greet = 'Selamat Sore 🌇';
+            greetEl.textContent = greet + ',';
+        }
+    }, 1000);
+
     const session = localStorage.getItem('pegawai_session');
     
     // Hilangkan loader
@@ -82,6 +109,26 @@ async function register() {
 function logout() {
     localStorage.removeItem('pegawai_session');
     window.location.reload();
+}
+
+async function handleLogoutFromAll() {
+    if(confirm('Anda yakin ingin logout dari semua perangkat?')) {
+        await logout();
+    }
+}
+
+// ========================
+// UI PREFERENCES
+// ========================
+function toggleDarkMode() {
+    const isDark = document.getElementById('dark-mode-toggle').checked;
+    if(isDark) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    }
 }
 
 async function hapusAkun() {
@@ -165,43 +212,85 @@ let isRiwayatLoaded = false;
 function switchTab(tabName) {
     const dashPage = document.getElementById('dashboard-page');
     const riwayatPage = document.getElementById('riwayat-page');
+    const profilPage = document.getElementById('profil-page');
     
     const navBeranda = document.getElementById('nav-beranda');
     const navRiwayat = document.getElementById('nav-riwayat');
+    const navProfil = document.getElementById('nav-profil');
     
+    // Define classes for modern floating dock navigation
+    const inactiveClass = "flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-teal-600 hover:bg-slate-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all";
+    const activeClass = "flex flex-col items-center justify-center gap-1 p-2 text-teal-600 bg-teal-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all";
+    
+    // Special CTA classes for Profil
+    const profilInactiveClass = "flex flex-col items-center justify-center gap-0.5 p-2 text-white bg-gradient-to-tr from-teal-500 to-emerald-400 shadow-[0_4px_15px_rgba(20,184,166,0.4)] w-[75px] h-[60px] rounded-2xl hover:-translate-y-1 active:scale-95 transition-all";
+    const profilActiveClass = "flex flex-col items-center justify-center gap-0.5 p-2 text-white bg-gradient-to-tr from-teal-600 to-emerald-500 shadow-inner w-[75px] h-[60px] rounded-2xl ring-4 ring-teal-500/30 active:scale-95 transition-all scale-105";
+
     // Reset Nav States
-    navBeranda.className = "flex flex-col items-center gap-1.5 p-2 text-slate-400 hover:text-teal-500 transition-colors w-16 active:scale-95 transition-transform";
-    navRiwayat.className = "flex flex-col items-center gap-1.5 p-2 text-slate-400 hover:text-teal-500 transition-colors w-16 active:scale-95 transition-transform";
+    navBeranda.className = inactiveClass;
+    navRiwayat.className = inactiveClass;
+    if(navProfil) navProfil.className = profilInactiveClass;
     
+    // Setup slide directions based on tab order (Beranda 0, Riwayat 1, Profil 2)
+    const tabs = ['beranda', 'riwayat', 'profil'];
+    const currentTabId = !dashPage.classList.contains('hidden') ? 0 : (!riwayatPage.classList.contains('hidden') ? 1 : 2);
+    const newTabId = tabs.indexOf(tabName);
+    const isForward = newTabId > currentTabId;
+
     if (tabName === 'beranda') {
         // Set Active Nav
-        navBeranda.className = "flex flex-col items-center gap-1.5 p-2 text-teal-600 w-16 active:scale-95 transition-transform";
+        navBeranda.className = activeClass;
         
-        riwayatPage.style.opacity = '0';
+        // Animasi Keluar
+        riwayatPage.classList.remove('slide-in-center');
+        riwayatPage.classList.add('slide-out-right');
+        if(profilPage) {
+            profilPage.classList.remove('slide-in-center');
+            profilPage.classList.add('slide-out-right');
+        }
+        
         setTimeout(() => {
             riwayatPage.classList.add('hidden');
+            if(profilPage) profilPage.classList.add('hidden');
             dashPage.classList.remove('hidden');
+            dashPage.classList.remove('slide-out-left', 'slide-out-right');
+            // Sedikit delay agar browser render display:block sebelum animasi transform masuk
             setTimeout(() => {
-                dashPage.style.opacity = '1';
+                dashPage.classList.add('slide-in-center');
                 // Reload dashboard data every time user goes back to beranda
                 const session = localStorage.getItem('pegawai_session');
                 if (session) {
                     const user = JSON.parse(session);
                     loadDashboardData(user.id_karyawan);
                 }
-            }, 50);
-        }, 300);
+            }, 20);
+        }, 350);
         
     } else if (tabName === 'riwayat') {
         // Set Active Nav
-        navRiwayat.className = "flex flex-col items-center gap-1.5 p-2 text-teal-600 w-16 active:scale-95 transition-transform";
+        navRiwayat.className = activeClass;
         
-        dashPage.style.opacity = '0';
+        // Animasi Keluar
+        if (currentTabId === 0) { // Dari Beranda -> Riwayat (Maju)
+            dashPage.classList.remove('slide-in-center');
+            dashPage.classList.add('slide-out-left');
+        } else { // Dari Profil -> Riwayat (Mundur)
+            if(profilPage) {
+                profilPage.classList.remove('slide-in-center');
+                profilPage.classList.add('slide-out-right');
+            }
+        }
+        
         setTimeout(() => {
             dashPage.classList.add('hidden');
+            if(profilPage) profilPage.classList.add('hidden');
             riwayatPage.classList.remove('hidden');
+            riwayatPage.classList.remove('slide-out-left', 'slide-out-right');
+            
             setTimeout(() => {
-                riwayatPage.style.opacity = '1';
+                riwayatPage.classList.add('slide-in-center');
+                
+                // Lazy load riwayat data
                 if (!isRiwayatLoaded) {
                     const session = localStorage.getItem('pegawai_session');
                     if (session) {
@@ -209,7 +298,49 @@ function switchTab(tabName) {
                         loadRiwayatBulanan(user.id_karyawan);
                     }
                 }
-            }, 50);
+            }, 20);
+        }, 350);
+    } else if (tabName === 'profil') {
+        // Set Active Nav
+        if(navProfil) navProfil.className = profilActiveClass;
+        
+        // Animasi Keluar
+        dashPage.classList.remove('slide-in-center');
+        dashPage.classList.add('slide-out-left');
+        riwayatPage.classList.remove('slide-in-center');
+        riwayatPage.classList.add('slide-out-left');
+        
+        setTimeout(() => {
+            dashPage.classList.add('hidden');
+            riwayatPage.classList.add('hidden');
+            if(profilPage) {
+                profilPage.classList.remove('hidden');
+                profilPage.classList.remove('slide-out-left', 'slide-out-right');
+                setTimeout(() => {
+                    profilPage.classList.add('slide-in-center');
+                    // Populate data if needed
+                    const session = localStorage.getItem('pegawai_session');
+                    if(session) {
+                        const user = JSON.parse(session);
+                        document.getElementById('profil-nama').textContent = user.nama;
+                        document.getElementById('profil-jabatan').textContent = user.jabatan || 'Pegawai';
+                        document.getElementById('profil-id').textContent = user.id_karyawan;
+                        
+                        // Ensure Gamification stats are loaded
+                        if (typeof isRiwayatLoaded !== 'undefined' && !isRiwayatLoaded) {
+                            loadRiwayatBulanan(user.id_karyawan);
+                        }
+                        
+                        // Load image to profil
+                        const imgNode = document.getElementById('user-foto');
+                        if(imgNode && !imgNode.classList.contains('hidden')) {
+                            document.getElementById('profil-foto').src = imgNode.src;
+                            document.getElementById('profil-foto').classList.remove('hidden');
+                            document.getElementById('profil-foto-icon').classList.add('hidden');
+                        }
+                    }
+                }, 50);
+            }
         }, 300);
     }
 }
@@ -217,7 +348,7 @@ function switchTab(tabName) {
 async function loadRiwayatBulanan(idKaryawan) {
     const container = document.getElementById('riwayat-container');
     try {
-        const res = await fetch(`${API_BASE}/riwayat/rekap/${idKaryawan}`);
+        const res = await fetch(`${API_BASE}/riwayat/rekap/${idKaryawan}?_t=${Date.now()}`);
         const result = await res.json();
         
         if (!result.success || !result.data || result.data.length === 0) {
@@ -256,26 +387,38 @@ async function loadRiwayatBulanan(idKaryawan) {
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-5 gap-2 text-center">
-                    <div class="bg-slate-50 rounded-xl p-2 border border-slate-100/50">
-                        <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Hadir</p>
-                        <p class="text-sm font-black text-emerald-600">${item.total_masuk}</p>
+                <div class="grid grid-cols-4 gap-2 text-center">
+                    <div class="bg-emerald-50/50 rounded-xl p-2 border border-emerald-100/50">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Hadir</p>
+                        <p class="text-xs font-black text-emerald-600">${item.total_masuk}</p>
                     </div>
-                    <div class="bg-slate-50 rounded-xl p-2 border border-slate-100/50">
-                        <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">I/S/DL</p>
-                        <p class="text-sm font-black text-blue-600">${Number(item.total_izin||0) + Number(item.total_sakit||0) + Number(item.total_dl||0)}</p>
+                    <div class="bg-rose-50/50 rounded-xl p-2 border border-rose-100/50">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Alpa</p>
+                        <p class="text-xs font-black text-rose-600">${item.alpa}</p>
                     </div>
-                    <div class="bg-slate-50 rounded-xl p-2 border border-slate-100/50">
-                        <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Telat</p>
-                        <p class="text-sm font-black text-amber-500">${item.telat_kali}</p>
+                    <div class="bg-blue-50/50 rounded-xl p-2 border border-blue-100/50">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">I/S/C/DL</p>
+                        <p class="text-xs font-black text-blue-600">${Number(item.total_izin||0) + Number(item.total_sakit||0) + Number(item.total_cuti||0) + Number(item.total_dl||0)}</p>
                     </div>
-                    <div class="bg-slate-50 rounded-xl p-2 border border-slate-100/50">
-                        <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Alpa</p>
-                        <p class="text-sm font-black text-rose-500">${item.alpa}</p>
+                    <div class="bg-red-50/50 rounded-xl p-2 border border-red-100/50">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Tanpa Plg</p>
+                        <p class="text-xs font-black text-red-600">${item.tanpa_absen_pulang || 0}</p>
                     </div>
-                    <div class="bg-slate-50 rounded-xl p-2 border border-slate-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-1">Tanpa Plg</p>
-                        <p class="text-sm font-black text-red-500">${item.tanpa_absen_pulang || 0}</p>
+                    <div class="bg-amber-50/50 rounded-xl p-2 border border-amber-100/50">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Telat (X)</p>
+                        <p class="text-xs font-black text-amber-600">${item.telat_kali || 0}</p>
+                    </div>
+                    <div class="bg-orange-50/50 rounded-xl p-2 border border-orange-100/50">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Telat (M)</p>
+                        <p class="text-xs font-black text-orange-600">${item.telat_menit || 0}</p>
+                    </div>
+                    <div class="bg-purple-50/50 rounded-xl p-2 border border-purple-100/50">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">PSW (X)</p>
+                        <p class="text-xs font-black text-purple-600">${item.psw_kali || 0}</p>
+                    </div>
+                    <div class="bg-fuchsia-50/50 rounded-xl p-2 border border-fuchsia-100/50">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">PSW (M)</p>
+                        <p class="text-xs font-black text-fuchsia-600">${item.psw_menit || 0}</p>
                     </div>
                 </div>
             </div>`;
@@ -284,25 +427,233 @@ async function loadRiwayatBulanan(idKaryawan) {
         container.innerHTML = html;
         isRiwayatLoaded = true;
         
+        // Render Chart.js
+        renderRiwayatChart(result.data);
+        
+        const chartCard = document.getElementById('riwayat-chart-card');
+        if(chartCard) {
+            chartCard.classList.remove('hidden');
+            setTimeout(() => chartCard.classList.remove('opacity-0'), 50);
+        }
+        
     } catch(e) {
         container.innerHTML = `<div class="text-center text-rose-500 text-sm p-5 font-bold"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Gagal memuat data riwayat.</div>`;
     }
 }
 
+// Global variable untuk menyimpan instance chart agar bisa di-destroy (update)
+let riwayatChartInstance = null;
+
+function renderRiwayatChart(data) {
+    let totalHadir = 0;
+    let totalAlpa = 0;
+    let totalIzinDll = 0;
+    let totalTelat = 0;
+    let totalPSW = 0;
+    let totalTAP = 0;
+    let totalTelatMenit = 0;
+    let totalPSWMenit = 0;
+    
+    // AMBIL HANYA DATA BULAN INI (Sesuai Permintaan User)
+    const now = new Date();
+    const currentPeriode = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentData = data.find(item => item.periode === currentPeriode);
+
+    if (currentData) {
+        totalHadir = Number(currentData.total_masuk || 0);
+        totalAlpa = Number(currentData.alpa || 0);
+        totalIzinDll = Number(currentData.total_izin || 0) + Number(currentData.total_sakit || 0) + Number(currentData.total_cuti || 0) + Number(currentData.total_dl || 0);
+        totalTelat = Number(currentData.telat_kali || 0);
+        totalPSW = Number(currentData.psw_kali || 0);
+        totalTAP = Number(currentData.tanpa_absen_pulang || 0);
+
+        let pelanggaran_menit_db = Number(currentData.total_pelanggaran_menit || 0);
+        let potongan_menit = Number(currentData.potongan_jam || 0) * 60;
+        let menit_biasa = Number(currentData.telat_menit || 0) + Number(currentData.psw_menit || 0);
+        
+        let menit_total = pelanggaran_menit_db > 0 ? pelanggaran_menit_db : menit_biasa;
+        menit_total += potongan_menit;
+        totalTelatMenit = menit_total;
+    } else {
+        totalHadir = 0; totalAlpa = 0; totalIzinDll = 0; totalTelat = 0; totalPSW = 0; totalTAP = 0; totalTelatMenit = 0;
+    }
+    
+    // GAMIFIKASI: Hitung XP Hanya Bulan Ini
+    // Dasar poin kehadiran (+10 XP per kehadiran, +2 per Izin/Sakit)
+    let baseXP = (totalHadir * 10) + (totalIzinDll * 2);
+    
+    // Hukuman (Penalti) DIPERADIL
+    let penalty = (totalAlpa * 20) + 
+                  (totalTAP * 10) + 
+                  Math.floor(totalTelatMenit / 2);
+    
+    let totalXP = baseXP - penalty;
+    
+    // Tampilkan rata-rata XP di layar
+    if(totalXP < 0) totalXP = 0;
+    let userXP = totalXP;
+    
+    // Pesan Dinamis berdasarkan Metrik Kedisiplinan BULAN INI
+    const avgAlpa = totalAlpa;
+    const avgTAP = totalTAP;
+    const avgTelat = totalTelat;
+    const avgPSW = totalPSW;
+    
+    let maxCount = 0;
+    let dominant = "";
+    
+    // Check in order of severity in case of ties
+    if (avgAlpa > maxCount) { maxCount = avgAlpa; dominant = "alpa"; }
+    if (avgTAP > maxCount) { maxCount = avgTAP; dominant = "tap"; }
+    if (avgTelat > maxCount) { maxCount = avgTelat; dominant = "telat"; }
+    if (avgPSW > maxCount) { maxCount = avgPSW; dominant = "psw"; }
+    
+    let advice = "";
+    if (maxCount > 0) {
+        if (dominant === "alpa") {
+            advice = `Pelanggaran terbanyak Anda adalah ketidakhadiran (Alpa) sebanyak ${avgAlpa} kali. Mohon perbaiki dan utamakan kehadiran Anda!`;
+        } else if (dominant === "tap") {
+            advice = `Pelanggaran terbanyak Anda adalah lupa Absen Pulang (TAP) sebanyak ${avgTAP} kali. Pastikan Anda selalu menekan tombol pulang!`;
+        } else if (dominant === "telat") {
+            advice = `Pelanggaran terbanyak Anda adalah datang Terlambat sebanyak ${avgTelat} kali. Mohon perbaiki jam kedatangan Anda!`;
+        } else if (dominant === "psw") {
+            advice = `Pelanggaran terbanyak Anda adalah Pulang Sebelum Waktunya (PSW) sebanyak ${avgPSW} kali. Harap perbaiki kedisiplinan jam pulang Anda!`;
+        }
+    } else {
+        advice = "Tingkatkan terus kedisiplinan Anda dan hindari pelanggaran sekecil apapun.";
+    }
+
+    let rankInfo = {};
+    if(userXP > 180) { 
+        rankInfo = { 
+            title: 'Legend Teladan 👑', color: 'bg-gradient-to-r from-gray-100 via-white to-gray-200 text-slate-800 ring-2 ring-gray-300 shadow-[0_0_12px_rgba(255,255,255,0.7)]', 
+            notes: 'Luar Biasa! Rekam jejak kedisiplinan Anda nyaris tanpa cela. Pertahankan prestasimu sebagai teladan bagi pegawai yang lain.',
+            headerBg: 'linear-gradient(135deg, #0f172a 0%, #334155 50%, #94a3b8 100%)' // Dark Platinum
+        };
+    } else if(userXP > 130) {
+        rankInfo = { 
+            title: 'Bintang Puskesmas ⭐', color: 'bg-gradient-to-r from-yellow-300 to-yellow-500 text-yellow-950 ring-1 ring-yellow-200 shadow-[0_0_10px_rgba(250,204,21,0.5)]', 
+            notes: 'Kerja bagus! Sedikit lagi menuju predikat Legend. ' + advice,
+            headerBg: 'linear-gradient(135deg, #451a03 0%, #b45309 100%)' // Dark Gold
+        };
+    } else if(userXP > 80) {
+        rankInfo = { 
+            title: 'Pegawai Andalan 🚀', color: 'bg-gradient-to-r from-slate-300 to-slate-400 text-slate-900 ring-1 ring-slate-200 shadow-sm', 
+            notes: 'Kedisiplinan rata-rata Anda cukup baik. ' + advice,
+            headerBg: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)' // Silver Slate
+        };
+    } else if(userXP >= 10) {
+        rankInfo = { 
+            title: 'Pegawai Aktif 🎖️', color: 'bg-blue-500 text-white ring-1 ring-blue-300 shadow-sm', 
+            notes: 'Kedisiplinan Anda di batas wajar. ' + advice,
+            headerBg: 'linear-gradient(135deg, #172554 0%, #2563eb 100%)' // Vibrant Blue
+        };
+    } else {
+        rankInfo = { 
+            title: 'Perlu Pembinaan ⚠️', color: 'bg-rose-500 text-white ring-1 ring-rose-400 shadow-md animate-pulse', 
+            notes: 'Peringatan Keras: Peringkat kedisiplinan Anda di bawah standar. ' + advice,
+            headerBg: 'linear-gradient(135deg, #4c0519 0%, #9f1239 100%)' // Dark Red
+        };
+    }
+    
+    const xpEl = document.getElementById('profil-xp');
+    const pangkatEl = document.getElementById('profil-pangkat');
+    const notesEl = document.getElementById('profil-notes');
+    
+    // Terapkan warna background header secara dinamis
+    const headers = document.querySelectorAll('.bg-gradient-premium');
+    headers.forEach(el => {
+        el.style.background = rankInfo.headerBg;
+    });
+    
+    if(xpEl && pangkatEl) {
+        xpEl.innerHTML = `${userXP} <span class="text-xs text-teal-400">XP</span>`;
+        pangkatEl.textContent = rankInfo.title;
+        pangkatEl.className = 'px-3 py-1 text-[11px] font-bold rounded-full inline-block ' + rankInfo.color;
+        if(notesEl) notesEl.textContent = rankInfo.notes;
+    }
+    
+    // Jika tidak ada data sama sekali, jangan render
+    if(totalHadir === 0 && totalAlpa === 0 && totalIzinDll === 0) return;
+    
+    if(!window.Chart) return;
+    
+    const ctx = document.getElementById('riwayatChart');
+    if(!ctx) return;
+    
+    if(riwayatChartInstance) {
+        riwayatChartInstance.destroy();
+    }
+    
+    riwayatChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Hadir', 'Alpa', 'Izin/Sakit/DL'],
+            datasets: [{
+                data: [totalHadir, totalAlpa, totalIzinDll],
+                backgroundColor: [
+                    '#10b981', // emerald-500
+                    '#f43f5e', // rose-500
+                    '#3b82f6', // blue-500
+                ],
+                borderWidth: 2,
+                borderColor: '#ffffff',
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 10,
+                        usePointStyle: true,
+                        font: {
+                            family: "'Plus Jakarta Sans', sans-serif",
+                            size: 10,
+                            weight: 'bold'
+                        }
+                    }
+                }
+            },
+            animation: {
+                animateScale: true,
+                animateRotate: true
+            }
+        }
+    });
+}
+
 async function loadDashboardData(idKaryawan) {
     try {
-        const res = await fetch(`${API_BASE}/pegawai/dashboard/today/${idKaryawan}`);
+        const res = await fetch(`${API_BASE}/pegawai/dashboard/today/${idKaryawan}?_t=${Date.now()}`);
         const result = await res.json();
         if(result.success && result.data) {
-            document.getElementById('today-masuk').textContent = result.data.jam_masuk || '--:--';
+            const elMasuk = document.getElementById('today-masuk');
+            const elStatus = document.getElementById('today-status');
+            elMasuk.textContent = result.data.jam_masuk || '--:--';
             document.getElementById('today-pulang').textContent = result.data.jam_keluar || '--:--';
-            document.getElementById('today-status').textContent = result.data.status || 'Hadir';
+            elStatus.textContent = result.data.status || 'Hadir';
+            
+            // Kalau telat, buat merah
+            if (result.data.status && result.data.status.toLowerCase().includes('telat')) {
+                elMasuk.classList.add('text-rose-500', 'font-bold');
+                elStatus.classList.remove('text-slate-700', 'bg-slate-50/80');
+                elStatus.classList.add('text-rose-600', 'bg-rose-50', 'border-rose-200');
+            } else {
+                elMasuk.classList.remove('text-rose-500', 'font-bold');
+                elStatus.classList.remove('text-rose-600', 'bg-rose-50', 'border-rose-200');
+                elStatus.classList.add('text-slate-700', 'bg-slate-50/80');
+            }
         }
     } catch(e) {}
 
     // Load Rekap Bulanan dari API yang sudah ada
     try {
-        const res = await fetch(`${API_BASE}/rekap/bulanan`);
+        const res = await fetch(`${API_BASE}/rekap/bulanan?_t=${Date.now()}`);
         const result = await res.json();
         if(result.success) {
             const myData = result.data.find(d => String(d.id_karyawan).trim().toLowerCase() === String(idKaryawan).trim().toLowerCase());
@@ -339,11 +690,237 @@ async function loadDashboardData(idKaryawan) {
                 document.getElementById('dtl-tap').textContent = myData.tanpa_absen_pulang || 0;
             }
         }
-    } catch (e) {
+} catch (e) {
         console.error("Gagal memuat rekap bulanan:", e);
         alert("Gagal memuat rekap bulanan. Silakan refresh (Ctrl+F5) atau cek koneksi server.");
     }
+    
+    // Panggil tabel metrik harian
+    loadDailyMetricsTable(idKaryawan);
+    
+    // Panggil gamifikasi riwayat (agar badge rank muncul di dashboard)
+    if (!isRiwayatLoaded) {
+        loadRiwayatBulanan(idKaryawan);
+    }
 }
+
+async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
+    const tbody = document.getElementById('daily-metrics-tbody');
+    if (!tbody) return;
+
+    try {
+        const now = new Date();
+        const year = targetPeriode ? targetPeriode.split('-')[0] : now.getFullYear();
+        const month = targetPeriode ? targetPeriode.split('-')[1] : String(now.getMonth() + 1).padStart(2, '0');
+        const periode = `${year}-${month}`;
+        
+        // Set nilai input filter bulan jika dipanggil pertama kali
+        const filterInput = document.getElementById('filter-bulan');
+        if (filterInput && !filterInput.value) {
+            filterInput.value = periode;
+        }
+        
+        // Menentukan jumlah hari dalam bulan ini
+        const targetDate = new Date(year, parseInt(month) - 1, 1);
+        const daysInMonth = new Date(year, targetDate.getMonth() + 1, 0).getDate();
+        
+        // Ambil data API dari matrix bulanan agar tidak perlu restart server (sesuai saran user)
+        const res = await fetch(`${API_BASE}/absensi/bulanan/matrix?periode=${periode}&_t=${Date.now()}`, { cache: 'no-store' });
+        const result = await res.json();
+        
+        // Ambil data alpa akurat dari backend
+        const resAlpa = await fetch(`${API_BASE}/absensi/history/${idKaryawan}?periode=${periode}&tipe=alpa&_t=${Date.now()}`);
+        const resultAlpa = await resAlpa.json();
+        const alpaDates = new Set();
+        if (resultAlpa.success && resultAlpa.data) {
+            resultAlpa.data.forEach(item => {
+                const dateNum = new Date(item.tanggal).getDate();
+                alpaDates.add(dateNum);
+            });
+        }
+
+        let html = '';
+        if (result.success) {
+            const historyMap = {};
+            
+            // Cari data user ini dari matrix secara case-insensitive
+            const userData = result.data.find(k => String(k.id_karyawan).toLowerCase() === String(idKaryawan).toLowerCase());
+            
+            if (userData && userData.hari) {
+                // userData.hari berisi { "1": {jam_masuk, jam_keluar, status...}, "2": {...} }
+                for (let d = 1; d <= 31; d++) {
+                    if (userData.hari[d]) {
+                        historyMap[d] = userData.hari[d];
+                    }
+                }
+            }
+
+            for (let i = 1; i <= 31; i++) {
+                if (i > daysInMonth) {
+                    html += `
+                        <tr class="border-b border-slate-200 bg-slate-50/50 even:bg-white">
+                            <td class="p-2 border-r border-slate-200 text-center font-bold text-slate-400">${i}</td>
+                            <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
+                            <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
+                            <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
+                            <td class="p-2 text-center text-slate-300">-</td>
+                        </tr>
+                    `;
+                    continue;
+                }
+
+                const d = historyMap[i];
+                if (d) {
+                    // Data ada
+                    let statusLabel = '';
+                    if (d.status === 'IZIN' || d.status === 'SAKIT' || d.status === 'CUTI' || d.status === 'DL' || d.status === 'DINAS_LUAR') {
+                         html += `
+                            <tr class="border-b border-slate-200 hover:bg-slate-100 transition-colors even:bg-slate-50">
+                                <td class="p-2 border-r border-slate-200 text-center font-bold text-teal-700">${i}</td>
+                                <td class="p-2 border-r border-slate-200 text-center font-bold text-blue-500" colspan="2">${d.status}</td>
+                                <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
+                                <td class="p-2 text-center text-slate-300">-</td>
+                            </tr>
+                        `;
+                        continue;
+                    }
+
+                    const masuk = d.jam_masuk && d.jam_masuk !== '-' ? d.jam_masuk.slice(0, 5) : '-';
+                    let pulang = d.jam_keluar && d.jam_keluar !== '-' ? d.jam_keluar.slice(0, 5) : '-';
+                    
+                    if ((masuk !== '-' && pulang === '-') || (d.keterangan && (d.keterangan.includes('Otomatis') || d.keterangan.includes('Tanpa Absen Pulang')))) {
+                        pulang = '<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider border border-red-200 shadow-sm">TAP</span>';
+                    }
+
+                    const psw = (d.psw_menit && d.psw_menit > 0) ? `<span class="text-rose-500 font-bold text-[11px]">P:${d.psw_menit}m</span>` : `<span class="text-slate-300">-</span>`;
+                    const telat = (d.telat_menit && d.telat_menit > 0) ? `<span class="text-rose-500 font-bold text-[11px]">T:${d.telat_menit}m</span>` : `<span class="text-slate-300">-</span>`;
+                    
+                    // Kalau telat, buat text merah
+                    const isTelat = d.status && d.status.toLowerCase().includes('telat');
+                    const masukHTML = isTelat ? `<span class="text-rose-500 font-bold">${masuk}</span>` : `<span class="font-medium">${masuk}</span>`;
+                    
+                    html += `
+                        <tr class="border-b border-slate-200 hover:bg-slate-100 transition-colors even:bg-slate-50">
+                            <td class="p-2 border-r border-slate-200 text-center font-bold text-teal-700">${i}</td>
+                            <td class="p-2 border-r border-slate-200 text-center">${masukHTML}</td>
+                            <td class="p-2 border-r border-slate-200 text-center font-medium">${pulang}</td>
+                            <td class="p-2 border-r border-slate-200 text-center">${psw}</td>
+                            <td class="p-2 text-center">${telat}</td>
+                        </tr>
+                    `;
+                } else {
+                    const dateObj = new Date(year, targetDate.getMonth(), i);
+                    const dayOfWeek = dateObj.getDay(); 
+                    const isFuture = dateObj > now;
+                    
+                    let bg = '';
+                    let info = '<span class="text-slate-300">-</span>';
+                    
+                    if (isFuture) {
+                        bg = 'bg-slate-50/50';
+                    } else if (dayOfWeek === 0) {
+                        bg = 'bg-rose-50/30';
+                        info = '<span class="text-rose-400 text-[10px] font-bold">LBR</span>';
+                    } else if (alpaDates.has(i)) {
+                        info = '<span class="text-rose-500 text-[10px] font-bold">ALPA</span>';
+                    }
+
+                    html += `
+                        <tr class="border-b border-slate-200 ${bg} even:bg-slate-50">
+                            <td class="p-2 border-r border-slate-200 text-center font-bold text-slate-500">${i}</td>
+                            <td class="p-2 text-center" colspan="4">${info}</td>
+                        </tr>
+                    `;
+                }
+            }
+        } else {
+            html = `<tr><td colspan="5" class="text-center p-4 text-slate-400">Gagal memuat data</td></tr>`;
+        }
+        tbody.innerHTML = html;
+        
+    } catch (e) {
+        console.error("Error daily metrics:", e);
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-rose-500 text-xs">Koneksi Error</td></tr>`;
+    }
+}
+
+function onMonthFilterChange(val) {
+    const userStr = localStorage.getItem('pegawai_session');
+    if(userStr) {
+        const user = JSON.parse(userStr);
+        loadDailyMetricsTable(user.id_karyawan, val);
+    }
+}
+
+// ========================
+// PULL TO REFRESH
+// ========================
+let touchStartY = 0;
+let touchEndY = 0;
+const pTrThreshold = 100;
+let isRefreshing = false;
+
+window.addEventListener('touchstart', e => {
+    if (window.scrollY === 0) {
+        touchStartY = e.changedTouches[0].screenY;
+    }
+}, {passive: true});
+
+window.addEventListener('touchmove', e => {
+    if(isRefreshing || window.scrollY > 0) return;
+    const currentY = e.changedTouches[0].screenY;
+    const pullDistance = currentY - touchStartY;
+    
+    if (pullDistance > 0 && pullDistance < pTrThreshold + 50) {
+        const indicator = document.getElementById('ptr-indicator');
+        if(indicator) {
+            indicator.style.transform = `translate(-50%, ${pullDistance - 50}px)`;
+            indicator.style.transition = 'none';
+        }
+    }
+}, {passive: true});
+
+window.addEventListener('touchend', e => {
+    if(isRefreshing || window.scrollY > 0) return;
+    touchEndY = e.changedTouches[0].screenY;
+    const pullDistance = touchEndY - touchStartY;
+    
+    const indicator = document.getElementById('ptr-indicator');
+    if(!indicator) return;
+    
+    indicator.style.transition = 'transform 0.3s ease';
+    
+    if (pullDistance > pTrThreshold) {
+        // Trigger Refresh
+        isRefreshing = true;
+        indicator.style.transform = `translate(-50%, 20px)`;
+        
+        // Cek halaman aktif
+        const session = localStorage.getItem('pegawai_session');
+        if(session) {
+            const user = JSON.parse(session);
+            const dashPage = document.getElementById('dashboard-page');
+            const riwayatPage = document.getElementById('riwayat-page');
+            
+            let promises = [];
+            if(!dashPage.classList.contains('hidden')) {
+                promises.push(loadDashboardData(user.id_karyawan));
+            } else if (!riwayatPage.classList.contains('hidden')) {
+                promises.push(loadRiwayatBulanan(user.id_karyawan));
+            }
+            
+            Promise.all(promises).then(() => {
+                setTimeout(() => {
+                    indicator.style.transform = `translate(-50%, -150%)`;
+                    isRefreshing = false;
+                }, 500);
+            });
+        }
+    } else {
+        // Batal
+        indicator.style.transform = `translate(-50%, -150%)`;
+    }
+}, {passive: true});
 
 function toggleDetailModal() {
     const modal = document.getElementById('detail-modal');
@@ -357,5 +934,21 @@ function toggleDetailModal() {
         // Tutup Modal
         modal.classList.add('opacity-0', 'pointer-events-none');
         content.classList.add('translate-y-full');
+    }
+}
+
+function togglePasswordVisibility(inputId, buttonEl) {
+    const input = document.getElementById(inputId);
+    const icon = buttonEl.querySelector('i');
+    if (input && icon) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
     }
 }

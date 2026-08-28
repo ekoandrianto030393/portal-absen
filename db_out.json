@@ -1,0 +1,6 @@
+{
+  "code": "ER_BAD_DB_ERROR",
+  "errno": 1049,
+  "sqlState": "42000",
+  "sqlMessage": "Unknown database 'absensi_db'"
+}

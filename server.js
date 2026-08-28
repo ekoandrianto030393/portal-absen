@@ -101,14 +101,18 @@ const pool = mysql.createPool({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASS || '',
     database: process.env.DB_NAME || 'biometrik_absensi_wajah_db',
+    timezone: '+07:00',
     ssl: process.env.DB_HOST && process.env.DB_HOST.includes('aivencloud') ? { rejectUnauthorized: false } : undefined,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
     // [FIX] Mencegah driver mengubah DATE/TIME menjadi JavaScript Date object
     // Tanpa ini, DATE '2026-06-02' → JS Date → JSON "2026-06-01T17:00:00Z" (mundur 1 hari di UTC+7)
-    dateStrings: true,
-    timezone: '+07:00'
+    dateStrings: ['DATE', 'DATETIME']
+});
+
+pool.on('connection', function (connection) {
+    connection.query("SET time_zone = '+07:00'");
 });
 
 // Cek Koneksi Database saat Startup
@@ -173,6 +177,18 @@ pool.getConnection((err, connection) => {
                 telat_menit INT DEFAULT 0,
                 psw_menit INT DEFAULT 0,
                 UNIQUE KEY unique_absensi_harian (id_karyawan, tanggal),
+                FOREIGN KEY (id_karyawan) REFERENCES karyawan(id_karyawan) ON DELETE CASCADE
+            ) ENGINE=InnoDB;
+        `;
+        
+        // 2.5 Tabel Req Ubah Password
+        const createReqPasswordSql = `
+            CREATE TABLE IF NOT EXISTS req_ubah_password (
+                id_req INT AUTO_INCREMENT PRIMARY KEY,
+                id_karyawan VARCHAR(50) NOT NULL,
+                password_baru VARCHAR(255) NOT NULL,
+                status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (id_karyawan) REFERENCES karyawan(id_karyawan) ON DELETE CASCADE
             ) ENGINE=InnoDB;
         `;
@@ -259,9 +275,12 @@ pool.getConnection((err, connection) => {
                         connection.query(createAbsensiSql, (err) => {
                             if (err) console.error('⚠️ Init Tabel Absensi:', err.message);
                             else {
-                                // FIX: Pastikan kolom baru ada sebelum membuat View (untuk database lama)
-                                const addColumnSql = "ALTER TABLE absensi ADD COLUMN keterangan VARCHAR(255)";
-                                const addTelatSql = "ALTER TABLE absensi ADD COLUMN telat_menit INT DEFAULT 0";
+                                connection.query(createReqPasswordSql, (err) => {
+                                    if (err) console.error('⚠️ Init Tabel Req Password:', err.message);
+                                    
+                                    // FIX: Pastikan kolom baru ada sebelum membuat View (untuk database lama)
+                                    const addColumnSql = "ALTER TABLE absensi ADD COLUMN keterangan VARCHAR(255)";
+                                    const addTelatSql = "ALTER TABLE absensi ADD COLUMN telat_menit INT DEFAULT 0";
                                 const addPswSql = "ALTER TABLE absensi ADD COLUMN psw_menit INT DEFAULT 0";
                                 const addNoUrutSql = "ALTER TABLE karyawan ADD COLUMN no_urut INT DEFAULT 9999";
 
@@ -290,13 +309,14 @@ pool.getConnection((err, connection) => {
                                             });
                                         });
                                     });
-                                });
-                            }
-                        });
-                    }
-                });
-            }
-        });
+                                }); // closes addColumnSql
+                            }); // closes createReqPasswordSql
+                        } // closes else
+                    }); // closes createAbsensiSql
+                } // closes else
+            }); // closes createKaryawanSql
+        } // closes else
+    }); // closes cleanUpSql
 
         connection.release();
     }
@@ -741,6 +761,70 @@ app.get('/api/absensi/history/:id_karyawan', (req, res) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, data: results });
     });
+});
+
+// [NEW] Endpoint: Request Ubah Password (dari portal-online)
+app.post('/api/pegawai/req-ubah-password', (req, res) => {
+    const { id_karyawan, password_baru } = req.body;
+    if (!id_karyawan || !password_baru) {
+        return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
+    }
+    
+    // Hash password sebelum disimpan ke request agar aman (opsional, tapi lebih baik)
+    const hashedPass = hashPassword(password_baru);
+    
+    const sql = `INSERT INTO req_ubah_password (id_karyawan, password_baru, status) VALUES (?, ?, 'pending')`;
+    pool.query(sql, [id_karyawan, hashedPass], (err) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, message: 'Permintaan ubah password berhasil dikirim. Menunggu persetujuan Admin.' });
+    });
+});
+
+// [NEW] Endpoint: Ambil Daftar Request Password Pending (untuk Admin)
+app.get('/api/admin/req-ubah-password', (req, res) => {
+    const sql = `
+        SELECT r.id_req, r.id_karyawan, k.nama, r.status, r.created_at 
+        FROM req_ubah_password r
+        JOIN karyawan k ON r.id_karyawan = k.id_karyawan
+        WHERE r.status = 'pending'
+        ORDER BY r.created_at DESC
+    `;
+    pool.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, data: results });
+    });
+});
+
+// [NEW] Endpoint: Setujui/Tolak Request Ubah Password (dari Admin)
+app.post('/api/admin/approve-password', (req, res) => {
+    const { id_req, action } = req.body; // action: 'approve' atau 'reject'
+    if (!id_req || !action) return res.status(400).json({ success: false, message: 'Parameter tidak valid' });
+    
+    if (action === 'reject') {
+        pool.query(`UPDATE req_ubah_password SET status = 'rejected' WHERE id_req = ?`, [id_req], (err) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            return res.json({ success: true, message: 'Permintaan ditolak.' });
+        });
+    } else if (action === 'approve') {
+        // 1. Ambil password_baru dari tabel req
+        pool.query(`SELECT id_karyawan, password_baru FROM req_ubah_password WHERE id_req = ? AND status = 'pending'`, [id_req], (err, rows) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            if (rows.length === 0) return res.status(404).json({ success: false, message: 'Permintaan tidak ditemukan atau sudah diproses.' });
+            
+            const { id_karyawan, password_baru } = rows[0];
+            
+            // 2. Update akun_pegawai
+            pool.query(`UPDATE akun_pegawai SET password = ? WHERE id_karyawan = ?`, [password_baru, id_karyawan], (err) => {
+                if (err) return res.status(500).json({ success: false, message: err.message });
+                
+                // 3. Tandai request menjadi approved
+                pool.query(`UPDATE req_ubah_password SET status = 'approved' WHERE id_req = ?`, [id_req], (err) => {
+                    if (err) return res.status(500).json({ success: false, message: err.message });
+                    res.json({ success: true, message: 'Password berhasil diubah!' });
+                });
+            });
+        });
+    }
 });
 
 // Endpoint: Data Absensi Bulanan Matrix (Menyamping)
@@ -1239,9 +1323,51 @@ app.put('/api/absensi/:id', (req, res) => {
             return res.status(500).json({ success: false, message: err.message });
         }
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+        
+        // [NEW] Trigger instant push to Aiven
+        pushToAiven(id);
+        
         res.json({ success: true, message: 'Data absensi berhasil diperbarui.' });
     });
 });
+
+// Helper for instant push
+async function pushToAiven(id_absensi) {
+    try {
+        const mysqlPromise = require('mysql2/promise');
+        const localDb = await mysqlPromise.createConnection({
+            host: process.env.DB_HOST || '127.0.0.1',
+            port: process.env.DB_PORT || 3306,
+            user: process.env.DB_USER || 'root',
+            password: process.env.DB_PASS || '',
+            database: process.env.DB_NAME || 'biometrik_absensi_wajah_db',
+            dateStrings: true, timezone: '+07:00'
+        });
+        const cloudDb = await mysqlPromise.createConnection({
+            host: process.env.CLOUD_DB_HOST,
+            port: process.env.CLOUD_DB_PORT,
+            user: process.env.CLOUD_DB_USER,
+            password: process.env.CLOUD_DB_PASS,
+            database: process.env.CLOUD_DB_NAME,
+            ssl: { rejectUnauthorized: false },
+            dateStrings: true, timezone: '+07:00'
+        });
+        const [absensiList] = await localDb.query("SELECT * FROM absensi WHERE id_absensi = ?", [id_absensi]);
+        if (absensiList.length > 0) {
+            const a = absensiList[0];
+            await cloudDb.query(
+                `INSERT INTO absensi (id_absensi, id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
+                 ON DUPLICATE KEY UPDATE 
+                 jam_masuk = VALUES(jam_masuk), jam_keluar = VALUES(jam_keluar), status = VALUES(status), 
+                 keterangan = VALUES(keterangan), telat_menit = VALUES(telat_menit), psw_menit = VALUES(psw_menit)`,
+                [a.id_absensi, a.id_karyawan, a.tanggal, a.jam_masuk, a.jam_keluar, a.status, a.keterangan, a.telat_menit, a.psw_menit]
+            );
+        }
+        await localDb.end();
+        await cloudDb.end();
+    } catch(e) { console.error("Aiven instant sync error:", e.message); }
+}
 
 // --- API ENDPOINTS KHUSUS MONITORING (monitor.html) ---
 

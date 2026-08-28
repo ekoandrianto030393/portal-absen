@@ -172,6 +172,9 @@
                 <li><button id="nav-employees" onclick="switchTab('employees')"
                         class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><i
                             class="fa-solid fa-users w-5 text-center text-emerald-400/60 group-hover:text-white"></i> <span class="font-medium">Data Pegawai</span></button></li>
+                <li><button id="nav-req-password" onclick="switchTab('req-password')"
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><i
+                            class="fa-solid fa-key w-5 text-center text-orange-400/80 group-hover:text-white"></i> <span class="font-medium">Req Ubah Password</span></button></li>
                 
                 <li class="px-3 pb-2 pt-6"><span class="text-[10px] font-bold tracking-widest text-emerald-400/70 uppercase drop-shadow-sm">Database Sistem</span></li>
                 <li><button id="nav-view-db" onclick="switchTab('view-db')"
@@ -513,6 +516,33 @@
                             <thead class="bg-slate-800 text-white uppercase font-bold sticky top-0 z-30">
                             </thead>
                             <tbody id="table-view-db-monthly-body" class="divide-y divide-slate-200 text-slate-700 bg-white">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: REQ UBAH PASSWORD -->
+            <div id="view-req-password" class="hidden space-y-6">
+                <div class="card-academic overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                        <h3 class="font-bold text-slate-800 uppercase tracking-wide">Permintaan Ubah Password</h3>
+                        <button onclick="loadReqPassword()" class="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="Refresh Data"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    </div>
+                    <div class="overflow-x-auto min-h-[50vh]">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead class="bg-slate-800 text-white uppercase font-bold tracking-wider">
+                                <tr>
+                                    <th class="px-6 py-4">ID Pengajuan</th>
+                                    <th class="px-6 py-4">ID Karyawan</th>
+                                    <th class="px-6 py-4">Nama</th>
+                                    <th class="px-6 py-4">Tanggal Pengajuan</th>
+                                    <th class="px-6 py-4">Status</th>
+                                    <th class="px-6 py-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-req-password-body" class="divide-y divide-slate-200 text-slate-700">
+                                <!-- JS Injected -->
                             </tbody>
                         </table>
                     </div>

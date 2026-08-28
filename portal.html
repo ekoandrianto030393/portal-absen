@@ -102,6 +102,23 @@
         
         /* Table row hover fx */
         .table-row-hover:hover { background-color: #f0fdfa !important; transform: scale(1.01); transition: all 0.2s ease; }
+        
+        /* Slide Animations */
+        @keyframes slideInFromRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideInFromLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOutToLeft { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-100%); opacity: 0; } }
+        @keyframes slideOutToRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        .slide-in-center { animation: slideInFromRight 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        .slide-out-left { animation: slideOutToLeft 0.25s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards; }
+        .slide-out-right { animation: slideOutToRight 0.25s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards; }
+        
+        /* XP Progress Bar Animation */
+        @keyframes xpFill { from { width: 0; } }
+        .xp-bar-fill { animation: xpFill 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        
+        /* Pulse Glow for low rank */
+        @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 5px rgba(244,63,94,0.3); } 50% { box-shadow: 0 0 20px rgba(244,63,94,0.6); } }
+        .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 relative overflow-x-hidden min-h-screen antialiased selection:bg-teal-200 selection:text-teal-900">
@@ -124,7 +141,7 @@
             
             <div class="text-center mb-8 relative z-10">
                 <div class="w-20 h-20 bg-gradient-premium text-white rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-teal-500/30 transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                    <i class="fa-solid fa-fingerprint text-4xl"></i>
+                    <i class="fa-solid fa-hospital text-4xl"></i>
                 </div>
                 <h2 class="text-3xl font-extrabold gradient-text tracking-tight">BIOMETRIK</h2>
                 <p class="text-sm text-slate-500 mt-1 font-medium">Sistem Presensi Pegawai PUSKESMAS WANA</p>
@@ -138,7 +155,10 @@
                     </div>
                     <div class="relative">
                         <i class="fa-solid fa-lock absolute left-4 top-4 text-slate-400"></i>
-                        <input type="password" id="login-password" placeholder="Password" class="input-premium w-full pl-12 pr-4 py-3.5 rounded-xl outline-none font-medium text-slate-700 placeholder-slate-400">
+                        <input type="password" id="login-password" placeholder="Password" class="input-premium w-full pl-12 pr-12 py-3.5 rounded-xl outline-none font-medium text-slate-700 placeholder-slate-400">
+                        <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute right-4 top-4 text-slate-400 hover:text-teal-600 focus:outline-none">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
                     </div>
                     <button onclick="login()" class="w-full bg-gradient-premium text-white font-bold py-3.5 rounded-xl hover:shadow-lg hover:shadow-teal-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 mt-2">Masuk Sekarang</button>
                 </div>
@@ -161,7 +181,10 @@
                     </div>
                     <div class="relative">
                         <i class="fa-solid fa-key absolute left-4 top-3.5 text-slate-400 text-sm"></i>
-                        <input type="password" id="reg-password" placeholder="Buat Password" class="input-premium w-full pl-11 pr-4 py-3 rounded-xl outline-none text-sm font-medium">
+                        <input type="password" id="reg-password" placeholder="Buat Password" class="input-premium w-full pl-11 pr-11 py-3 rounded-xl outline-none text-sm font-medium">
+                        <button type="button" onclick="togglePasswordVisibility('reg-password', this)" class="absolute right-4 top-3 text-slate-400 hover:text-teal-600 focus:outline-none">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
                     </div>
                     <button onclick="register()" class="w-full bg-slate-800 text-white font-bold py-3.5 rounded-xl hover:bg-slate-900 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 mt-4 text-sm">Daftar Akun</button>
                 </div>
@@ -187,6 +210,12 @@
                         <div class="w-5 h-5 rounded-full bg-white/20 text-white flex items-center justify-center"><i class="fa-solid fa-hospital"></i></div>
                         <span class="text-white text-[11px] font-extrabold uppercase tracking-[0.25em] drop-shadow-sm pl-1">Puskesmas Wana</span>
                     </div>
+                </div>
+
+                <!-- Real-time Clock -->
+                <div class="flex items-center gap-2 mt-3 mb-2">
+                    <span id="greeting-text" class="text-teal-100/80 text-xs font-semibold">Selamat Pagi,</span>
+                    <span id="realtime-clock" class="text-white text-sm font-mono font-bold bg-white/10 px-2.5 py-0.5 rounded-lg border border-white/10">00:00:00</span>
                 </div>
 
                 <div class="flex justify-between items-start">
@@ -400,6 +429,17 @@
                 <p class="text-sm text-slate-500 font-medium">Memuat data riwayat...</p>
             </div>
         </div>
+        <!-- Chart Card -->
+        <div id="riwayat-chart-card" class="px-5 mt-4 hidden opacity-0 transition-opacity duration-500">
+            <div class="glass-card rounded-[2rem] p-5 premium-shadow">
+                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-teal-600"></i> Grafik Kehadiran
+                </h3>
+                <div class="relative" style="height: 200px;">
+                    <canvas id="riwayatChart"></canvas>
+                </div>
+            </div>
+        </div>
         <div class="h-6"></div>
     </div>
 
@@ -510,6 +550,26 @@
 
         <div class="px-5 -mt-8 relative z-20 space-y-4">
             
+            <!-- GAMIFIKASI: Prestasi & Pangkat -->
+            <div class="glass-card rounded-[1.5rem] p-5 premium-shadow">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Prestasi Kehadiran</h3>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] text-slate-500 font-semibold uppercase mb-1">Pangkat Saat Ini</p>
+                        <p id="profil-pangkat" class="px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600 inline-block">-</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-slate-500 font-semibold uppercase mb-1">Total Poin (XP)</p>
+                        <p id="profil-xp" class="text-xl font-black text-teal-600">0 <span class="text-xs text-teal-400">XP</span></p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100/70">
+                    <p id="profil-notes" class="text-[10px] leading-relaxed font-medium text-slate-500 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100/50">
+                        Memuat rekam jejak kedisiplinan...
+                    </p>
+                </div>
+            </div>
+            
             <div class="glass-card rounded-[1.5rem] p-5 premium-shadow">
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Informasi Akun</h3>
                 
@@ -571,6 +631,7 @@
             navigator.serviceWorker.register('/sw.js');
         }
     </script>
-    <script src="/portal.js?v=18"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="/portal.js?v=20"></script>
 </body>
 </html>

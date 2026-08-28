@@ -183,7 +183,7 @@ async function loadSystemConfig() {
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
     // Hide all views
-    ['overview', 'daily', 'monthly', 'performance', 'employees', 'view-db', 'view-db-monthly', 'settings'].forEach(id => {
+    ['overview', 'daily', 'monthly', 'performance', 'employees', 'view-db', 'view-db-monthly', 'req-password', 'settings'].forEach(id => {
         const viewEl = document.getElementById(`view-${id}`);
         if (viewEl) {
             viewEl.classList.add('hidden');
@@ -227,6 +227,76 @@ function switchTab(tabName) {
     if (tabName === 'employees') loadEmployees();
     if (tabName === 'view-db') loadViewDbData();
     if (tabName === 'view-db-monthly') loadViewDbMonthlyData();
+    if (tabName === 'req-password') loadReqPassword();
+}
+
+// --- DATA LOADER: REQ UBAH PASSWORD ---
+async function loadReqPassword(silent = false) {
+    if (!silent) showSpinner();
+    const tbody = document.getElementById('table-req-password-body');
+    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Memuat data...</td></tr>';
+    
+    try {
+        const response = await fetch(`${API_BASE}/admin/req-ubah-password`);
+        const result = await response.json();
+        
+        tbody.innerHTML = '';
+        if (result.success && result.data.length > 0) {
+            result.data.forEach(row => {
+                let statusBadge = '';
+                if (row.status === 'PENDING') statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold text-xs">PENDING</span>';
+                else if (row.status === 'APPROVED') statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 rounded font-bold text-xs">APPROVED</span>';
+                else if (row.status === 'REJECTED') statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 rounded font-bold text-xs">REJECTED</span>';
+                
+                const tr = `
+                    <tr class="hover:bg-slate-50 border-b border-slate-200">
+                        <td class="px-6 py-4 font-mono text-sm">${row.id_req}</td>
+                        <td class="px-6 py-4 font-mono text-sm">${row.id_karyawan}</td>
+                        <td class="px-6 py-4 font-bold text-sm">${row.nama_karyawan}</td>
+                        <td class="px-6 py-4 text-sm">${row.created_at}</td>
+                        <td class="px-6 py-4">${statusBadge}</td>
+                        <td class="px-6 py-4 text-center">
+                            ${row.status === 'PENDING' ? `
+                            <button onclick="processReqPassword(${row.id_req}, 'APPROVED')" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-xs font-bold mr-2"><i class="fa-solid fa-check"></i> Setujui</button>
+                            <button onclick="processReqPassword(${row.id_req}, 'REJECTED')" class="px-3 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded text-xs font-bold"><i class="fa-solid fa-xmark"></i> Tolak</button>
+                            ` : '-'}
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += tr;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada permintaan.</td></tr>';
+        }
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
+    } finally {
+        if (!silent) hideSpinner();
+    }
+}
+
+async function processReqPassword(id_req, status) {
+    if (!confirm(`Apakah Anda yakin ingin ${status === 'APPROVED' ? 'MENYETUJUI' : 'MENOLAK'} permintaan ini?`)) return;
+    
+    const action = status === 'APPROVED' ? 'approve' : 'reject';
+    
+    try {
+        const response = await fetch(`${API_BASE}/admin/approve-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_req, action })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`Berhasil: ${result.message}`);
+            loadReqPassword(); // Refresh tabel
+        } else {
+            alert(`Gagal: ${result.message}`);
+        }
+    } catch (e) {
+        alert(`Error: ${e.message}`);
+    }
 }
 
 // --- JAM DIGITAL ---
