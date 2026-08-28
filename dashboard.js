@@ -244,21 +244,22 @@ async function loadReqPassword(silent = false) {
         if (result.success && result.data.length > 0) {
             result.data.forEach(row => {
                 let statusBadge = '';
-                if (row.status === 'PENDING') statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold text-xs">PENDING</span>';
-                else if (row.status === 'APPROVED') statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 rounded font-bold text-xs">APPROVED</span>';
-                else if (row.status === 'REJECTED') statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 rounded font-bold text-xs">REJECTED</span>';
+                const currentStatus = row.status.toUpperCase();
+                if (currentStatus === 'PENDING') statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold text-xs">PENDING</span>';
+                else if (currentStatus === 'APPROVED') statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 rounded font-bold text-xs">APPROVED</span>';
+                else if (currentStatus === 'REJECTED') statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 rounded font-bold text-xs">REJECTED</span>';
                 
                 const tr = `
                     <tr class="hover:bg-slate-50 border-b border-slate-200">
                         <td class="px-6 py-4 font-mono text-sm">${row.id_req}</td>
                         <td class="px-6 py-4 font-mono text-sm">${row.id_karyawan}</td>
-                        <td class="px-6 py-4 font-bold text-sm">${row.nama_karyawan}</td>
+                        <td class="px-6 py-4 font-bold text-sm">${row.nama}</td>
                         <td class="px-6 py-4 text-sm">${row.created_at}</td>
                         <td class="px-6 py-4">${statusBadge}</td>
                         <td class="px-6 py-4 text-center">
-                            ${row.status === 'PENDING' ? `
-                            <button onclick="processReqPassword(${row.id_req}, 'APPROVED')" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-xs font-bold mr-2"><i class="fa-solid fa-check"></i> Setujui</button>
-                            <button onclick="processReqPassword(${row.id_req}, 'REJECTED')" class="px-3 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded text-xs font-bold"><i class="fa-solid fa-xmark"></i> Tolak</button>
+                            ${currentStatus === 'PENDING' ? `
+                            <button onclick="processReqPassword(${row.id_req}, 'approve')" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-xs font-bold mr-2"><i class="fa-solid fa-check"></i> Setujui</button>
+                            <button onclick="processReqPassword(${row.id_req}, 'reject')" class="px-3 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded text-xs font-bold"><i class="fa-solid fa-xmark"></i> Tolak</button>
                             ` : '-'}
                         </td>
                     </tr>
@@ -275,10 +276,8 @@ async function loadReqPassword(silent = false) {
     }
 }
 
-async function processReqPassword(id_req, status) {
-    if (!confirm(`Apakah Anda yakin ingin ${status === 'APPROVED' ? 'MENYETUJUI' : 'MENOLAK'} permintaan ini?`)) return;
-    
-    const action = status === 'APPROVED' ? 'approve' : 'reject';
+async function processReqPassword(id_req, action) {
+    if (!confirm(`Apakah Anda yakin ingin ${action === 'approve' ? 'MENYETUJUI' : 'MENOLAK'} permintaan ini?`)) return;
     
     try {
         const response = await fetch(`${API_BASE}/admin/approve-password`, {
