@@ -35,6 +35,7 @@ async function migrate() {
         // Buat tabel satu per satu di Aiven (sesuai struktur skema_final)
         await aivenDb.query(`DROP VIEW IF EXISTS view_absensi_harian;`);
         await aivenDb.query(`DROP VIEW IF EXISTS view_rekap_bulanan;`);
+        await aivenDb.query(`DROP TABLE IF EXISTS req_ubah_password;`);
         await aivenDb.query(`DROP TABLE IF EXISTS akun_pegawai;`);
         await aivenDb.query(`DROP TABLE IF EXISTS absensi;`);
         await aivenDb.query(`DROP TABLE IF EXISTS karyawan;`);
@@ -79,6 +80,18 @@ async function migrate() {
             );
         `);
         console.log("✅ Tabel 'akun_pegawai' terbuat di Aiven");
+
+        await aivenDb.query(`
+            CREATE TABLE req_ubah_password (
+                id_req INT AUTO_INCREMENT PRIMARY KEY,
+                id_karyawan VARCHAR(50) NOT NULL,
+                password_baru VARCHAR(255) NOT NULL,
+                status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (id_karyawan) REFERENCES karyawan(id_karyawan) ON DELETE CASCADE
+            );
+        `);
+        console.log("✅ Tabel 'req_ubah_password' terbuat di Aiven");
 
         // MEMBUAT VIEWS
         const viewRekapBulanan = `
@@ -174,6 +187,21 @@ async function migrate() {
             console.log("✅ Berhasil mentransfer " + akunList.length + " akun pegawai");
         } catch(e) {
             console.log("⚠️ Tabel akun_pegawai kosong atau tidak ada di lokal, di-skip.");
+        }
+
+        // === TRANSFER DATA REQ UBAH PASSWORD ===
+        console.log("Memulai transfer data req ubah password...");
+        try {
+            const [reqList] = await localDb.query('SELECT * FROM req_ubah_password');
+            for (const req of reqList) {
+                await aivenDb.query(
+                    'INSERT INTO req_ubah_password (id_req, id_karyawan, password_baru, status, created_at) VALUES (?, ?, ?, ?, ?)',
+                    [req.id_req, req.id_karyawan, req.password_baru, req.status, req.created_at]
+                );
+            }
+            console.log("✅ Berhasil mentransfer " + reqList.length + " req ubah password");
+        } catch(e) {
+            console.log("⚠️ Tabel req_ubah_password kosong atau tidak ada di lokal, di-skip.");
         }
 
         console.log("🎉 SEMUA DATA BERHASIL DIMIGRASI KE AIVEN!");
