@@ -156,7 +156,7 @@ async function migrate() {
         const [karyawanList] = await localDb.query('SELECT * FROM karyawan');
         for (const k of karyawanList) {
             await aivenDb.query(
-                'INSERT INTO karyawan (id_karyawan, nama, jabatan, face_descriptor, foto, tanggal_registrasi) VALUES (?, ?, ?, ?, ?, ?)',
+                'INSERT IGNORE INTO karyawan (id_karyawan, nama, jabatan, face_descriptor, foto, tanggal_registrasi) VALUES (?, ?, ?, ?, ?, ?)',
                 [k.id_karyawan, k.nama, k.jabatan, k.face_descriptor, k.foto, k.tanggal_registrasi]
             );
         }
@@ -167,7 +167,7 @@ async function migrate() {
         const [absensiList] = await localDb.query('SELECT * FROM absensi');
         for (const a of absensiList) {
             await aivenDb.query(
-                'INSERT INTO absensi (id_absensi, id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT IGNORE INTO absensi (id_absensi, id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [a.id_absensi, a.id_karyawan, a.tanggal, a.jam_masuk, a.jam_keluar, a.status, a.keterangan, a.telat_menit, a.psw_menit]
             );
         }
@@ -180,7 +180,7 @@ async function migrate() {
             const [akunList] = await localDb.query('SELECT * FROM akun_pegawai');
             for (const ak of akunList) {
                 await aivenDb.query(
-                    'INSERT INTO akun_pegawai (id_akun, id_karyawan, username, password, created_at) VALUES (?, ?, ?, ?, ?)',
+                    'INSERT IGNORE INTO akun_pegawai (id_akun, id_karyawan, username, password, created_at) VALUES (?, ?, ?, ?, ?)',
                     [ak.id_akun, ak.id_karyawan, ak.username, ak.password, ak.created_at]
                 );
             }
@@ -195,7 +195,7 @@ async function migrate() {
             const [reqList] = await localDb.query('SELECT * FROM req_ubah_password');
             for (const req of reqList) {
                 await aivenDb.query(
-                    'INSERT INTO req_ubah_password (id_req, id_karyawan, password_baru, status, created_at) VALUES (?, ?, ?, ?, ?)',
+                    'INSERT IGNORE INTO req_ubah_password (id_req, id_karyawan, password_baru, status, created_at) VALUES (?, ?, ?, ?, ?)',
                     [req.id_req, req.id_karyawan, req.password_baru, req.status, req.created_at]
                 );
             }
