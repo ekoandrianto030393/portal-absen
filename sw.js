@@ -1,4 +1,4 @@
-const CACHE_NAME = 'portal-absen-v52';
+const CACHE_NAME = 'portal-absen-v54';
 const urlsToCache = [
   '/portal.html',
   '/portal.js',
@@ -27,11 +27,27 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Selalu utamakan mengambil dari jaringan (Network-First) agar terhindar dari cache bandel di APK
+  const url = new URL(event.request.url);
+  
+  // JANGAN PERNAH CACHE API CALLS (Biar PWA / APK ini berperilaku persis seperti Native Kotlin/React)
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        return response; // Langsung return network, JANGAN SIMPAN ke caches
+      }).catch(err => {
+        // Fallback jika offline
+        return new Response(JSON.stringify({ success: false, message: "Koneksi terputus. Anda sedang offline." }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
+    return;
+  }
+
+  // Network-First untuk file selain API (HTML, JS, CSS)
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        // Jika berhasil ambil dari internet, simpan/perbarui ke cache
         if (response && response.status === 200 && response.type === 'basic') {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then(cache => {
@@ -41,7 +57,6 @@ self.addEventListener('fetch', event => {
         return response;
       })
       .catch(() => {
-        // Jika offline atau jaringan gagal, BARU ambil dari cache
         return caches.match(event.request);
       })
   );

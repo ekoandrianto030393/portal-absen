@@ -16,9 +16,7 @@
             user-select: none;
             box-sizing: border-box;
         }
-        input, textarea {
-            user-select: auto;
-        }
+        input, textarea { user-select: auto; }
         
         /* Modern Scrollbar Hide */
         ::-webkit-scrollbar { display: none; }
@@ -32,23 +30,23 @@
         /* Premium Glassmorphism */
         .glass-card {
             background: rgba(255, 255, 255, 0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.9);
-            box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.08);
+            box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255,255,255,1);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .premium-shadow {
-            box-shadow: 0 15px 35px -10px rgba(13, 148, 136, 0.15);
-        }
+        .glass-card:active { transform: scale(0.98); }
+        .premium-shadow { box-shadow: 0 15px 35px -10px rgba(13, 148, 136, 0.15); }
         
         /* Gradients */
         .gradient-text {
-            background: linear-gradient(135deg, #0f766e, #059669);
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
         .bg-gradient-premium {
-            background: linear-gradient(135deg, #022c22 0%, #0d9488 100%);
+            background: linear-gradient(135deg, #064e3b 0%, #0d9488 100%);
             position: relative;
         }
         
@@ -66,27 +64,74 @@
             transform: translateY(-2px);
         }
         
+        /* Bento Grid */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .bento-item {
+            border-radius: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .bento-item-wide { grid-column: span 2; }
+        
+        /* Skeleton Loading */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 0.5rem;
+            color: transparent !important;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .skeleton * { visibility: hidden; }
+
+        /* Ripple Effect (Android-like) */
+        .ripple { position: relative; overflow: hidden; }
+        .ripple::after {
+            content: ""; display: block; position: absolute;
+            width: 100%; height: 100%; top: 0; left: 0;
+            pointer-events: none;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.5) 10%, transparent 10.01%);
+            background-repeat: no-repeat; background-position: 50%;
+            transform: scale(10, 10); opacity: 0;
+            transition: transform .5s, opacity 1s;
+        }
+        .ripple.ripple-dark::after {
+            background-image: radial-gradient(circle, rgba(0,0,0,0.1) 10%, transparent 10.01%);
+        }
+        .ripple:active::after { transform: scale(0, 0); opacity: .3; transition: 0s; }
+
+        /* Bottom Nav Floating iOS Style */
+        .bottom-nav-glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255,255,255,0.9);
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.1);
+        }
+
         /* Background Blobs Animation */
         @keyframes float-blob-1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(30px, -30px) scale(1.1); } }
         @keyframes float-blob-2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-30px, 30px) scale(0.9); } }
         .blob {
-            position: absolute;
-            filter: blur(60px);
-            z-index: -1;
-            opacity: 0.6;
-            border-radius: 50%;
+            position: absolute; filter: blur(60px); z-index: -1; opacity: 0.6; border-radius: 50%;
         }
         .blob-1 { animation: float-blob-1 12s infinite ease-in-out; }
         .blob-2 { animation: float-blob-2 15s infinite ease-in-out reverse; }
         
-        /* Initial Loader */
-        #loader {
-            position: fixed; inset: 0; background: #f8fafc; z-index: 9999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        /* Modern Spinner */
+        /* Micro Animations */
+        .spring-bounce:active { transform: scale(0.92); transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1); }
         .spinner-modern {
             width: 48px; height: 48px;
             border: 4px solid rgba(13, 148, 136, 0.2);
@@ -95,14 +140,19 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
-        /* Marquee Animation */
         @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-150%); } }
         .animate-marquee { display: inline-block; white-space: nowrap; animation: marquee 20s linear infinite; }
         
         /* Table row hover fx */
-        .table-row-hover:hover { background-color: #f0fdfa !important; transform: scale(1.01); transition: all 0.2s ease; }
-        
+        .table-row-hover:active { background-color: #f0fdfa !important; transform: scale(0.99); transition: all 0.1s ease; }
+
+        /* Initial Loader */
+        #loader {
+            position: fixed; inset: 0; background: #f8fafc; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         /* Slide Animations */
         @keyframes slideInFromRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes slideInFromLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -111,10 +161,6 @@
         .slide-in-center { animation: slideInFromRight 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
         .slide-out-left { animation: slideOutToLeft 0.25s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards; }
         .slide-out-right { animation: slideOutToRight 0.25s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards; }
-        
-        /* XP Progress Bar Animation */
-        @keyframes xpFill { from { width: 0; } }
-        .xp-bar-fill { animation: xpFill 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
         
         /* Pulse Glow for low rank */
         @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 5px rgba(244,63,94,0.3); } 50% { box-shadow: 0 0 20px rgba(244,63,94,0.6); } }
@@ -301,78 +347,78 @@
             </div>
 
             <!-- Grid Rekap (Premium Widget Style) -->
-            <div class="grid grid-cols-4 gap-3 pb-2">
-                
-                <!-- Card Hadir -->
-                <div class="bg-gradient-to-b from-white to-emerald-50/30 p-2.5 rounded-[1.25rem] border border-emerald-100/50 shadow-[0_8px_16px_-6px_rgba(16,185,129,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-check-double text-xs"></i>
+            <div class="bento-grid pb-2">
+                <!-- Card Hadir (Wide) -->
+                <div class="bento-item bento-item-wide ripple glass-card p-4 flex flex-row items-center justify-between border-l-4 border-l-emerald-500">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
+                            <i class="fa-solid fa-check-double text-xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-[11px] font-bold text-emerald-700/80 uppercase tracking-widest leading-tight mb-0.5">Kehadiran</p>
+                            <p class="text-3xl font-black text-slate-800 tracking-tight leading-none" id="rekap-hadir">0</p>
+                        </div>
                     </div>
-                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-hadir">0</p>
-                    <p class="text-[9px] font-bold text-emerald-700/80 uppercase tracking-widest leading-tight">Hadir</p>
+                    <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-emerald-300 opacity-50">
+                        <i class="fa-solid fa-award text-lg"></i>
+                    </div>
                 </div>
 
                 <!-- Card Alpa -->
-                <div class="bg-gradient-to-b from-white to-rose-50/30 p-2.5 rounded-[1.25rem] border border-rose-100/50 shadow-[0_8px_16px_-6px_rgba(244,63,94,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-8 h-8 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-triangle-exclamation text-xs"></i>
-                    </div>
-                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-alpa">0</p>
-                    <p class="text-[9px] font-bold text-rose-700/80 uppercase tracking-widest leading-tight">Alpa</p>
-                </div>
-
-                <!-- Card Telat (X) -->
-                <div class="bg-gradient-to-b from-white to-amber-50/30 p-2.5 rounded-[1.25rem] border border-amber-100/50 shadow-[0_8px_16px_-6px_rgba(245,158,11,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-8 h-8 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-clock-rotate-left text-xs"></i>
-                    </div>
-                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-telat">0</p>
-                    <p class="text-[9px] font-bold text-amber-700/80 uppercase tracking-widest leading-tight">Telat (x)</p>
-                </div>
-
-                <!-- Card Telat Menit -->
-                <div class="bg-gradient-to-b from-white to-orange-50/30 p-2.5 rounded-[1.25rem] border border-orange-100/50 shadow-[0_8px_16px_-6px_rgba(249,115,22,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-8 h-8 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-stopwatch text-xs"></i>
-                    </div>
-                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none flex items-baseline tracking-tight"><span id="rekap-telat-menit">0</span><span class="text-[10px] font-bold text-slate-400 ml-0.5">m</span></p>
-                    <p class="text-[9px] font-bold text-orange-700/80 uppercase tracking-widest leading-tight">Telat Min</p>
+                <div class="bento-item ripple glass-card p-3.5 flex flex-col items-start border-l-4 border-l-rose-500">
+                    <div class="w-9 h-9 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center mb-2 shadow-inner"><i class="fa-solid fa-triangle-exclamation text-sm"></i></div>
+                    <p class="text-[10px] font-bold text-rose-700/80 uppercase tracking-widest leading-tight">Alpa</p>
+                    <p class="text-2xl font-black text-slate-800 tracking-tight" id="rekap-alpa">0</p>
                 </div>
 
                 <!-- Card Izin/Cuti -->
-                <div class="bg-gradient-to-b from-white to-blue-50/30 p-2.5 rounded-[1.25rem] border border-blue-100/50 shadow-[0_8px_16px_-6px_rgba(59,130,246,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-8 h-8 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-suitcase-medical text-xs"></i>
-                    </div>
-                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-isc">0</p>
-                    <p class="text-[9px] font-bold text-blue-700/80 uppercase tracking-widest leading-tight">Izin/Cuti</p>
+                <div class="bento-item ripple glass-card p-3.5 flex flex-col items-start border-l-4 border-l-blue-500">
+                    <div class="w-9 h-9 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-2 shadow-inner"><i class="fa-solid fa-suitcase-medical text-sm"></i></div>
+                    <p class="text-[10px] font-bold text-blue-700/80 uppercase tracking-widest leading-tight">Izin/Cuti</p>
+                    <p class="text-2xl font-black text-slate-800 tracking-tight" id="rekap-isc">0</p>
                 </div>
 
-                <!-- Card TAP -->
-                <div class="bg-gradient-to-b from-white to-red-50/30 p-2.5 rounded-[1.25rem] border border-red-100/50 shadow-[0_8px_16px_-6px_rgba(239,68,68,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-8 h-8 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-door-open text-xs"></i>
+                <!-- Card Telat (Kombinasi) -->
+                <div class="bento-item ripple glass-card p-3.5 flex flex-col items-start border-l-4 border-l-amber-500">
+                    <div class="w-9 h-9 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center mb-2 shadow-inner"><i class="fa-solid fa-clock-rotate-left text-sm"></i></div>
+                    <div class="flex justify-between w-full">
+                        <div>
+                            <p class="text-[9px] font-bold text-amber-700/80 uppercase tracking-widest leading-tight">Telat (x)</p>
+                            <p class="text-xl font-black text-slate-800 tracking-tight" id="rekap-telat">0</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[9px] font-bold text-orange-700/80 uppercase tracking-widest leading-tight">Menit</p>
+                            <p class="text-xl font-black text-slate-800 tracking-tight" id="rekap-telat-menit">0</p>
+                        </div>
                     </div>
-                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-tap">0</p>
-                    <p class="text-[9px] font-bold text-red-700/80 uppercase tracking-widest leading-tight">Tanpa Pulang</p>
                 </div>
 
-                <!-- Card PSW (X) -->
-                <div class="bg-gradient-to-b from-white to-purple-50/30 p-2.5 rounded-[1.25rem] border border-purple-100/50 shadow-[0_8px_16px_-6px_rgba(168,85,247,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-8 h-8 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-person-running text-xs"></i>
+                <!-- Card PSW (Kombinasi) -->
+                <div class="bento-item ripple glass-card p-3.5 flex flex-col items-start border-l-4 border-l-purple-500">
+                    <div class="w-9 h-9 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-2 shadow-inner"><i class="fa-solid fa-person-running text-sm"></i></div>
+                    <div class="flex justify-between w-full">
+                        <div>
+                            <p class="text-[9px] font-bold text-purple-700/80 uppercase tracking-widest leading-tight">PSW (x)</p>
+                            <p class="text-xl font-black text-slate-800 tracking-tight" id="rekap-psw-kali">0</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[9px] font-bold text-fuchsia-700/80 uppercase tracking-widest leading-tight">Menit</p>
+                            <p class="text-xl font-black text-slate-800 tracking-tight" id="rekap-psw-menit">0</p>
+                        </div>
                     </div>
-                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none tracking-tight" id="rekap-psw-kali">0</p>
-                    <p class="text-[9px] font-bold text-purple-700/80 uppercase tracking-widest leading-tight">PSW (x)</p>
                 </div>
 
-                <!-- Card PSW Menit -->
-                <div class="bg-gradient-to-b from-white to-fuchsia-50/30 p-2.5 rounded-[1.25rem] border border-fuchsia-100/50 shadow-[0_8px_16px_-6px_rgba(217,70,239,0.15)] flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300">
-                    <div class="w-8 h-8 bg-fuchsia-100 text-fuchsia-600 rounded-xl flex items-center justify-center mb-1.5 shadow-inner group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-person-walking-arrow-right text-xs"></i>
+                <!-- Card TAP (Wide) -->
+                <div class="bento-item bento-item-wide ripple glass-card p-3.5 flex flex-row items-center justify-between border-l-4 border-l-red-500">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center shadow-inner"><i class="fa-solid fa-door-open text-sm"></i></div>
+                        <div class="text-left">
+                            <p class="text-[10px] font-bold text-red-700/80 uppercase tracking-widest leading-tight">Tanpa Absen Pulang (TAP)</p>
+                        </div>
                     </div>
-                    <p class="text-xl font-black text-slate-800 mb-0.5 leading-none flex items-baseline tracking-tight"><span id="rekap-psw-menit">0</span><span class="text-[10px] font-bold text-slate-400 ml-0.5">m</span></p>
-                    <p class="text-[9px] font-bold text-fuchsia-700/80 uppercase tracking-widest leading-tight">PSW Min</p>
+                    <div class="text-right">
+                        <p class="text-2xl font-black text-slate-800 tracking-tight leading-none" id="rekap-tap">0</p>
+                    </div>
                 </div>
 
             </div>
@@ -610,7 +656,7 @@
     </div>
 
     <!-- Bottom Navigation Bar (Modern Apple Floating Dock Style) -->
-    <div id="bottom-nav" class="fixed bottom-6 left-6 right-6 bg-white/80 backdrop-blur-xl border border-white/60 py-2.5 px-4 flex justify-around items-center z-40 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] rounded-3xl hidden opacity-0 translate-y-full transition-all duration-500">
+    <div id="bottom-nav" class="fixed bottom-0 left-0 right-0 py-2.5 px-4 flex justify-around items-center z-40 hidden opacity-0 translate-y-full transition-all duration-500 bottom-nav-glass">
         <button id="nav-beranda" onclick="switchTab('beranda')" class="flex flex-col items-center justify-center gap-1 p-2 text-teal-600 bg-teal-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all">
             <i class="fa-solid fa-house text-lg"></i>
             <span class="text-[9px] font-bold uppercase tracking-wider">Beranda</span>

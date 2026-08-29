@@ -188,17 +188,35 @@ async function showDashboard(user) {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     document.getElementById('today-date').textContent = today.toLocaleDateString('id-ID', options);
 
-    // Load User Photo
+    // Load User Photo & Sync Profile Info
     try {
-        const resFoto = await fetch(`${API_BASE}/karyawan/${user.id_karyawan}`);
+        const resFoto = await fetch(`${API_BASE}/karyawan/${user.id_karyawan}?_t=${Date.now()}`);
         const photoData = await resFoto.json();
-        if (photoData.success && photoData.data && photoData.data.foto) {
-            document.getElementById('user-foto').src = 'data:image/jpeg;base64,' + photoData.data.foto;
-            document.getElementById('user-foto').classList.remove('hidden');
-            document.getElementById('user-foto-icon').classList.add('hidden');
+        if (photoData.success && photoData.data) {
+            if (photoData.data.foto) {
+                document.getElementById('user-foto').src = 'data:image/jpeg;base64,' + photoData.data.foto;
+                document.getElementById('user-foto').classList.remove('hidden');
+                document.getElementById('user-foto-icon').classList.add('hidden');
+            }
+            
+            // Sync session data with server
+            let sessionUpdated = false;
+            if (photoData.data.nama && photoData.data.nama !== user.nama) {
+                user.nama = photoData.data.nama;
+                document.getElementById('user-nama').textContent = user.nama;
+                sessionUpdated = true;
+            }
+            if (photoData.data.jabatan && photoData.data.jabatan !== user.jabatan) {
+                user.jabatan = photoData.data.jabatan;
+                document.getElementById('user-jabatan').textContent = user.jabatan;
+                sessionUpdated = true;
+            }
+            if (sessionUpdated) {
+                localStorage.setItem('pegawai_session', JSON.stringify(user));
+            }
         }
     } catch (e) {
-        console.error("Gagal memuat foto profil", e);
+        console.error("Gagal memuat profil dari server", e);
     }
     
     loadDashboardData(user.id_karyawan);
@@ -218,13 +236,13 @@ function switchTab(tabName) {
     const navRiwayat = document.getElementById('nav-riwayat');
     const navProfil = document.getElementById('nav-profil');
     
-    // Define classes for modern floating dock navigation
-    const inactiveClass = "flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-teal-600 hover:bg-slate-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all";
-    const activeClass = "flex flex-col items-center justify-center gap-1 p-2 text-teal-600 bg-teal-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all";
+    // Define classes for modern floating dock navigation (with Ripple & Spring)
+    const inactiveClass = "ripple spring-bounce flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-teal-600 hover:bg-slate-50 w-[70px] h-14 rounded-2xl transition-all";
+    const activeClass = "ripple spring-bounce flex flex-col items-center justify-center gap-1 p-2 text-teal-600 bg-teal-50 w-[70px] h-14 rounded-2xl transition-all shadow-inner";
     
     // Special CTA classes for Profil
-    const profilInactiveClass = "flex flex-col items-center justify-center gap-0.5 p-2 text-white bg-gradient-to-tr from-teal-500 to-emerald-400 shadow-[0_4px_15px_rgba(20,184,166,0.4)] w-[75px] h-[60px] rounded-2xl hover:-translate-y-1 active:scale-95 transition-all";
-    const profilActiveClass = "flex flex-col items-center justify-center gap-0.5 p-2 text-white bg-gradient-to-tr from-teal-600 to-emerald-500 shadow-inner w-[75px] h-[60px] rounded-2xl ring-4 ring-teal-500/30 active:scale-95 transition-all scale-105";
+    const profilInactiveClass = "ripple spring-bounce flex flex-col items-center justify-center gap-0.5 p-2 text-white bg-gradient-to-tr from-teal-500 to-emerald-400 shadow-[0_4px_15px_rgba(20,184,166,0.4)] w-[75px] h-[60px] rounded-2xl hover:-translate-y-1 transition-all";
+    const profilActiveClass = "ripple spring-bounce flex flex-col items-center justify-center gap-0.5 p-2 text-white bg-gradient-to-tr from-teal-600 to-emerald-500 shadow-inner w-[75px] h-[60px] rounded-2xl ring-4 ring-teal-500/30 transition-all scale-105";
 
     // Reset Nav States
     navBeranda.className = inactiveClass;
@@ -627,11 +645,24 @@ function renderRiwayatChart(data) {
     });
 }
 
+function toggleSkeleton(enable) {
+    const ids = ['today-masuk', 'today-pulang', 'today-status', 'rekap-hadir', 'rekap-alpa', 'rekap-telat', 'rekap-isc', 'rekap-tap', 'rekap-telat-menit', 'rekap-psw-kali', 'rekap-psw-menit'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) {
+            if(enable) el.classList.add('skeleton', 'text-transparent', 'bg-slate-200');
+            else el.classList.remove('skeleton', 'text-transparent', 'bg-slate-200');
+        }
+    });
+}
+
 async function loadDashboardData(idKaryawan) {
+    toggleSkeleton(true);
     try {
         const res = await fetch(`${API_BASE}/pegawai/dashboard/today/${idKaryawan}?_t=${Date.now()}`);
         const result = await res.json();
         if(result.success && result.data) {
+            toggleSkeleton(false);
             const elMasuk = document.getElementById('today-masuk');
             const elStatus = document.getElementById('today-status');
             elMasuk.textContent = result.data.jam_masuk || '--:--';
@@ -690,9 +721,11 @@ async function loadDashboardData(idKaryawan) {
                 document.getElementById('dtl-tap').textContent = myData.tanpa_absen_pulang || 0;
             }
         }
-} catch (e) {
+    } catch (e) {
         console.error("Gagal memuat rekap bulanan:", e);
-        alert("Gagal memuat rekap bulanan. Silakan refresh (Ctrl+F5) atau cek koneksi server.");
+        // alert("Gagal memuat rekap bulanan. Silakan refresh (Ctrl+F5) atau cek koneksi server.");
+    } finally {
+        toggleSkeleton(false); // Ensure skeleton is removed
     }
     
     // Panggil tabel metrik harian

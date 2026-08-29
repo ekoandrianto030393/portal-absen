@@ -85,6 +85,14 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
 
+    // [FIX] Cegah caching mutlak untuk semua endpoint API (Agar mobile app benar-benar real-time seperti Kotlin/React)
+    if (req.path.startsWith('/api/')) {
+        res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.header('Pragma', 'no-cache');
+        res.header('Expires', '0');
+        res.header('Surrogate-Control', 'no-store');
+    }
+
     // Tangani preflight request untuk PUT/DELETE
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
@@ -770,13 +778,41 @@ app.post('/api/pegawai/req-ubah-password', (req, res) => {
         return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
     }
     
-    // Hash password sebelum disimpan ke request agar aman (opsional, tapi lebih baik)
-    const hashedPass = hashPassword(password_baru);
-    
-    const sql = `INSERT INTO req_ubah_password (id_karyawan, password_baru, status) VALUES (?, ?, 'pending')`;
-    pool.query(sql, [id_karyawan, hashedPass], (err) => {
+    // 1. Cek apakah id_karyawan benar-benar ada di tabel karyawan
+    pool.query('SELECT nama FROM karyawan WHERE id_karyawan = ?', [id_karyawan], (err, rows) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
-        res.json({ success: true, message: 'Permintaan ubah password berhasil dikirim. Menunggu persetujuan Admin.' });
+        if (rows.length === 0) {
+            // ID tidak ditemukan
+            return res.status(404).json({ success: false, message: 'ID Karyawan tidak ditemukan di database.' });
+        }
+
+        // 2. Jika ada, lanjutkan insert ke req_ubah_password
+        const hashedPass = hashPassword(password_baru);
+        
+        const sql = `INSERT INTO req_ubah_password (id_karyawan, password_baru, status) VALUES (?, ?, 'pending')`;
+        pool.query(sql, [id_karyawan, hashedPass], (err2) => {
+            if (err2) return res.status(500).json({ success: false, message: err2.message });
+            res.json({ success: true, message: 'Permintaan ubah password berhasil dikirim. Menunggu persetujuan Admin.' });
+        });
+    });
+});
+
+// [NEW] Endpoint: Cek Status Request Ubah Password (untuk polling dari Portal Online)
+app.get('/api/pegawai/req-ubah-password/status', (req, res) => {
+    const { id_karyawan } = req.query;
+    if (!id_karyawan) return res.status(400).json({ success: false, message: 'ID Karyawan diperlukan' });
+
+    const sql = `
+        SELECT status 
+        FROM req_ubah_password 
+        WHERE id_karyawan = ? 
+        ORDER BY created_at DESC 
+        LIMIT 1
+    `;
+    pool.query(sql, [id_karyawan], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        if (results.length === 0) return res.json({ success: true, status: 'none' });
+        res.json({ success: true, status: results[0].status });
     });
 });
 

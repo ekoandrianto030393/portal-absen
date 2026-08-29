@@ -35,9 +35,9 @@ async function startSync() {
             const now = new Date().toLocaleString();
             console.log(`[${now}] Memulai sinkronisasi otomatis...`);
 
-            // --- SYNC ABSENSI (7 Hari Terakhir saja agar cepat) ---
+            // --- SYNC ABSENSI (60 Hari Terakhir agar data lama yang diubah ikut tersinkron) ---
             const [absensiList] = await localDb.query(
-                "SELECT * FROM absensi WHERE tanggal >= CURDATE() - INTERVAL 7 DAY"
+                "SELECT * FROM absensi WHERE tanggal >= CURDATE() - INTERVAL 60 DAY"
             );
             
             let absensiSynced = 0;
@@ -83,7 +83,17 @@ async function startSync() {
 
             // --- SYNC REQ UBAH PASSWORD (AIVEN <-> XAMPP) ---
             try {
-                // 1. Tarik permintaan 'pending' dari Cloud (Aiven) ke Lokal (XAMPP)
+                // 1. Kirim status yang sudah 'approved'/'rejected' dari Lokal (XAMPP) ke Cloud (Aiven) TERLEBIH DAHULU
+                // Ini mencegah status 'pending' dari cloud menimpa status yang baru saja disetujui admin di lokal
+                const [reqSelesaiLokal] = await localDb.query("SELECT * FROM req_ubah_password WHERE status IN ('approved', 'rejected')");
+                for (const r of reqSelesaiLokal) {
+                    await cloudDb.query(
+                        `UPDATE req_ubah_password SET status = ? WHERE id_req = ?`,
+                        [r.status, r.id_req]
+                    );
+                }
+
+                // 2. Baru Tarik permintaan 'pending' dari Cloud (Aiven) ke Lokal (XAMPP)
                 const [reqPendingCloud] = await cloudDb.query("SELECT * FROM req_ubah_password WHERE status = 'pending'");
                 for (const r of reqPendingCloud) {
                     await localDb.query(
@@ -91,15 +101,6 @@ async function startSync() {
                          VALUES (?, ?, ?, ?, ?) 
                          ON DUPLICATE KEY UPDATE status = VALUES(status)`,
                         [r.id_req, r.id_karyawan, r.password_baru, r.status, r.created_at]
-                    );
-                }
-
-                // 2. Kirim status yang sudah 'approved'/'rejected' dari Lokal (XAMPP) ke Cloud (Aiven)
-                const [reqSelesaiLokal] = await localDb.query("SELECT * FROM req_ubah_password WHERE status IN ('approved', 'rejected')");
-                for (const r of reqSelesaiLokal) {
-                    await cloudDb.query(
-                        `UPDATE req_ubah_password SET status = ? WHERE id_req = ?`,
-                        [r.status, r.id_req]
                     );
                 }
             } catch (e) {
