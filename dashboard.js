@@ -237,7 +237,7 @@ async function loadReqPassword(silent = false) {
     tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Memuat data...</td></tr>';
     
     try {
-        const response = await fetch(`${API_BASE}/admin/req-ubah-password`);
+        const response = await fetch(`${API_BASE}/admin/lupa-password/pending`);
         const result = await response.json();
         
         tbody.innerHTML = '';
@@ -280,10 +280,13 @@ async function processReqPassword(id_req, action) {
     if (!confirm(`Apakah Anda yakin ingin ${action === 'approve' ? 'MENYETUJUI' : 'MENOLAK'} permintaan ini?`)) return;
     
     try {
-        const response = await fetch(`${API_BASE}/admin/approve-password`, {
+        const url = action === 'approve' 
+            ? `${API_BASE}/admin/lupa-password/approve/${id_req}`
+            : `${API_BASE}/admin/lupa-password/reject/${id_req}`;
+            
+        const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_req, action })
+            headers: { 'Content-Type': 'application/json' }
         });
         const result = await response.json();
         
@@ -2345,7 +2348,7 @@ function toggleNotifications() {
     }
 }
 
-function updateNotifications(dailyData) {
+async function updateNotifications(dailyData) {
     const list = document.getElementById('notif-list');
     const badge = document.getElementById('notif-badge');
     
@@ -2367,6 +2370,37 @@ function updateNotifications(dailyData) {
             title: 'Keterlambatan Terdeteksi',
             desc: `${late.length} pegawai terlambat hari ini.`
         });
+    }
+    
+    // 3. Cek Permintaan Ubah Password Pending
+    try {
+        const res = await fetch(`${API_BASE}/admin/lupa-password/pending`);
+        const data = await res.json();
+        if (data.success && data.data.length > 0) {
+            notifs.push({
+                icon: 'fa-key', color: 'text-orange-500',
+                title: 'Permintaan Ubah Password',
+                desc: `Ada ${data.data.length} permintaan menunggu persetujuan.`
+            });
+            
+            // Tambahkan badge juga di menu navigasi kiri jika elemennya ada
+            const navReqPwd = document.getElementById('nav-req-password');
+            if (navReqPwd) {
+                let badgeMenu = document.getElementById('nav-req-pwd-badge');
+                if (!badgeMenu) {
+                    badgeMenu = document.createElement('span');
+                    badgeMenu.id = 'nav-req-pwd-badge';
+                    badgeMenu.className = 'ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full';
+                    navReqPwd.appendChild(badgeMenu);
+                }
+                badgeMenu.textContent = data.data.length;
+            }
+        } else {
+            const badgeMenu = document.getElementById('nav-req-pwd-badge');
+            if (badgeMenu) badgeMenu.remove();
+        }
+    } catch (e) {
+        // Abaikan error fetching untuk notifikasi
     }
 
     // Render

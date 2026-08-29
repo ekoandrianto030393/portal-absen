@@ -797,72 +797,6 @@ app.post('/api/pegawai/req-ubah-password', (req, res) => {
     });
 });
 
-// [NEW] Endpoint: Cek Status Request Ubah Password (untuk polling dari Portal Online)
-app.get('/api/pegawai/req-ubah-password/status', (req, res) => {
-    const { id_karyawan } = req.query;
-    if (!id_karyawan) return res.status(400).json({ success: false, message: 'ID Karyawan diperlukan' });
-
-    const sql = `
-        SELECT status 
-        FROM req_ubah_password 
-        WHERE id_karyawan = ? 
-        ORDER BY created_at DESC 
-        LIMIT 1
-    `;
-    pool.query(sql, [id_karyawan], (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: err.message });
-        if (results.length === 0) return res.json({ success: true, status: 'none' });
-        res.json({ success: true, status: results[0].status });
-    });
-});
-
-// [NEW] Endpoint: Ambil Daftar Request Password Pending (untuk Admin)
-app.get('/api/admin/req-ubah-password', (req, res) => {
-    const sql = `
-        SELECT r.id_req, r.id_karyawan, k.nama, r.status, r.created_at 
-        FROM req_ubah_password r
-        JOIN karyawan k ON r.id_karyawan = k.id_karyawan
-        WHERE r.status = 'pending'
-        ORDER BY r.created_at DESC
-    `;
-    pool.query(sql, (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: err.message });
-        res.json({ success: true, data: results });
-    });
-});
-
-// [NEW] Endpoint: Setujui/Tolak Request Ubah Password (dari Admin)
-app.post('/api/admin/approve-password', (req, res) => {
-    const { id_req, action } = req.body; // action: 'approve' atau 'reject'
-    if (!id_req || !action) return res.status(400).json({ success: false, message: 'Parameter tidak valid' });
-    
-    if (action === 'reject') {
-        pool.query(`UPDATE req_ubah_password SET status = 'rejected' WHERE id_req = ?`, [id_req], (err) => {
-            if (err) return res.status(500).json({ success: false, message: err.message });
-            return res.json({ success: true, message: 'Permintaan ditolak.' });
-        });
-    } else if (action === 'approve') {
-        // 1. Ambil password_baru dari tabel req
-        pool.query(`SELECT id_karyawan, password_baru FROM req_ubah_password WHERE id_req = ? AND status = 'pending'`, [id_req], (err, rows) => {
-            if (err) return res.status(500).json({ success: false, message: err.message });
-            if (rows.length === 0) return res.status(404).json({ success: false, message: 'Permintaan tidak ditemukan atau sudah diproses.' });
-            
-            const { id_karyawan, password_baru } = rows[0];
-            
-            // 2. Update akun_pegawai
-            pool.query(`UPDATE akun_pegawai SET password = ? WHERE id_karyawan = ?`, [password_baru, id_karyawan], (err) => {
-                if (err) return res.status(500).json({ success: false, message: err.message });
-                
-                // 3. Tandai request menjadi approved
-                pool.query(`UPDATE req_ubah_password SET status = 'approved' WHERE id_req = ?`, [id_req], (err) => {
-                    if (err) return res.status(500).json({ success: false, message: err.message });
-                    res.json({ success: true, message: 'Password berhasil diubah!' });
-                });
-            });
-        });
-    }
-});
-
 // Endpoint: Data Absensi Bulanan Matrix (Menyamping)
 app.get('/api/absensi/bulanan/matrix', (req, res) => {
     let periode = req.query.periode; // format YYYY-MM
@@ -1732,6 +1666,93 @@ app.put('/api/pegawai/reset_password/:id', (req, res) => {
         });
     });
 });
+
+// ==========================================
+// API LUPA PASSWORD (PEGAWAI & ADMIN)
+// ==========================================
+
+// 3.1 Pegawai Mengajukan Lupa Password
+app.post('/api/pegawai/lupa-password', (req, res) => {
+    const { id_karyawan, password_baru } = req.body;
+    if (!id_karyawan || !password_baru) return res.status(400).json({ success: false, message: 'ID Karyawan dan Password Baru wajib diisi' });
+
+    // Cek apakah akun pegawai ada
+    pool.query('SELECT * FROM akun_pegawai WHERE id_karyawan = ?', [id_karyawan], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        if (results.length === 0) return res.status(404).json({ success: false, message: 'ID Karyawan belum terdaftar di Portal.' });
+
+        // Cek apakah sudah ada request pending untuk ID ini
+        pool.query("SELECT * FROM req_ubah_password WHERE id_karyawan = ? AND status = 'pending'", [id_karyawan], (err2, reqResults) => {
+            if (err2) return res.status(500).json({ success: false, message: err2.message });
+            if (reqResults.length > 0) return res.status(400).json({ success: false, message: 'Anda sudah mengajukan perubahan password. Harap tunggu persetujuan Admin.' });
+
+            // Simpan request baru (password langsung di-hash untuk keamanan)
+            const hashedPassword = hashPassword(String(password_baru));
+            pool.query("INSERT INTO req_ubah_password (id_karyawan, password_baru, status) VALUES (?, ?, 'pending')", [id_karyawan, hashedPassword], (err3) => {
+                if (err3) return res.status(500).json({ success: false, message: err3.message });
+                res.json({ success: true, message: 'Pengajuan perubahan password berhasil. Menunggu persetujuan Admin.' });
+            });
+        });
+    });
+});
+
+// 3.2 Pegawai Cek Status Lupa Password
+app.get('/api/pegawai/lupa-password/status/:id_karyawan', (req, res) => {
+    const { id_karyawan } = req.params;
+    pool.query("SELECT * FROM req_ubah_password WHERE id_karyawan = ? AND status = 'pending'", [id_karyawan], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, hasPending: results.length > 0 });
+    });
+});
+
+// 3.3 Admin Mengambil Daftar Pending Password
+app.get('/api/admin/lupa-password/pending', (req, res) => {
+    const sql = `
+        SELECT r.id_req, r.id_karyawan, k.nama, r.created_at 
+        FROM req_ubah_password r
+        JOIN karyawan k ON r.id_karyawan = k.id_karyawan
+        WHERE r.status = 'pending'
+        ORDER BY r.created_at ASC
+    `;
+    pool.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, data: results });
+    });
+});
+
+// 3.4 Admin Menyetujui Password Baru
+app.post('/api/admin/lupa-password/approve/:id_req', (req, res) => {
+    const { id_req } = req.params;
+    
+    // Ambil detail request
+    pool.query("SELECT id_karyawan, password_baru FROM req_ubah_password WHERE id_req = ? AND status = 'pending'", [id_req], (err, reqResults) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        if (reqResults.length === 0) return res.status(404).json({ success: false, message: 'Permintaan tidak ditemukan atau sudah diproses.' });
+
+        const reqData = reqResults[0];
+
+        // Update password di akun_pegawai
+        pool.query('UPDATE akun_pegawai SET password = ? WHERE id_karyawan = ?', [reqData.password_baru, reqData.id_karyawan], (err2) => {
+            if (err2) return res.status(500).json({ success: false, message: err2.message });
+
+            // Update status request menjadi approved
+            pool.query("UPDATE req_ubah_password SET status = 'approved' WHERE id_req = ?", [id_req], (err3) => {
+                if (err3) return res.status(500).json({ success: false, message: err3.message });
+                res.json({ success: true, message: 'Perubahan password disetujui.' });
+            });
+        });
+    });
+});
+
+// 3.5 Admin Menolak Password Baru
+app.post('/api/admin/lupa-password/reject/:id_req', (req, res) => {
+    const { id_req } = req.params;
+    pool.query("UPDATE req_ubah_password SET status = 'rejected' WHERE id_req = ?", [id_req], (err) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, message: 'Perubahan password ditolak.' });
+    });
+});
+
 
 // 4. API Dashboard Pegawai (Data Hari Ini)
 app.get('/api/pegawai/dashboard/today/:id', (req, res) => {
