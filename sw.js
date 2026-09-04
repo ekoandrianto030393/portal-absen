@@ -1,4 +1,4 @@
-const CACHE_NAME = 'portal-absen-v56';
+const CACHE_NAME = 'portal-absen-v57';
 const urlsToCache = [
   '/portal.html',
   '/portal.js',
@@ -28,14 +28,16 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
+
+  // Hanya tangani GET request — Cache API tidak mendukung HEAD/POST/dll
+  if (event.request.method !== 'GET') {
+    return; // Biarkan browser tangani langsung tanpa service worker
+  }
   
-  // JANGAN PERNAH CACHE API CALLS (Biar PWA / APK ini berperilaku persis seperti Native Kotlin/React)
+  // JANGAN PERNAH CACHE API CALLS
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(event.request).then(response => {
-        return response; // Langsung return network, JANGAN SIMPAN ke caches
-      }).catch(err => {
-        // Fallback jika offline
+      fetch(event.request).catch(() => {
         return new Response(JSON.stringify({ success: false, message: "Koneksi terputus. Anda sedang offline." }), {
           headers: { 'Content-Type': 'application/json' }
         });
@@ -48,7 +50,8 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        if (response && response.status === 200 && response.type === 'basic') {
+        // Hanya cache jika response valid dan method adalah GET
+        if (response && response.status === 200 && response.type === 'basic' && event.request.method === 'GET') {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then(cache => {
                 cache.put(event.request, responseClone);
