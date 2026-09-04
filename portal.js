@@ -42,19 +42,57 @@ window.onload = () => {
         if (session) {
             showDashboard(JSON.parse(session));
         } else {
-            const authPage = document.getElementById('auth-page');
-            authPage.classList.remove('hidden');
-            setTimeout(() => authPage.style.opacity = '1', 50);
+            // Cek apakah ada request ganti password yang pending di localStorage
+            const pendingReqId = localStorage.getItem('pending_reset_id');
+            
+            if (pendingReqId) {
+                // Verifikasi ke server
+                fetch(`${API_BASE}/pegawai/lupa-password/status/${pendingReqId}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success && data.hasPending) {
+                            showLockScreen();
+                        } else {
+                            localStorage.removeItem('pending_reset_id');
+                            showAuthPage();
+                        }
+                    })
+                    .catch(() => showLockScreen()); // Jika error koneksi, tetap kunci
+            } else {
+                showAuthPage();
+            }
         }
     }, 500);
 }
 
+function showAuthPage() {
+    const authPage = document.getElementById('auth-page');
+    if (authPage) {
+        authPage.classList.remove('hidden');
+        setTimeout(() => authPage.style.opacity = '1', 50);
+    }
+}
+
+function showLockScreen() {
+    document.getElementById('auth-page').classList.remove('hidden');
+    document.getElementById('auth-page').style.opacity = '1';
+    
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.add('hidden');
+    document.getElementById('forgot-password-form').classList.add('hidden');
+    document.getElementById('lock-screen').classList.remove('hidden');
+}
+
 function toggleAuth(type) {
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.add('hidden');
+    document.getElementById('forgot-password-form').classList.add('hidden');
+    
     if (type === 'register') {
-        document.getElementById('login-form').classList.add('hidden');
         document.getElementById('register-form').classList.remove('hidden');
+    } else if (type === 'forgot-password') {
+        document.getElementById('forgot-password-form').classList.remove('hidden');
     } else {
-        document.getElementById('register-form').classList.add('hidden');
         document.getElementById('login-form').classList.remove('hidden');
     }
 }
@@ -103,6 +141,50 @@ async function register() {
         if(data.success) toggleAuth('login');
     } catch (e) {
         alert("Gagal koneksi ke server");
+    }
+}
+
+async function ajukanLupaPassword() {
+    const id_karyawan = document.getElementById('fp-id').value.toUpperCase();
+    const password_baru = document.getElementById('fp-password').value;
+    
+    if (!id_karyawan || !password_baru) return alert('Isi ID Karyawan dan Password Baru');
+    
+    try {
+        const res = await fetch(`${API_BASE}/pegawai/lupa-password`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id_karyawan, password_baru})
+        });
+        const data = await res.json();
+        
+        alert(data.message);
+        if (data.success) {
+            localStorage.setItem('pending_reset_id', id_karyawan);
+            showLockScreen();
+        }
+    } catch (e) {
+        alert("Gagal menghubungi server");
+    }
+}
+
+async function checkStatusPassword() {
+    const pendingReqId = localStorage.getItem('pending_reset_id');
+    if (!pendingReqId) return window.location.reload();
+    
+    try {
+        const res = await fetch(`${API_BASE}/pegawai/lupa-password/status/${pendingReqId}`);
+        const data = await res.json();
+        
+        if (data.success && data.hasPending) {
+            alert('Permintaan Anda masih sedang diproses oleh Admin. Harap tunggu.');
+        } else {
+            alert('Status berubah! Silakan coba login.');
+            localStorage.removeItem('pending_reset_id');
+            window.location.reload();
+        }
+    } catch (e) {
+        alert('Gagal mengecek status');
     }
 }
 
@@ -400,7 +482,7 @@ async function loadRiwayatBulanan(idKaryawan) {
                         </div>
                         <div>
                             <h4 class="font-bold text-slate-800 text-sm uppercase tracking-widest">${formatBulan(item.periode)}</h4>
-                            <p class="text-[10px] text-slate-500 font-semibold tracking-wider">${item.total_hari_kerja || 0} Hari Kerja</p>
+                            <p class="text-[10px] text-slate-500 font-semibold tracking-wider">${item.total_hari_kerja || 0} Hari | ${item.total_jam_kerja || 0} Jam Kerja</p>
                         </div>
                     </div>
                 </div>
@@ -544,33 +626,33 @@ function renderRiwayatChart(data) {
     let rankInfo = {};
     if(userXP > 180) { 
         rankInfo = { 
-            title: 'Legend Teladan 👑', color: 'bg-gradient-to-r from-gray-100 via-white to-gray-200 text-slate-800 ring-2 ring-gray-300 shadow-[0_0_12px_rgba(255,255,255,0.7)]', 
+            title: 'Legend Teladan 👑', color: 'bg-gradient-to-r from-teal-100 to-emerald-200 text-teal-900 ring-2 ring-emerald-300 shadow-[0_0_12px_rgba(20,184,166,0.6)]', 
             notes: 'Luar Biasa! Rekam jejak kedisiplinan Anda nyaris tanpa cela. Pertahankan prestasimu sebagai teladan bagi pegawai yang lain.',
-            headerBg: 'linear-gradient(135deg, #0f172a 0%, #334155 50%, #94a3b8 100%)' // Dark Platinum
+            headerBg: 'linear-gradient(135deg, #064e3b 0%, #047857 100%)' // Dark Emerald
         };
     } else if(userXP > 130) {
         rankInfo = { 
-            title: 'Bintang Puskesmas ⭐', color: 'bg-gradient-to-r from-yellow-300 to-yellow-500 text-yellow-950 ring-1 ring-yellow-200 shadow-[0_0_10px_rgba(250,204,21,0.5)]', 
+            title: 'Bintang Puskesmas ⭐', color: 'bg-gradient-to-r from-teal-50 to-teal-100 text-teal-900 ring-1 ring-teal-200 shadow-sm', 
             notes: 'Kerja bagus! Sedikit lagi menuju predikat Legend. ' + advice,
-            headerBg: 'linear-gradient(135deg, #451a03 0%, #b45309 100%)' // Dark Gold
+            headerBg: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)' // Teal
         };
     } else if(userXP > 80) {
         rankInfo = { 
-            title: 'Pegawai Andalan 🚀', color: 'bg-gradient-to-r from-slate-300 to-slate-400 text-slate-900 ring-1 ring-slate-200 shadow-sm', 
+            title: 'Pegawai Andalan 🚀', color: 'bg-slate-100 text-slate-800 ring-1 ring-slate-200 shadow-sm', 
             notes: 'Kedisiplinan rata-rata Anda cukup baik. ' + advice,
-            headerBg: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)' // Silver Slate
+            headerBg: 'linear-gradient(135deg, #334155 0%, #475569 100%)' // Slate
         };
     } else if(userXP >= 10) {
         rankInfo = { 
-            title: 'Pegawai Aktif 🎖️', color: 'bg-blue-500 text-white ring-1 ring-blue-300 shadow-sm', 
+            title: 'Pegawai Aktif 🎖️', color: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm', 
             notes: 'Kedisiplinan Anda di batas wajar. ' + advice,
-            headerBg: 'linear-gradient(135deg, #172554 0%, #2563eb 100%)' // Vibrant Blue
+            headerBg: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)' // Blue
         };
     } else {
         rankInfo = { 
-            title: 'Perlu Pembinaan ⚠️', color: 'bg-rose-500 text-white ring-1 ring-rose-400 shadow-md animate-pulse', 
+            title: 'Perlu Pembinaan ⚠️', color: 'bg-rose-50 text-rose-700 ring-1 ring-rose-300 shadow-md animate-pulse', 
             notes: 'Peringatan Keras: Peringkat kedisiplinan Anda di bawah standar. ' + advice,
-            headerBg: 'linear-gradient(135deg, #4c0519 0%, #9f1239 100%)' // Dark Red
+            headerBg: 'linear-gradient(135deg, #9f1239 0%, #be123c 100%)' // Red
         };
     }
     
@@ -646,7 +728,7 @@ function renderRiwayatChart(data) {
 }
 
 function toggleSkeleton(enable) {
-    const ids = ['today-masuk', 'today-pulang', 'today-status', 'rekap-hadir', 'rekap-alpa', 'rekap-telat', 'rekap-isc', 'rekap-tap', 'rekap-telat-menit', 'rekap-psw-kali', 'rekap-psw-menit'];
+    const ids = ['today-masuk', 'today-pulang', 'today-status', 'rekap-hadir', 'rekap-alpa', 'rekap-telat', 'rekap-isc', 'rekap-tap', 'rekap-telat-menit', 'rekap-psw-kali', 'rekap-psw-menit', 'rekap-jam-kerja'];
     ids.forEach(id => {
         const el = document.getElementById(id);
         if(el) {
@@ -709,6 +791,10 @@ async function loadDashboardData(idKaryawan) {
                     document.getElementById('rekap-psw-menit').textContent = myData.psw_menit || 0;
                 }
 
+                if(document.getElementById('rekap-jam-kerja')) {
+                    document.getElementById('rekap-jam-kerja').textContent = myData.total_jam_kerja || '00:00:00';
+                }
+
                 // Populate Detail Modal
                 document.getElementById('dtl-hadir').textContent = myData.total_masuk || 0;
                 document.getElementById('dtl-alpa').textContent = myData.alpa || 0;
@@ -719,6 +805,9 @@ async function loadDashboardData(idKaryawan) {
                 document.getElementById('dtl-telat').textContent = myData.telat_kali || 0;
                 document.getElementById('dtl-psw').textContent = myData.psw_kali || 0;
                 document.getElementById('dtl-tap').textContent = myData.tanpa_absen_pulang || 0;
+                if(document.getElementById('dtl-jam-kerja')) {
+                    document.getElementById('dtl-jam-kerja').textContent = (myData.total_jam_kerja || 0) + ' Jam';
+                }
             }
         }
     } catch (e) {

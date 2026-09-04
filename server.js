@@ -842,14 +842,46 @@ app.get('/api/absensi/bulanan/matrix', (req, res) => {
 
             const matrix = karyawanList.map(k => {
                 const hari = {};
+                let totalSecs = 0;
                 for (let d = 1; d <= daysInMonth; d++) {
-                    hari[d] = absensiMap[k.id_karyawan]?.[d] || null;
+                    const row = absensiMap[k.id_karyawan]?.[d] || null;
+                    hari[d] = row;
+                    if (row && row.jam_masuk && row.jam_masuk !== '-') {
+                        if (row.jam_keluar && row.jam_keluar !== '-') {
+                            const [mH, mM, mS] = row.jam_masuk.split(':').map(Number);
+                            const [kH, kM, kS] = row.jam_keluar.split(':').map(Number);
+                            const secsMasuk = (mH || 0) * 3600 + (mM || 0) * 60 + (mS || 0);
+                            const secsKeluar = (kH || 0) * 3600 + (kM || 0) * 60 + (kS || 0);
+                            if (secsKeluar > secsMasuk) {
+                                totalSecs += (secsKeluar - secsMasuk);
+                            }
+                        } else {
+                            const dateObj = new Date(year, month - 1, d);
+                            const dayOfWeek = dateObj.getDay();
+                            let autoPulang = AUTO_PULANG_DEFAULT;
+                            if (dayOfWeek === 5) autoPulang = AUTO_PULANG_JUMAT;
+                            if (dayOfWeek === 6) autoPulang = AUTO_PULANG_SABTU;
+                            const [mH, mM, mS] = row.jam_masuk.split(':').map(Number);
+                            const [pH, pM, pS] = autoPulang.split(':').map(Number);
+                            const secsMasuk = (mH || 0) * 3600 + (mM || 0) * 60 + (mS || 0);
+                            const secsPulang = (pH || 0) * 3600 + (pM || 0) * 60 + (pS || 0);
+                            if (secsPulang > secsMasuk) {
+                                totalSecs += (secsPulang - secsMasuk);
+                            }
+                        }
+                    }
                 }
+                const hrs = Math.floor(totalSecs / 3600);
+                const mins = Math.floor((totalSecs % 3600) / 60);
+                const secs = Math.floor(totalSecs % 60);
+                const total_jam_kerja = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
                 return {
                     id_karyawan: k.id_karyawan,
                     nama: k.nama,
                     jabatan: k.jabatan,
-                    hari: hari
+                    hari: hari,
+                    total_jam_kerja: total_jam_kerja
                 };
             });
 
@@ -1708,7 +1740,7 @@ app.get('/api/pegawai/lupa-password/status/:id_karyawan', (req, res) => {
 // 3.3 Admin Mengambil Daftar Pending Password
 app.get('/api/admin/lupa-password/pending', (req, res) => {
     const sql = `
-        SELECT r.id_req, r.id_karyawan, k.nama, r.created_at 
+        SELECT r.id_req, r.id_karyawan, k.nama, r.status, r.created_at 
         FROM req_ubah_password r
         JOIN karyawan k ON r.id_karyawan = k.id_karyawan
         WHERE r.status = 'pending'

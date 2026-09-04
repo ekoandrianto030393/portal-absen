@@ -183,7 +183,7 @@ async function loadSystemConfig() {
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
     // Hide all views
-    ['overview', 'daily', 'monthly', 'performance', 'employees', 'view-db', 'view-db-monthly', 'req-password', 'settings'].forEach(id => {
+    ['overview', 'daily', 'monthly', 'performance', 'employees', 'view-db', 'view-db-monthly', 'settings'].forEach(id => {
         const viewEl = document.getElementById(`view-${id}`);
         if (viewEl) {
             viewEl.classList.add('hidden');
@@ -227,78 +227,6 @@ function switchTab(tabName) {
     if (tabName === 'employees') loadEmployees();
     if (tabName === 'view-db') loadViewDbData();
     if (tabName === 'view-db-monthly') loadViewDbMonthlyData();
-    if (tabName === 'req-password') loadReqPassword();
-}
-
-// --- DATA LOADER: REQ UBAH PASSWORD ---
-async function loadReqPassword(silent = false) {
-    if (!silent) showSpinner();
-    const tbody = document.getElementById('table-req-password-body');
-    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Memuat data...</td></tr>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/admin/lupa-password/pending`);
-        const result = await response.json();
-        
-        tbody.innerHTML = '';
-        if (result.success && result.data.length > 0) {
-            result.data.forEach(row => {
-                let statusBadge = '';
-                const currentStatus = row.status.toUpperCase();
-                if (currentStatus === 'PENDING') statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold text-xs">PENDING</span>';
-                else if (currentStatus === 'APPROVED') statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 rounded font-bold text-xs">APPROVED</span>';
-                else if (currentStatus === 'REJECTED') statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 rounded font-bold text-xs">REJECTED</span>';
-                
-                const tr = `
-                    <tr class="hover:bg-slate-50 border-b border-slate-200">
-                        <td class="px-6 py-4 font-mono text-sm">${row.id_req}</td>
-                        <td class="px-6 py-4 font-mono text-sm">${row.id_karyawan}</td>
-                        <td class="px-6 py-4 font-bold text-sm">${row.nama}</td>
-                        <td class="px-6 py-4 text-sm">${row.created_at}</td>
-                        <td class="px-6 py-4">${statusBadge}</td>
-                        <td class="px-6 py-4 text-center">
-                            ${currentStatus === 'PENDING' ? `
-                            <button onclick="processReqPassword(${row.id_req}, 'approve')" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-xs font-bold mr-2"><i class="fa-solid fa-check"></i> Setujui</button>
-                            <button onclick="processReqPassword(${row.id_req}, 'reject')" class="px-3 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded text-xs font-bold"><i class="fa-solid fa-xmark"></i> Tolak</button>
-                            ` : '-'}
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += tr;
-            });
-        } else {
-            tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada permintaan.</td></tr>';
-        }
-    } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
-    } finally {
-        if (!silent) hideSpinner();
-    }
-}
-
-async function processReqPassword(id_req, action) {
-    if (!confirm(`Apakah Anda yakin ingin ${action === 'approve' ? 'MENYETUJUI' : 'MENOLAK'} permintaan ini?`)) return;
-    
-    try {
-        const url = action === 'approve' 
-            ? `${API_BASE}/admin/lupa-password/approve/${id_req}`
-            : `${API_BASE}/admin/lupa-password/reject/${id_req}`;
-            
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const result = await response.json();
-        
-        if (result.success) {
-            alert(`Berhasil: ${result.message}`);
-            loadReqPassword(); // Refresh tabel
-        } else {
-            alert(`Gagal: ${result.message}`);
-        }
-    } catch (e) {
-        alert(`Error: ${e.message}`);
-    }
 }
 
 // --- JAM DIGITAL ---
@@ -808,7 +736,7 @@ async function loadMonthlyRecap(silent = false) {
 
         if (result.data && result.data.length > 0) {
             // Inisialisasi variabel total
-            let tHadir = 0, tDL = 0, tSakit = 0, tIzin = 0, tCuti = 0, tAlpa = 0, tTelat = 0, tTelatMin = 0, tPsw = 0, tPswMin = 0, tPelanggaranMin = 0, tNoOut = 0, tPot = 0;
+            let tHadir = 0, tDL = 0, tSakit = 0, tIzin = 0, tCuti = 0, tAlpa = 0, tTelat = 0, tTelatMin = 0, tPsw = 0, tPswMin = 0, tPelanggaranMin = 0, tNoOut = 0, tPot = 0, tJamKerjaSecs = 0;
             
             // [NEW] Variabel Total Gaji & Load Config
             let totalGaji = 0;
@@ -887,6 +815,13 @@ async function loadMonthlyRecap(silent = false) {
                 tPsw += parseInt(row.psw_kali) || 0;
                 tPswMin += parseInt(row.psw_menit) || 0;
                 
+                if (row.total_jam_kerja) {
+                    const p = row.total_jam_kerja.split(':').map(Number);
+                    if (p.length === 3) {
+                        tJamKerjaSecs += (p[0] * 3600) + (p[1] * 60) + p[2];
+                    }
+                }
+
                 // [MODIFIED] Hitung total pelanggaran baru (telat + psw + potongan jam)
                 const totalMenitPelanggaranBaru = (parseInt(row.total_pelanggaran_menit) || 0) + ((parseInt(row.potongan_jam) || 0) * 60);
                 tPelanggaranMin += totalMenitPelanggaranBaru;
@@ -974,6 +909,11 @@ async function loadMonthlyRecap(silent = false) {
                 `;
             });
 
+            const tHrsSum = Math.floor(tJamKerjaSecs / 3600);
+            const tMinsSum = Math.floor((tJamKerjaSecs % 3600) / 60);
+            const tSecsSum = Math.floor(tJamKerjaSecs % 60);
+            const formattedTotalJamKerjaSum = `${String(tHrsSum).padStart(2, '0')}:${String(tMinsSum).padStart(2, '0')}:${String(tSecsSum).padStart(2, '0')}`;
+
             htmlContent += `
                 <tr class="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-800 print:bg-gray-200 print:border-black break-inside-avoid group">
                     <td colspan="4" class="px-6 py-3 text-right uppercase text-xs tracking-wider">Total Ringkasan:</td>
@@ -991,7 +931,7 @@ async function loadMonthlyRecap(silent = false) {
                     <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-300">${formatPelanggaranToHHMMSS(tPelanggaranMin)}</td>
                     <td class="px-6 py-3 text-center">${tNoOut}</td>
                     <td class="px-6 py-3 text-center">${tPot}</td>
-                    <td class="px-6 py-3"></td>
+                    <td class="px-6 py-3 text-center font-mono text-emerald-700 font-bold">${formattedTotalJamKerjaSum}</td>
                     <td class="px-6 py-3 print:hidden"></td>
                 </tr>
                 <!-- [NEW] Baris Total Pengeluaran Gaji -->
@@ -2043,23 +1983,21 @@ function exportExcel() {
     if (!table) return;
 
     let csv = [];
-    // Trik agar Excel mendeteksi delimiter koma secara otomatis (berguna untuk region Indonesia)
-    csv.push("sep=;"); 
-    
     const rows = table.querySelectorAll("tr");
     
     for (let i = 0; i < rows.length; i++) {
         let row = [], cols = rows[i].querySelectorAll("td, th");
+        for (let j = 0; j < cols.length; j++) 
+            row.push('"' + cols[j].innerText + '"'); // Quote text
         for (let j = 0; j < cols.length; j++) {
-            // Bersihkan teks: hapus kutip ganda dan ganti baris baru (\n) dengan spasi
-            let cleanText = cols[j].innerText.replace(/"/g, '""').replace(/[\r\n]+/g, ' ').trim();
+            // FIX: Escape double quotes dengan benar untuk CSV (replace " dengan "")
+            let cleanText = cols[j].innerText.replace(/"/g, '""');
             row.push('"' + cleanText + '"'); 
         }
-        csv.push(row.join(";"));
+        csv.push(row.join(","));
     }
 
-    // Tambahkan BOM (\uFEFF) agar UTF-8 dibaca benar oleh Excel
-    const csvFile = new Blob(["\uFEFF" + csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
     const downloadLink = document.createElement("a");
     const _now = new Date(); downloadLink.download = `Rekap_Absensi_${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}.csv`;
     downloadLink.href = window.URL.createObjectURL(csvFile);
@@ -2205,48 +2143,7 @@ function printReport(forceMatrix = false) {
     // Pastikan data tanda tangan terbaru diterapkan sebelum print
     applySignatureToPrint();
 
-    if (!window.__isGeneratingPdf) {
-        window.print();
-    }
-}
-
-function downloadPDF(forceMatrix = false) {
-    if (typeof html2pdf === 'undefined') {
-        alert("Library PDF belum termuat. Pastikan Anda terkoneksi ke internet dan muat ulang halaman.");
-        return;
-    }
-    
-    window.__isGeneratingPdf = true;
-    printReport(forceMatrix);
-    window.__isGeneratingPdf = false;
-    
-    const element = document.getElementById('print-area');
-    // Tampilkan paksa untuk dirender html2canvas
-    element.classList.remove('hidden', 'print:block');
-    element.style.display = 'block';
-    element.style.backgroundColor = 'white';
-    
-    const _now = new Date();
-    const fileName = `Laporan_Absensi_${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}.pdf`;
-
-    const opt = {
-        margin:       [10, 10, 10, 10], // top, left, bottom, right
-        filename:     fileName,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-    };
-    
-    // Tampilkan loading feedback (opsional, ganti kursor)
-    document.body.style.cursor = 'wait';
-    
-    html2pdf().set(opt).from(element).save().then(() => {
-        // Kembalikan ke state semula
-        element.style.display = '';
-        element.style.backgroundColor = '';
-        element.classList.add('hidden', 'print:block');
-        document.body.style.cursor = 'default';
-    });
+    window.print();
 }
 
 // --- FITUR: MODAL DETAIL PEGAWAI ---
@@ -2391,7 +2288,7 @@ function toggleNotifications() {
     }
 }
 
-async function updateNotifications(dailyData) {
+function updateNotifications(dailyData) {
     const list = document.getElementById('notif-list');
     const badge = document.getElementById('notif-badge');
     
@@ -2413,37 +2310,6 @@ async function updateNotifications(dailyData) {
             title: 'Keterlambatan Terdeteksi',
             desc: `${late.length} pegawai terlambat hari ini.`
         });
-    }
-    
-    // 3. Cek Permintaan Ubah Password Pending
-    try {
-        const res = await fetch(`${API_BASE}/admin/lupa-password/pending`);
-        const data = await res.json();
-        if (data.success && data.data.length > 0) {
-            notifs.push({
-                icon: 'fa-key', color: 'text-orange-500',
-                title: 'Permintaan Ubah Password',
-                desc: `Ada ${data.data.length} permintaan menunggu persetujuan.`
-            });
-            
-            // Tambahkan badge juga di menu navigasi kiri jika elemennya ada
-            const navReqPwd = document.getElementById('nav-req-password');
-            if (navReqPwd) {
-                let badgeMenu = document.getElementById('nav-req-pwd-badge');
-                if (!badgeMenu) {
-                    badgeMenu = document.createElement('span');
-                    badgeMenu.id = 'nav-req-pwd-badge';
-                    badgeMenu.className = 'ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full';
-                    navReqPwd.appendChild(badgeMenu);
-                }
-                badgeMenu.textContent = data.data.length;
-            }
-        } else {
-            const badgeMenu = document.getElementById('nav-req-pwd-badge');
-            if (badgeMenu) badgeMenu.remove();
-        }
-    } catch (e) {
-        // Abaikan error fetching untuk notifikasi
     }
 
     // Render
@@ -2903,7 +2769,7 @@ function printSalarySlip(id) {
                 .footer { margin-top: 50px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px; }
                 
                 @media print {
-                    body { padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    body { padding: 0; }
                 }
             </style>
         </head>
@@ -3102,6 +2968,7 @@ async function loadMonthlyMatrix(silent = false) {
                     <th class="px-6 py-3 text-left border border-slate-700 w-56">Nama Pegawai</th>
                     <th class="px-6 py-3 text-left border border-slate-700 w-36">Jabatan</th>
                     ${thDays}
+                    <th class="px-4 py-3 text-center border border-slate-700 min-w-[110px] bg-emerald-900 font-bold">Total Jam Kerja</th>
                 </tr>
             </thead>
             <tbody id="table-rekap-body" class="text-slate-800 divide-y divide-slate-200 text-xs bg-white">
@@ -3175,6 +3042,7 @@ async function loadMonthlyMatrix(silent = false) {
                     <td class="px-6 py-2 font-bold text-slate-800 border border-slate-200">${row.nama}</td>
                     <td class="px-6 py-2 text-slate-600 border border-slate-200 uppercase font-semibold">${row.jabatan || '-'}</td>
                     ${tdDays}
+                    <td class="px-4 py-2 text-center font-mono font-bold text-emerald-600 border border-slate-200">${row.total_jam_kerja || '00:00:00'}</td>
                 </tr>
             `;
         });
@@ -3224,6 +3092,7 @@ async function loadViewDbMonthlyData() {
                 <th class="px-4 py-2 text-left border border-slate-700 w-44">Nama Pegawai</th>
                 <th class="px-4 py-2 text-left border border-slate-700 w-32">Jabatan</th>
                 ${thDays}
+                <th class="px-3 py-2 text-center border border-slate-700 min-w-[110px] bg-emerald-900 font-bold">Total Jam Kerja</th>
             </tr>
         `;
 
@@ -3290,6 +3159,7 @@ async function loadViewDbMonthlyData() {
                     <td class="px-4 py-1.5 font-bold text-slate-800 border border-slate-200">${row.nama}</td>
                     <td class="px-4 py-1.5 text-slate-600 border border-slate-200 uppercase font-semibold text-[10px]">${row.jabatan || '-'}</td>
                     ${tdDays}
+                    <td class="px-3 py-1.5 text-center font-mono font-bold text-emerald-600 border border-slate-200">${row.total_jam_kerja || '00:00:00'}</td>
                 </tr>
             `;
         });
