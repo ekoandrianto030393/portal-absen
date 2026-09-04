@@ -520,6 +520,15 @@ async function loadRiwayatBulanan(idKaryawan) {
                         <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">PSW (M)</p>
                         <p class="text-xs font-black text-fuchsia-600">${item.psw_menit || 0}</p>
                     </div>
+                    <div class="col-span-4 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-xl p-3 border border-teal-400/30 shadow-md mt-1 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
+                                <i class="fa-solid fa-business-time text-white text-sm"></i>
+                            </div>
+                            <p class="text-[10px] font-bold text-white/90 uppercase tracking-wider">Total Jam Kerja</p>
+                        </div>
+                        <p class="text-sm font-black text-white tracking-wide">${item.total_jam_kerja || '00:00:00'}</p>
+                    </div>
                 </div>
             </div>`;
         });
