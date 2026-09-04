@@ -2043,21 +2043,23 @@ function exportExcel() {
     if (!table) return;
 
     let csv = [];
+    // Trik agar Excel mendeteksi delimiter koma secara otomatis (berguna untuk region Indonesia)
+    csv.push("sep=;"); 
+    
     const rows = table.querySelectorAll("tr");
     
     for (let i = 0; i < rows.length; i++) {
         let row = [], cols = rows[i].querySelectorAll("td, th");
-        for (let j = 0; j < cols.length; j++) 
-            row.push('"' + cols[j].innerText + '"'); // Quote text
         for (let j = 0; j < cols.length; j++) {
-            // FIX: Escape double quotes dengan benar untuk CSV (replace " dengan "")
-            let cleanText = cols[j].innerText.replace(/"/g, '""');
+            // Bersihkan teks: hapus kutip ganda dan ganti baris baru (\n) dengan spasi
+            let cleanText = cols[j].innerText.replace(/"/g, '""').replace(/[\r\n]+/g, ' ').trim();
             row.push('"' + cleanText + '"'); 
         }
-        csv.push(row.join(","));
+        csv.push(row.join(";"));
     }
 
-    const csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
+    // Tambahkan BOM (\uFEFF) agar UTF-8 dibaca benar oleh Excel
+    const csvFile = new Blob(["\uFEFF" + csv.join("\n")], { type: "text/csv;charset=utf-8;" });
     const downloadLink = document.createElement("a");
     const _now = new Date(); downloadLink.download = `Rekap_Absensi_${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}.csv`;
     downloadLink.href = window.URL.createObjectURL(csvFile);
@@ -2203,7 +2205,48 @@ function printReport(forceMatrix = false) {
     // Pastikan data tanda tangan terbaru diterapkan sebelum print
     applySignatureToPrint();
 
-    window.print();
+    if (!window.__isGeneratingPdf) {
+        window.print();
+    }
+}
+
+function downloadPDF(forceMatrix = false) {
+    if (typeof html2pdf === 'undefined') {
+        alert("Library PDF belum termuat. Pastikan Anda terkoneksi ke internet dan muat ulang halaman.");
+        return;
+    }
+    
+    window.__isGeneratingPdf = true;
+    printReport(forceMatrix);
+    window.__isGeneratingPdf = false;
+    
+    const element = document.getElementById('print-area');
+    // Tampilkan paksa untuk dirender html2canvas
+    element.classList.remove('hidden', 'print:block');
+    element.style.display = 'block';
+    element.style.backgroundColor = 'white';
+    
+    const _now = new Date();
+    const fileName = `Laporan_Absensi_${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}.pdf`;
+
+    const opt = {
+        margin:       [10, 10, 10, 10], // top, left, bottom, right
+        filename:     fileName,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+    
+    // Tampilkan loading feedback (opsional, ganti kursor)
+    document.body.style.cursor = 'wait';
+    
+    html2pdf().set(opt).from(element).save().then(() => {
+        // Kembalikan ke state semula
+        element.style.display = '';
+        element.style.backgroundColor = '';
+        element.classList.add('hidden', 'print:block');
+        document.body.style.cursor = 'default';
+    });
 }
 
 // --- FITUR: MODAL DETAIL PEGAWAI ---
@@ -2860,7 +2903,7 @@ function printSalarySlip(id) {
                 .footer { margin-top: 50px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px; }
                 
                 @media print {
-                    body { padding: 0; }
+                    body { padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 }
             </style>
         </head>

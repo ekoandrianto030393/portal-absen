@@ -23,6 +23,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- HTML2PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
         <style>
         /* KONFIGURASI DESAIN UTAMA PREMIUM */
@@ -118,15 +120,21 @@
             font-weight: 800;
         }
 
-        /* [NEW] Print Styles for Academic Look */
+        /* [NEW] Print Styles for Academic Look & PDF Export */
         @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
             @page { size: landscape; margin: 10mm 10mm 20mm 10mm; }
-            html, body { background-color: white !important; height: auto !important; overflow: visible !important; display: block !important; position: static !important; width: 100% !important; }
+            html, body { background-color: white !important; height: max-content !important; min-height: 100% !important; overflow: visible !important; display: block !important; position: static !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            main, aside, #sidebar-overlay { display: none !important; } /* Force hide non-print elements to prevent PDF single-page cut-off */
             #print-area { background-color: white !important; width: 100% !important; overflow: visible !important; display: block !important; position: relative !important; }
             #print-table-container { width: 100%; overflow: visible !important; display: block !important; }
             #print-table-container table { table-layout: auto; width: 100% !important; border-collapse: collapse !important; overflow: visible !important; page-break-inside: auto !important; }
-            #print-table-container th { border: 2px solid black !important; color: black !important; background: white !important; }
-            #print-table-container td { border: 1px solid black !important; line-height: 1.4; color: black !important; }
+            #print-table-container th { border: 2px solid black !important; color: black !important; background-color: #f8fafc !important; font-weight: bold; }
+            #print-table-container td { border: 1px solid black !important; line-height: 1.4; color: black !important; padding: 4px 8px; }
             thead { display: table-header-group !important; } 
             tr { break-inside: avoid !important; page-break-inside: avoid !important; page-break-after: auto !important; border-bottom: 2px solid black !important; } 
             .print\:hidden { display: none !important; }
@@ -404,6 +412,9 @@
                         <button onclick="printReport()"
                             class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded text-sm font-bold shadow-md transition-colors border border-slate-900"><i
                                 class="fa-solid fa-print mr-2"></i>Cetak Laporan</button>
+                        <button onclick="downloadPDF(false)"
+                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-bold shadow-md transition-colors border border-red-800"><i
+                                class="fa-solid fa-file-pdf mr-2"></i>Simpan PDF</button>
                         </div>
                         </div>
 
@@ -509,6 +520,9 @@
                             <button onclick="printMonthlyMatrix()"
                                 class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded text-sm font-bold shadow-md transition-colors border border-slate-900"><i
                                     class="fa-solid fa-print mr-2"></i>Cetak Laporan</button>
+                            <button onclick="downloadPDF(true)"
+                                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-bold shadow-md transition-colors border border-red-800"><i
+                                    class="fa-solid fa-file-pdf mr-2"></i>Simpan PDF</button>
                         </div>
                     </div>
                     <div class="overflow-x-auto max-h-[75vh]">
@@ -897,7 +911,7 @@
     </div>
 
     <!-- Load Logic -->
-    <script src="dashboard.js"></script>
-    <script src="pwa.js"></script>
+    <script src="dashboard.js?v=2.0"></script>
+    <script src="pwa.js?v=2.0"></script>
 </body>
 </html>
