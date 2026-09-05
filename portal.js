@@ -893,12 +893,12 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
             for (let i = 1; i <= 31; i++) {
                 if (i > daysInMonth) {
                     html += `
-                        <tr class="border-b border-slate-200 bg-slate-50/50 even:bg-white">
-                            <td class="p-2 border-r border-slate-200 text-center font-bold text-slate-400">${i}</td>
-                            <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
-                            <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
-                            <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
-                            <td class="p-2 text-center text-slate-300">-</td>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td class="p-2.5 text-center font-bold" style="color:rgba(255,255,255,0.12);border-right:1px solid rgba(255,255,255,0.04);">${i}</td>
+                            <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.1);border-right:1px solid rgba(255,255,255,0.04);">-</td>
+                            <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.1);border-right:1px solid rgba(255,255,255,0.04);">-</td>
+                            <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.1);border-right:1px solid rgba(255,255,255,0.04);">-</td>
+                            <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.1);">-</td>
                         </tr>
                     `;
                     continue;
@@ -910,11 +910,11 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     let statusLabel = '';
                     if (d.status === 'IZIN' || d.status === 'SAKIT' || d.status === 'CUTI' || d.status === 'DL' || d.status === 'DINAS_LUAR') {
                          html += `
-                            <tr class="border-b border-slate-200 hover:bg-slate-100 transition-colors even:bg-slate-50">
-                                <td class="p-2 border-r border-slate-200 text-center font-bold text-teal-700">${i}</td>
-                                <td class="p-2 border-r border-slate-200 text-center font-bold text-blue-500" colspan="2">${d.status}</td>
-                                <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
-                                <td class="p-2 text-center text-slate-300">-</td>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:rgba(59,130,246,0.04);">
+                                <td class="p-2.5 text-center font-black" style="color:#2dd4bf;border-right:1px solid rgba(255,255,255,0.04);">${i}</td>
+                                <td class="p-2.5 text-center font-black" style="color:#60a5fa;border-right:1px solid rgba(255,255,255,0.04);" colspan="2">${d.status}</td>
+                                <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.15);border-right:1px solid rgba(255,255,255,0.04);">-</td>
+                                <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.15);">-</td>
                             </tr>
                         `;
                         continue;
@@ -924,23 +924,24 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     let pulang = d.jam_keluar && d.jam_keluar !== '-' ? d.jam_keluar.slice(0, 5) : '-';
                     
                     if ((masuk !== '-' && pulang === '-') || (d.keterangan && (d.keterangan.includes('Otomatis') || d.keterangan.includes('Tanpa Absen Pulang')))) {
-                        pulang = '<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider border border-red-200 shadow-sm">TAP</span>';
+                        pulang = '<span style="background:rgba(239,68,68,0.12);color:#f87171;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:800;border:1px solid rgba(239,68,68,0.2);">TAP</span>';
                     }
 
-                    const psw = (d.psw_menit && d.psw_menit > 0) ? `<span class="text-rose-500 font-bold text-[11px]">P:${d.psw_menit}m</span>` : `<span class="text-slate-300">-</span>`;
-                    const telat = (d.telat_menit && d.telat_menit > 0) ? `<span class="text-rose-500 font-bold text-[11px]">T:${d.telat_menit}m</span>` : `<span class="text-slate-300">-</span>`;
+                    const psw = (d.psw_menit && d.psw_menit > 0) ? `<span style="color:#f87171;font-weight:700;font-size:11px;">P:${d.psw_menit}m</span>` : `<span style="color:rgba(255,255,255,0.18);">-</span>`;
+                    const telat = (d.telat_menit && d.telat_menit > 0) ? `<span style="color:#fb923c;font-weight:700;font-size:11px;">T:${d.telat_menit}m</span>` : `<span style="color:rgba(255,255,255,0.18);">-</span>`;
                     
                     // Kalau telat, buat text merah
                     const isTelat = d.status && d.status.toLowerCase().includes('telat');
-                    const masukHTML = isTelat ? `<span class="text-rose-500 font-bold">${masuk}</span>` : `<span class="font-medium">${masuk}</span>`;
+                    const masukHTML = isTelat ? `<span style="color:#f87171;font-weight:700;">${masuk}</span>` : `<span style="color:rgba(255,255,255,0.75);font-weight:600;">${masuk}</span>`;
+                    const pulangStyle = typeof pulang === 'string' && pulang !== '-' && !pulang.includes('TAP') ? `style="color:rgba(255,255,255,0.65);font-weight:600;"` : '';
                     
                     html += `
-                        <tr class="border-b border-slate-200 hover:bg-slate-100 transition-colors even:bg-slate-50">
-                            <td class="p-2 border-r border-slate-200 text-center font-bold text-teal-700">${i}</td>
-                            <td class="p-2 border-r border-slate-200 text-center">${masukHTML}</td>
-                            <td class="p-2 border-r border-slate-200 text-center font-medium">${pulang}</td>
-                            <td class="p-2 border-r border-slate-200 text-center">${psw}</td>
-                            <td class="p-2 text-center">${telat}</td>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);" class="table-row-hover">
+                            <td class="p-2.5 text-center font-black" style="color:#2dd4bf;border-right:1px solid rgba(255,255,255,0.04);">${i}</td>
+                            <td class="p-2.5 text-center" style="border-right:1px solid rgba(255,255,255,0.04);">${masukHTML}</td>
+                            <td class="p-2.5 text-center" style="border-right:1px solid rgba(255,255,255,0.04);" ${pulangStyle}>${pulang}</td>
+                            <td class="p-2.5 text-center" style="border-right:1px solid rgba(255,255,255,0.04);">${psw}</td>
+                            <td class="p-2.5 text-center">${telat}</td>
                         </tr>
                     `;
                 } else {
@@ -948,34 +949,34 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     const dayOfWeek = dateObj.getDay(); 
                     const isFuture = dateObj > now;
                     
-                    let bg = '';
-                    let info = '<span class="text-slate-300">-</span>';
+                    let rowStyle = 'border-bottom:1px solid rgba(255,255,255,0.04);';
+                    let info = '<span style="color:rgba(255,255,255,0.18);">-</span>';
                     
                     if (isFuture) {
-                        bg = 'bg-slate-50/50';
+                        rowStyle += 'opacity:0.4;';
                     } else if (dayOfWeek === 0) {
-                        bg = 'bg-rose-50/30';
-                        info = '<span class="text-rose-400 text-[10px] font-bold">LBR</span>';
+                        rowStyle += 'background:rgba(244,63,94,0.04);';
+                        info = '<span style="color:#f87171;font-size:10px;font-weight:800;background:rgba(244,63,94,0.1);padding:2px 8px;border-radius:6px;">LBR</span>';
                     } else if (alpaDates.has(i)) {
-                        info = '<span class="text-rose-500 text-[10px] font-bold">ALPA</span>';
+                        info = '<span style="color:#f43f5e;font-size:10px;font-weight:800;background:rgba(244,63,94,0.12);padding:2px 8px;border-radius:6px;">ALPA</span>';
                     }
 
                     html += `
-                        <tr class="border-b border-slate-200 ${bg} even:bg-slate-50">
-                            <td class="p-2 border-r border-slate-200 text-center font-bold text-slate-500">${i}</td>
-                            <td class="p-2 text-center" colspan="4">${info}</td>
+                        <tr style="${rowStyle}">
+                            <td class="p-2.5 text-center font-bold" style="color:rgba(255,255,255,0.3);border-right:1px solid rgba(255,255,255,0.04);">${i}</td>
+                            <td class="p-2.5 text-center" colspan="4">${info}</td>
                         </tr>
                     `;
                 }
             }
         } else {
-            html = `<tr><td colspan="5" class="text-center p-4 text-slate-400">Gagal memuat data</td></tr>`;
+            html = `<tr><td colspan="5" class="text-center p-4" style="color:rgba(255,255,255,0.25);">Gagal memuat data</td></tr>`;
         }
         tbody.innerHTML = html;
         
     } catch (e) {
         console.error("Error daily metrics:", e);
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-rose-500 text-xs">Koneksi Error</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-xs" style="color:rgba(248,113,113,0.7);">Koneksi Error</td></tr>`;
     }
 }
 
