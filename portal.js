@@ -474,58 +474,62 @@ async function loadRiwayatBulanan(idKaryawan) {
         let html = '';
         result.data.forEach(item => {
             html += `
-            <div class="glass-card rounded-[1.5rem] p-5 premium-shadow hover:-translate-y-1 transition-transform duration-300">
-                <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100/60">
+            <div class="riwayat-card">
+                <!-- Card Header -->
+                <div style="background:linear-gradient(135deg,rgba(13,148,136,0.12),rgba(6,182,212,0.06));border-bottom:1px solid rgba(255,255,255,0.05);" class="p-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center border border-teal-100/50 shadow-sm">
-                            <i class="fa-solid fa-calendar-check text-lg"></i>
+                        <div class="w-10 h-10 rounded-[13px] flex items-center justify-center flex-shrink-0"
+                             style="background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 0 16px rgba(13,148,136,0.35);">
+                            <i class="fa-solid fa-calendar-check text-white"></i>
                         </div>
                         <div>
-                            <h4 class="font-bold text-slate-800 text-sm uppercase tracking-widest">${formatBulan(item.periode)}</h4>
-                            <p class="text-[10px] text-slate-500 font-semibold tracking-wider">${item.total_hari_kerja || 0} Hari | ${item.total_jam_kerja || 0} Jam Kerja</p>
+                            <h4 class="font-black text-white/90 text-sm uppercase tracking-widest">${formatBulan(item.periode)}</h4>
+                            <p style="color:rgba(45,212,191,0.6);" class="text-[10px] font-bold tracking-wider">${item.total_hari_kerja || 0} Hari &nbsp;·&nbsp; ${item.total_jam_kerja || '00:00:00'} Jam Kerja</p>
                         </div>
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-4 gap-2 text-center">
-                    <div class="bg-emerald-50/50 rounded-xl p-2 border border-emerald-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Hadir</p>
-                        <p class="text-xs font-black text-emerald-600">${item.total_masuk}</p>
+                <!-- Stats Grid -->
+                <div class="p-4 grid grid-cols-4 gap-2 text-center">
+                    <div class="rounded-xl p-2.5" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(52,211,153,0.5);">Hadir</p>
+                        <p class="text-sm font-black text-emerald-400">${item.total_masuk}</p>
                     </div>
-                    <div class="bg-rose-50/50 rounded-xl p-2 border border-rose-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Alpa</p>
-                        <p class="text-xs font-black text-rose-600">${item.alpa}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(253,164,175,0.5);">Alpa</p>
+                        <p class="text-sm font-black text-rose-400">${item.alpa}</p>
                     </div>
-                    <div class="bg-blue-50/50 rounded-xl p-2 border border-blue-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">I/S/C/DL</p>
-                        <p class="text-xs font-black text-blue-600">${Number(item.total_izin||0) + Number(item.total_sakit||0) + Number(item.total_cuti||0) + Number(item.total_dl||0)}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(147,197,253,0.5);">I/S/C/DL</p>
+                        <p class="text-sm font-black text-blue-400">${Number(item.total_izin||0) + Number(item.total_sakit||0) + Number(item.total_cuti||0) + Number(item.total_dl||0)}</p>
                     </div>
-                    <div class="bg-red-50/50 rounded-xl p-2 border border-red-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Tanpa Plg</p>
-                        <p class="text-xs font-black text-red-600">${item.tanpa_absen_pulang || 0}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(252,165,165,0.5);">T.Plg</p>
+                        <p class="text-sm font-black text-red-400">${item.tanpa_absen_pulang || 0}</p>
                     </div>
-                    <div class="bg-amber-50/50 rounded-xl p-2 border border-amber-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Telat (X)</p>
-                        <p class="text-xs font-black text-amber-600">${item.telat_kali || 0}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(252,211,77,0.5);">Telat X</p>
+                        <p class="text-sm font-black text-amber-400">${item.telat_kali || 0}</p>
                     </div>
-                    <div class="bg-orange-50/50 rounded-xl p-2 border border-orange-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Telat (M)</p>
-                        <p class="text-xs font-black text-orange-600">${item.telat_menit || 0}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(253,186,116,0.5);">Telat M</p>
+                        <p class="text-sm font-black text-orange-400">${item.telat_menit || 0}</p>
                     </div>
-                    <div class="bg-purple-50/50 rounded-xl p-2 border border-purple-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">PSW (X)</p>
-                        <p class="text-xs font-black text-purple-600">${item.psw_kali || 0}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(196,181,253,0.5);">PSW X</p>
+                        <p class="text-sm font-black text-violet-400">${item.psw_kali || 0}</p>
                     </div>
-                    <div class="bg-fuchsia-50/50 rounded-xl p-2 border border-fuchsia-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">PSW (M)</p>
-                        <p class="text-xs font-black text-fuchsia-600">${item.psw_menit || 0}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(217,70,239,0.08);border:1px solid rgba(217,70,239,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(240,171,252,0.5);">PSW M</p>
+                        <p class="text-sm font-black text-fuchsia-400">${item.psw_menit || 0}</p>
                     </div>
-                    <div class="col-span-4 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-xl p-3 border border-teal-400/30 shadow-md mt-1 flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
-                                <i class="fa-solid fa-business-time text-white text-sm"></i>
+                    <!-- Total Jam Kerja Full Width -->
+                    <div class="col-span-4 flex items-center justify-between p-3 rounded-[14px] overflow-hidden relative mt-1"
+                         style="background:linear-gradient(135deg,#042f2e,#0f766e,#0d9488);box-shadow:0 0 20px rgba(13,148,136,0.25);border:1px solid rgba(13,148,136,0.25);">
+                        <div class="flex items-center gap-2 relative z-10">
+                            <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.15);">
+                                <i class="fa-solid fa-business-time text-white text-xs"></i>
                             </div>
-                            <p class="text-[10px] font-bold text-white/90 uppercase tracking-wider">Total Jam Kerja</p>
                         </div>
                         <p class="text-sm font-black text-white tracking-wide">${item.total_jam_kerja || '00:00:00'}</p>
                     </div>
@@ -678,7 +682,7 @@ function renderRiwayatChart(data) {
     if(xpEl && pangkatEl) {
         xpEl.innerHTML = `${userXP} <span class="text-xs text-teal-400">XP</span>`;
         pangkatEl.textContent = rankInfo.title;
-        pangkatEl.className = 'px-3 py-1 text-[11px] font-bold rounded-full inline-block ' + rankInfo.color;
+        pangkatEl.className = 'px-3 py-1.5 text-xs font-bold rounded-xl inline-block ' + rankInfo.color;
         if(notesEl) notesEl.textContent = rankInfo.notes;
     }
     
@@ -706,7 +710,7 @@ function renderRiwayatChart(data) {
                     '#3b82f6', // blue-500
                 ],
                 borderWidth: 2,
-                borderColor: '#ffffff',
+                borderColor: '#070d1a',
                 hoverOffset: 4
             }]
         },
