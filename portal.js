@@ -676,7 +676,7 @@ function renderRiwayatChart(data) {
     const notesEl = document.getElementById('profil-notes');
     
     // Terapkan warna background header secara dinamis
-    const headers = document.querySelectorAll('.bg-gradient-premium');
+    const headers = document.querySelectorAll('.hero-header');
     headers.forEach(el => {
         el.style.background = rankInfo.headerBg;
     });
