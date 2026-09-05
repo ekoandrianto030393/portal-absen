@@ -422,9 +422,12 @@ function switchTab(tabName) {
                     const session = localStorage.getItem('pegawai_session');
                     if(session) {
                         const user = JSON.parse(session);
-                        document.getElementById('profil-nama').textContent = user.nama;
-                        document.getElementById('profil-jabatan').textContent = user.jabatan || 'Pegawai';
-                        document.getElementById('profil-id').textContent = user.id_karyawan;
+                        const pNama = document.getElementById('profil-nama');
+                        if(pNama) pNama.textContent = user.nama;
+                        const pJabatan = document.getElementById('profil-jabatan');
+                        if(pJabatan) pJabatan.textContent = user.jabatan || 'Pegawai';
+                        const pId = document.getElementById('profil-id');
+                        if(pId) pId.textContent = user.id_karyawan;
                         
                         // Ensure Gamification stats are loaded
                         if (typeof isRiwayatLoaded !== 'undefined' && !isRiwayatLoaded) {
