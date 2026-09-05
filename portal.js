@@ -476,62 +476,64 @@ async function loadRiwayatBulanan(idKaryawan) {
             html += `
             <div class="riwayat-card">
                 <!-- Card Header -->
-                <div style="background:linear-gradient(135deg,rgba(13,148,136,0.12),rgba(6,182,212,0.06));border-bottom:1px solid rgba(255,255,255,0.05);" class="p-4">
-                    <div class="flex items-center gap-3">
+                <div style="background:linear-gradient(160deg,#042f2e 0%,#0f766e 40%,#0d9488 70%,#0891b2 100%);" class="p-4 relative overflow-hidden">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full" style="background:radial-gradient(circle,rgba(255,255,255,0.12) 0%,transparent 70%);"></div>
+                    <div class="flex items-center gap-3 relative z-10">
                         <div class="w-10 h-10 rounded-[13px] flex items-center justify-center flex-shrink-0"
-                             style="background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 0 16px rgba(13,148,136,0.35);">
+                             style="background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.22);box-shadow:0 8px 20px rgba(0,0,0,0.15);">
                             <i class="fa-solid fa-calendar-check text-white"></i>
                         </div>
                         <div>
-                            <h4 class="font-black text-white/90 text-sm uppercase tracking-widest">${formatBulan(item.periode)}</h4>
-                            <p style="color:rgba(45,212,191,0.6);" class="text-[10px] font-bold tracking-wider">${item.total_hari_kerja || 0} Hari &nbsp;·&nbsp; ${item.total_jam_kerja || '00:00:00'} Jam Kerja</p>
+                            <h4 class="font-black text-white/95 text-sm uppercase tracking-widest">${formatBulan(item.periode)}</h4>
+                            <p style="color:rgba(167,243,208,0.75);" class="text-[10px] font-bold tracking-wider">${item.total_hari_kerja || 0} Hari &nbsp;·&nbsp; ${item.total_jam_kerja || '00:00:00'} Jam Kerja</p>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Stats Grid -->
                 <div class="p-4 grid grid-cols-4 gap-2 text-center">
-                    <div class="rounded-xl p-2.5" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.15);">
-                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(52,211,153,0.5);">Hadir</p>
-                        <p class="text-sm font-black text-emerald-400">${item.total_masuk}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1 text-emerald-600/60">Hadir</p>
+                        <p class="text-sm font-black" style="background:linear-gradient(135deg,#059669,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${item.total_masuk}</p>
                     </div>
-                    <div class="rounded-xl p-2.5" style="background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.15);">
-                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(253,164,175,0.5);">Alpa</p>
-                        <p class="text-sm font-black text-rose-400">${item.alpa}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(244,63,94,0.07);border:1px solid rgba(244,63,94,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1 text-rose-600/60">Alpa</p>
+                        <p class="text-sm font-black" style="background:linear-gradient(135deg,#e11d48,#f43f5e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${item.alpa}</p>
                     </div>
-                    <div class="rounded-xl p-2.5" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15);">
-                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(147,197,253,0.5);">I/S/C/DL</p>
-                        <p class="text-sm font-black text-blue-400">${Number(item.total_izin||0) + Number(item.total_sakit||0) + Number(item.total_cuti||0) + Number(item.total_dl||0)}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1 text-blue-600/60">I/S/C/DL</p>
+                        <p class="text-sm font-black" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${Number(item.total_izin||0) + Number(item.total_sakit||0) + Number(item.total_cuti||0) + Number(item.total_dl||0)}</p>
                     </div>
-                    <div class="rounded-xl p-2.5" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);">
-                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(252,165,165,0.5);">T.Plg</p>
-                        <p class="text-sm font-black text-red-400">${item.tanpa_absen_pulang || 0}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1 text-red-600/60">T.Plg</p>
+                        <p class="text-sm font-black" style="background:linear-gradient(135deg,#b91c1c,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${item.tanpa_absen_pulang || 0}</p>
                     </div>
-                    <div class="rounded-xl p-2.5" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);">
-                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(252,211,77,0.5);">Telat X</p>
-                        <p class="text-sm font-black text-amber-400">${item.telat_kali || 0}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1 text-amber-600/60">Telat X</p>
+                        <p class="text-sm font-black" style="background:linear-gradient(135deg,#b45309,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${item.telat_kali || 0}</p>
                     </div>
-                    <div class="rounded-xl p-2.5" style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.15);">
-                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(253,186,116,0.5);">Telat M</p>
-                        <p class="text-sm font-black text-orange-400">${item.telat_menit || 0}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(249,115,22,0.07);border:1px solid rgba(249,115,22,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1 text-orange-600/60">Telat M</p>
+                        <p class="text-sm font-black" style="background:linear-gradient(135deg,#c2410c,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${item.telat_menit || 0}</p>
                     </div>
-                    <div class="rounded-xl p-2.5" style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.15);">
-                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(196,181,253,0.5);">PSW X</p>
-                        <p class="text-sm font-black text-violet-400">${item.psw_kali || 0}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1 text-violet-600/60">PSW X</p>
+                        <p class="text-sm font-black" style="background:linear-gradient(135deg,#6d28d9,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${item.psw_kali || 0}</p>
                     </div>
-                    <div class="rounded-xl p-2.5" style="background:rgba(217,70,239,0.08);border:1px solid rgba(217,70,239,0.15);">
-                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1" style="color:rgba(240,171,252,0.5);">PSW M</p>
-                        <p class="text-sm font-black text-fuchsia-400">${item.psw_menit || 0}</p>
+                    <div class="rounded-xl p-2.5" style="background:rgba(217,70,239,0.07);border:1px solid rgba(217,70,239,0.15);">
+                        <p class="text-[8px] font-bold uppercase tracking-wider mb-1 text-fuchsia-600/60">PSW M</p>
+                        <p class="text-sm font-black" style="background:linear-gradient(135deg,#a21caf,#d946ef);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${item.psw_menit || 0}</p>
                     </div>
                     <!-- Total Jam Kerja Full Width -->
                     <div class="col-span-4 flex items-center justify-between p-3 rounded-[14px] overflow-hidden relative mt-1"
-                         style="background:linear-gradient(135deg,#042f2e,#0f766e,#0d9488);box-shadow:0 0 20px rgba(13,148,136,0.25);border:1px solid rgba(13,148,136,0.25);">
+                         style="background:linear-gradient(135deg,#042f2e,#0f766e,#0d9488);box-shadow:0 8px 24px -4px rgba(13,148,136,0.30);border:1px solid rgba(13,148,136,0.2);">
                         <div class="flex items-center gap-2 relative z-10">
-                            <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.15);">
+                            <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.18);">
                                 <i class="fa-solid fa-business-time text-white text-xs"></i>
                             </div>
+                            <p class="text-[10px] font-bold text-white/70 uppercase tracking-wider">Total Jam Kerja</p>
                         </div>
-                        <p class="text-sm font-black text-white tracking-wide">${item.total_jam_kerja || '00:00:00'}</p>
+                        <p class="text-sm font-black text-white font-mono relative z-10" style="text-shadow:0 0 12px rgba(255,255,255,0.2);">${item.total_jam_kerja || '00:00:00'}</p>
                     </div>
                 </div>
             </div>`;
@@ -710,7 +712,7 @@ function renderRiwayatChart(data) {
                     '#3b82f6', // blue-500
                 ],
                 borderWidth: 2,
-                borderColor: '#070d1a',
+                borderColor: '#ffffff',
                 hoverOffset: 4
             }]
         },
@@ -893,12 +895,12 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
             for (let i = 1; i <= 31; i++) {
                 if (i > daysInMonth) {
                     html += `
-                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
-                            <td class="p-2.5 text-center font-bold" style="color:rgba(255,255,255,0.12);border-right:1px solid rgba(255,255,255,0.04);">${i}</td>
-                            <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.1);border-right:1px solid rgba(255,255,255,0.04);">-</td>
-                            <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.1);border-right:1px solid rgba(255,255,255,0.04);">-</td>
-                            <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.1);border-right:1px solid rgba(255,255,255,0.04);">-</td>
-                            <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.1);">-</td>
+                        <tr style="border-bottom:1px solid rgba(226,232,240,0.6);background:rgba(248,250,252,0.5);">
+                            <td class="p-2.5 text-center font-bold text-slate-300" style="border-right:1px solid rgba(226,232,240,0.5);">${i}</td>
+                            <td class="p-2.5 text-center text-slate-300" style="border-right:1px solid rgba(226,232,240,0.5);">-</td>
+                            <td class="p-2.5 text-center text-slate-300" style="border-right:1px solid rgba(226,232,240,0.5);">-</td>
+                            <td class="p-2.5 text-center text-slate-300" style="border-right:1px solid rgba(226,232,240,0.5);">-</td>
+                            <td class="p-2.5 text-center text-slate-300">-</td>
                         </tr>
                     `;
                     continue;
@@ -910,11 +912,11 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     let statusLabel = '';
                     if (d.status === 'IZIN' || d.status === 'SAKIT' || d.status === 'CUTI' || d.status === 'DL' || d.status === 'DINAS_LUAR') {
                          html += `
-                            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:rgba(59,130,246,0.04);">
-                                <td class="p-2.5 text-center font-black" style="color:#2dd4bf;border-right:1px solid rgba(255,255,255,0.04);">${i}</td>
-                                <td class="p-2.5 text-center font-black" style="color:#60a5fa;border-right:1px solid rgba(255,255,255,0.04);" colspan="2">${d.status}</td>
-                                <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.15);border-right:1px solid rgba(255,255,255,0.04);">-</td>
-                                <td class="p-2.5 text-center" style="color:rgba(255,255,255,0.15);">-</td>
+                            <tr style="border-bottom:1px solid rgba(226,232,240,0.5);background:rgba(239,246,255,0.5);">
+                                <td class="p-2.5 text-center font-black text-teal-600" style="border-right:1px solid rgba(226,232,240,0.5);">${i}</td>
+                                <td class="p-2.5 text-center font-black text-blue-500" style="border-right:1px solid rgba(226,232,240,0.5);" colspan="2">${d.status}</td>
+                                <td class="p-2.5 text-center text-slate-300" style="border-right:1px solid rgba(226,232,240,0.5);">-</td>
+                                <td class="p-2.5 text-center text-slate-300">-</td>
                             </tr>
                         `;
                         continue;
@@ -924,23 +926,23 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     let pulang = d.jam_keluar && d.jam_keluar !== '-' ? d.jam_keluar.slice(0, 5) : '-';
                     
                     if ((masuk !== '-' && pulang === '-') || (d.keterangan && (d.keterangan.includes('Otomatis') || d.keterangan.includes('Tanpa Absen Pulang')))) {
-                        pulang = '<span style="background:rgba(239,68,68,0.12);color:#f87171;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:800;border:1px solid rgba(239,68,68,0.2);">TAP</span>';
+                        pulang = '<span style="background:rgba(239,68,68,0.08);color:#ef4444;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:800;border:1px solid rgba(239,68,68,0.18);">TAP</span>';
                     }
 
-                    const psw = (d.psw_menit && d.psw_menit > 0) ? `<span style="color:#f87171;font-weight:700;font-size:11px;">P:${d.psw_menit}m</span>` : `<span style="color:rgba(255,255,255,0.18);">-</span>`;
-                    const telat = (d.telat_menit && d.telat_menit > 0) ? `<span style="color:#fb923c;font-weight:700;font-size:11px;">T:${d.telat_menit}m</span>` : `<span style="color:rgba(255,255,255,0.18);">-</span>`;
+                    const psw = (d.psw_menit && d.psw_menit > 0) ? `<span style="color:#f43f5e;font-weight:700;font-size:11px;">P:${d.psw_menit}m</span>` : `<span class="text-slate-300">-</span>`;
+                    const telat = (d.telat_menit && d.telat_menit > 0) ? `<span style="color:#f97316;font-weight:700;font-size:11px;">T:${d.telat_menit}m</span>` : `<span class="text-slate-300">-</span>`;
                     
                     // Kalau telat, buat text merah
                     const isTelat = d.status && d.status.toLowerCase().includes('telat');
-                    const masukHTML = isTelat ? `<span style="color:#f87171;font-weight:700;">${masuk}</span>` : `<span style="color:rgba(255,255,255,0.75);font-weight:600;">${masuk}</span>`;
-                    const pulangStyle = typeof pulang === 'string' && pulang !== '-' && !pulang.includes('TAP') ? `style="color:rgba(255,255,255,0.65);font-weight:600;"` : '';
+                    const masukHTML = isTelat ? `<span style="color:#f43f5e;font-weight:700;">${masuk}</span>` : `<span style="color:#334155;font-weight:600;">${masuk}</span>`;
+                    const pulangStyle = typeof pulang === 'string' && pulang !== '-' && !pulang.includes('TAP') ? `style="color:#334155;font-weight:600;"` : '';
                     
                     html += `
-                        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);" class="table-row-hover">
-                            <td class="p-2.5 text-center font-black" style="color:#2dd4bf;border-right:1px solid rgba(255,255,255,0.04);">${i}</td>
-                            <td class="p-2.5 text-center" style="border-right:1px solid rgba(255,255,255,0.04);">${masukHTML}</td>
-                            <td class="p-2.5 text-center" style="border-right:1px solid rgba(255,255,255,0.04);" ${pulangStyle}>${pulang}</td>
-                            <td class="p-2.5 text-center" style="border-right:1px solid rgba(255,255,255,0.04);">${psw}</td>
+                        <tr style="border-bottom:1px solid rgba(226,232,240,0.5);" class="hover:bg-teal-50/30 transition-colors">
+                            <td class="p-2.5 text-center font-black text-teal-600" style="border-right:1px solid rgba(226,232,240,0.5);">${i}</td>
+                            <td class="p-2.5 text-center" style="border-right:1px solid rgba(226,232,240,0.5);">${masukHTML}</td>
+                            <td class="p-2.5 text-center" style="border-right:1px solid rgba(226,232,240,0.5);" ${pulangStyle}>${pulang}</td>
+                            <td class="p-2.5 text-center" style="border-right:1px solid rgba(226,232,240,0.5);">${psw}</td>
                             <td class="p-2.5 text-center">${telat}</td>
                         </tr>
                     `;
@@ -949,34 +951,34 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     const dayOfWeek = dateObj.getDay(); 
                     const isFuture = dateObj > now;
                     
-                    let rowStyle = 'border-bottom:1px solid rgba(255,255,255,0.04);';
-                    let info = '<span style="color:rgba(255,255,255,0.18);">-</span>';
+                    let rowStyle = 'border-bottom:1px solid rgba(226,232,240,0.5);';
+                    let info = '<span class="text-slate-300">-</span>';
                     
                     if (isFuture) {
-                        rowStyle += 'opacity:0.4;';
+                        rowStyle += 'opacity:0.5;';
                     } else if (dayOfWeek === 0) {
-                        rowStyle += 'background:rgba(244,63,94,0.04);';
-                        info = '<span style="color:#f87171;font-size:10px;font-weight:800;background:rgba(244,63,94,0.1);padding:2px 8px;border-radius:6px;">LBR</span>';
+                        rowStyle += 'background:rgba(255,241,242,0.5);';
+                        info = '<span style="color:#f43f5e;font-size:10px;font-weight:800;background:rgba(244,63,94,0.07);padding:2px 8px;border-radius:6px;">LBR</span>';
                     } else if (alpaDates.has(i)) {
-                        info = '<span style="color:#f43f5e;font-size:10px;font-weight:800;background:rgba(244,63,94,0.12);padding:2px 8px;border-radius:6px;">ALPA</span>';
+                        info = '<span style="color:#ef4444;font-size:10px;font-weight:800;background:rgba(239,68,68,0.07);padding:2px 8px;border-radius:6px;">ALPA</span>';
                     }
 
                     html += `
                         <tr style="${rowStyle}">
-                            <td class="p-2.5 text-center font-bold" style="color:rgba(255,255,255,0.3);border-right:1px solid rgba(255,255,255,0.04);">${i}</td>
+                            <td class="p-2.5 text-center font-bold text-slate-400" style="border-right:1px solid rgba(226,232,240,0.5);">${i}</td>
                             <td class="p-2.5 text-center" colspan="4">${info}</td>
                         </tr>
                     `;
                 }
             }
         } else {
-            html = `<tr><td colspan="5" class="text-center p-4" style="color:rgba(255,255,255,0.25);">Gagal memuat data</td></tr>`;
+            html = `<tr><td colspan="5" class="text-center p-4 text-slate-400">Gagal memuat data</td></tr>`;
         }
         tbody.innerHTML = html;
         
     } catch (e) {
         console.error("Error daily metrics:", e);
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-xs" style="color:rgba(248,113,113,0.7);">Koneksi Error</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-rose-400 text-xs">Koneksi Error</td></tr>`;
     }
 }
 

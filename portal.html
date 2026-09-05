@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
         /* ══════════════════════════════════════════
            RESET & BASE
@@ -23,279 +23,236 @@
         }
         input, textarea, select { user-select: auto !important; }
         ::-webkit-scrollbar { display: none; }
-
         html { scroll-behavior: smooth; }
 
         body {
             font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
             -ms-overflow-style: none;
             scrollbar-width: none;
-            background: #070d1a;
+            background: #f0f6f5;
             min-height: 100vh;
             overflow-x: hidden;
-            color: #e2e8f0;
+            color: #0f172a;
         }
 
         /* ══════════════════════════════════════════
-           NOISE TEXTURE — Signature Premium Feel
+           LIGHT AURORA BACKGROUND
         ══════════════════════════════════════════ */
-        body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            z-index: 9998;
-            pointer-events: none;
-            opacity: 0.025;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-            background-repeat: repeat;
-            background-size: 180px 180px;
-        }
-
-        /* ══════════════════════════════════════════
-           ANIMATED MESH BACKGROUND
-        ══════════════════════════════════════════ */
-        .mesh-bg {
-            position: fixed; inset: 0; z-index: -1;
-            background: #070d1a;
+        .aurora-bg {
+            position: fixed; inset: 0; z-index: -2;
+            background: linear-gradient(145deg, #e8f5f3 0%, #f5fffe 30%, #edf6f9 65%, #f0f0ff 100%);
             overflow: hidden;
         }
-        .mesh-bg::before {
+        .aurora-bg::before {
             content: '';
             position: absolute;
-            width: 800px; height: 800px;
-            top: -300px; left: -200px;
-            background: radial-gradient(ellipse, rgba(13,148,136,0.22) 0%, rgba(6,182,212,0.08) 40%, transparent 70%);
-            animation: meshDrift1 20s ease-in-out infinite alternate;
+            width: 700px; height: 700px;
+            top: -200px; left: -150px;
+            background: radial-gradient(ellipse, rgba(13,148,136,0.14) 0%, transparent 65%);
             border-radius: 50%;
+            animation: drift1 20s ease-in-out infinite alternate;
         }
-        .mesh-bg::after {
+        .aurora-bg::after {
             content: '';
             position: absolute;
-            width: 600px; height: 600px;
-            bottom: -200px; right: -150px;
-            background: radial-gradient(ellipse, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.06) 40%, transparent 70%);
-            animation: meshDrift2 25s ease-in-out infinite alternate;
+            width: 500px; height: 500px;
+            bottom: -150px; right: -100px;
+            background: radial-gradient(ellipse, rgba(99,102,241,0.08) 0%, transparent 65%);
             border-radius: 50%;
+            animation: drift2 26s ease-in-out infinite alternate;
         }
-        .mesh-orb-3 {
-            position: absolute;
-            width: 400px; height: 400px;
-            top: 40%; left: 30%;
-            background: radial-gradient(ellipse, rgba(16,185,129,0.08) 0%, transparent 65%);
-            border-radius: 50%;
-            animation: meshDrift3 30s ease-in-out infinite alternate;
-        }
-        @keyframes meshDrift1 { from { transform: translate(0,0) scale(1); } to { transform: translate(80px,-60px) scale(1.2); } }
-        @keyframes meshDrift2 { from { transform: translate(0,0) scale(1); } to { transform: translate(-60px,80px) scale(1.15); } }
-        @keyframes meshDrift3 { from { transform: translate(0,0) rotate(0deg); } to { transform: translate(-40px,60px) rotate(30deg); } }
+        @keyframes drift1 { from { transform: translate(0,0) scale(1); } to { transform: translate(60px,-50px) scale(1.15); } }
+        @keyframes drift2 { from { transform: translate(0,0) scale(1); } to { transform: translate(-50px,60px) scale(1.12); } }
 
         /* ══════════════════════════════════════════
-           GLASS SYSTEM — Premium Layered Glass
+           GLASS SYSTEM — Premium Light Glass
         ══════════════════════════════════════════ */
-        .glass-ultra {
-            background: rgba(15, 25, 50, 0.55);
-            backdrop-filter: blur(40px) saturate(180%) brightness(1.05);
-            -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.05);
-            border: 1px solid rgba(255,255,255,0.08);
+        .glass {
+            background: rgba(255,255,255,0.78);
+            backdrop-filter: blur(32px) saturate(180%);
+            -webkit-backdrop-filter: blur(32px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.95);
             box-shadow:
-                0 32px 64px -16px rgba(0,0,0,0.5),
-                0 8px 16px -8px rgba(0,0,0,0.3),
-                inset 0 1px 0 rgba(255,255,255,0.1),
-                inset 0 -1px 0 rgba(0,0,0,0.2);
+                0 8px 32px -8px rgba(15,23,42,0.07),
+                0 2px 8px -2px rgba(15,23,42,0.04),
+                inset 0 1px 0 rgba(255,255,255,1);
         }
-        .glass-card {
-            background: rgba(18, 28, 55, 0.60);
-            backdrop-filter: blur(28px) saturate(160%);
-            -webkit-backdrop-filter: blur(28px) saturate(160%);
-            border: 1px solid rgba(255,255,255,0.07);
+        .glass-elevated {
+            background: rgba(255,255,255,0.90);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255,255,255,0.98);
             box-shadow:
-                0 20px 40px -12px rgba(0,0,0,0.4),
-                inset 0 1px 0 rgba(255,255,255,0.08);
-            transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1),
-                        box-shadow 0.25s ease;
+                0 20px 48px -12px rgba(13,148,136,0.10),
+                0 8px 16px -8px rgba(15,23,42,0.06),
+                inset 0 1px 0 rgba(255,255,255,1);
         }
-        .glass-card:active { transform: scale(0.97); }
-
-        .glass-light {
-            background: rgba(255,255,255,0.06);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.09);
+        .glass-auth {
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255,255,255,0.95);
+            box-shadow:
+                0 32px 64px -16px rgba(13,148,136,0.15),
+                0 8px 24px -8px rgba(15,23,42,0.08),
+                inset 0 1px 0 rgba(255,255,255,1);
         }
-
-        /* ══════════════════════════════════════════
-           GLOW EFFECTS
-        ══════════════════════════════════════════ */
-        .glow-teal { box-shadow: 0 0 30px rgba(13,148,136,0.35), 0 0 60px rgba(13,148,136,0.15); }
-        .glow-emerald { box-shadow: 0 0 24px rgba(16,185,129,0.4), 0 0 48px rgba(16,185,129,0.12); }
-        .glow-rose { box-shadow: 0 0 24px rgba(244,63,94,0.4), 0 0 48px rgba(244,63,94,0.12); }
-        .glow-violet { box-shadow: 0 0 24px rgba(139,92,246,0.35), 0 0 48px rgba(139,92,246,0.12); }
-        .glow-amber { box-shadow: 0 0 24px rgba(245,158,11,0.35), 0 0 48px rgba(245,158,11,0.10); }
-        .glow-blue { box-shadow: 0 0 24px rgba(59,130,246,0.35), 0 0 48px rgba(59,130,246,0.10); }
 
         /* ══════════════════════════════════════════
            GRADIENT TEXTS
         ══════════════════════════════════════════ */
+        .text-grad-emerald {
+            background: linear-gradient(135deg,#059669,#10b981,#34d399);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .text-grad-rose {
+            background: linear-gradient(135deg,#e11d48,#f43f5e,#fb7185);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .text-grad-blue {
+            background: linear-gradient(135deg,#1d4ed8,#3b82f6,#60a5fa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .text-grad-amber {
+            background: linear-gradient(135deg,#b45309,#f59e0b,#fcd34d);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .text-grad-violet {
+            background: linear-gradient(135deg,#6d28d9,#8b5cf6,#c4b5fd);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
         .text-grad-teal {
-            background: linear-gradient(135deg, #2dd4bf, #14b8a6, #0d9488);
+            background: linear-gradient(135deg,#0f766e,#0d9488,#2dd4bf);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
-        .text-grad-gold {
-            background: linear-gradient(135deg, #fcd34d, #f59e0b, #d97706);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-        }
-        .text-grad-white {
-            background: linear-gradient(135deg, #ffffff, rgba(255,255,255,0.7));
+        .text-grad-red {
+            background: linear-gradient(135deg,#b91c1c,#ef4444,#fca5a5);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
 
         /* ══════════════════════════════════════════
-           PREMIUM HEADER SYSTEM
+           HERO HEADER — Deep Teal Dark
         ══════════════════════════════════════════ */
         .hero-header {
-            background: linear-gradient(160deg, #030d14 0%, #0a1f2e 30%, #0c2030 60%, #071520 100%);
-            position: relative;
-            overflow: hidden;
+            background: linear-gradient(160deg, #042f2e 0%, #0f766e 35%, #0d9488 65%, #0891b2 100%);
+            position: relative; overflow: hidden;
         }
         .hero-header::before {
             content: '';
             position: absolute; inset: 0;
-            background:
-                radial-gradient(ellipse at 20% 50%, rgba(13,148,136,0.25) 0%, transparent 55%),
-                radial-gradient(ellipse at 80% 20%, rgba(6,182,212,0.15) 0%, transparent 45%),
-                radial-gradient(ellipse at 60% 80%, rgba(16,185,129,0.10) 0%, transparent 40%);
-        }
-        .hero-grid {
-            position: absolute; inset: 0;
-            background-image: linear-gradient(rgba(13,148,136,0.05) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(13,148,136,0.05) 1px, transparent 1px);
+            background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
             background-size: 40px 40px;
-            mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+            mask-image: radial-gradient(ellipse at 40% 60%, black 0%, transparent 70%);
+        }
+        .hero-glow-1 {
+            position: absolute; top: -80px; right: -60px;
+            width: 320px; height: 320px;
+            background: radial-gradient(circle, rgba(45,212,191,0.25) 0%, transparent 65%);
+            border-radius: 50%;
+        }
+        .hero-glow-2 {
+            position: absolute; bottom: -60px; left: -40px;
+            width: 220px; height: 220px;
+            background: radial-gradient(circle, rgba(16,185,129,0.18) 0%, transparent 65%);
+            border-radius: 50%;
         }
 
         /* ══════════════════════════════════════════
-           BUTTONS — Ultra Premium
+           BUTTONS — Premium Glow
         ══════════════════════════════════════════ */
-        .btn-ultra {
-            background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%);
+        .btn-premium {
+            background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
             color: white;
             border-radius: 16px;
-            border: 1px solid rgba(13,148,136,0.5);
+            border: 1px solid rgba(13,148,136,0.4);
             box-shadow:
-                0 16px 32px -8px rgba(13,148,136,0.5),
-                0 4px 8px -4px rgba(0,0,0,0.3),
-                inset 0 1px 0 rgba(255,255,255,0.2),
-                inset 0 -1px 0 rgba(0,0,0,0.1);
+                0 14px 28px -6px rgba(13,148,136,0.40),
+                0 4px 8px -4px rgba(0,0,0,0.10),
+                inset 0 1px 0 rgba(255,255,255,0.22),
+                inset 0 -1px 0 rgba(0,0,0,0.06);
             font-weight: 800;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.07em;
             text-transform: uppercase;
             font-size: 0.78rem;
             transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
-            position: relative;
-            overflow: hidden;
+            position: relative; overflow: hidden;
         }
-        .btn-ultra::after {
+        .btn-premium::after {
             content: '';
-            position: absolute;
-            top: 0; left: -100%;
+            position: absolute; top: 0; left: -100%;
             width: 60%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-            transition: left 0.5s ease;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+            transition: left 0.55s ease;
         }
-        .btn-ultra:hover::after { left: 150%; }
-        .btn-ultra:hover { transform: translateY(-3px); box-shadow: 0 20px 40px -8px rgba(13,148,136,0.6), inset 0 1px 0 rgba(255,255,255,0.25); }
-        .btn-ultra:active { transform: scale(0.96); }
+        .btn-premium:hover::after { left: 150%; }
+        .btn-premium:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -6px rgba(13,148,136,0.50); }
+        .btn-premium:active { transform: scale(0.97); }
 
         /* ══════════════════════════════════════════
-           INPUTS — Dark Elite
+           INPUTS — Clean Elite
         ══════════════════════════════════════════ */
-        .input-dark {
-            background: rgba(255,255,255,0.05);
-            border: 1.5px solid rgba(255,255,255,0.1);
+        .input-clean {
+            background: rgba(248,250,252,0.9);
+            border: 1.5px solid rgba(226,232,240,0.9);
             border-radius: 14px;
-            color: #f1f5f9;
+            color: #1e293b;
             font-weight: 500;
             transition: all 0.3s ease;
-            box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.025), 0 1px 2px rgba(0,0,0,0.03);
         }
-        .input-dark::placeholder { color: rgba(148,163,184,0.5); }
-        .input-dark:focus {
-            background: rgba(13,148,136,0.08);
+        .input-clean::placeholder { color: #94a3b8; }
+        .input-clean:focus {
+            background: #ffffff;
             border-color: rgba(13,148,136,0.5);
-            box-shadow: 0 0 0 3px rgba(13,148,136,0.12), inset 0 2px 4px rgba(0,0,0,0.2);
-            outline: none;
+            box-shadow: 0 0 0 4px rgba(13,148,136,0.10), inset 0 1px 2px rgba(0,0,0,0.02);
+            outline: none; transform: translateY(-1px);
         }
 
         /* ══════════════════════════════════════════
-           STAT CARDS — Neon Bordered
+           STAT CARDS — Light Premium
         ══════════════════════════════════════════ */
         .stat-card {
             border-radius: 22px;
+            position: relative; overflow: hidden;
             padding: 18px 16px;
-            position: relative;
-            overflow: hidden;
             transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s ease;
         }
         .stat-card:active { transform: scale(0.96); }
-        .stat-card-inner {
-            position: absolute; inset: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 60%);
-            border-radius: inherit;
-            pointer-events: none;
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
         }
 
-        /* ══════════════════════════════════════════
-           SKELETON LOADING
-        ══════════════════════════════════════════ */
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-        .skeleton {
-            background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-            border-radius: 8px;
-            color: transparent !important;
-            pointer-events: none;
-        }
-        .skeleton * { visibility: hidden; }
+        /* ICON GLOW */
+        .icon-glow-emerald { box-shadow: 0 8px 20px -4px rgba(16,185,129,0.45), 0 4px 8px -4px rgba(0,0,0,0.1); }
+        .icon-glow-rose { box-shadow: 0 8px 20px -4px rgba(244,63,94,0.45), 0 4px 8px -4px rgba(0,0,0,0.1); }
+        .icon-glow-blue { box-shadow: 0 8px 20px -4px rgba(59,130,246,0.45), 0 4px 8px -4px rgba(0,0,0,0.1); }
+        .icon-glow-amber { box-shadow: 0 8px 20px -4px rgba(245,158,11,0.45), 0 4px 8px -4px rgba(0,0,0,0.1); }
+        .icon-glow-violet { box-shadow: 0 8px 20px -4px rgba(139,92,246,0.45), 0 4px 8px -4px rgba(0,0,0,0.1); }
+        .icon-glow-red { box-shadow: 0 8px 20px -4px rgba(239,68,68,0.45), 0 4px 8px -4px rgba(0,0,0,0.1); }
+        .icon-glow-teal { box-shadow: 0 8px 20px -4px rgba(13,148,136,0.45), 0 4px 8px -4px rgba(0,0,0,0.1); }
 
         /* ══════════════════════════════════════════
-           RIPPLE
+           BOTTOM NAV — Frosted Glass
         ══════════════════════════════════════════ */
-        .ripple { position: relative; overflow: hidden; }
-        .ripple::after {
-            content: ''; display: block; position: absolute;
-            width: 100%; height: 100%; top: 0; left: 0;
-            pointer-events: none;
-            background-image: radial-gradient(circle, rgba(255,255,255,0.18) 10%, transparent 10.01%);
-            background-repeat: no-repeat; background-position: 50%;
-            transform: scale(10,10); opacity: 0;
-            transition: transform .5s, opacity 1s;
-        }
-        .ripple:active::after { transform: scale(0,0); opacity: .4; transition: 0s; }
-
-        /* ══════════════════════════════════════════
-           BOTTOM NAVIGATION — Floating Island
-        ══════════════════════════════════════════ */
-        .nav-island {
-            background: rgba(12, 20, 40, 0.92);
+        .nav-frosted {
+            background: rgba(255,255,255,0.90);
             backdrop-filter: blur(40px) saturate(200%);
             -webkit-backdrop-filter: blur(40px) saturate(200%);
-            border: 1px solid rgba(255,255,255,0.08);
-            box-shadow:
-                0 -2px 40px rgba(0,0,0,0.4),
-                0 -1px 0 rgba(255,255,255,0.05),
-                inset 0 1px 0 rgba(255,255,255,0.06);
+            border-top: 1px solid rgba(255,255,255,0.95);
+            box-shadow: 0 -8px 40px -8px rgba(13,148,136,0.10), 0 -1px 0 rgba(226,232,240,0.5);
         }
 
         /* ══════════════════════════════════════════
-           LOADER — Luxury
+           LOADER
         ══════════════════════════════════════════ */
         #loader {
             position: fixed; inset: 0;
-            background: #040912;
+            background: linear-gradient(160deg, #042f2e 0%, #0f766e 50%, #0d9488 100%);
             z-index: 9999;
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
@@ -303,93 +260,58 @@
         }
         .loader-logo {
             width: 72px; height: 72px;
-            background: linear-gradient(135deg, #0d9488, #0891b2);
+            background: rgba(255,255,255,0.15);
+            border: 1.5px solid rgba(255,255,255,0.25);
             border-radius: 22px;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 40px rgba(13,148,136,0.5), 0 0 80px rgba(13,148,136,0.2);
+            box-shadow: 0 0 40px rgba(45,212,191,0.4), 0 0 80px rgba(45,212,191,0.15);
             animation: logoPulse 2s ease-in-out infinite;
-            margin-bottom: 28px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(20px);
         }
         @keyframes logoPulse {
-            0%,100% { box-shadow: 0 0 40px rgba(13,148,136,0.5), 0 0 80px rgba(13,148,136,0.2); }
-            50% { box-shadow: 0 0 60px rgba(13,148,136,0.7), 0 0 100px rgba(13,148,136,0.3); }
+            0%,100% { box-shadow: 0 0 40px rgba(45,212,191,0.4), 0 0 80px rgba(45,212,191,0.15); }
+            50% { box-shadow: 0 0 60px rgba(45,212,191,0.6), 0 0 100px rgba(45,212,191,0.25); }
         }
-        .loader-bar {
-            width: 120px; height: 2px;
-            background: rgba(255,255,255,0.06);
-            border-radius: 100px;
-            overflow: hidden;
-            margin-top: 16px;
-        }
-        .loader-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #0d9488, #06b6d4, #0d9488);
-            background-size: 200% 100%;
-            animation: barAnim 1.5s ease-in-out infinite;
-            border-radius: 100px;
-            width: 40%;
-        }
-        @keyframes barAnim { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+        .loader-bar { width: 120px; height: 2px; background: rgba(255,255,255,0.12); border-radius:100px; overflow:hidden; margin-top:16px; }
+        .loader-bar-fill { height:100%; background: linear-gradient(90deg,rgba(255,255,255,0.3),rgba(255,255,255,0.9),rgba(255,255,255,0.3)); background-size:200% 100%; animation: barMove 1.4s ease-in-out infinite; border-radius:100px; width:40%; }
+        @keyframes barMove { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ══════════════════════════════════════════
-           PAGE TRANSITIONS
-        ══════════════════════════════════════════ */
-        @keyframes slideInR { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes slideOutL { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-60px); } }
-        @keyframes slideOutR { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(60px); } }
-        .slide-in-center { animation: slideInR 0.4s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
-        .slide-out-left { animation: slideOutL 0.25s cubic-bezier(0.4,0,1,1) forwards; }
-        .slide-out-right { animation: slideOutR 0.25s cubic-bezier(0.4,0,1,1) forwards; }
-
-        /* ══════════════════════════════════════════
-           MARQUEE
+           MARQUEE & ANIMATIONS
         ══════════════════════════════════════════ */
         @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-150%); } }
         .animate-marquee { display: inline-block; white-space: nowrap; animation: marquee 24s linear infinite; }
 
         /* ══════════════════════════════════════════
-           RIWAYAT CARD
+           RIPPLE
         ══════════════════════════════════════════ */
-        .riwayat-card {
-            background: rgba(15, 24, 48, 0.7);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(255,255,255,0.07);
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 12px 32px -8px rgba(0,0,0,0.4);
-            transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+        .ripple { position: relative; overflow: hidden; }
+        .ripple::after {
+            content: ''; display: block; position: absolute;
+            width: 100%; height: 100%; top: 0; left: 0; pointer-events: none;
+            background-image: radial-gradient(circle, rgba(13,148,136,0.18) 10%, transparent 10.01%);
+            background-repeat: no-repeat; background-position: 50%;
+            transform: scale(10,10); opacity: 0;
+            transition: transform .5s, opacity 1s;
         }
-        .riwayat-card:active { transform: scale(0.985); }
-
-        /* ══════════════════════════════════════════
-           MODAL SHEET
-        ══════════════════════════════════════════ */
-        .modal-sheet {
-            background: linear-gradient(180deg, #0e1829 0%, #080f1e 100%);
-            border-radius: 32px 32px 0 0;
-            border-top: 1px solid rgba(255,255,255,0.08);
-            box-shadow: 0 -20px 60px -10px rgba(0,0,0,0.6);
-        }
+        .ripple:active::after { transform: scale(0,0); opacity: .4; transition: 0s; }
 
         /* ══════════════════════════════════════════
            TABLE
         ══════════════════════════════════════════ */
-        .table-dark {
-            background: rgba(12,20,40,0.8);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 20px;
+        .table-premium {
+            background: rgba(255,255,255,0.92);
+            border-radius: 22px;
+            border: 1px solid rgba(226,232,240,0.6);
+            box-shadow: 0 8px 24px -8px rgba(15,23,42,0.06), 0 2px 8px -4px rgba(15,23,42,0.03);
             overflow: hidden;
         }
 
-        /* ══════════════════════════════════════════
-           PULSE LIVE DOT
-        ══════════════════════════════════════════ */
+        /* LIVE DOT */
         .live-dot {
-            width: 8px; height: 8px;
-            background: #10b981;
-            border-radius: 50%;
+            width: 8px; height: 8px; background: #10b981; border-radius: 50%;
             box-shadow: 0 0 0 0 rgba(16,185,129,0.4);
             animation: livePulse 2s ease-out infinite;
         }
@@ -399,43 +321,54 @@
             100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
         }
 
-        /* ══════════════════════════════════════════
-           NO SCROLL
-        ══════════════════════════════════════════ */
+        /* RIWAYAT CARD */
+        .riwayat-card {
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.95);
+            border-radius: 24px;
+            box-shadow: 0 12px 32px -8px rgba(15,23,42,0.07), inset 0 1px 0 rgba(255,255,255,1);
+            overflow: hidden;
+            transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .riwayat-card:active { transform: scale(0.985); }
+
+        /* MODAL SHEET */
+        .modal-sheet {
+            background: linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
+            border-radius: 32px 32px 0 0;
+            border-top: 1px solid rgba(226,232,240,0.6);
+            box-shadow: 0 -20px 60px -10px rgba(15,23,42,0.12);
+        }
+
+        /* STATUS PILL */
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 11px 16px; border-radius: 14px;
+            font-weight: 700; font-size: 13px; letter-spacing: 0.02em;
+            width: 100%; justify-content: center;
+        }
+
         .no-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         .no-scroll::-webkit-scrollbar { display: none; }
-
-        /* ══════════════════════════════════════════
-           FADE TRANSITION
-        ══════════════════════════════════════════ */
         .fade-in { transition: opacity 0.5s ease; }
-
-        /* ══════════════════════════════════════════
-           SPRING BOUNCE
-        ══════════════════════════════════════════ */
-        .spring:active { transform: scale(0.93); transition: transform 0.1s cubic-bezier(0.4,0,0.2,1); }
-
-        /* DIVIDER */
-        .divider {
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
-        }
+        .spring:active { transform: scale(0.94); transition: transform 0.1s ease; }
     </style>
 </head>
-
 <body>
-<!-- Mesh Background -->
-<div class="mesh-bg"><div class="mesh-orb-3"></div></div>
+<!-- Aurora Background -->
+<div class="aurora-bg"></div>
 
-<!-- ══════════════════════════════
-     LOADER LUXURY
-══════════════════════════════ -->
+<!-- ══════════════════════════
+     LOADER
+══════════════════════════ -->
 <div id="loader">
     <div class="loader-logo">
-        <i class="fa-solid fa-hospital-user text-white text-3xl"></i>
+        <i class="fa-solid fa-hospital-user text-white text-3xl drop-shadow-sm"></i>
     </div>
-    <p class="text-white/80 text-[11px] font-black uppercase tracking-[0.4em]">Puskesmas Wana</p>
-    <p class="text-white/30 text-[10px] font-medium tracking-widest mt-1">Portal Absensi Digital</p>
+    <p class="text-white/85 text-[11px] font-black uppercase tracking-[0.4em]">Puskesmas Wana</p>
+    <p class="text-white/40 text-[10px] font-medium tracking-widest mt-1">Portal Absensi Digital</p>
     <div class="loader-bar mt-4">
         <div class="loader-bar-fill"></div>
     </div>
@@ -449,138 +382,108 @@
      class="min-h-screen flex flex-col items-center justify-center p-5 opacity-0 transition-opacity duration-700 hidden fixed inset-0 z-50 overflow-hidden">
 
     <!-- Decorative glows -->
-    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] -translate-y-1/2"
-         style="background:radial-gradient(ellipse,rgba(13,148,136,0.18) 0%,transparent 65%);border-radius:50%;pointer-events:none;"></div>
-    <div class="absolute bottom-0 right-0 w-[300px] h-[300px] translate-x-1/3 translate-y-1/3"
-         style="background:radial-gradient(ellipse,rgba(99,102,241,0.12) 0%,transparent 65%);border-radius:50%;pointer-events:none;"></div>
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[400px] -translate-y-1/3 pointer-events-none"
+         style="background:radial-gradient(ellipse,rgba(13,148,136,0.15) 0%,transparent 65%);border-radius:50%;"></div>
+    <div class="absolute bottom-0 right-0 w-[300px] h-[300px] translate-x-1/4 translate-y-1/4 pointer-events-none"
+         style="background:radial-gradient(ellipse,rgba(99,102,241,0.09) 0%,transparent 65%);border-radius:50%;"></div>
 
     <!-- Brand Top -->
-    <div class="absolute top-8 left-6 z-10">
-        <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-xl flex items-center justify-center"
-                 style="background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 0 16px rgba(13,148,136,0.4);">
-                <i class="fa-solid fa-hospital text-white text-xs"></i>
-            </div>
-            <span class="text-white/60 text-xs font-bold uppercase tracking-widest">Puskesmas Wana</span>
+    <div class="absolute top-8 left-6 z-10 flex items-center gap-2">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center icon-glow-teal"
+             style="background:linear-gradient(135deg,#0d9488,#0f766e);">
+            <i class="fa-solid fa-hospital text-white text-xs"></i>
         </div>
+        <span class="text-teal-800 text-xs font-black uppercase tracking-widest">Puskesmas Wana</span>
     </div>
 
-    <!-- Login Card -->
-    <div class="glass-ultra w-full max-w-sm rounded-[28px] p-7 z-10 slide-in-center">
-        <!-- Icon -->
+    <!-- Card Auth -->
+    <div class="glass-auth w-full max-w-sm rounded-[28px] p-7 z-10" style="animation:slideIn 0.4s cubic-bezier(0.25,0.46,0.45,0.94) forwards;">
+
+        <!-- Brand Icon -->
         <div class="text-center mb-7">
             <div class="mx-auto mb-5 w-[72px] h-[72px] rounded-[22px] flex items-center justify-center relative"
-                 style="background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 0 32px rgba(13,148,136,0.5),0 0 64px rgba(13,148,136,0.15);">
-                <i class="fa-solid fa-notes-medical text-white text-2xl"></i>
-                <div class="absolute inset-0 rounded-[22px]"
-                     style="background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent);"></div>
+                 style="background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 16px 32px -8px rgba(13,148,136,0.45),inset 0 1px 0 rgba(255,255,255,0.2);">
+                <i class="fa-solid fa-notes-medical text-white text-2xl drop-shadow-sm"></i>
+                <div class="absolute inset-0 rounded-[22px]" style="background:linear-gradient(135deg,rgba(255,255,255,0.18),transparent);"></div>
             </div>
-            <h2 class="text-2xl font-black text-white tracking-tight">Selamat Datang</h2>
-            <p class="text-[11px] font-bold tracking-[0.25em] mt-1 text-grad-teal uppercase">Portal Absensi Digital</p>
+            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Selamat Datang</h2>
+            <p class="text-[11px] font-bold tracking-[0.22em] mt-1 text-grad-teal uppercase">Portal Absensi Digital</p>
         </div>
 
         <!-- LOGIN FORM -->
         <div id="login-form" class="transition-all duration-500">
             <div class="space-y-3.5">
                 <div class="relative">
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400/70">
-                        <i class="fa-solid fa-user text-sm"></i>
-                    </div>
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-500/70"><i class="fa-solid fa-user text-sm"></i></div>
                     <input type="text" id="login-username" placeholder="Username" autocomplete="username"
-                        class="input-dark w-full pl-11 pr-4 py-3.5 text-sm outline-none">
+                        class="input-clean w-full pl-11 pr-4 py-3.5 text-sm outline-none">
                 </div>
                 <div class="relative">
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400/70">
-                        <i class="fa-solid fa-lock text-sm"></i>
-                    </div>
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-500/70"><i class="fa-solid fa-lock text-sm"></i></div>
                     <input type="password" id="login-password" placeholder="Password" autocomplete="current-password"
-                        class="input-dark w-full pl-11 pr-11 py-3.5 text-sm outline-none">
+                        class="input-clean w-full pl-11 pr-11 py-3.5 text-sm outline-none">
                     <button type="button" onclick="togglePasswordVisibility('login-password', this)"
-                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-teal-400 transition-colors">
+                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors">
                         <i class="fa-solid fa-eye text-sm"></i>
                     </button>
                 </div>
-                <button onclick="login()" class="btn-ultra w-full py-4 mt-2 outline-none">
+                <button onclick="login()" class="btn-premium w-full py-4 mt-2 outline-none">
                     <i class="fa-solid fa-arrow-right-to-bracket mr-2 opacity-80"></i>Masuk Sekarang
                 </button>
             </div>
             <div class="flex justify-center gap-6 mt-5">
-                <button onclick="toggleAuth('register')" class="text-[12px] font-bold text-teal-400 hover:text-teal-300 transition-colors tracking-wide">Daftar Akun</button>
-                <span class="text-white/10">|</span>
-                <button onclick="toggleAuth('forgot-password')" class="text-[12px] font-medium text-white/30 hover:text-white/60 transition-colors">Lupa Password</button>
+                <button onclick="toggleAuth('register')" class="text-[12px] font-bold text-teal-600 hover:text-teal-700 transition-colors">Daftar Akun</button>
+                <span class="text-slate-300">|</span>
+                <button onclick="toggleAuth('forgot-password')" class="text-[12px] font-medium text-slate-400 hover:text-slate-600 transition-colors">Lupa Password</button>
             </div>
         </div>
 
         <!-- REGISTER FORM -->
         <div id="register-form" class="hidden transition-all duration-500">
             <div class="space-y-3">
+                <div class="relative"><div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-500/70"><i class="fa-solid fa-id-badge text-sm"></i></div><input type="text" id="reg-id" placeholder="ID Karyawan" class="input-clean w-full pl-11 pr-4 py-3 text-sm outline-none"></div>
+                <div class="relative"><div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-500/70"><i class="fa-solid fa-signature text-sm"></i></div><input type="text" id="reg-nama" placeholder="Nama Sesuai KTP" class="input-clean w-full pl-11 pr-4 py-3 text-sm outline-none"></div>
+                <div class="relative"><div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-500/70"><i class="fa-solid fa-at text-sm"></i></div><input type="text" id="reg-username" placeholder="Buat Username" class="input-clean w-full pl-11 pr-4 py-3 text-sm outline-none"></div>
                 <div class="relative">
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400/70"><i class="fa-solid fa-id-badge text-sm"></i></div>
-                    <input type="text" id="reg-id" placeholder="ID Karyawan" class="input-dark w-full pl-11 pr-4 py-3 text-sm outline-none">
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-500/70"><i class="fa-solid fa-key text-sm"></i></div>
+                    <input type="password" id="reg-password" placeholder="Buat Password" class="input-clean w-full pl-11 pr-11 py-3 text-sm outline-none">
+                    <button type="button" onclick="togglePasswordVisibility('reg-password', this)" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"><i class="fa-solid fa-eye text-sm"></i></button>
                 </div>
-                <div class="relative">
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400/70"><i class="fa-solid fa-signature text-sm"></i></div>
-                    <input type="text" id="reg-nama" placeholder="Nama Sesuai KTP" class="input-dark w-full pl-11 pr-4 py-3 text-sm outline-none">
-                </div>
-                <div class="relative">
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400/70"><i class="fa-solid fa-at text-sm"></i></div>
-                    <input type="text" id="reg-username" placeholder="Buat Username" class="input-dark w-full pl-11 pr-4 py-3 text-sm outline-none">
-                </div>
-                <div class="relative">
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400/70"><i class="fa-solid fa-key text-sm"></i></div>
-                    <input type="password" id="reg-password" placeholder="Buat Password" class="input-dark w-full pl-11 pr-11 py-3 text-sm outline-none">
-                    <button type="button" onclick="togglePasswordVisibility('reg-password', this)"
-                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-teal-400 transition-colors">
-                        <i class="fa-solid fa-eye text-sm"></i>
-                    </button>
-                </div>
-                <button onclick="register()" class="btn-ultra w-full py-3.5 mt-1 text-xs outline-none">
-                    <i class="fa-solid fa-user-plus mr-2 opacity-80"></i>Buat Akun
-                </button>
+                <button onclick="register()" class="btn-premium w-full py-3.5 mt-1 text-xs outline-none"><i class="fa-solid fa-user-plus mr-2 opacity-80"></i>Buat Akun</button>
             </div>
-            <div class="text-center mt-4">
-                <button onclick="toggleAuth('login')" class="text-[12px] font-bold text-teal-400 hover:text-teal-300 transition-colors">← Kembali ke Login</button>
-            </div>
+            <div class="text-center mt-4"><button onclick="toggleAuth('login')" class="text-[12px] font-bold text-teal-600">← Kembali ke Login</button></div>
         </div>
 
         <!-- FORGOT PASSWORD FORM -->
         <div id="forgot-password-form" class="hidden transition-all duration-500">
-            <p class="text-xs text-white/40 font-medium text-center mb-5 leading-relaxed">Masukkan ID Karyawan & password baru. Permintaan memerlukan persetujuan Admin.</p>
+            <p class="text-xs text-slate-400 font-medium text-center mb-5 leading-relaxed">Masukkan ID Karyawan & password baru. Permintaan memerlukan persetujuan Admin.</p>
             <div class="space-y-3">
+                <div class="relative"><div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-500/70"><i class="fa-solid fa-id-badge text-sm"></i></div><input type="text" id="fp-id" placeholder="ID Karyawan" class="input-clean w-full pl-11 pr-4 py-3 text-sm outline-none"></div>
                 <div class="relative">
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400/70"><i class="fa-solid fa-id-badge text-sm"></i></div>
-                    <input type="text" id="fp-id" placeholder="ID Karyawan" class="input-dark w-full pl-11 pr-4 py-3 text-sm outline-none">
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-500/70"><i class="fa-solid fa-key text-sm"></i></div>
+                    <input type="password" id="fp-password" placeholder="Password Baru" class="input-clean w-full pl-11 pr-11 py-3 text-sm outline-none">
+                    <button type="button" onclick="togglePasswordVisibility('fp-password', this)" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"><i class="fa-solid fa-eye text-sm"></i></button>
                 </div>
-                <div class="relative">
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400/70"><i class="fa-solid fa-key text-sm"></i></div>
-                    <input type="password" id="fp-password" placeholder="Password Baru" class="input-dark w-full pl-11 pr-11 py-3 text-sm outline-none">
-                    <button type="button" onclick="togglePasswordVisibility('fp-password', this)"
-                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-teal-400 transition-colors">
-                        <i class="fa-solid fa-eye text-sm"></i>
-                    </button>
-                </div>
-                <button onclick="ajukanLupaPassword()" class="btn-ultra w-full py-3.5 text-xs outline-none">
-                    <i class="fa-solid fa-paper-plane mr-2 opacity-80"></i>Ajukan Perubahan
-                </button>
+                <button onclick="ajukanLupaPassword()" class="btn-premium w-full py-3.5 text-xs outline-none"><i class="fa-solid fa-paper-plane mr-2 opacity-80"></i>Ajukan Perubahan</button>
             </div>
-            <div class="text-center mt-4">
-                <button onclick="toggleAuth('login')" class="text-[12px] font-bold text-teal-400 hover:text-teal-300 transition-colors">← Kembali ke Login</button>
-            </div>
+            <div class="text-center mt-4"><button onclick="toggleAuth('login')" class="text-[12px] font-bold text-teal-600">← Kembali ke Login</button></div>
         </div>
 
         <!-- LOCK SCREEN -->
         <div id="lock-screen" class="hidden transition-all duration-500 text-center">
-            <div class="w-16 h-16 rounded-[18px] flex items-center justify-center mx-auto mb-5 glass-light">
-                <i class="fa-solid fa-lock text-white/50 text-xl"></i>
+            <div class="w-16 h-16 rounded-[18px] flex items-center justify-center mx-auto mb-5" style="background:linear-gradient(135deg,#f1f5f9,#e2e8f0);box-shadow:inset 0 2px 4px rgba(0,0,0,0.08);">
+                <i class="fa-solid fa-lock text-slate-400 text-xl"></i>
             </div>
-            <h3 class="text-base font-black text-white mb-2">Permintaan Diproses</h3>
-            <p class="text-xs text-white/30 mb-6 font-medium leading-relaxed">Pengajuan password sedang menunggu persetujuan Admin.</p>
-            <button onclick="checkStatusPassword()" class="btn-ultra w-full py-3.5 text-xs outline-none">
-                <i class="fa-solid fa-rotate-right mr-2 opacity-80"></i>Cek Status Terkini
-            </button>
+            <h3 class="text-base font-black text-slate-800 mb-2">Permintaan Diproses</h3>
+            <p class="text-xs text-slate-400 mb-6 font-medium leading-relaxed">Pengajuan password sedang menunggu persetujuan Admin.</p>
+            <button onclick="checkStatusPassword()" class="btn-premium w-full py-3.5 text-xs outline-none"><i class="fa-solid fa-rotate-right mr-2 opacity-80"></i>Cek Status Terkini</button>
         </div>
     </div>
 </div>
+
+<style>
+@keyframes slideIn { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
 
 
 <!-- ══════════════════════════════════════════════════════
@@ -589,23 +492,24 @@
 <div id="dashboard-page" class="hidden min-h-screen pb-28 opacity-0 fade-in">
 
     <!-- HERO HEADER -->
-    <div class="hero-header pt-12 pb-24 px-5">
-        <div class="hero-grid"></div>
+    <div class="hero-header pt-12 pb-22 pb-[88px] px-5">
+        <div class="hero-glow-1"></div>
+        <div class="hero-glow-2"></div>
         <div class="relative z-10">
 
             <!-- Top Bar -->
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-2.5">
-                    <div class="live-dot flex-shrink-0"></div>
-                    <span class="text-white/50 text-[10px] font-bold uppercase tracking-[0.3em]">Live • Puskesmas Wana</span>
+            <div class="flex justify-between items-center mb-5">
+                <div class="flex items-center gap-2">
+                    <div class="live-dot"></div>
+                    <span class="text-white/55 text-[10px] font-bold uppercase tracking-[0.25em]">Live · Puskesmas Wana</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <div class="glass-light rounded-xl px-3 py-1.5 flex items-center gap-2">
-                        <i class="fa-regular fa-clock text-teal-400 text-xs"></i>
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);backdrop-filter:blur(8px);">
+                        <i class="fa-regular fa-clock text-teal-200/70 text-xs"></i>
                         <span id="realtime-clock" class="text-white text-xs font-bold font-mono tracking-wider">00:00</span>
                     </div>
-                    <button onclick="logout()"
-                        class="w-9 h-9 glass-light rounded-xl flex items-center justify-center text-white/40 hover:text-rose-400 transition-colors active:scale-90">
+                    <button onclick="logout()" class="w-9 h-9 flex items-center justify-center rounded-xl text-white/50 hover:text-rose-300 transition-colors"
+                        style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);">
                         <i class="fa-solid fa-power-off text-sm"></i>
                     </button>
                 </div>
@@ -614,30 +518,30 @@
             <!-- User Info -->
             <div class="flex items-center gap-4">
                 <div class="relative flex-shrink-0">
-                    <div class="w-[60px] h-[60px] rounded-[20px] flex items-center justify-center overflow-hidden group relative"
-                         style="background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);box-shadow:0 0 0 1px rgba(13,148,136,0.3),0 8px 24px rgba(0,0,0,0.4);">
-                        <img id="user-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-transform duration-500 group-hover:scale-110" alt="Foto">
-                        <i id="user-foto-icon" class="fa-regular fa-face-smile text-white/50 text-2xl"></i>
+                    <div class="w-[60px] h-[60px] rounded-[20px] flex items-center justify-center overflow-hidden group"
+                         style="background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.25);box-shadow:0 0 0 1px rgba(45,212,191,0.25),0 8px 24px rgba(0,0,0,0.3);">
+                        <img id="user-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-transform duration-500 group-hover:scale-110" alt="">
+                        <i id="user-foto-icon" class="fa-regular fa-face-smile text-white/60 text-2xl relative z-0"></i>
                     </div>
                     <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2"
-                         style="background:#10b981;border-color:#070d1a;box-shadow:0 0 8px rgba(16,185,129,0.6);"></div>
+                         style="background:#10b981;border-color:rgba(15,118,110,1);box-shadow:0 0 8px rgba(16,185,129,0.6);"></div>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p id="greeting-text" class="text-white/40 text-[10px] font-semibold uppercase tracking-[0.2em] mb-0.5">Selamat Pagi,</p>
-                    <h2 id="user-nama" class="font-black text-[22px] text-white leading-tight truncate" style="text-shadow:0 2px 12px rgba(0,0,0,0.5);">Nama Pegawai</h2>
+                    <p id="greeting-text" class="text-white/50 text-[10px] font-semibold uppercase tracking-[0.2em] mb-0.5">Selamat Pagi,</p>
+                    <h2 id="user-nama" class="font-black text-[22px] text-white leading-tight truncate drop-shadow-md">Nama Pegawai</h2>
                     <div class="flex items-center gap-2 mt-2">
                         <span id="user-jabatan" class="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg"
-                              style="background:rgba(13,148,136,0.15);color:rgba(45,212,191,0.9);border:1px solid rgba(13,148,136,0.2);">Jabatan</span>
+                              style="background:rgba(255,255,255,0.12);color:rgba(167,243,208,0.9);border:1px solid rgba(255,255,255,0.15);">Jabatan</span>
                         <span id="user-id" class="text-[9px] font-mono tracking-widest px-2.5 py-1 rounded-lg"
-                              style="background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.06);">ID</span>
+                              style="background:rgba(0,0,0,0.15);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.08);">ID</span>
                     </div>
                 </div>
             </div>
 
             <!-- Date -->
-            <div class="mt-5">
-                <div class="glass-light rounded-xl px-3.5 py-2.5 inline-flex items-center gap-2">
-                    <i class="fa-regular fa-calendar text-teal-400 text-xs"></i>
+            <div class="mt-4 flex items-center gap-2">
+                <div class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl" style="background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.12);">
+                    <i class="fa-regular fa-calendar text-teal-200/60 text-xs"></i>
                     <span id="today-date" class="text-white/50 text-[11px] font-semibold tracking-wide"></span>
                 </div>
             </div>
@@ -647,82 +551,84 @@
     <!-- CONTENT -->
     <div class="px-4 -mt-12 relative z-20 space-y-4">
 
-        <!-- Announcement Ticker -->
-        <div class="glass-card rounded-2xl overflow-hidden flex items-stretch p-1">
-            <div class="px-3 py-2 rounded-xl flex items-center justify-center flex-shrink-0"
-                 style="background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 0 12px rgba(13,148,136,0.4);">
+        <!-- Ticker -->
+        <div class="glass rounded-2xl overflow-hidden flex items-stretch p-1">
+            <div class="px-3 py-2.5 rounded-xl flex items-center justify-center flex-shrink-0 icon-glow-teal"
+                 style="background:linear-gradient(135deg,#0d9488,#0891b2);">
                 <i class="fa-solid fa-bullhorn text-white text-sm animate-pulse"></i>
             </div>
             <div class="overflow-hidden flex-1 flex items-center px-3">
                 <div class="animate-marquee">
-                    <span class="text-[11px] font-bold text-teal-300/80 uppercase tracking-[0.12em]">
-                        ✦ Semangat Melayani Sepenuh Hati &nbsp;&nbsp;✦ Pastikan Presensi Tepat Waktu Setiap Hari &nbsp;&nbsp;✦ Kesehatan Pasien Adalah Prioritas Utama
+                    <span class="text-[11px] font-bold text-teal-800 uppercase tracking-[0.12em]">
+                        ✦ Semangat Melayani Sepenuh Hati &nbsp;&nbsp;✦ Pastikan Presensi Tepat Waktu Setiap Hari &nbsp;&nbsp;✦ Kesehatan Pasien Adalah Prioritas Utama Kita
                     </span>
                 </div>
             </div>
         </div>
 
         <!-- Card HARI INI -->
-        <div class="glass-card rounded-[24px] p-5">
+        <div class="glass-elevated rounded-[24px] p-5">
             <div class="flex justify-between items-center mb-5">
                 <div class="flex items-center gap-2.5">
-                    <div class="w-7 h-7 rounded-lg flex items-center justify-center"
-                         style="background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 0 12px rgba(13,148,136,0.35);">
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center icon-glow-teal"
+                         style="background:linear-gradient(135deg,#0d9488,#0891b2);">
                         <i class="fa-solid fa-calendar-day text-white text-xs"></i>
                     </div>
-                    <h3 class="text-sm font-black text-white/90 uppercase tracking-wider">Hari Ini</h3>
+                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Hari Ini</h3>
                 </div>
-                <div onclick="toggleDetailModal()"
-                     class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest cursor-pointer active:scale-95 transition-all px-3 py-1.5 rounded-full"
-                     style="background:rgba(13,148,136,0.12);color:rgba(45,212,191,0.8);border:1px solid rgba(13,148,136,0.2);">
-                    <i class="fa-solid fa-chart-bar text-[9px]"></i> Detail
-                </div>
+                <button onclick="toggleDetailModal()"
+                    class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full transition-all active:scale-95"
+                    style="background:rgba(13,148,136,0.08);color:#0d9488;border:1px solid rgba(13,148,136,0.15);">
+                    <i class="fa-solid fa-expand text-[9px]"></i> Detail
+                </button>
             </div>
 
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
                 <!-- Masuk -->
-                <div class="flex-1 text-center p-4 rounded-[18px]" style="background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.12);">
-                    <div class="w-10 h-10 rounded-[14px] flex items-center justify-center mx-auto mb-3"
-                         style="background:linear-gradient(135deg,rgba(16,185,129,0.2),rgba(16,185,129,0.05));box-shadow:0 0 16px rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.2);">
-                        <i class="fa-solid fa-arrow-right-to-bracket text-emerald-400"></i>
+                <div class="flex-1 text-center py-4 px-3 rounded-[18px]"
+                     style="background:linear-gradient(135deg,rgba(16,185,129,0.07),rgba(16,185,129,0.02));border:1px solid rgba(16,185,129,0.15);">
+                    <div class="w-11 h-11 rounded-[14px] flex items-center justify-center mx-auto mb-3 icon-glow-emerald"
+                         style="background:linear-gradient(135deg,#059669,#10b981);">
+                        <i class="fa-solid fa-arrow-right-to-bracket text-white"></i>
                     </div>
-                    <p class="text-[9px] text-emerald-400/60 font-bold uppercase tracking-widest mb-1">Masuk</p>
-                    <p id="today-masuk" class="text-2xl font-black text-white font-mono">--:--</p>
+                    <p class="text-[9px] text-emerald-600/70 font-bold uppercase tracking-widest mb-1">Masuk</p>
+                    <p id="today-masuk" class="text-[22px] font-black text-slate-800 font-mono">--:--</p>
                 </div>
 
-                <!-- Dot separator -->
-                <div class="flex flex-col items-center gap-1 px-1">
-                    <div class="w-1 h-1 rounded-full bg-teal-500/30"></div>
-                    <div class="w-px h-8 bg-gradient-to-b from-teal-500/20 to-transparent"></div>
-                    <div class="w-1 h-1 rounded-full bg-teal-500/30"></div>
+                <!-- Separator -->
+                <div class="flex flex-col items-center gap-1.5 px-1">
+                    <div class="w-1.5 h-1.5 rounded-full bg-teal-300/60"></div>
+                    <div class="w-px h-6" style="background:linear-gradient(to bottom,#2dd4bf40,transparent);"></div>
+                    <div class="w-1.5 h-1.5 rounded-full bg-teal-300/60"></div>
                 </div>
 
                 <!-- Pulang -->
-                <div class="flex-1 text-center p-4 rounded-[18px]" style="background:rgba(244,63,94,0.07);border:1px solid rgba(244,63,94,0.12);">
-                    <div class="w-10 h-10 rounded-[14px] flex items-center justify-center mx-auto mb-3"
-                         style="background:linear-gradient(135deg,rgba(244,63,94,0.2),rgba(244,63,94,0.05));box-shadow:0 0 16px rgba(244,63,94,0.2);border:1px solid rgba(244,63,94,0.2);">
-                        <i class="fa-solid fa-arrow-right-from-bracket text-rose-400"></i>
+                <div class="flex-1 text-center py-4 px-3 rounded-[18px]"
+                     style="background:linear-gradient(135deg,rgba(244,63,94,0.07),rgba(244,63,94,0.02));border:1px solid rgba(244,63,94,0.15);">
+                    <div class="w-11 h-11 rounded-[14px] flex items-center justify-center mx-auto mb-3 icon-glow-rose"
+                         style="background:linear-gradient(135deg,#e11d48,#f43f5e);">
+                        <i class="fa-solid fa-arrow-right-from-bracket text-white"></i>
                     </div>
-                    <p class="text-[9px] text-rose-400/60 font-bold uppercase tracking-widest mb-1">Pulang</p>
-                    <p id="today-pulang" class="text-2xl font-black text-white font-mono">--:--</p>
+                    <p class="text-[9px] text-rose-600/70 font-bold uppercase tracking-widest mb-1">Pulang</p>
+                    <p id="today-pulang" class="text-[22px] font-black text-slate-800 font-mono">--:--</p>
                 </div>
             </div>
 
-            <!-- Status -->
-            <div id="today-status" class="mt-4 text-center text-sm font-bold py-3 rounded-[14px] tracking-wide"
-                 style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);">
-                <i class="fa-solid fa-circle-dot text-xs mr-1.5 opacity-50"></i>Menunggu Data
+            <div class="mt-4">
+                <div id="today-status" class="status-pill" style="background:rgba(248,250,252,0.9);border:1px solid rgba(226,232,240,0.8);color:#64748b;">
+                    <i class="fa-solid fa-circle-dot text-xs opacity-50"></i>Menunggu Data
+                </div>
             </div>
         </div>
 
         <!-- REKAP HEADER -->
         <div class="flex justify-between items-center px-1">
             <div class="flex items-center gap-2">
-                <div class="w-6 h-6 rounded-lg flex items-center justify-center"
-                     style="background:linear-gradient(135deg,#0d9488,#06b6d4);box-shadow:0 0 10px rgba(13,148,136,0.3);">
+                <div class="w-6 h-6 rounded-lg flex items-center justify-center icon-glow-teal"
+                     style="background:linear-gradient(135deg,#0d9488,#0891b2);">
                     <i class="fa-solid fa-chart-pie text-white text-[9px]"></i>
                 </div>
-                <h3 class="text-sm font-black text-white/80 uppercase tracking-wider">Rekap Bulan Ini</h3>
+                <h3 class="text-sm font-black text-slate-700 uppercase tracking-wider">Rekap Bulan Ini</h3>
             </div>
         </div>
 
@@ -730,145 +636,121 @@
         <div class="grid grid-cols-2 gap-3">
 
             <!-- Kehadiran WIDE -->
-            <div class="col-span-2 stat-card ripple"
-                 style="background:linear-gradient(135deg,rgba(16,185,129,0.12) 0%,rgba(16,185,129,0.04) 100%);border:1px solid rgba(16,185,129,0.15);box-shadow:0 12px 32px -8px rgba(16,185,129,0.15);">
-                <div class="stat-card-inner"></div>
-                <div class="flex items-center justify-between relative z-10">
+            <div class="col-span-2 stat-card ripple glass"
+                 style="border-left:4px solid #10b981;box-shadow:0 12px 32px -8px rgba(16,185,129,0.15),inset 0 1px 0 rgba(255,255,255,1);">
+                <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 rounded-[18px] flex items-center justify-center flex-shrink-0"
-                             style="background:linear-gradient(135deg,#059669,#10b981);box-shadow:0 0 24px rgba(16,185,129,0.45),0 8px 16px rgba(0,0,0,0.3);">
-                            <i class="fa-solid fa-check-double text-white text-xl"></i>
+                        <div class="w-14 h-14 rounded-[18px] flex items-center justify-center flex-shrink-0 icon-glow-emerald"
+                             style="background:linear-gradient(135deg,#059669,#10b981,#34d399);">
+                            <i class="fa-solid fa-check-double text-white text-xl drop-shadow-sm"></i>
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400/70 mb-0.5">Kehadiran</p>
-                            <p class="text-4xl font-black leading-none" id="rekap-hadir"
-                               style="background:linear-gradient(135deg,#6ee7b7,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</p>
+                            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700/70 mb-0.5">Kehadiran</p>
+                            <p class="text-4xl font-black leading-none text-grad-emerald" id="rekap-hadir">0</p>
                         </div>
                     </div>
-                    <div class="text-emerald-800/50">
-                        <i class="fa-solid fa-award text-5xl"></i>
+                    <div class="opacity-8 text-emerald-100">
+                        <i class="fa-solid fa-award text-6xl opacity-20"></i>
                     </div>
                 </div>
             </div>
 
             <!-- Alpa -->
-            <div class="stat-card ripple"
-                 style="background:linear-gradient(135deg,rgba(244,63,94,0.1) 0%,rgba(244,63,94,0.03) 100%);border:1px solid rgba(244,63,94,0.14);box-shadow:0 8px 24px -8px rgba(244,63,94,0.15);">
-                <div class="stat-card-inner"></div>
-                <div class="relative z-10">
-                    <div class="w-10 h-10 rounded-[13px] flex items-center justify-center mb-3"
-                         style="background:linear-gradient(135deg,#e11d48,#f43f5e);box-shadow:0 0 18px rgba(244,63,94,0.4),0 4px 12px rgba(0,0,0,0.3);">
-                        <i class="fa-solid fa-triangle-exclamation text-white text-sm"></i>
-                    </div>
-                    <p class="text-[9px] font-bold uppercase tracking-[0.2em] text-rose-400/60 mb-1">Alpa</p>
-                    <p class="text-3xl font-black" id="rekap-alpa"
-                       style="background:linear-gradient(135deg,#fda4af,#f43f5e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</p>
+            <div class="stat-card ripple glass"
+                 style="border-left:4px solid #f43f5e;box-shadow:0 8px 24px -8px rgba(244,63,94,0.12),inset 0 1px 0 rgba(255,255,255,1);">
+                <div class="w-10 h-10 rounded-[13px] flex items-center justify-center mb-3 icon-glow-rose"
+                     style="background:linear-gradient(135deg,#e11d48,#f43f5e);">
+                    <i class="fa-solid fa-triangle-exclamation text-white text-sm drop-shadow-sm"></i>
                 </div>
+                <p class="text-[9px] font-bold uppercase tracking-[0.2em] text-rose-600/70 mb-1">Alpa</p>
+                <p class="text-3xl font-black text-grad-rose" id="rekap-alpa">0</p>
             </div>
 
             <!-- Izin/Cuti -->
-            <div class="stat-card ripple"
-                 style="background:linear-gradient(135deg,rgba(59,130,246,0.1) 0%,rgba(59,130,246,0.03) 100%);border:1px solid rgba(59,130,246,0.14);box-shadow:0 8px 24px -8px rgba(59,130,246,0.15);">
-                <div class="stat-card-inner"></div>
-                <div class="relative z-10">
-                    <div class="w-10 h-10 rounded-[13px] flex items-center justify-center mb-3"
-                         style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);box-shadow:0 0 18px rgba(59,130,246,0.4),0 4px 12px rgba(0,0,0,0.3);">
-                        <i class="fa-solid fa-suitcase-medical text-white text-sm"></i>
-                    </div>
-                    <p class="text-[9px] font-bold uppercase tracking-[0.2em] text-blue-400/60 mb-1">Izin/Cuti</p>
-                    <p class="text-3xl font-black" id="rekap-isc"
-                       style="background:linear-gradient(135deg,#93c5fd,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</p>
+            <div class="stat-card ripple glass"
+                 style="border-left:4px solid #3b82f6;box-shadow:0 8px 24px -8px rgba(59,130,246,0.12),inset 0 1px 0 rgba(255,255,255,1);">
+                <div class="w-10 h-10 rounded-[13px] flex items-center justify-center mb-3 icon-glow-blue"
+                     style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);">
+                    <i class="fa-solid fa-suitcase-medical text-white text-sm drop-shadow-sm"></i>
                 </div>
+                <p class="text-[9px] font-bold uppercase tracking-[0.2em] text-blue-600/70 mb-1">Izin/Cuti</p>
+                <p class="text-3xl font-black text-grad-blue" id="rekap-isc">0</p>
             </div>
 
             <!-- Telat -->
-            <div class="stat-card ripple"
-                 style="background:linear-gradient(135deg,rgba(245,158,11,0.1) 0%,rgba(245,158,11,0.03) 100%);border:1px solid rgba(245,158,11,0.14);box-shadow:0 8px 24px -8px rgba(245,158,11,0.12);">
-                <div class="stat-card-inner"></div>
-                <div class="relative z-10">
-                    <div class="w-10 h-10 rounded-[13px] flex items-center justify-center mb-3"
-                         style="background:linear-gradient(135deg,#b45309,#f59e0b);box-shadow:0 0 18px rgba(245,158,11,0.4),0 4px 12px rgba(0,0,0,0.3);">
-                        <i class="fa-solid fa-clock-rotate-left text-white text-sm"></i>
+            <div class="stat-card ripple glass"
+                 style="border-left:4px solid #f59e0b;box-shadow:0 8px 24px -8px rgba(245,158,11,0.12),inset 0 1px 0 rgba(255,255,255,1);">
+                <div class="w-10 h-10 rounded-[13px] flex items-center justify-center mb-3 icon-glow-amber"
+                     style="background:linear-gradient(135deg,#b45309,#f59e0b);">
+                    <i class="fa-solid fa-clock-rotate-left text-white text-sm drop-shadow-sm"></i>
+                </div>
+                <div class="flex justify-between items-end">
+                    <div>
+                        <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-amber-600/70">Telat (x)</p>
+                        <p class="text-2xl font-black text-grad-amber" id="rekap-telat">0</p>
                     </div>
-                    <div class="flex justify-between items-end">
-                        <div>
-                            <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-amber-400/60">Telat (x)</p>
-                            <p class="text-2xl font-black" id="rekap-telat"
-                               style="background:linear-gradient(135deg,#fcd34d,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-[9px] font-bold uppercase tracking-[0.1em] text-orange-400/50">Menit</p>
-                            <p class="text-2xl font-black" id="rekap-telat-menit"
-                               style="background:linear-gradient(135deg,#fdba74,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</p>
-                        </div>
+                    <div class="text-right">
+                        <p class="text-[9px] font-bold uppercase tracking-[0.1em] text-orange-500/60">Menit</p>
+                        <p class="text-2xl font-black" style="background:linear-gradient(135deg,#ea580c,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;" id="rekap-telat-menit">0</p>
                     </div>
                 </div>
             </div>
 
             <!-- PSW -->
-            <div class="stat-card ripple"
-                 style="background:linear-gradient(135deg,rgba(139,92,246,0.1) 0%,rgba(139,92,246,0.03) 100%);border:1px solid rgba(139,92,246,0.14);box-shadow:0 8px 24px -8px rgba(139,92,246,0.12);">
-                <div class="stat-card-inner"></div>
-                <div class="relative z-10">
-                    <div class="w-10 h-10 rounded-[13px] flex items-center justify-center mb-3"
-                         style="background:linear-gradient(135deg,#6d28d9,#8b5cf6);box-shadow:0 0 18px rgba(139,92,246,0.4),0 4px 12px rgba(0,0,0,0.3);">
-                        <i class="fa-solid fa-person-running text-white text-sm"></i>
+            <div class="stat-card ripple glass"
+                 style="border-left:4px solid #8b5cf6;box-shadow:0 8px 24px -8px rgba(139,92,246,0.12),inset 0 1px 0 rgba(255,255,255,1);">
+                <div class="w-10 h-10 rounded-[13px] flex items-center justify-center mb-3 icon-glow-violet"
+                     style="background:linear-gradient(135deg,#6d28d9,#8b5cf6);">
+                    <i class="fa-solid fa-person-running text-white text-sm drop-shadow-sm"></i>
+                </div>
+                <div class="flex justify-between items-end">
+                    <div>
+                        <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-violet-600/70">PSW (x)</p>
+                        <p class="text-2xl font-black text-grad-violet" id="rekap-psw-kali">0</p>
                     </div>
-                    <div class="flex justify-between items-end">
-                        <div>
-                            <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-violet-400/60">PSW (x)</p>
-                            <p class="text-2xl font-black" id="rekap-psw-kali"
-                               style="background:linear-gradient(135deg,#c4b5fd,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-[9px] font-bold uppercase tracking-[0.1em] text-fuchsia-400/50">Menit</p>
-                            <p class="text-2xl font-black" id="rekap-psw-menit"
-                               style="background:linear-gradient(135deg,#f0abfc,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</p>
-                        </div>
+                    <div class="text-right">
+                        <p class="text-[9px] font-bold uppercase tracking-[0.1em] text-fuchsia-500/60">Menit</p>
+                        <p class="text-2xl font-black" style="background:linear-gradient(135deg,#a21caf,#d946ef);-webkit-background-clip:text;-webkit-text-fill-color:transparent;" id="rekap-psw-menit">0</p>
                     </div>
                 </div>
             </div>
 
             <!-- TAP WIDE -->
-            <div class="col-span-2 stat-card ripple"
-                 style="background:linear-gradient(135deg,rgba(239,68,68,0.1) 0%,rgba(239,68,68,0.03) 100%);border:1px solid rgba(239,68,68,0.14);box-shadow:0 8px 24px -8px rgba(239,68,68,0.12);">
-                <div class="stat-card-inner"></div>
-                <div class="flex items-center justify-between relative z-10">
+            <div class="col-span-2 stat-card ripple glass"
+                 style="border-left:4px solid #ef4444;box-shadow:0 8px 24px -8px rgba(239,68,68,0.12),inset 0 1px 0 rgba(255,255,255,1);">
+                <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-11 h-11 rounded-[14px] flex items-center justify-center"
-                             style="background:linear-gradient(135deg,#b91c1c,#ef4444);box-shadow:0 0 20px rgba(239,68,68,0.4),0 4px 12px rgba(0,0,0,0.3);">
-                            <i class="fa-solid fa-door-open text-white"></i>
+                        <div class="w-11 h-11 rounded-[14px] flex items-center justify-center icon-glow-red"
+                             style="background:linear-gradient(135deg,#b91c1c,#ef4444);">
+                            <i class="fa-solid fa-door-open text-white drop-shadow-sm"></i>
                         </div>
-                        <p class="text-[10px] font-bold text-red-400/70 uppercase tracking-widest">Tanpa Absen Pulang (TAP)</p>
+                        <p class="text-[10px] font-bold text-red-600/70 uppercase tracking-widest">Tanpa Absen Pulang (TAP)</p>
                     </div>
-                    <p class="text-3xl font-black" id="rekap-tap"
-                       style="background:linear-gradient(135deg,#fca5a5,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</p>
+                    <p class="text-3xl font-black text-grad-red" id="rekap-tap">0</p>
                 </div>
             </div>
 
-            <!-- TOTAL JAM KERJA — SIGNATURE CARD -->
+            <!-- TOTAL JAM KERJA — SIGNATURE -->
             <div class="col-span-2 ripple rounded-[22px] overflow-hidden relative"
-                 style="background:linear-gradient(135deg,#042f2e 0%,#0f766e 35%,#0d9488 65%,#0369a1 100%);box-shadow:0 20px 48px -12px rgba(13,148,136,0.45),0 0 0 1px rgba(13,148,136,0.2);">
-                <!-- Inner texture -->
-                <div class="absolute inset-0 opacity-5"
-                     style="background-image:repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%);background-size:12px 12px;"></div>
-                <!-- Inner glow -->
-                <div class="absolute top-0 right-0 w-40 h-40 -translate-y-1/2 translate-x-1/2 rounded-full"
-                     style="background:radial-gradient(circle,rgba(255,255,255,0.12) 0%,transparent 70%);"></div>
+                 style="background:linear-gradient(135deg,#042f2e 0%,#0f766e 40%,#0d9488 70%,#0369a1 100%);box-shadow:0 20px 48px -10px rgba(13,148,136,0.40),0 0 0 1px rgba(13,148,136,0.18);">
+                <div class="absolute inset-0 opacity-[0.04]"
+                     style="background-image:repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%);background-size:14px 14px;"></div>
+                <div class="absolute -right-8 -top-8 w-36 h-36 rounded-full"
+                     style="background:radial-gradient(circle,rgba(255,255,255,0.14) 0%,transparent 70%);"></div>
                 <div class="flex items-center justify-between p-5 relative z-10">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-[16px] flex items-center justify-center"
-                             style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(8px);">
-                            <i class="fa-solid fa-business-time text-white text-lg"></i>
+                             style="background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.20);backdrop-filter:blur(8px);">
+                            <i class="fa-solid fa-business-time text-white text-lg drop-shadow-sm"></i>
                         </div>
                         <div>
-                            <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.3em]">Total Jam Kerja</p>
-                            <p class="text-white/30 text-[10px] font-medium">Bulan ini</p>
+                            <p class="text-white/55 text-[9px] font-bold uppercase tracking-[0.3em]">Total Jam Kerja</p>
+                            <p class="text-white/35 text-[10px] font-medium">Bulan ini</p>
                         </div>
                     </div>
                     <div class="text-right">
                         <p class="text-3xl font-black text-white font-mono tracking-wide" id="rekap-jam-kerja"
-                           style="text-shadow:0 0 20px rgba(255,255,255,0.3);">00:00:00</p>
+                           style="text-shadow:0 2px 12px rgba(255,255,255,0.25);">00:00:00</p>
                         <p class="text-white/30 text-[9px] font-semibold uppercase tracking-widest">jam:menit:dtk</p>
                     </div>
                 </div>
@@ -876,36 +758,36 @@
 
         </div><!-- end bento -->
 
-        <!-- METRIK HARIAN -->
+        <!-- METRIK HARIAN HEADER -->
         <div class="flex justify-between items-center px-1 pt-2">
             <div class="flex items-center gap-2">
                 <div class="w-6 h-6 rounded-lg flex items-center justify-center"
-                     style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);">
-                    <i class="fa-solid fa-calendar-days text-white/50 text-[9px]"></i>
+                     style="background:rgba(51,65,85,0.08);border:1px solid rgba(51,65,85,0.1);">
+                    <i class="fa-solid fa-calendar-days text-slate-500 text-[9px]"></i>
                 </div>
-                <h3 class="text-sm font-black text-white/70 uppercase tracking-wider">Metrik Harian</h3>
+                <h3 class="text-sm font-black text-slate-700 uppercase tracking-wider">Metrik Harian</h3>
             </div>
             <input type="month" id="filter-bulan"
                 class="text-xs rounded-xl px-2.5 py-1.5 font-semibold outline-none transition-all"
-                style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);"
+                style="background:rgba(255,255,255,0.7);border:1px solid rgba(226,232,240,0.8);color:#475569;backdrop-filter:blur(8px);"
                 onchange="onMonthFilterChange(this.value)">
         </div>
 
         <!-- TABLE -->
-        <div class="table-dark">
+        <div class="table-premium">
             <div class="overflow-x-auto overflow-y-auto max-h-[55vh] no-scroll">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead class="sticky top-0 z-20">
-                        <tr style="background:rgba(12,20,40,0.95);border-bottom:1px solid rgba(255,255,255,0.05);">
-                            <th class="p-3.5 font-black text-white/30 uppercase tracking-wider text-center text-[10px]">Tgl</th>
-                            <th class="p-3.5 font-black text-white/30 uppercase tracking-wider text-center text-[10px] whitespace-nowrap">Masuk</th>
-                            <th class="p-3.5 font-black text-white/30 uppercase tracking-wider text-center text-[10px] whitespace-nowrap">Pulang</th>
-                            <th class="p-3.5 font-black text-white/30 uppercase tracking-wider text-center text-[10px]" title="PSW (Menit)">P</th>
-                            <th class="p-3.5 font-black text-white/30 uppercase tracking-wider text-center text-[10px]" title="Telat (Menit)">T</th>
+                        <tr style="background:rgba(248,250,252,0.97);border-bottom:1px solid rgba(226,232,240,0.6);">
+                            <th class="p-3.5 font-black text-slate-400 uppercase tracking-wider text-center text-[10px]">Tgl</th>
+                            <th class="p-3.5 font-black text-slate-400 uppercase tracking-wider text-center text-[10px] whitespace-nowrap">Masuk</th>
+                            <th class="p-3.5 font-black text-slate-400 uppercase tracking-wider text-center text-[10px] whitespace-nowrap">Pulang</th>
+                            <th class="p-3.5 font-black text-slate-400 uppercase tracking-wider text-center text-[10px]" title="PSW (Menit)">P</th>
+                            <th class="p-3.5 font-black text-slate-400 uppercase tracking-wider text-center text-[10px]" title="Telat (Menit)">T</th>
                         </tr>
                     </thead>
-                    <tbody id="daily-metrics-tbody" class="font-medium divide-y" style="--tw-divide-opacity:1;border-color:rgba(255,255,255,0.03);">
-                        <tr><td colspan="5" class="text-center p-10 text-white/20 text-sm">
+                    <tbody id="daily-metrics-tbody" class="font-medium text-slate-700">
+                        <tr><td colspan="5" class="text-center p-10 text-slate-400 text-sm">
                             <div class="flex flex-col items-center gap-3">
                                 <div style="width:32px;height:32px;border:2px solid rgba(13,148,136,0.15);border-top-color:#0d9488;border-radius:50%;animation:spin 0.9s linear infinite;"></div>
                                 <span>Memuat data...</span>
@@ -927,39 +809,38 @@
 
     <!-- Header -->
     <div class="hero-header pt-12 pb-16 px-5">
-        <div class="hero-grid"></div>
+        <div class="hero-glow-1"></div>
+        <div class="hero-glow-2"></div>
         <div class="relative z-10 text-center">
             <div class="flex justify-center mb-4">
-                <div class="w-14 h-14 rounded-[18px] flex items-center justify-center"
-                     style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);box-shadow:0 0 24px rgba(13,148,136,0.2);">
-                    <i class="fa-solid fa-clock-rotate-left text-white text-xl"></i>
+                <div class="w-14 h-14 rounded-[18px] flex items-center justify-center icon-glow-teal"
+                     style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);">
+                    <i class="fa-solid fa-clock-rotate-left text-white text-xl drop-shadow-sm"></i>
                 </div>
             </div>
             <h2 class="font-black text-2xl text-white tracking-wide">Riwayat Bulanan</h2>
-            <p class="text-white/30 text-[11px] font-bold mt-1.5 uppercase tracking-[0.25em]">Rekam Jejak Absensi</p>
+            <p class="text-white/40 text-[11px] font-bold mt-1.5 uppercase tracking-[0.22em]">Rekam Jejak Absensi</p>
         </div>
     </div>
 
     <div class="px-4 -mt-8 relative z-20 space-y-3.5" id="riwayat-container">
         <div class="text-center py-12">
             <div class="mx-auto mb-4" style="width:36px;height:36px;border:2px solid rgba(13,148,136,0.15);border-top-color:#0d9488;border-radius:50%;animation:spin 0.9s linear infinite;"></div>
-            <p class="text-sm text-white/25 font-medium">Memuat data riwayat...</p>
+            <p class="text-sm text-slate-400 font-medium">Memuat data riwayat...</p>
         </div>
     </div>
 
     <!-- Chart -->
     <div id="riwayat-chart-card" class="px-4 mt-4 hidden opacity-0 transition-opacity duration-500">
-        <div class="glass-card rounded-[24px] p-5">
+        <div class="glass-elevated rounded-[24px] p-5">
             <div class="flex items-center gap-2.5 mb-4">
-                <div class="w-7 h-7 rounded-lg flex items-center justify-center"
-                     style="background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 0 10px rgba(13,148,136,0.3);">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center icon-glow-teal"
+                     style="background:linear-gradient(135deg,#0d9488,#0891b2);">
                     <i class="fa-solid fa-chart-pie text-white text-xs"></i>
                 </div>
-                <h3 class="text-sm font-black text-white/80 uppercase tracking-wider">Grafik Kehadiran Bulan Ini</h3>
+                <h3 class="text-sm font-black text-slate-700 uppercase tracking-wider">Grafik Kehadiran Bulan Ini</h3>
             </div>
-            <div class="relative" style="height:200px;">
-                <canvas id="riwayatChart"></canvas>
-            </div>
+            <div class="relative" style="height:200px;"><canvas id="riwayatChart"></canvas></div>
         </div>
     </div>
     <div class="h-6"></div>
@@ -973,84 +854,78 @@
 
     <!-- Header -->
     <div class="hero-header pt-12 pb-28 px-5 relative overflow-hidden">
-        <div class="hero-grid"></div>
+        <div class="hero-glow-1"></div>
+        <div class="hero-glow-2"></div>
         <div class="relative z-10 flex flex-col items-center text-center">
             <div class="relative mb-5">
                 <div class="w-[90px] h-[90px] rounded-[26px] flex items-center justify-center overflow-hidden group"
-                     style="background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);box-shadow:0 0 0 1px rgba(13,148,136,0.3),0 0 40px rgba(13,148,136,0.2),0 16px 32px rgba(0,0,0,0.5);">
-                    <img id="profil-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-transform duration-500 group-hover:scale-110" alt="Foto">
-                    <i id="profil-foto-icon" class="fa-solid fa-user-astronaut text-white/40 text-3xl relative z-0"></i>
+                     style="background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.22);box-shadow:0 0 0 1px rgba(45,212,191,0.25),0 16px 40px rgba(0,0,0,0.3);">
+                    <img id="profil-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-transform duration-500 group-hover:scale-110" alt="">
+                    <i id="profil-foto-icon" class="fa-solid fa-user-astronaut text-white/50 text-3xl relative z-0"></i>
                 </div>
                 <div class="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center"
-                     style="background:#10b981;border:2px solid #070d1a;box-shadow:0 0 12px rgba(16,185,129,0.5);">
+                     style="background:#10b981;border:2px solid #0f766e;box-shadow:0 0 12px rgba(16,185,129,0.5);">
                     <i class="fa-solid fa-check text-white text-[9px]"></i>
                 </div>
             </div>
-            <h2 id="profil-nama" class="font-black text-2xl text-white tracking-wide drop-shadow-2xl">Nama Pegawai</h2>
-            <span id="profil-jabatan" class="text-[10px] font-bold mt-2 uppercase tracking-[0.25em] px-4 py-1.5 rounded-xl"
-                  style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.08);">Jabatan</span>
+            <h2 id="profil-nama" class="font-black text-2xl text-white tracking-wide drop-shadow-lg">Nama Pegawai</h2>
+            <span id="profil-jabatan" class="text-[10px] font-bold mt-2 uppercase tracking-[0.22em] px-4 py-1.5 rounded-xl"
+                  style="background:rgba(255,255,255,0.10);color:rgba(167,243,208,0.85);border:1px solid rgba(255,255,255,0.14);">Jabatan</span>
         </div>
     </div>
 
     <div class="px-4 -mt-12 relative z-20 space-y-4">
 
         <!-- Gamifikasi -->
-        <div class="glass-card rounded-[24px] p-5">
-            <div class="flex items-center gap-2.5 mb-4 pb-3"
-                 style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                <div class="w-6 h-6 rounded-lg flex items-center justify-center"
-                     style="background:linear-gradient(135deg,#d97706,#f59e0b);box-shadow:0 0 10px rgba(245,158,11,0.3);">
+        <div class="glass-elevated rounded-[24px] p-5">
+            <div class="flex items-center gap-2.5 mb-4 pb-3 border-b border-slate-100">
+                <div class="w-6 h-6 rounded-lg flex items-center justify-center icon-glow-amber"
+                     style="background:linear-gradient(135deg,#d97706,#f59e0b);">
                     <i class="fa-solid fa-trophy text-white text-[10px]"></i>
                 </div>
-                <h3 class="text-xs font-black text-white/60 uppercase tracking-widest">Prestasi Kehadiran</h3>
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-widest">Prestasi Kehadiran</h3>
             </div>
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-[10px] text-white/30 font-semibold uppercase mb-2 tracking-wider">Pangkat Saat Ini</p>
-                    <p id="profil-pangkat" class="px-3 py-1.5 text-xs font-bold rounded-xl inline-block"
-                       style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.08);">-</p>
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase mb-2 tracking-wider">Pangkat Saat Ini</p>
+                    <p id="profil-pangkat" class="px-3 py-1.5 text-xs font-bold rounded-xl inline-block bg-slate-100 text-slate-600">-</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-[10px] text-white/30 font-semibold uppercase mb-1 tracking-wider">Total Poin</p>
-                    <p id="profil-xp" class="text-2xl font-black text-grad-teal">0 <span class="text-sm text-teal-700">XP</span></p>
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase mb-1 tracking-wider">Total Poin</p>
+                    <p id="profil-xp" class="text-2xl font-black text-grad-teal">0 <span class="text-sm text-teal-400">XP</span></p>
                 </div>
             </div>
-            <div class="mt-4 pt-3" style="border-top:1px solid rgba(255,255,255,0.05);">
-                <p id="profil-notes" class="text-[11px] leading-relaxed font-medium p-3 rounded-xl"
-                   style="color:rgba(255,255,255,0.35);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);">
+            <div class="mt-4 pt-3 border-t border-slate-100">
+                <p id="profil-notes" class="text-[11px] leading-relaxed font-medium text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     Memuat rekam jejak kedisiplinan...
                 </p>
             </div>
         </div>
 
         <!-- Info Akun -->
-        <div class="glass-card rounded-[24px] p-5">
-            <div class="flex items-center gap-2.5 mb-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                <div class="w-6 h-6 rounded-lg flex items-center justify-center"
-                     style="background:linear-gradient(135deg,#0d9488,#06b6d4);box-shadow:0 0 10px rgba(13,148,136,0.3);">
+        <div class="glass-elevated rounded-[24px] p-5">
+            <div class="flex items-center gap-2.5 mb-4 pb-3 border-b border-slate-100">
+                <div class="w-6 h-6 rounded-lg flex items-center justify-center icon-glow-teal"
+                     style="background:linear-gradient(135deg,#0d9488,#0891b2);">
                     <i class="fa-solid fa-circle-info text-white text-[10px]"></i>
                 </div>
-                <h3 class="text-xs font-black text-white/60 uppercase tracking-widest">Informasi Akun</h3>
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-widest">Informasi Akun</h3>
             </div>
             <div class="space-y-1">
-                <div class="flex justify-between items-center py-3" style="border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div class="flex justify-between items-center py-3 border-b border-slate-50">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-[12px] flex items-center justify-center" style="background:rgba(255,255,255,0.05);">
-                            <i class="fa-solid fa-id-badge text-white/40 text-sm"></i>
-                        </div>
-                        <span class="text-sm font-semibold text-white/60">ID Pegawai</span>
+                        <div class="w-9 h-9 rounded-[12px] flex items-center justify-center bg-slate-100"><i class="fa-solid fa-id-badge text-slate-500 text-sm"></i></div>
+                        <span class="text-sm font-semibold text-slate-700">ID Pegawai</span>
                     </div>
-                    <span id="profil-id" class="text-sm font-bold font-mono px-3 py-1 rounded-xl" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.08);">ID</span>
+                    <span id="profil-id" class="text-sm font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded-xl font-mono">ID</span>
                 </div>
                 <div class="flex justify-between items-center py-3">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-[12px] flex items-center justify-center" style="background:rgba(13,148,136,0.1);">
-                            <i class="fa-solid fa-server text-teal-400/60 text-sm"></i>
-                        </div>
-                        <span class="text-sm font-semibold text-white/60">Status Server</span>
+                        <div class="w-9 h-9 rounded-[12px] flex items-center justify-center" style="background:rgba(13,148,136,0.08);"><i class="fa-solid fa-server text-teal-600 text-sm"></i></div>
+                        <span class="text-sm font-semibold text-slate-700">Status Server</span>
                     </div>
                     <span class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-                          style="background:rgba(16,185,129,0.1);color:rgba(52,211,153,0.9);border:1px solid rgba(16,185,129,0.2);">
+                          style="background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.18);">
                         <span class="live-dot" style="width:6px;height:6px;flex-shrink:0;"></span> Terhubung
                     </span>
                 </div>
@@ -1058,36 +933,32 @@
         </div>
 
         <!-- Pengaturan -->
-        <div class="glass-card rounded-[24px] p-5">
-            <div class="flex items-center gap-2.5 mb-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                <div class="w-6 h-6 rounded-lg flex items-center justify-center" style="background:rgba(255,255,255,0.07);">
-                    <i class="fa-solid fa-gear text-white/40 text-[10px]"></i>
+        <div class="glass-elevated rounded-[24px] p-5">
+            <div class="flex items-center gap-2.5 mb-4 pb-3 border-b border-slate-100">
+                <div class="w-6 h-6 rounded-lg flex items-center justify-center bg-slate-100">
+                    <i class="fa-solid fa-gear text-slate-500 text-[10px]"></i>
                 </div>
-                <h3 class="text-xs font-black text-white/60 uppercase tracking-widest">Pengaturan</h3>
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-widest">Pengaturan</h3>
             </div>
             <button onclick="logout()" class="w-full flex items-center justify-between py-3 mb-1 spring">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-[12px] flex items-center justify-center" style="background:rgba(245,158,11,0.1);">
-                        <i class="fa-solid fa-right-from-bracket text-amber-400/70 text-sm"></i>
-                    </div>
+                    <div class="w-9 h-9 rounded-[12px] flex items-center justify-center" style="background:rgba(245,158,11,0.08);"><i class="fa-solid fa-right-from-bracket text-amber-500 text-sm"></i></div>
                     <div class="text-left">
-                        <p class="text-sm font-bold text-white/70">Keluar</p>
-                        <p class="text-[10px] font-medium text-white/25">Logout dari perangkat ini</p>
+                        <p class="text-sm font-bold text-slate-700">Keluar</p>
+                        <p class="text-[10px] font-medium text-slate-400">Logout dari perangkat ini</p>
                     </div>
                 </div>
-                <i class="fa-solid fa-chevron-right text-white/15 text-xs"></i>
+                <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
             </button>
             <button onclick="hapusAkun()" class="w-full flex items-center justify-between py-3 spring">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-[12px] flex items-center justify-center" style="background:rgba(244,63,94,0.1);">
-                        <i class="fa-solid fa-trash-can text-rose-400/70 text-sm"></i>
-                    </div>
+                    <div class="w-9 h-9 rounded-[12px] flex items-center justify-center" style="background:rgba(244,63,94,0.08);"><i class="fa-solid fa-trash-can text-rose-500 text-sm"></i></div>
                     <div class="text-left">
-                        <p class="text-sm font-bold text-rose-400/80">Hapus Akun Perangkat</p>
-                        <p class="text-[10px] font-medium text-white/25">Hapus sesi login dari HP ini</p>
+                        <p class="text-sm font-bold text-rose-500">Hapus Akun Perangkat</p>
+                        <p class="text-[10px] font-medium text-slate-400">Hapus sesi login dari HP ini</p>
                     </div>
                 </div>
-                <i class="fa-solid fa-chevron-right text-white/15 text-xs"></i>
+                <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
             </button>
         </div>
         <div class="h-4"></div>
@@ -1099,119 +970,96 @@
      MODAL DETAIL REKAP
 ══════════════════════════════════════════════════════ -->
 <div id="detail-modal" class="fixed inset-0 z-50 flex flex-col justify-end opacity-0 pointer-events-none transition-opacity duration-300"
-     style="background:rgba(4,9,18,0.75);backdrop-filter:blur(8px);">
+     style="background:rgba(15,23,42,0.45);backdrop-filter:blur(8px);">
     <div id="detail-modal-content" class="modal-sheet p-6 transform translate-y-full transition-transform duration-300 max-h-[88vh] overflow-y-auto no-scroll">
-        <!-- Handle -->
-        <div class="w-10 h-1 rounded-full mx-auto mb-5" style="background:rgba(255,255,255,0.1);"></div>
+        <div class="w-10 h-1 rounded-full mx-auto mb-5 bg-slate-200"></div>
         <div class="flex justify-between items-center mb-5 sticky top-0 pb-3 z-10"
-             style="background:rgba(14,24,41,0.97);border-bottom:1px solid rgba(255,255,255,0.05);">
+             style="background:rgba(255,255,255,0.97);border-bottom:1px solid rgba(226,232,240,0.5);">
             <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center"
-                     style="background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 0 12px rgba(13,148,136,0.3);">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center icon-glow-teal"
+                     style="background:linear-gradient(135deg,#0d9488,#0891b2);">
                     <i class="fa-solid fa-chart-bar text-white text-xs"></i>
                 </div>
-                <h3 class="text-base font-black text-white/80">Detail Rekap Bulanan</h3>
+                <h3 class="text-base font-black text-slate-800">Detail Rekap Bulanan</h3>
             </div>
-            <button onclick="toggleDetailModal()"
-                class="w-8 h-8 rounded-full flex items-center justify-center spring"
-                style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);">
-                <i class="fa-solid fa-xmark text-white/50 text-sm"></i>
+            <button onclick="toggleDetailModal()" class="w-8 h-8 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center hover:bg-slate-200 spring">
+                <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
-
-        <div class="space-y-2">
-            <!-- Template rows -->
-            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.12);">
+        <div class="space-y-2.5">
+            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.12);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#059669,#10b981);box-shadow:0 0 12px rgba(16,185,129,0.3);">
-                        <i class="fa-solid fa-check text-white text-sm"></i>
-                    </div>
-                    <span class="font-semibold text-white/70">Hadir</span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center icon-glow-emerald" style="background:linear-gradient(135deg,#059669,#10b981);"><i class="fa-solid fa-check text-white text-sm"></i></div>
+                    <span class="font-semibold text-slate-700">Hadir</span>
                 </div>
-                <span id="dtl-hadir" class="font-black text-xl text-emerald-400">0</span>
+                <span id="dtl-hadir" class="font-black text-xl text-grad-emerald">0</span>
             </div>
-            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.12);">
+            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(244,63,94,0.06);border:1px solid rgba(244,63,94,0.12);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#e11d48,#f43f5e);box-shadow:0 0 12px rgba(244,63,94,0.3);">
-                        <i class="fa-solid fa-xmark text-white text-sm"></i>
-                    </div>
-                    <span class="font-semibold text-white/70">Alpa</span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center icon-glow-rose" style="background:linear-gradient(135deg,#e11d48,#f43f5e);"><i class="fa-solid fa-xmark text-white text-sm"></i></div>
+                    <span class="font-semibold text-slate-700">Alpa</span>
                 </div>
-                <span id="dtl-alpa" class="font-black text-xl text-rose-400">0</span>
+                <span id="dtl-alpa" class="font-black text-xl text-grad-rose">0</span>
             </div>
-            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.12);">
+            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.12);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);box-shadow:0 0 12px rgba(59,130,246,0.3);">
-                        <i class="fa-solid fa-file-medical text-white text-sm"></i>
-                    </div>
-                    <span class="font-semibold text-white/70">Izin</span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center icon-glow-blue" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);"><i class="fa-solid fa-file-medical text-white text-sm"></i></div>
+                    <span class="font-semibold text-slate-700">Izin</span>
                 </div>
-                <span id="dtl-izin" class="font-black text-xl text-blue-400">0</span>
+                <span id="dtl-izin" class="font-black text-xl text-grad-blue">0</span>
             </div>
-            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(14,165,233,0.08);border:1px solid rgba(14,165,233,0.12);">
+            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(14,165,233,0.06);border:1px solid rgba(14,165,233,0.12);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);box-shadow:0 0 12px rgba(14,165,233,0.3);">
-                        <i class="fa-solid fa-briefcase-medical text-white text-sm"></i>
-                    </div>
-                    <span class="font-semibold text-white/70">Sakit</span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);box-shadow:0 8px 20px -4px rgba(14,165,233,0.4);"><i class="fa-solid fa-briefcase-medical text-white text-sm"></i></div>
+                    <span class="font-semibold text-slate-700">Sakit</span>
                 </div>
-                <span id="dtl-sakit" class="font-black text-xl text-sky-400">0</span>
+                <span id="dtl-sakit" class="font-black text-xl" style="background:linear-gradient(135deg,#0369a1,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</span>
             </div>
-            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.12);">
+            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.12);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#4338ca,#6366f1);box-shadow:0 0 12px rgba(99,102,241,0.3);">
-                        <i class="fa-solid fa-plane-departure text-white text-sm"></i>
-                    </div>
-                    <span class="font-semibold text-white/70">Cuti</span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#4338ca,#6366f1);box-shadow:0 8px 20px -4px rgba(99,102,241,0.4);"><i class="fa-solid fa-plane-departure text-white text-sm"></i></div>
+                    <span class="font-semibold text-slate-700">Cuti</span>
                 </div>
-                <span id="dtl-cuti" class="font-black text-xl text-indigo-400">0</span>
+                <span id="dtl-cuti" class="font-black text-xl" style="background:linear-gradient(135deg,#4338ca,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</span>
             </div>
-            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.12);">
+            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.12);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#6d28d9,#8b5cf6);box-shadow:0 0 12px rgba(139,92,246,0.3);">
-                        <i class="fa-solid fa-car-side text-white text-sm"></i>
-                    </div>
-                    <span class="font-semibold text-white/70">Dinas Luar (DL)</span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center icon-glow-violet" style="background:linear-gradient(135deg,#6d28d9,#8b5cf6);"><i class="fa-solid fa-car-side text-white text-sm"></i></div>
+                    <span class="font-semibold text-slate-700">Dinas Luar (DL)</span>
                 </div>
-                <span id="dtl-dl" class="font-black text-xl text-violet-400">0</span>
+                <span id="dtl-dl" class="font-black text-xl text-grad-violet">0</span>
             </div>
-            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.12);">
+            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.12);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#b45309,#f59e0b);box-shadow:0 0 12px rgba(245,158,11,0.3);">
-                        <i class="fa-solid fa-clock text-white text-sm"></i>
-                    </div>
-                    <span class="font-semibold text-white/70">Terlambat (Telat)</span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center icon-glow-amber" style="background:linear-gradient(135deg,#b45309,#f59e0b);"><i class="fa-solid fa-clock text-white text-sm"></i></div>
+                    <span class="font-semibold text-slate-700">Terlambat (Telat)</span>
                 </div>
-                <span id="dtl-telat" class="font-black text-xl text-amber-400">0</span>
+                <span id="dtl-telat" class="font-black text-xl text-grad-amber">0</span>
             </div>
-            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.12);">
+            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.12);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#c2410c,#f97316);box-shadow:0 0 12px rgba(249,115,22,0.3);">
-                        <i class="fa-solid fa-person-running text-white text-sm"></i>
-                    </div>
-                    <span class="font-semibold text-white/70">Pulang Sblm Waktu</span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#c2410c,#f97316);box-shadow:0 8px 20px -4px rgba(249,115,22,0.4);"><i class="fa-solid fa-person-running text-white text-sm"></i></div>
+                    <span class="font-semibold text-slate-700">Pulang Sblm Waktu</span>
                 </div>
-                <span id="dtl-psw" class="font-black text-xl text-orange-400">0</span>
+                <span id="dtl-psw" class="font-black text-xl" style="background:linear-gradient(135deg,#c2410c,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">0</span>
             </div>
-            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.12);">
+            <div class="flex justify-between items-center p-3.5 rounded-2xl" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.12);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#b91c1c,#ef4444);box-shadow:0 0 12px rgba(239,68,68,0.3);">
-                        <i class="fa-solid fa-door-open text-white text-sm"></i>
-                    </div>
-                    <span class="font-semibold text-white/70">Tidak Absen Pulang</span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center icon-glow-red" style="background:linear-gradient(135deg,#b91c1c,#ef4444);"><i class="fa-solid fa-door-open text-white text-sm"></i></div>
+                    <span class="font-semibold text-slate-700">Tidak Absen Pulang</span>
                 </div>
-                <span id="dtl-tap" class="font-black text-xl text-red-400">0</span>
+                <span id="dtl-tap" class="font-black text-xl text-grad-red">0</span>
             </div>
-            <!-- Total Jam Kerja Modal -->
+            <!-- Total Jam Kerja -->
             <div class="flex justify-between items-center p-4 rounded-2xl overflow-hidden relative"
-                 style="background:linear-gradient(135deg,#042f2e,#0f766e,#0d9488);box-shadow:0 8px 24px -8px rgba(13,148,136,0.4);border:1px solid rgba(13,148,136,0.3);">
+                 style="background:linear-gradient(135deg,#042f2e,#0f766e,#0d9488);box-shadow:0 12px 32px -8px rgba(13,148,136,0.35);border:1px solid rgba(13,148,136,0.2);">
                 <div class="flex items-center gap-3 relative z-10">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.15);">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.18);">
                         <i class="fa-solid fa-business-time text-white text-sm"></i>
                     </div>
-                    <span class="font-semibold text-white/80">Total Jam Kerja</span>
+                    <span class="font-semibold text-white/85">Total Jam Kerja</span>
                 </div>
-                <span id="dtl-jam-kerja" class="font-black text-lg text-white font-mono relative z-10" style="text-shadow:0 0 12px rgba(255,255,255,0.2);">0 Jam</span>
+                <span id="dtl-jam-kerja" class="font-black text-lg text-white font-mono relative z-10" style="text-shadow:0 0 12px rgba(255,255,255,0.25);">0 Jam</span>
             </div>
         </div>
         <div class="h-8"></div>
@@ -1220,49 +1068,44 @@
 
 
 <!-- ══════════════════════════════════════════════════════
-     BOTTOM NAVIGATION — Dark Island
+     BOTTOM NAVIGATION
 ══════════════════════════════════════════════════════ -->
-<div id="bottom-nav" class="fixed bottom-0 left-0 right-0 z-40 hidden opacity-0 translate-y-full transition-all duration-500 nav-island">
+<div id="bottom-nav" class="fixed bottom-0 left-0 right-0 z-40 hidden opacity-0 translate-y-full transition-all duration-500 nav-frosted">
     <div class="flex justify-around items-center pt-2.5 pb-1 px-4">
         <button id="nav-beranda" onclick="switchTab('beranda')"
             class="flex flex-col items-center justify-center gap-1 p-2 w-[70px] h-[54px] rounded-2xl transition-all active:scale-90"
-            style="background:rgba(13,148,136,0.12);color:#2dd4bf;border:1px solid rgba(13,148,136,0.2);">
+            style="background:rgba(13,148,136,0.08);color:#0d9488;border:1px solid rgba(13,148,136,0.14);">
             <i class="fa-solid fa-house text-lg"></i>
             <span class="text-[9px] font-black uppercase tracking-wider">Beranda</span>
         </button>
         <button id="nav-riwayat" onclick="switchTab('riwayat')"
             class="flex flex-col items-center justify-center gap-1 p-2 w-[70px] h-[54px] rounded-2xl transition-all active:scale-90"
-            style="color:rgba(255,255,255,0.3);">
+            style="color:#94a3b8;">
             <i class="fa-solid fa-clock-rotate-left text-lg"></i>
             <span class="text-[9px] font-black uppercase tracking-wider">Riwayat</span>
         </button>
         <button id="nav-profil" onclick="switchTab('profil')"
             class="flex flex-col items-center justify-center gap-0.5 p-2 w-[75px] h-[58px] rounded-2xl transition-all active:scale-90"
-            style="background:linear-gradient(135deg,#0d9488,#0891b2);color:white;box-shadow:0 0 20px rgba(13,148,136,0.4),0 8px 16px rgba(0,0,0,0.3);border:1px solid rgba(13,148,136,0.3);">
-            <i class="fa-solid fa-user text-xl"></i>
+            style="background:linear-gradient(135deg,#0d9488,#0891b2);color:white;box-shadow:0 8px 24px -4px rgba(13,148,136,0.45),0 4px 8px -4px rgba(0,0,0,0.1);border:1px solid rgba(13,148,136,0.3);">
+            <i class="fa-solid fa-user text-xl drop-shadow-sm"></i>
             <span class="text-[9px] font-black uppercase tracking-wider">Profil</span>
         </button>
     </div>
     <div class="flex justify-center pb-2 pt-0.5">
-        <div class="w-24 h-[3px] rounded-full" style="background:rgba(255,255,255,0.08);"></div>
+        <div class="w-24 h-[3px] rounded-full bg-slate-200"></div>
     </div>
 </div>
 
-
-<!-- ══════════════════════════════════════════════════════
-     SCRIPTS
-══════════════════════════════════════════════════════ -->
 <script>
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').then(reg => { reg.update(); });
         navigator.serviceWorker.addEventListener('controllerchange', () => { window.location.reload(); });
     }
-    // Keyframe for spin (used inline)
-    const styleEl = document.createElement('style');
-    styleEl.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
-    document.head.appendChild(styleEl);
+    const _s = document.createElement('style');
+    _s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(_s);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="/portal.js?v=27"></script>
+<script src="/portal.js?v=28"></script>
 </body>
 </html>
