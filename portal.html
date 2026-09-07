@@ -627,8 +627,8 @@
             <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-20"></div>
             <div class="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
             <div class="relative z-10 text-center">
-                <h2 class="font-extrabold text-2xl text-white tracking-wide">Riwayat Bulanan</h2>
-                <p class="text-teal-100 text-xs font-semibold mt-1">Ringkasan Absensi Anda</p>
+                <h2 class="font-extrabold text-2xl text-white tracking-wide">Riwayat Rekap Bulanan</h2>
+                <p class="text-teal-100 text-xs font-semibold mt-1">Rekap Absensi Dari Awal Sampai Sekarang</p>
             </div>
         </div>
 
@@ -639,6 +639,34 @@
                 <p class="text-sm text-slate-500 font-medium">Memuat data riwayat...</p>
             </div>
         </div>
+
+        <!-- Tabel Riwayat Rekap Bulanan -->
+        <div id="riwayat-table-card" class="px-5 mt-4 hidden opacity-0 transition-opacity duration-500">
+            <div class="bg-white rounded-[1.5rem] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] border border-slate-100 relative">
+                <div class="overflow-x-auto overflow-y-auto max-h-[65vh] rounded-[1.5rem] relative">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="sticky top-0 z-20">
+                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-700 shadow-sm">
+                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-slate-50 sticky left-0 z-30">Bulan</th>
+                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-emerald-50/80 text-emerald-700" title="Kehadiran"><i class="fa-solid fa-check-double mr-1"></i>Hadir</th>
+                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-rose-50/80 text-rose-700" title="Alpa"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Alpa</th>
+                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-blue-50/80 text-blue-700" title="Izin/Sakit/Cuti/DL"><i class="fa-solid fa-suitcase-medical mr-1"></i>I/S/C</th>
+                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-amber-50/80 text-amber-700" title="Telat (Kali)"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Telat</th>
+                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-orange-50/80 text-orange-700" title="Telat (Menit)">Mnt</th>
+                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-purple-50/80 text-purple-700" title="PSW (Kali)"><i class="fa-solid fa-person-running mr-1"></i>PSW</th>
+                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-fuchsia-50/80 text-fuchsia-700" title="PSW (Menit)">Mnt</th>
+                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-red-50/80 text-red-700" title="Tanpa Absen Pulang"><i class="fa-solid fa-door-open mr-1"></i>TAP</th>
+                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-teal-50/80 text-teal-700" title="Total Jam Kerja"><i class="fa-solid fa-business-time mr-1"></i>Jam</th>
+                            </tr>
+                        </thead>
+                        <tbody id="riwayat-table-tbody" class="text-slate-700 font-medium divide-y divide-slate-50">
+                            <tr><td colspan="10" class="text-center p-8 text-slate-400">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- Chart Card -->
         <div id="riwayat-chart-card" class="px-5 mt-4 hidden opacity-0 transition-opacity duration-500">
             <div class="glass-card rounded-[2rem] p-5 premium-shadow">
@@ -855,6 +883,6 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/portal.js?v=25"></script>
+    <script src="/portal.js?v=26"></script>
 </body>
 </html>

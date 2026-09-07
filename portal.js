@@ -473,7 +473,15 @@ async function loadRiwayatBulanan(idKaryawan) {
             const date = new Date(y, m - 1);
             return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
         };
+
+        const formatBulanShort = (periode) => {
+            if(!periode) return "-";
+            const [y, m] = periode.split('-');
+            const date = new Date(y, m - 1);
+            return date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+        };
         
+        // === RENDER SUMMARY CARDS (original cards style) ===
         let html = '';
         result.data.forEach(item => {
             html += `
@@ -529,6 +537,53 @@ async function loadRiwayatBulanan(idKaryawan) {
         
         container.innerHTML = html;
         isRiwayatLoaded = true;
+
+        // === RENDER TABLE RIWAYAT REKAP BULANAN ===
+        const tableBody = document.getElementById('riwayat-table-tbody');
+        if (tableBody) {
+            // Sort chronologically (oldest first)
+            const sortedData = [...result.data].sort((a, b) => {
+                if (!a.periode || !b.periode) return 0;
+                return a.periode.localeCompare(b.periode);
+            });
+
+            let tableHtml = '';
+            sortedData.forEach((item, idx) => {
+                const isc = Number(item.total_izin||0) + Number(item.total_sakit||0) + Number(item.total_cuti||0) + Number(item.total_dl||0);
+                const alpa = Number(item.alpa||0);
+                const telatK = Number(item.telat_kali||0);
+                const telatM = Number(item.telat_menit||0);
+                const pswK = Number(item.psw_kali||0);
+                const pswM = Number(item.psw_menit||0);
+                const tap = Number(item.tanpa_absen_pulang||0);
+
+                const isEven = idx % 2 === 0;
+                const rowBg = isEven ? 'bg-white' : 'bg-slate-50/50';
+
+                tableHtml += `
+                <tr class="${rowBg} hover:bg-teal-50/30 transition-colors duration-200">
+                    <td class="p-3 text-center font-bold text-slate-800 whitespace-nowrap sticky left-0 z-10 ${rowBg}">${formatBulanShort(item.periode)}</td>
+                    <td class="p-3 text-center font-black text-emerald-600">${item.total_masuk || 0}</td>
+                    <td class="p-3 text-center font-black ${alpa > 0 ? 'text-rose-600 bg-rose-50/50' : 'text-slate-400'}">${alpa}</td>
+                    <td class="p-3 text-center font-black ${isc > 0 ? 'text-blue-600' : 'text-slate-400'}">${isc}</td>
+                    <td class="p-3 text-center font-black ${telatK > 0 ? 'text-amber-600 bg-amber-50/50' : 'text-slate-400'}">${telatK}</td>
+                    <td class="p-3 text-center font-black ${telatM > 0 ? 'text-orange-600 bg-orange-50/50' : 'text-slate-400'}">${telatM}</td>
+                    <td class="p-3 text-center font-black ${pswK > 0 ? 'text-purple-600 bg-purple-50/50' : 'text-slate-400'}">${pswK}</td>
+                    <td class="p-3 text-center font-black ${pswM > 0 ? 'text-fuchsia-600 bg-fuchsia-50/50' : 'text-slate-400'}">${pswM}</td>
+                    <td class="p-3 text-center font-black ${tap > 0 ? 'text-red-600 bg-red-50/50' : 'text-slate-400'}">${tap}</td>
+                    <td class="p-3 text-center font-bold text-teal-600 whitespace-nowrap font-mono text-[10px]">${item.total_jam_kerja || '00:00:00'}</td>
+                </tr>`;
+            });
+            
+            tableBody.innerHTML = tableHtml;
+
+            // Show table card with animation
+            const tableCard = document.getElementById('riwayat-table-card');
+            if (tableCard) {
+                tableCard.classList.remove('hidden');
+                setTimeout(() => tableCard.classList.remove('opacity-0'), 50);
+            }
+        }
         
         // Render Chart.js
         renderRiwayatChart(result.data);
