@@ -209,6 +209,23 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+        
+        /* Floating Glowing Orbs Animations */
+        @keyframes floatOrb1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-30px, 30px) scale(1.1); }
+        }
+        @keyframes floatOrb2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(40px, -20px) scale(1.2); }
+        }
+        @keyframes floatOrb3 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-20px, -40px) scale(0.9); }
+        }
+        .animate-orb-1 { animation: floatOrb1 8s ease-in-out infinite; }
+        .animate-orb-2 { animation: floatOrb2 12s ease-in-out infinite; }
+        .animate-orb-3 { animation: floatOrb3 10s ease-in-out infinite; }
 
         .glass-panel {
             background: rgba(255, 255, 255, 0.7);
@@ -410,23 +427,13 @@
         
         <!-- Premium Curved Header -->
         <div class="bg-gradient-premium pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-[0_15px_40px_-10px_rgba(20,184,166,0.3)] relative overflow-hidden">
-            <!-- Decorative Leaf Silhouette Background -->
+            <!-- Soft Animated Ambient Background -->
             <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                <!-- Large Right Leaf -->
-                <svg class="absolute -right-16 -bottom-16 w-80 h-80 text-white opacity-[0.07] rotate-[-15deg]" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 7.05,10.67 9.87,13.5C8.31,11 10.37,9 12.35,8.81C10.74,10.38 12.18,12 13.57,13.12C12.3,11.37 13.9,9.81 15.65,9.22C14.16,10.87 15.54,12.54 16.63,13.5C15.82,12.16 16.92,10.97 18.23,10.35C17.38,11.53 18.26,12.75 19,13.43C18.66,12.55 19.14,11.75 19.78,11.23C20.47,12 21.05,12.24 21.65,12.04C21.43,10.66 20.89,9 17,8Z"/>
-                </svg>
-                <!-- Top Left Leaf -->
-                <svg class="absolute -left-10 -top-10 w-60 h-60 text-white opacity-[0.05] rotate-[105deg]" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 7.05,10.67 9.87,13.5C8.31,11 10.37,9 12.35,8.81C10.74,10.38 12.18,12 13.57,13.12C12.3,11.37 13.9,9.81 15.65,9.22C14.16,10.87 15.54,12.54 16.63,13.5C15.82,12.16 16.92,10.97 18.23,10.35C17.38,11.53 18.26,12.75 19,13.43C18.66,12.55 19.14,11.75 19.78,11.23C20.47,12 21.05,12.24 21.65,12.04C21.43,10.66 20.89,9 17,8Z"/>
-                </svg>
-                <!-- Center Tiny Leaf -->
-                <svg class="absolute left-1/3 top-1/4 w-32 h-32 text-white opacity-[0.03] rotate-[45deg]" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 7.05,10.67 9.87,13.5C8.31,11 10.37,9 12.35,8.81C10.74,10.38 12.18,12 13.57,13.12C12.3,11.37 13.9,9.81 15.65,9.22C14.16,10.87 15.54,12.54 16.63,13.5C15.82,12.16 16.92,10.97 18.23,10.35C17.38,11.53 18.26,12.75 19,13.43C18.66,12.55 19.14,11.75 19.78,11.23C20.47,12 21.05,12.24 21.65,12.04C21.43,10.66 20.89,9 17,8Z"/>
-                </svg>
+                <!-- Moving Glowing Orbs -->
+                <div class="absolute -right-10 -top-10 w-80 h-80 bg-gradient-to-br from-teal-400/40 to-transparent rounded-full blur-3xl animate-orb-1 mix-blend-overlay"></div>
+                <div class="absolute -left-10 top-20 w-64 h-64 bg-gradient-to-tr from-emerald-400/40 to-transparent rounded-full blur-3xl animate-orb-2 mix-blend-overlay"></div>
+                <div class="absolute right-1/3 -bottom-20 w-72 h-72 bg-gradient-to-t from-cyan-400/30 to-transparent rounded-full blur-3xl animate-orb-3 mix-blend-overlay"></div>
             </div>
-            <div class="absolute -right-10 -top-20 w-80 h-80 bg-gradient-to-br from-teal-400/20 to-transparent rounded-full blur-3xl"></div>
-            <div class="absolute -left-10 top-10 w-48 h-48 bg-gradient-to-tr from-emerald-400/20 to-transparent rounded-full blur-2xl"></div>
             
             <div class="relative z-10">
                 <!-- Top Centered Badge -->
@@ -921,6 +928,6 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/portal.js?v=28"></script>
+    <script src="/portal.js?v=29"></script>
 </body>
 </html>
