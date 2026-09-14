@@ -450,52 +450,52 @@
     <div id="dashboard-page" class="hidden min-h-screen pb-24">
         
         <!-- Premium Curved Header -->
-        <div class="bg-gradient-premium pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-[0_15px_40px_-10px_rgba(20,184,166,0.3)] relative overflow-hidden">
+        <div class="bg-slate-900 pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-[0_25px_50px_-12px_rgba(15,23,42,0.5)] relative overflow-hidden border-b border-slate-800">
             <!-- Subtle Health Pattern Background -->
             <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 text-white">
                 <!-- Floating Medical Icons -->
-                <i class="fa-solid fa-heart-pulse absolute top-10 left-10 text-[6rem] opacity-[0.15] animate-orb-1 rotate-12 icon-3d-mint blur-[1px]"></i>
-                <i class="fa-solid fa-stethoscope absolute top-40 right-20 text-[8rem] opacity-[0.1] animate-orb-2 -rotate-12 icon-3d-cyan blur-[3px]"></i>
-                <i class="fa-solid fa-notes-medical absolute -bottom-10 left-1/4 text-[7rem] opacity-[0.12] animate-orb-3 rotate-[25deg] icon-3d-white blur-[1px]"></i>
-                <i class="fa-solid fa-pills absolute top-1/3 -left-5 text-[5rem] opacity-[0.15] animate-orb-2 rotate-45 icon-3d-gold blur-[2px]"></i>
-                <i class="fa-solid fa-user-doctor absolute -bottom-5 right-10 text-[6rem] opacity-[0.2] animate-orb-1 -rotate-6 icon-3d-mint"></i>
+                <i class="fa-solid fa-heart-pulse absolute top-10 left-10 text-[6rem] opacity-[0.05] animate-orb-1 rotate-12 text-blue-400 blur-[1px]"></i>
+                <i class="fa-solid fa-stethoscope absolute top-40 right-20 text-[8rem] opacity-[0.03] animate-orb-2 -rotate-12 text-emerald-400 blur-[3px]"></i>
+                <i class="fa-solid fa-notes-medical absolute -bottom-10 left-1/4 text-[7rem] opacity-[0.04] animate-orb-3 rotate-[25deg] text-slate-100 blur-[1px]"></i>
+                <i class="fa-solid fa-pills absolute top-1/3 -left-5 text-[5rem] opacity-[0.05] animate-orb-2 rotate-45 text-amber-400 blur-[2px]"></i>
+                <i class="fa-solid fa-user-doctor absolute -bottom-5 right-10 text-[6rem] opacity-[0.05] animate-orb-1 -rotate-6 text-teal-400"></i>
                 
                 <!-- Ambient Glow Behind Icons -->
-                <div class="absolute -right-10 -top-10 w-80 h-80 bg-gradient-to-br from-teal-400/30 to-transparent rounded-full blur-3xl mix-blend-overlay"></div>
-                <div class="absolute -left-10 top-20 w-64 h-64 bg-gradient-to-tr from-emerald-400/20 to-transparent rounded-full blur-3xl mix-blend-overlay"></div>
+                <div class="absolute -right-10 -top-10 w-96 h-96 bg-gradient-to-br from-blue-600/20 to-transparent rounded-full blur-3xl mix-blend-screen"></div>
+                <div class="absolute -left-10 top-20 w-80 h-80 bg-gradient-to-tr from-emerald-600/20 to-transparent rounded-full blur-3xl mix-blend-screen"></div>
             </div>
             
             <div class="relative z-10">
                 <!-- Top Centered Badge -->
                 <div class="flex justify-center mb-6">
-                    <div class="flex items-center gap-2 bg-black/20 pr-4 pl-1.5 py-1.5 rounded-full border border-white/20 shadow-sm backdrop-blur-sm">
-                        <div class="w-5 h-5 rounded-full bg-white/20 text-white flex items-center justify-center"><i class="fa-solid fa-hospital"></i></div>
-                        <span class="text-white text-[11px] font-extrabold uppercase tracking-[0.25em] drop-shadow-sm pl-1">Puskesmas Wana</span>
+                    <div class="flex items-center gap-2 bg-slate-800/80 pr-4 pl-1.5 py-1.5 rounded-full border border-slate-700 shadow-md backdrop-blur-md">
+                        <div class="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center"><i class="fa-solid fa-hospital"></i></div>
+                        <span class="text-slate-200 text-[11px] font-black uppercase tracking-[0.25em] pl-1">Puskesmas Wana</span>
                     </div>
                 </div>
 
                 <!-- Real-time Clock -->
                 <div class="flex items-center gap-2 mt-3 mb-2">
-                    <span id="greeting-text" class="text-teal-100/80 text-xs font-semibold">Selamat Pagi,</span>
-                    <span id="realtime-clock" class="text-white text-sm font-mono font-bold bg-white/10 px-2.5 py-0.5 rounded-lg border border-white/10">00:00:00</span>
+                    <span id="greeting-text" class="text-slate-400 text-xs font-bold uppercase tracking-wider">Selamat Pagi,</span>
+                    <span id="realtime-clock" class="text-blue-400 text-sm font-mono font-black bg-slate-800/80 px-2.5 py-0.5 rounded-lg border border-slate-700 shadow-inner">00:00:00</span>
                 </div>
 
                 <div class="flex justify-between items-start">
                     <div class="flex items-center gap-4">
-                        <div class="w-16 h-16 bg-white/10 backdrop-blur-xl border border-white/30 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-2xl overflow-hidden relative group">
+                        <div class="w-16 h-16 bg-slate-800/80 backdrop-blur-xl border border-slate-700 rounded-2xl flex items-center justify-center text-3xl font-bold text-slate-300 shadow-xl overflow-hidden relative group">
                             <img id="user-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-transform duration-500 group-hover:scale-110" alt="Foto Pegawai">
                             <i id="user-foto-icon" class="fa-regular fa-face-smile relative z-0"></i>
                         </div>
                         <div>
-                            <p class="text-teal-100 text-[10px] font-medium mb-0.5 uppercase tracking-[0.1em] opacity-80">Selamat datang,</p>
-                            <h2 id="user-nama" class="font-extrabold text-2xl leading-tight text-white tracking-wide drop-shadow-md">Nama Pegawai</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mb-0.5 uppercase tracking-[0.15em]">Selamat datang,</p>
+                            <h2 id="user-nama" class="font-black text-2xl leading-tight text-white tracking-wide">Nama Pegawai</h2>
                             <div class="flex items-center gap-2 mt-2">
-                                <span id="user-jabatan" class="text-[9px] bg-white/20 backdrop-blur-md text-white px-2.5 py-1 rounded-md font-bold border border-white/20 uppercase tracking-widest shadow-sm">Jabatan</span>
-                                <span id="user-id" class="text-[9px] bg-black/30 text-white px-2.5 py-1 rounded-md font-mono tracking-widest shadow-sm">ID</span>
+                                <span id="user-jabatan" class="text-[9px] bg-blue-500/20 text-blue-300 px-2.5 py-1 rounded-md font-black border border-blue-500/30 uppercase tracking-widest shadow-sm">Jabatan</span>
+                                <span id="user-id" class="text-[9px] bg-slate-800/80 text-slate-300 px-2.5 py-1 rounded-md font-mono font-bold border border-slate-700 tracking-widest shadow-sm">ID</span>
                             </div>
                         </div>
                     </div>
-                    <button onclick="logout()" class="w-10 h-10 bg-white/10 hover:bg-rose-500/20 hover:text-rose-200 border border-transparent hover:border-rose-500/30 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all duration-300 shadow-md">
+                    <button onclick="logout()" class="w-10 h-10 bg-slate-800/80 hover:bg-rose-500/20 hover:text-rose-400 border border-slate-700 hover:border-rose-500/30 backdrop-blur-md rounded-xl flex items-center justify-center text-slate-400 transition-all duration-300 shadow-md">
                         <i class="fa-solid fa-power-off"></i>
                     </button>
                 </div>
@@ -506,13 +506,14 @@
         <div class="px-5 -mt-14 relative z-20 space-y-6">
             
             <!-- Running Text Announcement -->
-            <div class="glass-card rounded-[1.5rem] overflow-hidden flex items-stretch premium-shadow p-1">
-                <div class="px-4 py-2 bg-gradient-premium rounded-xl flex items-center justify-center text-white relative z-10 shadow-lg">
-                    <i class="fa-solid fa-bullhorn animate-pulse"></i>
+            <div class="rounded-[1.5rem] overflow-hidden flex items-stretch p-1 bg-white/95 border border-slate-200 shadow-xl relative">
+                <div class="absolute inset-0 rounded-[1.5rem] bg-gradient-to-r from-blue-500/5 via-transparent to-indigo-500/5 pointer-events-none"></div>
+                <div class="px-4 py-2.5 bg-slate-900 rounded-xl flex items-center justify-center text-white relative z-10 shadow-lg">
+                    <i class="fa-solid fa-bullhorn text-blue-400 animate-pulse"></i>
                 </div>
                 <div class="overflow-hidden flex-1 relative flex items-center">
                     <div class="animate-marquee">
-                        <span class="text-[11px] font-extrabold text-teal-800 uppercase tracking-widest">
+                        <span class="text-[11px] font-black text-slate-800 uppercase tracking-widest">
                             🌟 Semangat Melayani Sepenuh Hati! Pastikan Anda melakukan presensi tepat waktu. 🏥 Kesehatan Pasien adalah Prioritas Utama Kita. 🌟
                         </span>
                     </div>
@@ -520,46 +521,46 @@
             </div>
 
             <!-- Card Hari Ini -->
-            <div class="glass-card rounded-[2rem] p-6 premium-shadow">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                        <i class="fa-solid fa-calendar-day text-teal-600"></i> Hari Ini
+            <div class="glass-card rounded-[2rem] p-6 shadow-xl border border-slate-200/60 bg-white/90">
+                <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-day text-blue-600"></i> Hari Ini
                     </h3>
-                    <span id="today-date" class="text-[10px] font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full tracking-wider"></span>
+                    <span id="today-date" class="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-full tracking-wider shadow-sm"></span>
                 </div>
                 
-                <div class="flex justify-between items-center relative">
+                <div class="flex justify-between items-center relative py-2">
                     <!-- Garis Penghubung -->
-                    <div class="absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 w-1/3 h-px bg-slate-200 border border-dashed"></div>
+                    <div class="absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 w-1/3 h-0.5 bg-transparent border-t-2 border-dashed border-slate-300"></div>
                     
                     <div class="text-center w-1/2 relative z-10">
-                        <div class="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-emerald-100">
-                            <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        <div class="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-[0_8px_15px_-3px_rgba(16,185,129,0.4)] border border-emerald-300 transform hover:scale-105 transition-transform duration-300">
+                            <i class="fa-solid fa-arrow-right-to-bracket text-2xl"></i>
                         </div>
-                        <p class="text-xs text-slate-400 font-medium mb-0.5 uppercase tracking-wide">Masuk</p>
-                        <p id="today-masuk" class="text-2xl font-black text-slate-800">--:--</p>
+                        <p class="text-[11px] text-slate-500 font-bold mb-1 uppercase tracking-widest">Jam Masuk</p>
+                        <p id="today-masuk" class="text-3xl font-black text-slate-900 tracking-tight">--:--</p>
                     </div>
                     
                     <div class="text-center w-1/2 relative z-10">
-                        <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-rose-100">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        <div class="w-16 h-16 bg-gradient-to-br from-rose-400 to-rose-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-[0_8px_15px_-3px_rgba(225,29,72,0.4)] border border-rose-300 transform hover:scale-105 transition-transform duration-300">
+                            <i class="fa-solid fa-arrow-right-from-bracket text-2xl"></i>
                         </div>
-                        <p class="text-xs text-slate-400 font-medium mb-0.5 uppercase tracking-wide">Pulang</p>
-                        <p id="today-pulang" class="text-2xl font-black text-slate-800">--:--</p>
+                        <p class="text-[11px] text-slate-500 font-bold mb-1 uppercase tracking-widest">Jam Pulang</p>
+                        <p id="today-pulang" class="text-3xl font-black text-slate-900 tracking-tight">--:--</p>
                     </div>
                 </div>
                 
-                <div id="today-status" class="mt-5 text-center text-sm font-bold text-slate-700 bg-slate-50/80 border border-slate-100 py-3 rounded-xl backdrop-blur-sm">
+                <div id="today-status" class="mt-6 text-center text-sm font-black text-slate-700 bg-slate-100 border border-slate-200 py-3.5 rounded-xl shadow-inner uppercase tracking-widest transition-colors duration-300">
                     Menunggu Data
                 </div>
             </div>
 
             <!-- Header Rekap -->
             <div class="flex justify-between items-center px-1 pt-2">
-                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <i class="fa-solid fa-chart-pie text-teal-600"></i> Rekap Bulan Ini
+                <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-blue-600"></i> Rekap Bulan Ini
                 </h3>
-                <span onclick="toggleDetailModal()" class="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-3 py-1.5 rounded-full cursor-pointer hover:bg-teal-100 transition active:scale-95 shadow-sm tracking-wider uppercase">Lihat Detail</span>
+                <span onclick="toggleDetailModal()" class="text-[10px] font-black text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full cursor-pointer hover:bg-blue-100 transition active:scale-95 shadow-sm tracking-wider uppercase">Lihat Detail</span>
             </div>
 
             <!-- Grid Rekap (Premium Widget Style) -->
@@ -659,26 +660,26 @@
 
             <!-- Header Tabel Harian -->
             <div class="flex justify-between items-center px-1 pt-6 mt-2 border-t border-slate-200">
-                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <i class="fa-solid fa-calendar-days text-teal-600"></i> Metrik Harian
+                <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-days text-blue-600"></i> Metrik Harian
                 </h3>
-                <input type="month" id="filter-bulan" class="text-xs border border-slate-200 rounded-lg px-2 py-1 text-slate-600 bg-slate-50 focus:outline-none focus:border-teal-500 font-semibold" onchange="onMonthFilterChange(this.value)">
+                <input type="month" id="filter-bulan" class="text-xs border border-slate-300 rounded-xl px-3 py-1.5 text-slate-700 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold shadow-sm" onchange="onMonthFilterChange(this.value)">
             </div>
             
             <!-- Tabel Harian -->
-            <div class="bg-white rounded-[1.5rem] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] border border-slate-100 mt-3 relative">
-                <div class="overflow-x-auto overflow-y-auto max-h-[55vh] rounded-[1.5rem] relative">
+            <div class="bg-white rounded-[1.5rem] shadow-xl border border-slate-200/60 mt-3 relative overflow-hidden">
+                <div class="overflow-x-auto overflow-y-auto max-h-[55vh] relative">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead class="sticky top-0 z-20">
-                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-700 shadow-sm">
-                                <th class="p-3.5 font-bold uppercase tracking-wider text-center w-10 bg-slate-50">Tgl</th>
-                                <th class="p-3.5 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-slate-50">Masuk</th>
-                                <th class="p-3.5 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-slate-50">Pulang</th>
-                                <th class="p-3.5 font-bold uppercase tracking-wider text-center w-12 bg-slate-50" title="PSW (Menit)">P</th>
-                                <th class="p-3.5 font-bold uppercase tracking-wider text-center w-12 bg-slate-50" title="Telat (Menit)">T</th>
+                            <tr class="bg-slate-900 text-white shadow-lg">
+                                <th class="p-3.5 font-black uppercase tracking-wider text-center w-10 bg-slate-900">Tgl</th>
+                                <th class="p-3.5 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900">Masuk</th>
+                                <th class="p-3.5 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900">Pulang</th>
+                                <th class="p-3.5 font-black uppercase tracking-wider text-center w-12 bg-slate-900" title="PSW (Menit)">P</th>
+                                <th class="p-3.5 font-black uppercase tracking-wider text-center w-12 bg-slate-900" title="Telat (Menit)">T</th>
                             </tr>
                         </thead>
-                        <tbody id="daily-metrics-tbody" class="text-slate-700 font-medium divide-y divide-slate-50">
+                        <tbody id="daily-metrics-tbody" class="text-slate-700 font-semibold divide-y divide-slate-100">
                             <tr><td colspan="5" class="text-center p-8 text-slate-400">Memuat data...</td></tr>
                         </tbody>
                     </table>
@@ -693,12 +694,20 @@
     <!-- HALAMAN RIWAYAT -->
     <div id="riwayat-page" class="hidden min-h-screen pb-24">
         <!-- Premium Curved Header -->
-        <div class="bg-gradient-premium pt-12 pb-16 px-6 rounded-b-[3rem] shadow-2xl shadow-teal-900/20 relative overflow-hidden">
-            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-20"></div>
-            <div class="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="bg-slate-900 pt-12 pb-16 px-6 rounded-b-[3rem] shadow-[0_25px_50px_-12px_rgba(15,23,42,0.5)] relative overflow-hidden border-b border-slate-800">
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                <i class="fa-solid fa-clock-rotate-left absolute top-8 left-10 text-[5rem] opacity-[0.04] animate-orb-1 rotate-12 text-blue-400 blur-[1px]"></i>
+                <i class="fa-solid fa-chart-line absolute top-20 right-10 text-[6rem] opacity-[0.03] animate-orb-2 -rotate-12 text-emerald-400 blur-[2px]"></i>
+                <div class="absolute -right-20 -top-20 w-80 h-80 bg-gradient-to-br from-blue-600/15 to-transparent rounded-full blur-3xl"></div>
+                <div class="absolute -left-10 top-10 w-64 h-64 bg-gradient-to-tr from-indigo-600/10 to-transparent rounded-full blur-3xl"></div>
+            </div>
             <div class="relative z-10 text-center">
-                <h2 class="font-extrabold text-2xl text-white tracking-wide">Riwayat Rekap Bulanan</h2>
-                <p class="text-teal-100 text-xs font-semibold mt-1">Rekap Absensi Dari Awal Sampai Sekarang</p>
+                <div class="inline-flex items-center gap-2 bg-slate-800/80 px-4 py-1.5 rounded-full border border-slate-700 shadow-md mb-4">
+                    <i class="fa-solid fa-clock-rotate-left text-blue-400 text-xs"></i>
+                    <span class="text-slate-300 text-[10px] font-black uppercase tracking-[0.2em]">Riwayat</span>
+                </div>
+                <h2 class="font-black text-2xl text-white tracking-wide">Riwayat Rekap Bulanan</h2>
+                <p class="text-slate-400 text-xs font-bold mt-2 uppercase tracking-widest">Rekap Absensi Dari Awal Sampai Sekarang</p>
             </div>
         </div>
 
@@ -712,24 +721,24 @@
 
         <!-- Tabel Riwayat Rekap Bulanan -->
         <div id="riwayat-table-card" class="px-5 mt-4 hidden opacity-0 transition-opacity duration-500">
-            <div class="bg-white rounded-[1.5rem] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] border border-slate-100 relative">
-                <div class="overflow-x-auto overflow-y-auto max-h-[65vh] rounded-[1.5rem] relative">
+            <div class="bg-white rounded-[1.5rem] shadow-xl border border-slate-200/60 relative overflow-hidden">
+                <div class="overflow-x-auto overflow-y-auto max-h-[65vh] relative">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead class="sticky top-0 z-20">
-                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-700 shadow-sm">
-                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-slate-50 sticky left-0 z-30">Bulan</th>
-                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-emerald-50/80 text-emerald-700" title="Kehadiran"><i class="fa-solid fa-check-double mr-1"></i>Hadir</th>
-                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-rose-50/80 text-rose-700" title="Alpa"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Alpa</th>
-                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-blue-50/80 text-blue-700" title="Izin/Sakit/Cuti/DL"><i class="fa-solid fa-suitcase-medical mr-1"></i>I/S/C</th>
-                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-amber-50/80 text-amber-700" title="Telat (Kali)"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Telat</th>
-                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-orange-50/80 text-orange-700" title="Telat (Menit)">Mnt</th>
-                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-purple-50/80 text-purple-700" title="PSW (Kali)"><i class="fa-solid fa-person-running mr-1"></i>PSW</th>
-                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-fuchsia-50/80 text-fuchsia-700" title="PSW (Menit)">Mnt</th>
-                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-red-50/80 text-red-700" title="Tanpa Absen Pulang"><i class="fa-solid fa-door-open mr-1"></i>TAP</th>
-                                <th class="p-3 font-bold uppercase tracking-wider text-center whitespace-nowrap bg-teal-50/80 text-teal-700" title="Total Jam Kerja"><i class="fa-solid fa-business-time mr-1"></i>Jam</th>
+                            <tr class="bg-slate-900 text-white shadow-lg">
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900 sticky left-0 z-30">Bulan</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Kehadiran"><i class="fa-solid fa-check-double mr-1 text-emerald-400"></i>Hadir</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Alpa"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-400"></i>Alpa</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Izin/Sakit/Cuti/DL"><i class="fa-solid fa-suitcase-medical mr-1 text-blue-400"></i>I/S/C</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Telat (Kali)"><i class="fa-solid fa-clock-rotate-left mr-1 text-amber-400"></i>Telat</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Telat (Menit)">Mnt</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="PSW (Kali)"><i class="fa-solid fa-person-running mr-1 text-purple-400"></i>PSW</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="PSW (Menit)">Mnt</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Tanpa Absen Pulang"><i class="fa-solid fa-door-open mr-1 text-red-400"></i>TAP</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Total Jam Kerja"><i class="fa-solid fa-business-time mr-1 text-teal-400"></i>Jam</th>
                             </tr>
                         </thead>
-                        <tbody id="riwayat-table-tbody" class="text-slate-700 font-medium divide-y divide-slate-50">
+                        <tbody id="riwayat-table-tbody" class="text-slate-700 font-semibold divide-y divide-slate-100">
                             <tr><td colspan="10" class="text-center p-8 text-slate-400">Memuat data...</td></tr>
                         </tbody>
                     </table>
@@ -739,9 +748,9 @@
 
         <!-- Chart Card -->
         <div id="riwayat-chart-card" class="px-5 mt-4 hidden opacity-0 transition-opacity duration-500">
-            <div class="glass-card rounded-[2rem] p-5 premium-shadow">
-                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-chart-pie text-teal-600"></i> Grafik Kehadiran
+            <div class="bg-white/95 rounded-[2rem] p-5 shadow-xl border border-slate-200/60">
+                <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-blue-600"></i> Grafik Kehadiran
                 </h3>
                 <div class="relative" style="height: 200px;">
                     <canvas id="riwayatChart"></canvas>
@@ -850,79 +859,82 @@
     <!-- HALAMAN PROFIL -->
     <div id="profil-page" class="hidden min-h-screen pb-24 bg-slate-50">
         <!-- Premium Curved Header -->
-        <div class="bg-gradient-premium pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-[0_15px_40px_-10px_rgba(20,184,166,0.3)] relative overflow-hidden">
-            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-30 mix-blend-overlay"></div>
-            <div class="absolute -right-20 -top-20 w-72 h-72 bg-gradient-to-br from-teal-400/20 to-transparent rounded-full blur-3xl"></div>
-            <div class="absolute -left-10 top-20 w-48 h-48 bg-gradient-to-tr from-emerald-400/20 to-transparent rounded-full blur-2xl"></div>
+        <div class="bg-slate-900 pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-[0_25px_50px_-12px_rgba(15,23,42,0.5)] relative overflow-hidden border-b border-slate-800">
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                <i class="fa-solid fa-user-shield absolute top-8 right-10 text-[5rem] opacity-[0.04] animate-orb-1 rotate-12 text-blue-400 blur-[1px]"></i>
+                <i class="fa-solid fa-shield-halved absolute top-32 left-10 text-[6rem] opacity-[0.03] animate-orb-2 -rotate-12 text-indigo-400 blur-[2px]"></i>
+                <div class="absolute -right-20 -top-20 w-96 h-96 bg-gradient-to-br from-blue-600/15 to-transparent rounded-full blur-3xl"></div>
+                <div class="absolute -left-10 top-20 w-80 h-80 bg-gradient-to-tr from-indigo-600/10 to-transparent rounded-full blur-3xl"></div>
+            </div>
             <div class="relative z-10 text-center flex flex-col items-center">
                 <div class="w-28 h-28 flex items-center justify-center text-4xl font-bold text-slate-300 relative mb-5 group">
                     <!-- Animated Ring -->
-                    <div class="premium-profile-ring shadow-[0_0_30px_rgba(20,184,166,0.6)]"></div>
+                    <div class="absolute inset-[-4px] bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-[1.5rem] z-[-1] shadow-[0_0_30px_rgba(99,102,241,0.5)]" style="animation: spin-slow 4s linear infinite;"></div>
                     <!-- Image Container -->
-                    <div class="relative w-full h-full rounded-[1.5rem] bg-slate-100/50 backdrop-blur-xl border-4 border-transparent overflow-hidden flex items-center justify-center z-10 shadow-inner">
+                    <div class="relative w-full h-full rounded-[1.5rem] bg-slate-800/80 backdrop-blur-xl border-4 border-slate-900 overflow-hidden flex items-center justify-center z-10 shadow-inner">
                         <img id="profil-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden transition-transform duration-500 group-hover:scale-110" alt="Foto Profil">
-                        <i id="profil-foto-icon" class="fa-solid fa-user-astronaut"></i>
+                        <i id="profil-foto-icon" class="fa-solid fa-user-astronaut text-slate-500"></i>
                     </div>
                 </div>
-                <h2 id="profil-nama" class="font-extrabold text-2xl text-white tracking-wide leading-tight drop-shadow-md">Nama Pegawai</h2>
-                <p id="profil-jabatan" class="text-teal-50 text-[10px] font-bold mt-2 uppercase tracking-[0.2em] bg-black/20 px-4 py-1.5 rounded-md border border-white/10 shadow-inner">Jabatan</p>
+                <h2 id="profil-nama" class="font-black text-2xl text-white tracking-wide leading-tight">Nama Pegawai</h2>
+                <p id="profil-jabatan" class="text-blue-300 text-[10px] font-black mt-2 uppercase tracking-[0.2em] bg-blue-500/20 px-4 py-1.5 rounded-md border border-blue-500/30 shadow-inner">Jabatan</p>
             </div>
         </div>
 
         <div class="px-5 -mt-8 relative z-20 space-y-4">
             
             <!-- GAMIFIKASI: Prestasi & Pangkat -->
-            <div class="glass-card rounded-[1.5rem] p-5 premium-shadow">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Prestasi Kehadiran</h3>
+            <div class="bg-white/95 rounded-[1.5rem] p-5 shadow-xl border border-slate-200/60">
+                <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-100 pb-3 flex items-center gap-2"><i class="fa-solid fa-trophy text-amber-500"></i> Prestasi Kehadiran</h3>
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-[10px] text-slate-500 font-semibold uppercase mb-1">Pangkat Saat Ini</p>
-                        <p id="profil-pangkat" class="px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600 inline-block">-</p>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase mb-1.5 tracking-wider">Pangkat Saat Ini</p>
+                        <p id="profil-pangkat" class="px-3.5 py-1.5 text-xs font-black rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white inline-block shadow-lg shadow-blue-500/30">-</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-500 font-semibold uppercase mb-1">Total Poin (XP)</p>
-                        <p id="profil-xp" class="text-xl font-black text-teal-600">0 <span class="text-xs text-teal-400">XP</span></p>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase mb-1.5 tracking-wider">Total Poin (XP)</p>
+                        <p id="profil-xp" class="text-2xl font-black text-blue-600">0 <span class="text-xs text-blue-400 font-bold">XP</span></p>
                     </div>
                 </div>
                 <div class="mt-4 pt-3 border-t border-slate-100/70">
-                    <p id="profil-notes" class="text-[10px] leading-relaxed font-medium text-slate-500 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100/50">
+                    <p id="profil-notes" class="text-[10px] leading-relaxed font-semibold text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-inner">
                         Memuat rekam jejak kedisiplinan...
                     </p>
                 </div>
             </div>
             
-            <div class="glass-card rounded-[1.5rem] p-5 premium-shadow">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Informasi Akun</h3>
+            <div class="bg-white/95 rounded-[1.5rem] p-5 shadow-xl border border-slate-200/60">
+                <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-100 pb-3 flex items-center gap-2"><i class="fa-solid fa-circle-info text-blue-500"></i> Informasi Akun</h3>
                 
-                <div class="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
+                <div class="flex justify-between items-center py-3.5 border-b border-slate-100 last:border-0">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center"><i class="fa-solid fa-id-badge"></i></div>
-                        <span class="text-sm font-semibold text-slate-700">ID Pegawai</span>
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/20"><i class="fa-solid fa-id-badge text-sm"></i></div>
+                        <span class="text-sm font-bold text-slate-700">ID Pegawai</span>
                     </div>
-                    <span id="profil-id" class="text-sm font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg">ID</span>
+                    <span id="profil-id" class="text-sm font-black text-white bg-slate-800 px-3 py-1 rounded-lg font-mono shadow-sm">ID</span>
                 </div>
                 
-                <div class="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
+                <div class="flex justify-between items-center py-3.5 border-b border-slate-100 last:border-0">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center"><i class="fa-solid fa-server"></i></div>
-                        <span class="text-sm font-semibold text-slate-700">Status Server</span>
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20"><i class="fa-solid fa-server text-sm"></i></div>
+                        <span class="text-sm font-bold text-slate-700">Status Server</span>
                     </div>
-                    <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-full uppercase tracking-wider">Terhubung</span>
+                    <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow-sm"><span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse inline-block"></span>Terhubung</span>
                 </div>
             </div>
             
-            <div class="glass-card rounded-[1.5rem] p-5 premium-shadow">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Pengaturan</h3>
+            <div class="bg-white/95 rounded-[1.5rem] p-5 shadow-xl border border-slate-200/60">
+                <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-100 pb-3 flex items-center gap-2"><i class="fa-solid fa-gear text-slate-400"></i> Pengaturan</h3>
                 
-                <button onclick="hapusAkun()" class="w-full flex items-center justify-between py-3 group">
+                <button onclick="hapusAkun()" class="w-full flex items-center justify-between py-3.5 group rounded-xl hover:bg-rose-50/50 px-2 transition-colors duration-200">
                     <div class="flex items-center gap-3 text-rose-500 group-hover:text-rose-600 transition-colors">
-                        <div class="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center"><i class="fa-solid fa-trash-can"></i></div>
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-400 to-red-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/20"><i class="fa-solid fa-trash-can text-sm"></i></div>
                         <div class="text-left">
-                            <p class="text-sm font-bold">Hapus Akun Perangkat</p>
-                            <p class="text-[10px] font-medium text-slate-400">Hapus sesi login dari HP ini</p>
+                            <p class="text-sm font-black">Hapus Akun Perangkat</p>
+                            <p class="text-[10px] font-semibold text-slate-400">Hapus sesi login dari HP ini</p>
                         </div>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-xs group-hover:text-rose-400 transition-colors"></i>
                 </button>
             </div>
             
@@ -931,18 +943,19 @@
     </div>
 
     <!-- Bottom Navigation Bar (Modern Apple Floating Dock Style) -->
-    <div id="bottom-nav" class="fixed bottom-0 left-0 right-0 py-2.5 px-4 flex justify-around items-center z-40 hidden opacity-0 translate-y-full transition-all duration-500 bottom-nav-glass">
-        <button id="nav-beranda" onclick="switchTab('beranda')" class="flex flex-col items-center justify-center gap-1 p-2 text-teal-600 bg-teal-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all">
+    <div id="bottom-nav" class="fixed bottom-0 left-0 right-0 py-2.5 px-4 flex justify-around items-center z-40 hidden opacity-0 translate-y-full transition-all duration-500" style="background: rgba(255,255,255,0.92); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-top: 1px solid rgba(226,232,240,0.8); box-shadow: 0 -10px 40px -5px rgba(15,23,42,0.08);">
+        <button id="nav-beranda" onclick="switchTab('beranda')" class="flex flex-col items-center justify-center gap-1 p-2 text-blue-600 bg-blue-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all relative">
+            <span class="absolute -top-0.5 left-1/2 -translate-x-1/2 w-5 h-1 bg-blue-500 rounded-full"></span>
             <i class="fa-solid fa-house text-lg"></i>
-            <span class="text-[9px] font-bold uppercase tracking-wider">Beranda</span>
+            <span class="text-[9px] font-black uppercase tracking-wider">Beranda</span>
         </button>
-        <button id="nav-riwayat" onclick="switchTab('riwayat')" class="flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-teal-600 hover:bg-slate-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all">
+        <button id="nav-riwayat" onclick="switchTab('riwayat')" class="flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all">
             <i class="fa-solid fa-clock-rotate-left text-lg"></i>
-            <span class="text-[9px] font-bold uppercase tracking-wider">Riwayat</span>
+            <span class="text-[9px] font-black uppercase tracking-wider">Riwayat</span>
         </button>
-        <button id="nav-profil" onclick="switchTab('profil')" class="flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-teal-600 hover:bg-slate-50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all">
+        <button id="nav-profil" onclick="switchTab('profil')" class="flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 w-[70px] h-14 rounded-2xl active:scale-95 transition-all">
             <i class="fa-solid fa-user text-lg"></i>
-            <span class="text-[9px] font-bold uppercase tracking-wider">Profil</span>
+            <span class="text-[9px] font-black uppercase tracking-wider">Profil</span>
         </button>
     </div>
 
