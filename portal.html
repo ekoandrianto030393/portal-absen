@@ -447,7 +447,7 @@
     </div>
 
     <!-- HALAMAN DASHBOARD -->
-    <div id="dashboard-page" class="hidden min-h-screen pb-24">
+    <div id="dashboard-page" class="hidden min-h-screen pb-24" style="background: linear-gradient(180deg, #0f172a 0%, #1e293b 15%, #f1f5f9 30%, #e2e8f0 100%);">
         
         <!-- Premium Curved Header -->
         <div class="bg-slate-900 pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-[0_25px_50px_-12px_rgba(15,23,42,0.5)] relative overflow-hidden border-b border-slate-800">
@@ -566,14 +566,14 @@
             <!-- Grid Rekap (Premium Widget Style) -->
             <div class="bento-grid pb-2">
                 <!-- Card Hadir (Wide) -->
-                <div class="bento-item bento-item-wide ripple glass-card p-4 flex flex-row items-center justify-between border-l-4 border-l-emerald-500">
+                <div class="bento-item bento-item-wide ripple p-4 flex flex-row items-center justify-between border-l-4 border-l-emerald-500 bg-white rounded-[1.5rem] shadow-lg border border-slate-200/60 hover:shadow-xl transition-shadow duration-300">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-500 text-white rounded-2xl flex items-center justify-center shadow-[0_8px_15px_-3px_rgba(16,185,129,0.5)] border border-emerald-300/50 relative overflow-hidden">
                             <div class="absolute inset-0 bg-white/20 blur-[2px] rounded-full mix-blend-overlay"></div>
                             <i class="fa-solid fa-check-double text-xl"></i>
                         </div>
                         <div class="text-left">
-                            <p class="text-[11px] font-bold text-emerald-700/80 uppercase tracking-widest leading-tight mb-0.5">Kehadiran</p>
+                            <p class="text-[11px] font-black text-emerald-700 uppercase tracking-widest leading-tight mb-0.5">Kehadiran</p>
                             <p class="text-3xl font-black text-slate-800 tracking-tight leading-none" id="rekap-hadir">0</p>
                         </div>
                     </div>
@@ -583,21 +583,21 @@
                 </div>
 
                 <!-- Card Alpa -->
-                <div class="bento-item ripple glass-card p-3.5 flex flex-col items-start border-l-4 border-l-rose-500">
+                <div class="bento-item ripple p-3.5 flex flex-col items-start border-l-4 border-l-rose-500 bg-white rounded-[1.5rem] shadow-lg border border-slate-200/60 hover:shadow-xl transition-shadow duration-300">
                     <div class="w-9 h-9 bg-gradient-to-br from-rose-400 to-red-500 text-white rounded-xl shadow-[0_8px_15px_-3px_rgba(244,63,94,0.5)] flex items-center justify-center mb-2 border border-rose-300/50 relative overflow-hidden"><div class="absolute inset-0 bg-white/20 blur-[2px] rounded-full mix-blend-overlay"></div><i class="fa-solid fa-triangle-exclamation text-sm relative z-10"></i></div>
-                    <p class="text-[10px] font-bold text-rose-700/80 uppercase tracking-widest leading-tight">Alpa</p>
+                    <p class="text-[10px] font-black text-rose-700 uppercase tracking-widest leading-tight">Alpa</p>
                     <p class="text-2xl font-black text-slate-800 tracking-tight" id="rekap-alpa">0</p>
                 </div>
 
                 <!-- Card Izin/Cuti -->
-                <div class="bento-item ripple glass-card p-3.5 flex flex-col items-start border-l-4 border-l-blue-500">
+                <div class="bento-item ripple p-3.5 flex flex-col items-start border-l-4 border-l-blue-500 bg-white rounded-[1.5rem] shadow-lg border border-slate-200/60 hover:shadow-xl transition-shadow duration-300">
                     <div class="w-9 h-9 bg-gradient-to-br from-blue-400 to-indigo-500 text-white rounded-xl shadow-[0_8px_15px_-3px_rgba(59,130,246,0.5)] flex items-center justify-center mb-2 border border-blue-300/50 relative overflow-hidden"><div class="absolute inset-0 bg-white/20 blur-[2px] rounded-full mix-blend-overlay"></div><i class="fa-solid fa-suitcase-medical text-sm relative z-10"></i></div>
-                    <p class="text-[10px] font-bold text-blue-700/80 uppercase tracking-widest leading-tight">Izin/Cuti</p>
+                    <p class="text-[10px] font-black text-blue-700 uppercase tracking-widest leading-tight">Izin/Cuti</p>
                     <p class="text-2xl font-black text-slate-800 tracking-tight" id="rekap-isc">0</p>
                 </div>
 
                 <!-- Card Telat (Kombinasi) -->
-                <div class="bento-item ripple glass-card p-3.5 flex flex-col items-start border-l-4 border-l-amber-500">
+                <div class="bento-item ripple p-3.5 flex flex-col items-start border-l-4 border-l-amber-500 bg-white rounded-[1.5rem] shadow-lg border border-slate-200/60 hover:shadow-xl transition-shadow duration-300">
                     <div class="w-9 h-9 bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-xl shadow-[0_8px_15px_-3px_rgba(245,158,11,0.5)] flex items-center justify-center mb-2 border border-amber-300/50 relative overflow-hidden"><div class="absolute inset-0 bg-white/20 blur-[2px] rounded-full mix-blend-overlay"></div><i class="fa-solid fa-clock-rotate-left text-sm relative z-10"></i></div>
                     <div class="flex justify-between w-full">
                         <div>
@@ -612,7 +612,7 @@
                 </div>
 
                 <!-- Card PSW (Kombinasi) -->
-                <div class="bento-item ripple glass-card p-3.5 flex flex-col items-start border-l-4 border-l-purple-500">
+                <div class="bento-item ripple p-3.5 flex flex-col items-start border-l-4 border-l-purple-500 bg-white rounded-[1.5rem] shadow-lg border border-slate-200/60 hover:shadow-xl transition-shadow duration-300">
                     <div class="w-9 h-9 bg-gradient-to-br from-purple-400 to-fuchsia-500 text-white rounded-xl flex items-center justify-center mb-2 shadow-[0_8px_15px_-3px_rgba(168,85,247,0.5)] border border-purple-300/50 relative overflow-hidden"><div class="absolute inset-0 bg-white/20 blur-[2px] rounded-full mix-blend-overlay"></div><i class="fa-solid fa-person-running text-sm relative z-10"></i></div>
                     <div class="flex justify-between w-full">
                         <div>
@@ -627,7 +627,7 @@
                 </div>
 
                 <!-- Card TAP (Wide) -->
-                <div class="bento-item bento-item-wide ripple glass-card p-3.5 flex flex-row items-center justify-between border-l-4 border-l-red-500">
+                <div class="bento-item bento-item-wide ripple p-3.5 flex flex-row items-center justify-between border-l-4 border-l-red-500 bg-white rounded-[1.5rem] shadow-lg border border-slate-200/60 hover:shadow-xl transition-shadow duration-300">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-rose-600 text-white rounded-xl shadow-[0_8px_15px_-3px_rgba(239,68,68,0.5)] flex items-center justify-center border border-red-300/50 relative overflow-hidden"><div class="absolute inset-0 bg-white/20 blur-[2px] rounded-full mix-blend-overlay"></div><i class="fa-solid fa-door-open text-sm relative z-10"></i></div>
                         <div class="text-left">
@@ -640,7 +640,7 @@
                 </div>
 
                 <!-- Card Total Jam Kerja (Wide) -->
-                <div class="bento-item bento-item-wide ripple glass-card p-4 flex flex-row items-center justify-between border-l-4 border-l-teal-500">
+                <div class="bento-item bento-item-wide ripple p-4 flex flex-row items-center justify-between border-l-4 border-l-teal-500 bg-white rounded-[1.5rem] shadow-lg border border-slate-200/60 hover:shadow-xl transition-shadow duration-300">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 bg-gradient-to-br from-teal-400 to-cyan-500 text-white rounded-2xl flex items-center justify-center shadow-[0_8px_15px_-3px_rgba(20,184,166,0.5)] border border-teal-300/50 relative overflow-hidden">
                             <div class="absolute inset-0 bg-white/20 blur-[2px] rounded-full mix-blend-overlay"></div>
@@ -692,7 +692,7 @@
     </div>
 
     <!-- HALAMAN RIWAYAT -->
-    <div id="riwayat-page" class="hidden min-h-screen pb-24">
+    <div id="riwayat-page" class="hidden min-h-screen pb-24" style="background: linear-gradient(180deg, #0f172a 0%, #1e293b 10%, #f1f5f9 25%, #e2e8f0 100%);">
         <!-- Premium Curved Header -->
         <div class="bg-slate-900 pt-12 pb-16 px-6 rounded-b-[3rem] shadow-[0_25px_50px_-12px_rgba(15,23,42,0.5)] relative overflow-hidden border-b border-slate-800">
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -857,7 +857,7 @@
         </div>
     </div>
     <!-- HALAMAN PROFIL -->
-    <div id="profil-page" class="hidden min-h-screen pb-24 bg-slate-50">
+    <div id="profil-page" class="hidden min-h-screen pb-24" style="background: linear-gradient(180deg, #0f172a 0%, #1e293b 15%, #f8fafc 30%, #f1f5f9 100%);">
         <!-- Premium Curved Header -->
         <div class="bg-slate-900 pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-[0_25px_50px_-12px_rgba(15,23,42,0.5)] relative overflow-hidden border-b border-slate-800">
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
