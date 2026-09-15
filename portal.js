@@ -319,12 +319,13 @@ function switchTab(tabName) {
     const navProfil = document.getElementById('nav-profil');
     
     // Define classes for modern floating dock navigation (with Ripple & Spring)
-    const inactiveClass = "ripple spring-bounce flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-teal-600 hover:bg-slate-50 w-[70px] h-14 rounded-2xl transition-all";
-    const activeClass = "ripple spring-bounce flex flex-col items-center justify-center gap-1 p-2 text-teal-600 bg-teal-50 w-[70px] h-14 rounded-2xl transition-all shadow-inner";
+    // Define classes for modern floating dock navigation
+    const inactiveClass = "flex flex-col items-center justify-center gap-1 p-2 text-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 hover:border-indigo-100/50 border border-transparent w-[70px] h-14 rounded-2xl active:scale-95 transition-all relative";
+    const activeClass = "flex flex-col items-center justify-center gap-1 p-2 text-indigo-600 bg-indigo-50/80 w-[70px] h-14 rounded-2xl active:scale-95 transition-all border border-indigo-100/50 shadow-inner relative";
     
-    // Special CTA classes for Profil
-    const profilInactiveClass = "ripple spring-bounce flex flex-col items-center justify-center gap-0.5 p-2 text-white bg-gradient-to-tr from-teal-500 to-emerald-400 shadow-[0_4px_15px_rgba(20,184,166,0.4)] w-[75px] h-[60px] rounded-2xl hover:-translate-y-1 transition-all";
-    const profilActiveClass = "ripple spring-bounce flex flex-col items-center justify-center gap-0.5 p-2 text-white bg-gradient-to-tr from-teal-600 to-emerald-500 shadow-inner w-[75px] h-[60px] rounded-2xl ring-4 ring-teal-500/30 transition-all scale-105";
+    // Profil classes
+    const profilInactiveClass = inactiveClass;
+    const profilActiveClass = activeClass;
 
     // Reset Nav States
     navBeranda.className = inactiveClass;
