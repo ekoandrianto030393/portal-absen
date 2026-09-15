@@ -695,22 +695,24 @@
     </div>
 
     <!-- HALAMAN RIWAYAT -->
-    <div id="riwayat-page" class="hidden min-h-screen pb-24" style="background: linear-gradient(180deg, #0f172a 0%, #1e293b 10%, #f1f5f9 25%, #e2e8f0 100%);">
-        <!-- Premium Curved Header -->
-        <div class="bg-slate-900 pt-12 pb-16 px-6 rounded-b-[3rem] shadow-[0_25px_50px_-12px_rgba(15,23,42,0.5)] relative overflow-hidden border-b border-slate-800">
+    <div id="riwayat-page" class="hidden min-h-screen pb-24" style="background: linear-gradient(180deg, #0c0a1d 0%, #1a1145 8%, #0f172a 18%, #f0f1f5 32%, #e8eaf0 60%, #f5f6fa 100%);">
+        <!-- Premium Aurora Header -->
+        <div class="pt-12 pb-16 px-6 rounded-b-[3rem] shadow-[0_25px_60px_-12px_rgba(79,70,229,0.4)] relative overflow-hidden border-b border-indigo-500/30" style="background: linear-gradient(135deg, #0c0a1d 0%, #1e1b4b 25%, #312e81 50%, #4338ca 75%, #6366f1 100%);">
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
-                <i class="fa-solid fa-clock-rotate-left absolute top-8 left-10 text-[5rem] opacity-[0.04] animate-orb-1 rotate-12 text-blue-400 blur-[1px]"></i>
-                <i class="fa-solid fa-chart-line absolute top-20 right-10 text-[6rem] opacity-[0.03] animate-orb-2 -rotate-12 text-emerald-400 blur-[2px]"></i>
-                <div class="absolute -right-20 -top-20 w-80 h-80 bg-gradient-to-br from-blue-600/15 to-transparent rounded-full blur-3xl"></div>
-                <div class="absolute -left-10 top-10 w-64 h-64 bg-gradient-to-tr from-indigo-600/10 to-transparent rounded-full blur-3xl"></div>
+                <i class="fa-solid fa-clock-rotate-left absolute top-8 left-10 text-[5rem] opacity-[0.06] animate-orb-1 rotate-12 text-violet-300 blur-[1px]"></i>
+                <i class="fa-solid fa-chart-line absolute top-20 right-10 text-[6rem] opacity-[0.04] animate-orb-2 -rotate-12 text-cyan-300 blur-[2px]"></i>
+                <i class="fa-solid fa-calendar-check absolute -bottom-5 left-1/4 text-[5rem] opacity-[0.05] animate-orb-3 rotate-[20deg] text-fuchsia-300 blur-[1px]"></i>
+                <!-- Aurora Glow Blobs -->
+                <div class="absolute -right-20 -top-20 w-[400px] h-[400px] bg-gradient-to-br from-violet-500/30 via-fuchsia-500/15 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-1"></div>
+                <div class="absolute -left-10 top-10 w-[350px] h-[350px] bg-gradient-to-tr from-cyan-500/25 via-sky-400/10 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-2"></div>
             </div>
             <div class="relative z-10 text-center">
-                <div class="inline-flex items-center gap-2 bg-slate-800/80 px-4 py-1.5 rounded-full border border-slate-700 shadow-md mb-4">
-                    <i class="fa-solid fa-clock-rotate-left text-blue-400 text-xs"></i>
-                    <span class="text-slate-300 text-[10px] font-black uppercase tracking-[0.2em]">Riwayat</span>
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/20 shadow-lg backdrop-blur-xl mb-4" style="background: rgba(255,255,255,0.1);">
+                    <div class="w-5 h-5 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 text-white flex items-center justify-center text-[9px] shadow-sm"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    <span class="text-white/90 text-[10px] font-black uppercase tracking-[0.2em]">Riwayat</span>
                 </div>
-                <h2 class="font-black text-2xl text-white tracking-wide">Riwayat Rekap Bulanan</h2>
-                <p class="text-slate-400 text-xs font-bold mt-2 uppercase tracking-widest">Rekap Absensi Dari Awal Sampai Sekarang</p>
+                <h2 class="font-black text-2xl text-white tracking-wide drop-shadow-lg">Riwayat Rekap Bulanan</h2>
+                <p class="text-indigo-200/70 text-xs font-bold mt-2 uppercase tracking-widest">Rekap Absensi Dari Awal Sampai Sekarang</p>
             </div>
         </div>
 
@@ -718,31 +720,31 @@
             <!-- Loader untuk riwayat -->
             <div class="text-center py-10">
                 <div class="spinner mx-auto mb-4 w-8 h-8 border-[3px]"></div>
-                <p class="text-sm text-slate-500 font-medium">Memuat data riwayat...</p>
+                <p class="text-sm text-indigo-400 font-medium">Memuat data riwayat...</p>
             </div>
         </div>
 
         <!-- Tabel Riwayat Rekap Bulanan -->
         <div id="riwayat-table-card" class="px-5 mt-4 hidden opacity-0 transition-opacity duration-500">
-            <div class="bg-white rounded-[1.5rem] shadow-xl border border-slate-200/60 relative overflow-hidden">
+            <div class="rounded-[1.5rem] shadow-[0_10px_40px_-10px_rgba(99,102,241,0.15)] border border-indigo-100/50 relative overflow-hidden" style="background: linear-gradient(180deg, #ffffff 0%, #faf8ff 100%);">
                 <div class="overflow-x-auto overflow-y-auto max-h-[65vh] relative">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead class="sticky top-0 z-20">
-                            <tr class="bg-slate-900 text-white shadow-lg">
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900 sticky left-0 z-30">Bulan</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Kehadiran"><i class="fa-solid fa-check-double mr-1 text-emerald-400"></i>Hadir</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Alpa"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-400"></i>Alpa</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Izin/Sakit/Cuti/DL"><i class="fa-solid fa-suitcase-medical mr-1 text-blue-400"></i>I/S/C</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Telat (Kali)"><i class="fa-solid fa-clock-rotate-left mr-1 text-amber-400"></i>Telat</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Telat (Menit)">Mnt</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="PSW (Kali)"><i class="fa-solid fa-person-running mr-1 text-purple-400"></i>PSW</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="PSW (Menit)">Mnt</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Tanpa Absen Pulang"><i class="fa-solid fa-door-open mr-1 text-red-400"></i>TAP</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap bg-slate-900" title="Total Jam Kerja"><i class="fa-solid fa-business-time mr-1 text-teal-400"></i>Jam</th>
+                            <tr class="text-white shadow-lg" style="background: linear-gradient(135deg, #1e1b4b, #312e81, #4338ca);">
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap sticky left-0 z-30" style="background: #1e1b4b;">Bulan</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Kehadiran"><i class="fa-solid fa-check-double mr-1 text-emerald-300"></i>Hadir</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Alpa"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-300"></i>Alpa</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Izin/Sakit/Cuti/DL"><i class="fa-solid fa-suitcase-medical mr-1 text-indigo-300"></i>I/S/C</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Telat (Kali)"><i class="fa-solid fa-clock-rotate-left mr-1 text-amber-300"></i>Telat</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Telat (Menit)">Mnt</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="PSW (Kali)"><i class="fa-solid fa-person-running mr-1 text-violet-300"></i>PSW</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="PSW (Menit)">Mnt</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Tanpa Absen Pulang"><i class="fa-solid fa-door-open mr-1 text-red-300"></i>TAP</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Total Jam Kerja"><i class="fa-solid fa-business-time mr-1 text-cyan-300"></i>Jam</th>
                             </tr>
                         </thead>
-                        <tbody id="riwayat-table-tbody" class="text-slate-700 font-semibold divide-y divide-slate-100">
-                            <tr><td colspan="10" class="text-center p-8 text-slate-400">Memuat data...</td></tr>
+                        <tbody id="riwayat-table-tbody" class="text-slate-700 font-semibold divide-y divide-indigo-50">
+                            <tr><td colspan="10" class="text-center p-8 text-indigo-300">Memuat data...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -751,11 +753,12 @@
 
         <!-- Chart Card -->
         <div id="riwayat-chart-card" class="px-5 mt-4 hidden opacity-0 transition-opacity duration-500">
-            <div class="bg-white/95 rounded-[2rem] p-5 shadow-xl border border-slate-200/60">
-                <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-chart-pie text-blue-600"></i> Grafik Kehadiran
+            <div class="rounded-[2rem] p-5 shadow-[0_15px_50px_-12px_rgba(99,102,241,0.15)] border border-indigo-100/50 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #faf8ff 40%, #f5f3ff 100%);">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-violet-200/20 to-transparent rounded-full blur-2xl pointer-events-none"></div>
+                <h3 class="text-sm font-black text-indigo-900 uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
+                    <i class="fa-solid fa-chart-pie text-indigo-500"></i> Grafik Kehadiran
                 </h3>
-                <div class="relative" style="height: 200px;">
+                <div class="relative z-10" style="height: 200px;">
                     <canvas id="riwayatChart"></canvas>
                 </div>
             </div>
