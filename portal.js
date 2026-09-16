@@ -46,18 +46,27 @@ window.onload = () => {
             const pendingReqId = localStorage.getItem('pending_reset_id');
             
             if (pendingReqId) {
-                // Verifikasi ke server
+                // Verifikasi ke server apakah benar ada request pending
                 fetch(`${API_BASE}/pegawai/lupa-password/status/${pendingReqId}`)
-                    .then(r => r.json())
+                    .then(r => {
+                        if (!r.ok) throw new Error('API Error');
+                        return r.json();
+                    })
                     .then(data => {
                         if (data.success && data.hasPending) {
                             showLockScreen();
                         } else {
+                            // Tidak ada request pending di server, bersihkan localStorage
                             localStorage.removeItem('pending_reset_id');
                             showAuthPage();
                         }
                     })
-                    .catch(() => showLockScreen()); // Jika error koneksi, tetap kunci
+                    .catch(() => {
+                        // Jika server error/tidak bisa dihubungi, 
+                        // bersihkan state agar pegawai tidak terkunci selamanya
+                        localStorage.removeItem('pending_reset_id');
+                        showAuthPage();
+                    });
             } else {
                 showAuthPage();
             }
