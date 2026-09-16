@@ -183,7 +183,7 @@ async function loadSystemConfig() {
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
     // Hide all views
-    ['overview', 'daily', 'monthly', 'performance', 'employees', 'view-db', 'view-db-monthly', 'settings'].forEach(id => {
+    ['overview', 'daily', 'monthly', 'performance', 'employees', 'view-db', 'view-db-monthly', 'req-password', 'settings'].forEach(id => {
         const viewEl = document.getElementById(`view-${id}`);
         if (viewEl) {
             viewEl.classList.add('hidden');
@@ -215,6 +215,7 @@ function switchTab(tabName) {
         'employees': 'Direktori Data Pegawai',
         'view-db': 'Data View Absensi Harian',
         'view-db-monthly': 'DATA VIEW BULANAN',
+        'req-password': 'Permintaan Ubah Password',
         'settings': 'Pengaturan Sistem'
     };
     document.getElementById('page-title').textContent = titles[tabName];
@@ -227,6 +228,85 @@ function switchTab(tabName) {
     if (tabName === 'employees') loadEmployees();
     if (tabName === 'view-db') loadViewDbData();
     if (tabName === 'view-db-monthly') loadViewDbMonthlyData();
+    if (tabName === 'req-password') loadReqPassword();
+}
+
+// --- DATA LOADER: REQ UBAH PASSWORD ---
+async function loadReqPassword() {
+    const tbody = document.getElementById('table-req-password-body');
+    if (!tbody) return;
+    tbody.innerHTML = generateSkeletonRows(6, 3);
+
+    try {
+        const response = await fetch(`${API_BASE}/admin/lupa-password/pending?_t=${Date.now()}`);
+        const result = await response.json();
+
+        tbody.innerHTML = '';
+        if (result.success && result.data && result.data.length > 0) {
+            result.data.forEach(req => {
+                const dateStr = req.created_at ? new Date(req.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-emerald-50/30 transition-colors">
+                        <td class="px-6 py-4 font-mono text-slate-500 font-bold">#${req.id_req}</td>
+                        <td class="px-6 py-4 font-mono font-bold text-slate-800">${escapeHtml(req.id_karyawan)}</td>
+                        <td class="px-6 py-4 font-bold text-slate-800">${escapeHtml(req.nama)}</td>
+                        <td class="px-6 py-4 text-sm text-slate-600">${dateStr}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider inline-flex items-center gap-1.5">
+                                <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse inline-block"></span>Pending
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="approveReqPassword(${req.id_req}, '${escapeHtml(req.nama)}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-md transition-all hover:-translate-y-0.5" title="Setujui">
+                                    <i class="fa-solid fa-check mr-1"></i>Setujui
+                                </button>
+                                <button onclick="rejectReqPassword(${req.id_req}, '${escapeHtml(req.nama)}')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-md transition-all hover:-translate-y-0.5" title="Tolak">
+                                    <i class="fa-solid fa-xmark mr-1"></i>Tolak
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else {
+            tbody.innerHTML = `<tr><td colspan="6" class="p-16 text-center text-slate-400 bg-slate-50/30"><div class="flex flex-col items-center justify-center"><i class="fa-solid fa-check-double text-5xl mb-4 text-emerald-200"></i><p class="text-lg font-bold text-slate-500">Tidak Ada Permintaan</p><p class="text-sm mt-1">Semua permintaan ubah password sudah diproses.</p></div></td></tr>`;
+        }
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Gagal memuat data: ${e.message}</td></tr>`;
+    }
+}
+
+async function approveReqPassword(idReq, nama) {
+    if (!confirm(`Setujui perubahan password untuk ${nama}?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/lupa-password/approve/${idReq}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`Password ${nama} berhasil diubah`, 'success');
+            loadReqPassword();
+        } else {
+            showToast(data.message || 'Gagal menyetujui', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function rejectReqPassword(idReq, nama) {
+    if (!confirm(`Tolak perubahan password untuk ${nama}?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/lupa-password/reject/${idReq}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`Permintaan ${nama} ditolak`, 'success');
+            loadReqPassword();
+        } else {
+            showToast(data.message || 'Gagal menolak', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
 }
 
 // --- JAM DIGITAL ---
