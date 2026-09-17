@@ -731,15 +731,15 @@
                     <table class="w-full text-left border-collapse text-xs">
                         <thead class="sticky top-0 z-20">
                             <tr class="text-white shadow-lg" style="background: linear-gradient(135deg, #1e1b4b, #312e81, #4338ca);">
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap sticky left-0 z-30" style="background: #1e1b4b;">Bulan</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Kehadiran"><i class="fa-solid fa-check-double mr-1 text-emerald-300"></i>Hadir</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Alpa"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-300"></i>Alpa</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Izin/Sakit/Cuti/DL"><i class="fa-solid fa-suitcase-medical mr-1 text-indigo-300"></i>I/S/C</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Telat (Kali)"><i class="fa-solid fa-clock-rotate-left mr-1 text-amber-300"></i>Telat</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Telat (Menit)">Mnt</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="PSW (Kali)"><i class="fa-solid fa-person-running mr-1 text-violet-300"></i>PSW</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="PSW (Menit)">Mnt</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Tanpa Absen Pulang"><i class="fa-solid fa-door-open mr-1 text-red-300"></i>TAP</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap sticky left-0 z-30 border-r border-indigo-400/30" style="background: #1e1b4b;">Bulan</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-indigo-400/30" style="background: inherit;" title="Kehadiran"><i class="fa-solid fa-check-double mr-1 text-emerald-300"></i>Hadir</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-indigo-400/30" style="background: inherit;" title="Alpa"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-300"></i>Alpa</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-indigo-400/30" style="background: inherit;" title="Izin/Sakit/Cuti/DL"><i class="fa-solid fa-suitcase-medical mr-1 text-indigo-300"></i>I/S/C</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-indigo-400/30" style="background: inherit;" title="Telat (Kali)"><i class="fa-solid fa-clock-rotate-left mr-1 text-amber-300"></i>Telat</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-indigo-400/30" style="background: inherit;" title="Telat (Menit)">Mnt</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-indigo-400/30" style="background: inherit;" title="PSW (Kali)"><i class="fa-solid fa-person-running mr-1 text-violet-300"></i>PSW</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-indigo-400/30" style="background: inherit;" title="PSW (Menit)">Mnt</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-indigo-400/30" style="background: inherit;" title="Tanpa Absen Pulang"><i class="fa-solid fa-door-open mr-1 text-red-300"></i>TAP</th>
                                 <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Total Jam Kerja"><i class="fa-solid fa-business-time mr-1 text-cyan-300"></i>Jam</th>
                             </tr>
                         </thead>
@@ -778,15 +778,15 @@
             
             <div class="space-y-3 relative z-0">
                 <!-- Row Item Template -->
-                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center"><i class="fa-solid fa-check"></i></div>
+                        <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-green-500 text-white rounded-xl flex items-center justify-center shadow-[0_4px_10px_rgba(16,185,129,0.4)]"><i class="fa-solid fa-check"></i></div>
                         <span class="font-semibold text-slate-700">Hadir</span>
                     </div>
                     <span id="dtl-hadir" class="font-bold text-lg text-slate-800">0</span>
                 </div>
 
-                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-gradient-to-br from-rose-400 to-red-500 text-white rounded-xl shadow-[0_4px_10px_rgba(244,63,94,0.4)] flex items-center justify-center"><i class="fa-solid fa-xmark"></i></div>
                         <span class="font-semibold text-slate-700">Alpa</span>
@@ -794,7 +794,7 @@
                     <span id="dtl-alpa" class="font-bold text-lg text-slate-800">0</span>
                 </div>
 
-                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 text-white rounded-xl shadow-[0_4px_10px_rgba(59,130,246,0.4)] flex items-center justify-center"><i class="fa-solid fa-file-medical"></i></div>
                         <span class="font-semibold text-slate-700">Izin</span>
@@ -802,31 +802,31 @@
                     <span id="dtl-izin" class="font-bold text-lg text-slate-800">0</span>
                 </div>
                 
-                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 text-white rounded-xl shadow-[0_4px_10px_rgba(59,130,246,0.4)] flex items-center justify-center"><i class="fa-solid fa-briefcase-medical"></i></div>
+                        <div class="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 text-white rounded-xl shadow-[0_4px_10px_rgba(6,182,212,0.4)] flex items-center justify-center"><i class="fa-solid fa-briefcase-medical"></i></div>
                         <span class="font-semibold text-slate-700">Sakit</span>
                     </div>
                     <span id="dtl-sakit" class="font-bold text-lg text-slate-800">0</span>
                 </div>
 
-                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 text-white rounded-xl shadow-[0_4px_10px_rgba(59,130,246,0.4)] flex items-center justify-center"><i class="fa-solid fa-plane-departure"></i></div>
+                        <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-fuchsia-500 text-white rounded-xl shadow-[0_4px_10px_rgba(168,85,247,0.4)] flex items-center justify-center"><i class="fa-solid fa-plane-departure"></i></div>
                         <span class="font-semibold text-slate-700">Cuti</span>
                     </div>
                     <span id="dtl-cuti" class="font-bold text-lg text-slate-800">0</span>
                 </div>
 
-                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center"><i class="fa-solid fa-car-side"></i></div>
+                        <div class="w-10 h-10 bg-gradient-to-br from-sky-400 to-indigo-500 text-white rounded-xl shadow-[0_4px_10px_rgba(14,165,233,0.4)] flex items-center justify-center"><i class="fa-solid fa-car-side"></i></div>
                         <span class="font-semibold text-slate-700">Dinas Luar (DL)</span>
                     </div>
                     <span id="dtl-dl" class="font-bold text-lg text-slate-800">0</span>
                 </div>
 
-                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-xl shadow-[0_4px_10px_rgba(245,158,11,0.4)] flex items-center justify-center"><i class="fa-solid fa-clock"></i></div>
                         <span class="font-semibold text-slate-700">Terlambat (Telat)</span>
@@ -834,15 +834,15 @@
                     <span id="dtl-telat" class="font-bold text-lg text-slate-800">0</span>
                 </div>
                 
-                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center"><i class="fa-solid fa-person-running"></i></div>
+                        <div class="w-10 h-10 bg-gradient-to-br from-violet-400 to-purple-500 text-white rounded-xl shadow-[0_4px_10px_rgba(139,92,246,0.4)] flex items-center justify-center"><i class="fa-solid fa-person-running"></i></div>
                         <span class="font-semibold text-slate-700">Pulang Sblm Waktu (PSW)</span>
                     </div>
                     <span id="dtl-psw" class="font-bold text-lg text-slate-800">0</span>
                 </div>
 
-                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-rose-600 text-white rounded-xl shadow-[0_4px_10px_rgba(239,68,68,0.4)] flex items-center justify-center"><i class="fa-solid fa-door-open"></i></div>
                         <span class="font-semibold text-slate-700">Tidak Absen Pulang</span>

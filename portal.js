@@ -572,15 +572,15 @@ async function loadRiwayatBulanan(idKaryawan) {
 
                 tableHtml += `
                 <tr class="${rowBg} hover:bg-teal-50/30 transition-colors duration-200">
-                    <td class="p-3 text-center font-bold text-slate-800 whitespace-nowrap sticky left-0 z-10 ${rowBg}">${formatBulanShort(item.periode)}</td>
-                    <td class="p-3 text-center font-black text-emerald-600">${item.total_masuk || 0}</td>
-                    <td class="p-3 text-center font-black ${alpa > 0 ? 'text-rose-600 bg-rose-50/50' : 'text-slate-400'}">${alpa}</td>
-                    <td class="p-3 text-center font-black ${isc > 0 ? 'text-blue-600' : 'text-slate-400'}">${isc}</td>
-                    <td class="p-3 text-center font-black ${telatK > 0 ? 'text-amber-600 bg-amber-50/50' : 'text-slate-400'}">${telatK}</td>
-                    <td class="p-3 text-center font-black ${telatM > 0 ? 'text-orange-600 bg-orange-50/50' : 'text-slate-400'}">${telatM}</td>
-                    <td class="p-3 text-center font-black ${pswK > 0 ? 'text-purple-600 bg-purple-50/50' : 'text-slate-400'}">${pswK}</td>
-                    <td class="p-3 text-center font-black ${pswM > 0 ? 'text-fuchsia-600 bg-fuchsia-50/50' : 'text-slate-400'}">${pswM}</td>
-                    <td class="p-3 text-center font-black ${tap > 0 ? 'text-red-600 bg-red-50/50' : 'text-slate-400'}">${tap}</td>
+                    <td class="p-3 text-center font-bold text-slate-800 whitespace-nowrap sticky left-0 z-10 border-r border-indigo-100/50 ${rowBg}">${formatBulanShort(item.periode)}</td>
+                    <td class="p-3 text-center font-black text-emerald-600 border-r border-indigo-100/50">${item.total_masuk || 0}</td>
+                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${alpa > 0 ? 'text-rose-600 bg-rose-50/50' : 'text-slate-400'}">${alpa}</td>
+                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${isc > 0 ? 'text-blue-600' : 'text-slate-400'}">${isc}</td>
+                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${telatK > 0 ? 'text-amber-600 bg-amber-50/50' : 'text-slate-400'}">${telatK}</td>
+                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${telatM > 0 ? 'text-orange-600 bg-orange-50/50' : 'text-slate-400'}">${telatM}</td>
+                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${pswK > 0 ? 'text-purple-600 bg-purple-50/50' : 'text-slate-400'}">${pswK}</td>
+                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${pswM > 0 ? 'text-fuchsia-600 bg-fuchsia-50/50' : 'text-slate-400'}">${pswM}</td>
+                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${tap > 0 ? 'text-red-600 bg-red-50/50' : 'text-slate-400'}">${tap}</td>
                     <td class="p-3 text-center font-bold text-teal-600 whitespace-nowrap font-mono text-[10px]">${item.total_jam_kerja || '00:00:00'}</td>
                 </tr>`;
             });
