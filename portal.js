@@ -580,7 +580,7 @@ async function loadRiwayatBulanan(idKaryawan) {
 
                 tableHtml += `
                 <tr class="${rowBg} hover:bg-teal-50/30 transition-colors duration-200">
-                    <td class="p-3 text-center font-bold text-slate-800 whitespace-nowrap sticky left-0 z-10 border-r border-indigo-100/50 ${rowBg}">${formatBulanShort(item.periode)}</td>
+                    <td class="p-3 text-center font-bold text-teal-700 whitespace-nowrap sticky left-0 z-10 border-r border-indigo-100/50 ${rowBg}">${formatBulanShort(item.periode)}</td>
                     <td class="p-3 text-center font-black text-emerald-600 border-r border-indigo-100/50">${item.total_masuk || 0}</td>
                     <td class="p-3 text-center font-black border-r border-indigo-100/50 ${alpa > 0 ? 'text-rose-600 bg-rose-50/50' : 'text-slate-400'}">${alpa}</td>
                     <td class="p-3 text-center font-black border-r border-indigo-100/50 ${isc > 0 ? 'text-blue-600' : 'text-slate-400'}">${isc}</td>
