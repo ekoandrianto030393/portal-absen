@@ -508,38 +508,46 @@ async function loadRiwayatBulanan(idKaryawan) {
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-4 gap-2 text-center">
-                    <div class="bg-emerald-50/50 rounded-xl p-2 border border-emerald-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Hadir</p>
-                        <p class="text-xs font-black text-emerald-600">${item.total_masuk}</p>
+                <div class="grid grid-cols-4 gap-3 text-center">
+                    <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/60 rounded-xl p-2.5 border border-emerald-200/50 shadow-[0_4px_12px_rgba(16,185,129,0.15)] hover:shadow-[0_6px_16px_rgba(16,185,129,0.3)] transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute -right-2 -top-2 text-emerald-500/10 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"><i class="fa-solid fa-check-double text-4xl"></i></div>
+                        <p class="text-[8px] font-bold text-emerald-600/80 uppercase tracking-widest mb-0.5 relative z-10">Hadir</p>
+                        <p class="text-sm font-black text-emerald-600 relative z-10">${item.total_masuk}</p>
                     </div>
-                    <div class="bg-rose-50/50 rounded-xl p-2 border border-rose-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Alpa</p>
-                        <p class="text-xs font-black text-rose-600">${item.alpa}</p>
+                    <div class="bg-gradient-to-br from-rose-50 to-rose-100/60 rounded-xl p-2.5 border border-rose-200/50 shadow-[0_4px_12px_rgba(244,63,94,0.15)] hover:shadow-[0_6px_16px_rgba(244,63,94,0.3)] transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute -right-2 -top-2 text-rose-500/10 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"><i class="fa-solid fa-triangle-exclamation text-4xl"></i></div>
+                        <p class="text-[8px] font-bold text-rose-600/80 uppercase tracking-widest mb-0.5 relative z-10">Alpa</p>
+                        <p class="text-sm font-black text-rose-600 relative z-10">${item.alpa}</p>
                     </div>
-                    <div class="bg-blue-50/50 rounded-xl p-2 border border-blue-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">I/S/C/DL</p>
-                        <p class="text-xs font-black text-blue-600">${Number(item.total_izin||0) + Number(item.total_sakit||0) + Number(item.total_cuti||0) + Number(item.total_dl||0)}</p>
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100/60 rounded-xl p-2.5 border border-blue-200/50 shadow-[0_4px_12px_rgba(59,130,246,0.15)] hover:shadow-[0_6px_16px_rgba(59,130,246,0.3)] transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute -right-2 -top-2 text-blue-500/10 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"><i class="fa-solid fa-suitcase-medical text-4xl"></i></div>
+                        <p class="text-[8px] font-bold text-blue-600/80 uppercase tracking-widest mb-0.5 relative z-10">I/S/C/DL</p>
+                        <p class="text-sm font-black text-blue-600 relative z-10">${Number(item.total_izin||0) + Number(item.total_sakit||0) + Number(item.total_cuti||0) + Number(item.total_dl||0)}</p>
                     </div>
-                    <div class="bg-red-50/50 rounded-xl p-2 border border-red-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Tanpa Plg</p>
-                        <p class="text-xs font-black text-red-600">${item.tanpa_absen_pulang || 0}</p>
+                    <div class="bg-gradient-to-br from-red-50 to-red-100/60 rounded-xl p-2.5 border border-red-200/50 shadow-[0_4px_12px_rgba(239,68,68,0.15)] hover:shadow-[0_6px_16px_rgba(239,68,68,0.3)] transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute -right-2 -top-2 text-red-500/10 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"><i class="fa-solid fa-door-open text-4xl"></i></div>
+                        <p class="text-[8px] font-bold text-red-600/80 uppercase tracking-widest mb-0.5 relative z-10">Tanpa Plg</p>
+                        <p class="text-sm font-black text-red-600 relative z-10">${item.tanpa_absen_pulang || 0}</p>
                     </div>
-                    <div class="bg-amber-50/50 rounded-xl p-2 border border-amber-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Telat (X)</p>
-                        <p class="text-xs font-black text-amber-600">${item.telat_kali || 0}</p>
+                    <div class="bg-gradient-to-br from-amber-50 to-amber-100/60 rounded-xl p-2.5 border border-amber-200/50 shadow-[0_4px_12px_rgba(245,158,11,0.15)] hover:shadow-[0_6px_16px_rgba(245,158,11,0.3)] transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute -right-2 -top-2 text-amber-500/10 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"><i class="fa-solid fa-clock-rotate-left text-4xl"></i></div>
+                        <p class="text-[8px] font-bold text-amber-600/80 uppercase tracking-widest mb-0.5 relative z-10">Telat (X)</p>
+                        <p class="text-sm font-black text-amber-600 relative z-10">${item.telat_kali || 0}</p>
                     </div>
-                    <div class="bg-orange-50/50 rounded-xl p-2 border border-orange-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Telat (M)</p>
-                        <p class="text-xs font-black text-orange-600">${item.telat_menit || 0}</p>
+                    <div class="bg-gradient-to-br from-orange-50 to-orange-100/60 rounded-xl p-2.5 border border-orange-200/50 shadow-[0_4px_12px_rgba(249,115,22,0.15)] hover:shadow-[0_6px_16px_rgba(249,115,22,0.3)] transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute -right-2 -top-2 text-orange-500/10 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"><i class="fa-solid fa-stopwatch text-4xl"></i></div>
+                        <p class="text-[8px] font-bold text-orange-600/80 uppercase tracking-widest mb-0.5 relative z-10">Telat (M)</p>
+                        <p class="text-sm font-black text-orange-600 relative z-10">${item.telat_menit || 0}</p>
                     </div>
-                    <div class="bg-purple-50/50 rounded-xl p-2 border border-purple-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">PSW (X)</p>
-                        <p class="text-xs font-black text-purple-600">${item.psw_kali || 0}</p>
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100/60 rounded-xl p-2.5 border border-purple-200/50 shadow-[0_4px_12px_rgba(168,85,247,0.15)] hover:shadow-[0_6px_16px_rgba(168,85,247,0.3)] transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute -right-2 -top-2 text-purple-500/10 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"><i class="fa-solid fa-person-running text-4xl"></i></div>
+                        <p class="text-[8px] font-bold text-purple-600/80 uppercase tracking-widest mb-0.5 relative z-10">PSW (X)</p>
+                        <p class="text-sm font-black text-purple-600 relative z-10">${item.psw_kali || 0}</p>
                     </div>
-                    <div class="bg-fuchsia-50/50 rounded-xl p-2 border border-fuchsia-100/50">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase mb-0.5">PSW (M)</p>
-                        <p class="text-xs font-black text-fuchsia-600">${item.psw_menit || 0}</p>
+                    <div class="bg-gradient-to-br from-fuchsia-50 to-fuchsia-100/60 rounded-xl p-2.5 border border-fuchsia-200/50 shadow-[0_4px_12px_rgba(217,70,239,0.15)] hover:shadow-[0_6px_16px_rgba(217,70,239,0.3)] transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute -right-2 -top-2 text-fuchsia-500/10 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"><i class="fa-solid fa-hourglass-end text-4xl"></i></div>
+                        <p class="text-[8px] font-bold text-fuchsia-600/80 uppercase tracking-widest mb-0.5 relative z-10">PSW (M)</p>
+                        <p class="text-sm font-black text-fuchsia-600 relative z-10">${item.psw_menit || 0}</p>
                     </div>
                 </div>
             </div>`;
