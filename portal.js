@@ -502,8 +502,8 @@ async function loadRiwayatBulanan(idKaryawan) {
                             <i class="fa-solid fa-calendar-check text-lg"></i>
                         </div>
                         <div>
-                            <h4 class="font-bold text-slate-800 text-sm uppercase tracking-widest">${formatBulan(item.periode)}</h4>
-                            <p class="text-[10px] text-slate-500 font-semibold tracking-wider">${item.total_hari_kerja || 0} Hari | ${item.total_jam_kerja || 0} Jam Kerja</p>
+                            <h4 class="font-bold text-teal-700 text-sm uppercase tracking-widest drop-shadow-sm">${formatBulan(item.periode)}</h4>
+                            <p class="text-[10px] text-teal-600/80 font-bold tracking-wider">${item.total_hari_kerja || 0} Hari | ${item.total_jam_kerja || 0} Jam Kerja</p>
                         </div>
                     </div>
                 </div>
@@ -999,7 +999,7 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     
                     html += `
                         <tr class="border-b border-slate-200 hover:bg-slate-100 transition-colors even:bg-slate-50">
-                            <td class="p-2 border-r border-slate-200 text-center font-bold text-teal-700">${i}</td>
+                            <td class="p-2 border-r border-slate-200 text-center font-bold text-blue-600 bg-blue-50/30">${i}</td>
                             <td class="p-2 border-r border-slate-200 text-center">${masukHTML}</td>
                             <td class="p-2 border-r border-slate-200 text-center font-medium">${pulang}</td>
                             <td class="p-2 border-r border-slate-200 text-center">${psw}</td>
