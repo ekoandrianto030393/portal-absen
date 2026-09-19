@@ -1,5 +1,14 @@
 const API_BASE = '/api';
 
+// Helper fungsi untuk JWT
+function getAuthHeader(extraHeaders = {}) {
+    const token = localStorage.getItem('pegawai_token');
+    if (token) {
+        return { 'Authorization': `Bearer ${token}`, ...extraHeaders };
+    }
+    return extraHeaders;
+}
+
 // Cek Sesi Login
 window.onload = () => {
     // Inisialisasi Dark Mode
@@ -30,6 +39,15 @@ window.onload = () => {
     }, 1000);
 
     const session = localStorage.getItem('pegawai_session');
+    const token = localStorage.getItem('pegawai_token');
+    
+    // Paksa Logout jika user punya sesi tapi tidak punya token (Migrasi JWT)
+    if (session && !token) {
+        localStorage.removeItem('pegawai_session');
+    localStorage.removeItem('pegawai_token');
+        window.location.reload();
+        return;
+    }
     
     // Hilangkan loader
     setTimeout(() => {
@@ -122,6 +140,7 @@ async function login() {
         
         if(data.success) {
             localStorage.setItem('pegawai_session', JSON.stringify(data.data));
+            localStorage.setItem('pegawai_token', data.token);
             showDashboard(data.data);
         } else {
             alert(data.message);
@@ -281,7 +300,7 @@ async function showDashboard(user) {
 
     // Load User Photo & Sync Profile Info
     try {
-        const resFoto = await fetch(`${API_BASE}/karyawan/${user.id_karyawan}?_t=${Date.now()}`);
+        const resFoto = await fetch(`${API_BASE}/karyawan/${user.id_karyawan}?_t=${Date.now()}`, { headers: getAuthHeader() });
         const photoData = await resFoto.json();
         if (photoData.success && photoData.data) {
             if (photoData.data.foto) {
@@ -461,7 +480,7 @@ function switchTab(tabName) {
 async function loadRiwayatBulanan(idKaryawan) {
     const container = document.getElementById('riwayat-container');
     try {
-        const res = await fetch(`${API_BASE}/riwayat/rekap/${idKaryawan}?_t=${Date.now()}`);
+        const res = await fetch(`${API_BASE}/riwayat/rekap/${idKaryawan}?_t=${Date.now()}`, { headers: getAuthHeader() });
         const result = await res.json();
         
         if (!result.success || !result.data || result.data.length === 0) {
@@ -817,7 +836,7 @@ function toggleSkeleton(enable) {
 async function loadDashboardData(idKaryawan) {
     toggleSkeleton(true);
     try {
-        const res = await fetch(`${API_BASE}/pegawai/dashboard/today/${idKaryawan}?_t=${Date.now()}`);
+        const res = await fetch(`${API_BASE}/pegawai/dashboard/today/${idKaryawan}?_t=${Date.now()}`, { headers: getAuthHeader() });
         const result = await res.json();
         if(result.success && result.data) {
             toggleSkeleton(false);
@@ -842,7 +861,7 @@ async function loadDashboardData(idKaryawan) {
 
     // Load Rekap Bulanan dari API yang sudah ada
     try {
-        const res = await fetch(`${API_BASE}/rekap/bulanan?_t=${Date.now()}`);
+        const res = await fetch(`${API_BASE}/rekap/bulanan?_t=${Date.now()}`, { headers: getAuthHeader() });
         const result = await res.json();
         if(result.success) {
             const myData = result.data.find(d => String(d.id_karyawan).trim().toLowerCase() === String(idKaryawan).trim().toLowerCase());
@@ -923,7 +942,7 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
         const daysInMonth = new Date(year, targetDate.getMonth() + 1, 0).getDate();
         
         // Ambil data API dari matrix bulanan agar tidak perlu restart server (sesuai saran user)
-        const res = await fetch(`${API_BASE}/absensi/bulanan/matrix?periode=${periode}&_t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(`${API_BASE}/absensi/bulanan/matrix?periode=${periode}&_t=${Date.now()}`, { cache: 'no-store', headers: getAuthHeader() });
         const result = await res.json();
         
         // Ambil data alpa akurat dari backend
