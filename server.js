@@ -1662,17 +1662,34 @@ app.post('/api/pegawai/login', (req, res) => {
     const hashedPassword = hashPassword(String(password));
     
     const sql = `
-        SELECT a.id_karyawan, a.username, k.nama, k.jabatan 
+        SELECT a.id_karyawan, a.username, a.password as stored_hash, k.nama, k.jabatan 
         FROM akun_pegawai a 
         JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
-        WHERE (a.username = ? OR a.id_karyawan = ?) AND a.password = ?
+        WHERE (a.username = ? OR a.id_karyawan = ?)
     `;
     
-    pool.query(sql, [username, username, hashedPassword], (err, results) => {
+    pool.query(sql, [username, username], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
-        if (results.length === 0) return res.status(401).json({ success: false, message: 'Username/ID atau Password salah!' });
         
-        res.json({ success: true, data: results[0] });
+        if (results.length === 0) {
+            console.log(`\n🔐 [LOGIN GAGAL] Username/ID "${username}" tidak ditemukan di akun_pegawai`);
+            return res.status(401).json({ success: false, message: 'Username/ID atau Password salah!' });
+        }
+        
+        const user = results[0];
+        const isPasswordMatch = user.stored_hash === hashedPassword;
+        
+        if (!isPasswordMatch) {
+            console.log(`\n🔐 [LOGIN GAGAL] Password tidak cocok untuk "${username}"`);
+            console.log(`   Hash dari input : ${hashedPassword.substring(0, 16)}...`);
+            console.log(`   Hash di database: ${user.stored_hash ? user.stored_hash.substring(0, 16) + '...' : 'NULL'}`);
+            return res.status(401).json({ success: false, message: 'Username/ID atau Password salah!' });
+        }
+        
+        // Password cocok, hapus stored_hash dari response
+        const { stored_hash, ...userData } = user;
+        console.log(`\n🔐 [LOGIN SUKSES] ${userData.nama} (${userData.id_karyawan})`);
+        res.json({ success: true, data: userData });
     });
 });
 
@@ -1762,15 +1779,42 @@ app.post('/api/admin/lupa-password/approve/:id_req', (req, res) => {
         if (reqResults.length === 0) return res.status(404).json({ success: false, message: 'Permintaan tidak ditemukan atau sudah diproses.' });
 
         const reqData = reqResults[0];
+        const idKaryawan = reqData.id_karyawan;
+        const passwordBaruHash = reqData.password_baru;
 
-        // Update password di akun_pegawai
-        pool.query('UPDATE akun_pegawai SET password = ? WHERE id_karyawan = ?', [reqData.password_baru, reqData.id_karyawan], (err2) => {
+        console.log(`\n🔑 [APPROVE PASSWORD] Memproses permintaan #${id_req}`);
+        console.log(`   ID Karyawan: ${idKaryawan}`);
+        console.log(`   Hash Password Baru (dari req): ${passwordBaruHash ? passwordBaruHash.substring(0, 16) + '...' : 'KOSONG!'}`);
+
+        // Update password di akun_pegawai — gunakan TRIM dan LOWER untuk menghindari masalah whitespace/case
+        pool.query('UPDATE akun_pegawai SET password = ? WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [passwordBaruHash, idKaryawan], (err2, updateResult) => {
             if (err2) return res.status(500).json({ success: false, message: err2.message });
 
-            // Update status request menjadi approved
-            pool.query("UPDATE req_ubah_password SET status = 'approved' WHERE id_req = ?", [id_req], (err3) => {
-                if (err3) return res.status(500).json({ success: false, message: err3.message });
-                res.json({ success: true, message: 'Perubahan password disetujui.' });
+            console.log(`   ✏️ UPDATE akun_pegawai affectedRows: ${updateResult.affectedRows}`);
+
+            if (updateResult.affectedRows === 0) {
+                console.log(`   ❌ GAGAL: Tidak ada akun ditemukan untuk ID "${idKaryawan}". Password TIDAK berubah!`);
+                return res.status(404).json({ success: false, message: `Gagal: Akun pegawai dengan ID "${idKaryawan}" tidak ditemukan. Password tidak diubah.` });
+            }
+
+            // Verifikasi: Baca kembali password yang baru saja di-set untuk memastikan benar tersimpan
+            pool.query('SELECT password FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [idKaryawan], (errVerify, verifyResults) => {
+                if (!errVerify && verifyResults.length > 0) {
+                    const savedHash = verifyResults[0].password;
+                    const isMatch = savedHash === passwordBaruHash;
+                    console.log(`   🔍 VERIFIKASI: Password tersimpan ${isMatch ? 'COCOK ✅' : 'TIDAK COCOK ❌'}`);
+                    if (!isMatch) {
+                        console.log(`      Expected: ${passwordBaruHash.substring(0, 16)}...`);
+                        console.log(`      Got:      ${savedHash ? savedHash.substring(0, 16) + '...' : 'NULL'}`);
+                    }
+                }
+
+                // Update status request menjadi approved
+                pool.query("UPDATE req_ubah_password SET status = 'approved' WHERE id_req = ?", [id_req], (err3) => {
+                    if (err3) return res.status(500).json({ success: false, message: err3.message });
+                    console.log(`   ✅ Perubahan password untuk ${idKaryawan} BERHASIL disetujui.`);
+                    res.json({ success: true, message: 'Perubahan password disetujui.' });
+                });
             });
         });
     });

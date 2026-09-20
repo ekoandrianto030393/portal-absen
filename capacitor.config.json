@@ -1,0 +1,9 @@
+{
+  "appId": "com.example.app",
+  "appName": "puskesmas wana ",
+  "webDir": "www",
+  "server": {
+    "url": "https://portal-absen.onrender.com/portal.html",
+    "cleartext": true
+  }
+}
