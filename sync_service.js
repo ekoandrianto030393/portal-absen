@@ -65,10 +65,24 @@ async function startSync() {
                 );
             }
 
-            // --- SYNC AKUN ---
+            // --- SYNC AKUN (Bi-directional: Cloud → Lokal DULU, baru Lokal → Cloud) ---
+            // Ini mencegah password lama di lokal menimpa password baru yang sudah disetujui di Cloud
             try {
-                const [akunList] = await localDb.query("SELECT * FROM akun_pegawai");
-                for (const ak of akunList) {
+                // LANGKAH 1: Tarik akun dari Cloud → Lokal (agar password terbaru dari Cloud masuk ke Lokal)
+                const [akunCloud] = await cloudDb.query("SELECT * FROM akun_pegawai");
+                for (const ak of akunCloud) {
+                    await localDb.query(
+                        `INSERT INTO akun_pegawai (id_akun, id_karyawan, username, password, created_at) 
+                         VALUES (?, ?, ?, ?, ?) 
+                         ON DUPLICATE KEY UPDATE 
+                         username = VALUES(username), password = VALUES(password)`,
+                        [ak.id_akun, ak.id_karyawan, ak.username, ak.password, ak.created_at]
+                    );
+                }
+
+                // LANGKAH 2: Dorong akun dari Lokal → Cloud (agar akun baru dari lokal masuk ke Cloud)
+                const [akunLocal] = await localDb.query("SELECT * FROM akun_pegawai");
+                for (const ak of akunLocal) {
                     await cloudDb.query(
                         `INSERT INTO akun_pegawai (id_akun, id_karyawan, username, password, created_at) 
                          VALUES (?, ?, ?, ?, ?) 

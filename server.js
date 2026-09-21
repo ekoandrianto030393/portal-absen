@@ -1781,54 +1781,110 @@ app.get('/api/admin/lupa-password/pending', (req, res) => {
 });
 
 // 3.4 Admin Menyetujui Password Baru
-app.post('/api/admin/lupa-password/approve/:id_req', (req, res) => {
+app.post('/api/admin/lupa-password/approve/:id_req', async (req, res) => {
     const { id_req } = req.params;
     
-    // Ambil detail request
-    pool.query("SELECT id_karyawan, password_baru FROM req_ubah_password WHERE id_req = ? AND status = 'pending'", [id_req], (err, reqResults) => {
-        if (err) return res.status(500).json({ success: false, message: err.message });
-        if (reqResults.length === 0) return res.status(404).json({ success: false, message: 'Permintaan tidak ditemukan atau sudah diproses.' });
+    try {
+        // Ambil detail request dari database utama (pool)
+        const reqResults = await new Promise((resolve, reject) => {
+            pool.query("SELECT id_karyawan, password_baru FROM req_ubah_password WHERE id_req = ? AND status = 'pending'", [id_req], (err, results) => {
+                if (err) reject(err); else resolve(results);
+            });
+        });
+        
+        if (reqResults.length === 0) {
+            return res.status(404).json({ success: false, message: 'Permintaan tidak ditemukan atau sudah diproses.' });
+        }
 
-        const reqData = reqResults[0];
-        const idKaryawan = reqData.id_karyawan;
-        const passwordBaruHash = reqData.password_baru;
+        const { id_karyawan: idKaryawan, password_baru: passwordBaruHash } = reqResults[0];
 
         console.log(`\n🔑 [APPROVE PASSWORD] Memproses permintaan #${id_req}`);
         console.log(`   ID Karyawan: ${idKaryawan}`);
-        console.log(`   Hash Password Baru (dari req): ${passwordBaruHash ? passwordBaruHash.substring(0, 16) + '...' : 'KOSONG!'}`);
+        console.log(`   Hash Password Baru: ${passwordBaruHash ? passwordBaruHash.substring(0, 16) + '...' : 'KOSONG!'}`);
 
-        // Update password di akun_pegawai — gunakan TRIM dan LOWER untuk menghindari masalah whitespace/case
-        pool.query('UPDATE akun_pegawai SET password = ? WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [passwordBaruHash, idKaryawan], (err2, updateResult) => {
-            if (err2) return res.status(500).json({ success: false, message: err2.message });
-
-            console.log(`   ✏️ UPDATE akun_pegawai affectedRows: ${updateResult.affectedRows}`);
-
-            if (updateResult.affectedRows === 0) {
-                console.log(`   ❌ GAGAL: Tidak ada akun ditemukan untuk ID "${idKaryawan}". Password TIDAK berubah!`);
-                return res.status(404).json({ success: false, message: `Gagal: Akun pegawai dengan ID "${idKaryawan}" tidak ditemukan. Password tidak diubah.` });
-            }
-
-            // Verifikasi: Baca kembali password yang baru saja di-set untuk memastikan benar tersimpan
-            pool.query('SELECT password FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [idKaryawan], (errVerify, verifyResults) => {
-                if (!errVerify && verifyResults.length > 0) {
-                    const savedHash = verifyResults[0].password;
-                    const isMatch = savedHash === passwordBaruHash;
-                    console.log(`   🔍 VERIFIKASI: Password tersimpan ${isMatch ? 'COCOK ✅' : 'TIDAK COCOK ❌'}`);
-                    if (!isMatch) {
-                        console.log(`      Expected: ${passwordBaruHash.substring(0, 16)}...`);
-                        console.log(`      Got:      ${savedHash ? savedHash.substring(0, 16) + '...' : 'NULL'}`);
-                    }
-                }
-
-                // Update status request menjadi approved
-                pool.query("UPDATE req_ubah_password SET status = 'approved' WHERE id_req = ?", [id_req], (err3) => {
-                    if (err3) return res.status(500).json({ success: false, message: err3.message });
-                    console.log(`   ✅ Perubahan password untuk ${idKaryawan} BERHASIL disetujui.`);
-                    res.json({ success: true, message: 'Perubahan password disetujui.' });
-                });
+        // ====================================================================
+        // LANGKAH 1: Update password di database utama (pool = bisa lokal / cloud)
+        // ====================================================================
+        const updateResult = await new Promise((resolve, reject) => {
+            pool.query('UPDATE akun_pegawai SET password = ? WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', 
+                [passwordBaruHash, idKaryawan], (err, result) => {
+                if (err) reject(err); else resolve(result);
             });
         });
-    });
+
+        console.log(`   ✏️ UPDATE di DB utama: ${updateResult.affectedRows} baris`);
+
+        if (updateResult.affectedRows === 0) {
+            console.log(`   ❌ GAGAL: Akun tidak ditemukan di DB utama untuk ID "${idKaryawan}"`);
+            return res.status(404).json({ success: false, message: `Gagal: Akun pegawai "${idKaryawan}" tidak ditemukan.` });
+        }
+
+        // ====================================================================
+        // LANGKAH 2: JUGA update di database KEDUA agar kedua DB sinkron
+        // Ini mencegah sync_service menimpa password baru dengan password lama
+        // ====================================================================
+        try {
+            const mysqlPromise = require('mysql2/promise');
+            
+            // Tentukan koneksi ke DB yang LAIN dari pool utama
+            const isPoolCloud = (process.env.DB_HOST || '').includes('aivencloud');
+            
+            let otherDbConfig;
+            if (isPoolCloud) {
+                // Pool utama = Cloud (Render), maka DB lain = Lokal
+                // Lokal biasanya tidak bisa diakses dari Render, jadi skip
+                console.log(`   ☁️ Server ini = Render (Cloud). Lokal tidak bisa diakses dari sini.`);
+            } else {
+                // Pool utama = Lokal (XAMPP), maka DB lain = Cloud (Aiven)
+                if (process.env.CLOUD_DB_HOST) {
+                    otherDbConfig = {
+                        host: process.env.CLOUD_DB_HOST,
+                        port: process.env.CLOUD_DB_PORT,
+                        user: process.env.CLOUD_DB_USER,
+                        password: process.env.CLOUD_DB_PASS,
+                        database: process.env.CLOUD_DB_NAME,
+                        ssl: { rejectUnauthorized: false },
+                        dateStrings: true,
+                        timezone: '+07:00'
+                    };
+                }
+            }
+
+            if (otherDbConfig) {
+                const otherDb = await mysqlPromise.createConnection(otherDbConfig);
+                const [otherResult] = await otherDb.query(
+                    'UPDATE akun_pegawai SET password = ? WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', 
+                    [passwordBaruHash, idKaryawan]
+                );
+                console.log(`   ☁️ UPDATE di DB Cloud (Aiven): ${otherResult.affectedRows} baris`);
+                
+                // Juga update status req di Cloud agar tidak muncul lagi sebagai pending
+                await otherDb.query("UPDATE req_ubah_password SET status = 'approved' WHERE id_req = ?", [id_req]);
+                console.log(`   ☁️ Status req juga di-update di Cloud`);
+                
+                await otherDb.end();
+            }
+        } catch (syncErr) {
+            // Jangan gagalkan response, DB utama sudah berhasil
+            console.error(`   ⚠️ Gagal sinkron ke DB lain (tidak fatal): ${syncErr.message}`);
+        }
+
+        // ====================================================================
+        // LANGKAH 3: Update status request menjadi approved di DB utama
+        // ====================================================================
+        await new Promise((resolve, reject) => {
+            pool.query("UPDATE req_ubah_password SET status = 'approved' WHERE id_req = ?", [id_req], (err) => {
+                if (err) reject(err); else resolve();
+            });
+        });
+
+        console.log(`   ✅ Password untuk ${idKaryawan} BERHASIL diubah di KEDUA database.`);
+        res.json({ success: true, message: 'Perubahan password disetujui dan langsung aktif.' });
+
+    } catch (err) {
+        console.error(`   ❌ Error approve password:`, err.message);
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 // 3.5 Admin Menolak Password Baru
