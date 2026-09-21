@@ -1722,23 +1722,34 @@ app.put('/api/pegawai/reset_password/:id', (req, res) => {
 
 // 3.1 Pegawai Mengajukan Lupa Password
 app.post('/api/pegawai/lupa-password', (req, res) => {
-    const { id_karyawan, password_baru } = req.body;
+    let { id_karyawan, password_baru } = req.body;
     if (!id_karyawan || !password_baru) return res.status(400).json({ success: false, message: 'ID Karyawan dan Password Baru wajib diisi' });
 
-    // Cek apakah akun pegawai ada
-    pool.query('SELECT * FROM akun_pegawai WHERE id_karyawan = ?', [id_karyawan], (err, results) => {
+    // Normalisasi ID: trim whitespace dan uppercase untuk konsistensi
+    id_karyawan = id_karyawan.trim().toUpperCase();
+
+    console.log(`\n🔑 [REQ UBAH PASSWORD] ID: ${id_karyawan}`);
+
+    // Cek apakah akun pegawai ada (gunakan LOWER TRIM untuk menghindari mismatch)
+    pool.query('SELECT id_karyawan FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [id_karyawan], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (results.length === 0) return res.status(404).json({ success: false, message: 'ID Karyawan belum terdaftar di Portal.' });
 
+        // Gunakan id_karyawan yang tersimpan di database (bukan input user) agar konsisten
+        const dbIdKaryawan = results[0].id_karyawan;
+        console.log(`   ID di DB akun_pegawai: "${dbIdKaryawan}"`);
+
         // Cek apakah sudah ada request pending untuk ID ini
-        pool.query("SELECT * FROM req_ubah_password WHERE id_karyawan = ? AND status = 'pending'", [id_karyawan], (err2, reqResults) => {
+        pool.query("SELECT * FROM req_ubah_password WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?)) AND status = 'pending'", [dbIdKaryawan], (err2, reqResults) => {
             if (err2) return res.status(500).json({ success: false, message: err2.message });
             if (reqResults.length > 0) return res.status(400).json({ success: false, message: 'Anda sudah mengajukan perubahan password. Harap tunggu persetujuan Admin.' });
 
-            // Simpan request baru (password langsung di-hash untuk keamanan)
+            // Simpan request baru — gunakan id_karyawan dari DB agar approve bisa match
             const hashedPassword = hashPassword(String(password_baru));
-            pool.query("INSERT INTO req_ubah_password (id_karyawan, password_baru, status) VALUES (?, ?, 'pending')", [id_karyawan, hashedPassword], (err3) => {
+            console.log(`   Hash password baru: ${hashedPassword.substring(0, 16)}...`);
+            pool.query("INSERT INTO req_ubah_password (id_karyawan, password_baru, status) VALUES (?, ?, 'pending')", [dbIdKaryawan, hashedPassword], (err3) => {
                 if (err3) return res.status(500).json({ success: false, message: err3.message });
+                console.log(`   ✅ Request tersimpan dengan ID: "${dbIdKaryawan}"`);
                 res.json({ success: true, message: 'Pengajuan perubahan password berhasil. Menunggu persetujuan Admin.' });
             });
         });
@@ -1748,7 +1759,7 @@ app.post('/api/pegawai/lupa-password', (req, res) => {
 // 3.2 Pegawai Cek Status Lupa Password
 app.get('/api/pegawai/lupa-password/status/:id_karyawan', (req, res) => {
     const { id_karyawan } = req.params;
-    pool.query("SELECT * FROM req_ubah_password WHERE id_karyawan = ? AND status = 'pending'", [id_karyawan], (err, results) => {
+    pool.query("SELECT * FROM req_ubah_password WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?)) AND status = 'pending'", [id_karyawan], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, hasPending: results.length > 0 });
     });
