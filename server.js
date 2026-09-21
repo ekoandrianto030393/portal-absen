@@ -1815,8 +1815,7 @@ app.post('/api/admin/lupa-password/approve/:id_req', async (req, res) => {
         console.log(`   ✏️ UPDATE di DB utama: ${updateResult.affectedRows} baris`);
 
         if (updateResult.affectedRows === 0) {
-            console.log(`   ❌ GAGAL: Akun tidak ditemukan di DB utama untuk ID "${idKaryawan}"`);
-            return res.status(404).json({ success: false, message: `Gagal: Akun pegawai "${idKaryawan}" tidak ditemukan.` });
+            console.log(`   ⚠️ Peringatan: 0 baris terpengaruh di DB utama. Akun mungkin tidak ada atau password sudah sama.`);
         }
 
         // ====================================================================
