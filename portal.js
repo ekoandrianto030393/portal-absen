@@ -870,8 +870,10 @@ async function loadDashboardData(idKaryawan) {
                 document.getElementById('rekap-alpa').textContent = myData.alpa || 0;
                 document.getElementById('rekap-telat').textContent = myData.telat_kali || 0;
                 
-                const isc = (parseInt(myData.total_izin)||0) + (parseInt(myData.total_sakit)||0) + (parseInt(myData.total_cuti)||0) + (parseInt(myData.total_dl)||0);
+                const isc = (parseInt(myData.total_izin)||0) + (parseInt(myData.total_cuti)||0);
                 document.getElementById('rekap-isc').textContent = isc;
+                if(document.getElementById('rekap-sakit')) { document.getElementById('rekap-sakit').textContent = myData.total_sakit || 0; }
+                if(document.getElementById('rekap-dl')) { document.getElementById('rekap-dl').textContent = myData.total_dl || 0; }
                 document.getElementById('rekap-tap').textContent = myData.tanpa_absen_pulang || 0;
                 
                 if(document.getElementById('rekap-telat-menit')) {
@@ -1169,3 +1171,4 @@ function togglePasswordVisibility(inputId, buttonEl) {
         }
     }
 }
+
