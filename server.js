@@ -1656,6 +1656,19 @@ app.post('/api/pegawai/register', (req, res) => {
     });
 });
 
+// 1.5 API Login Admin
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+    const adminUser = process.env.ADMIN_USER || 'Pkm-wana';
+    const adminPass = process.env.ADMIN_PASS || 'Wana2026?';
+    
+    if (username === adminUser && password === adminPass) {
+        res.json({ success: true, message: 'Login berhasil' });
+    } else {
+        res.status(401).json({ success: false, message: 'Username atau password salah!' });
+    }
+});
+
 // 2. API Login Pegawai
 app.post('/api/pegawai/login', (req, res) => {
     const { username, password } = req.body;

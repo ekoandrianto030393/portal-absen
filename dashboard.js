@@ -126,19 +126,26 @@ function checkAuth() {
     }
 }
 
-function handleLogin() {
+async function handleLogin() {
     const user = document.getElementById('login-username').value;
     const pass = document.getElementById('login-password').value;
 
-    // Kredensial Admin yang ditanam (Hardcoded)
-    const ADMIN_USER = 'Pkm-wana';
-    const ADMIN_PASS = 'Wana2026?';
+    try {
+        const response = await fetch(`${API_BASE}/admin/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+        const result = await response.json();
 
-    if (user === ADMIN_USER && pass === ADMIN_PASS) {
-        localStorage.setItem('pkm_wana_session', 'active');
-        location.reload();
-    } else {
-        showLoginError("Username atau password salah!", "bg-rose-50 text-rose-500 border-rose-200");
+        if (result.success) {
+            localStorage.setItem('pkm_wana_session', 'active');
+            location.reload();
+        } else {
+            showLoginError("Username atau password salah!", "bg-rose-50 text-rose-500 border-rose-200");
+        }
+    } catch (e) {
+        showLoginError("Gagal terhubung ke server!", "bg-rose-50 text-rose-500 border-rose-200");
     }
 }
 
