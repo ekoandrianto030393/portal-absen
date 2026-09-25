@@ -1,4 +1,5 @@
 const mysql = require('mysql2/promise');
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 
@@ -7,10 +8,10 @@ async function migrate() {
 
     // 1. Koneksi ke Lokal (XAMPP)
     const localDb = await mysql.createConnection({
-        host: '127.0.0.1',
-        user: 'root',
-        password: '',
-        database: 'biometrik_absensi_wajah_db',
+        host: process.env.DB_HOST || '127.0.0.1',
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASS || '',
+        database: process.env.DB_NAME || 'biometrik_absensi_wajah_db',
         dateStrings: true,
         timezone: '+07:00'
     });
@@ -18,11 +19,11 @@ async function migrate() {
 
     // 2. Koneksi ke Aiven
     const aivenDb = await mysql.createConnection({
-        host: 'mysql-25c30b1e-portal-absen.d.aivencloud.com',
-        port: 15196,
-        user: 'avnadmin',
-        password: 'AVNS_Rwsb8USmPTv2lzku1R6',
-        database: 'defaultdb',
+        host: process.env.CLOUD_DB_HOST,
+        port: process.env.CLOUD_DB_PORT,
+        user: process.env.CLOUD_DB_USER,
+        password: process.env.CLOUD_DB_PASS,
+        database: process.env.CLOUD_DB_NAME,
         ssl: { rejectUnauthorized: false },
         dateStrings: true,
         timezone: '+07:00'
