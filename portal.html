@@ -184,25 +184,24 @@
             border-radius: inherit;
         }
 
-        /* ======== PREMIUM PHYSICAL DESIGN ======== */
-        /* [REPLACED with Modern Healthcare Glass] */
-        .bg-modern-glass {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        /* ======== LUXURY LOGIN REDESIGN ======== */
+        .bg-luxury-glass {
+            background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%);
             position: fixed;
             inset: 0;
             z-index: -1;
         }
         
-        .bg-modern-glass::before {
+        .bg-luxury-glass::before {
             content: '';
             position: absolute;
             top: -50%;
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle, rgba(20, 184, 166, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 20%, rgba(13, 148, 136, 0.15) 0%, transparent 40%);
-            animation: slowRotate 30s linear infinite;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(56, 189, 248, 0.03) 0%, transparent 40%);
+            animation: slowRotate 40s linear infinite;
         }
         
         @keyframes slowRotate {
@@ -251,54 +250,58 @@
             text-shadow: 0 1px 0 #fde68a, 0 2px 0 #fcd34d, 0 3px 0 #fbbf24, 0 4px 0 #f59e0b, 0 8px 15px rgba(0,0,0,0.3);
         }
 
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.1), inset 0 1px 0 rgba(255, 255, 255, 1);
-            border-radius: 28px;
+        .luxury-panel {
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            border-radius: 32px;
             position: relative;
         }
 
-        .text-teal-gradient {
-            background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: 1px;
-        }
-
-        .btn-masuk-inner {
-            background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
-            color: white;
-            border-radius: 14px;
-            box-shadow: 0 10px 20px -5px rgba(13, 148, 136, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(20, 184, 166, 0.5);
+        .btn-luxury-inner {
+            background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+            background-size: 200% 200%;
+            color: #1e1b4b;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px -5px rgba(212, 175, 55, 0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            animation: gradient-shift 6s ease infinite;
         }
         
-        .btn-masuk-inner:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 15px 25px -5px rgba(13, 148, 136, 0.5), inset 0 1px 0 rgba(255,255,255,0.3);
-        }
-        .btn-masuk-inner:active {
-            transform: scale(0.98);
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
-        .input-modern {
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            border-radius: 13px;
-            color: #1e293b;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        .btn-luxury-inner:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px -5px rgba(212, 175, 55, 0.6), inset 0 1px 0 rgba(255,255,255,0.8);
         }
-        .input-modern:focus {
-            background: #ffffff;
-            border-color: #0d9488;
-            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+        .btn-luxury-inner:active {
+            transform: scale(0.97);
+        }
+
+        .input-luxury {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 14px;
+            color: #f8fafc;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .input-luxury:focus {
+            background: rgba(30, 41, 59, 0.7);
+            border-color: #d4af37;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
             outline: none;
+        }
+        .input-luxury::placeholder {
+            color: #64748b;
         }
     </style>
 </head>
@@ -316,133 +319,135 @@
 
 
     <!-- HALAMAN LOGIN / REGISTER -->
-    <div id="auth-page" class="min-h-screen flex items-center justify-center p-6 opacity-0 transition-opacity duration-700 hidden fixed inset-0 z-50 overflow-hidden bg-modern-glass">
+    <div id="auth-page" class="min-h-screen flex items-center justify-center p-6 opacity-0 transition-opacity duration-700 hidden fixed inset-0 z-50 overflow-hidden bg-luxury-glass">
         
         <!-- Top Left Text -->
-        <div class="absolute top-6 left-6 z-10 text-teal-800 text-lg font-bold tracking-widest uppercase">
+        <div class="absolute top-6 left-6 z-10 text-amber-200/80 text-sm font-bold tracking-[0.2em] uppercase drop-shadow-sm">
             Puskesmas Wana
         </div>
         
         <!-- Top Right Logo -->
-        <div class="absolute top-6 right-6 z-10 w-12 h-12 flex items-center justify-center bg-white/50 backdrop-blur-md rounded-2xl border border-white/50 shadow-sm">
-            <i class="fa-solid fa-hospital text-teal-700 text-2xl"></i>
+        <div class="absolute top-6 right-6 z-10 w-12 h-12 flex items-center justify-center bg-slate-900/40 backdrop-blur-md rounded-2xl border border-amber-500/20 shadow-[0_4px_12px_rgba(212,175,55,0.15)] transition-transform hover:scale-105">
+            <i class="fa-solid fa-hospital text-amber-400 text-2xl drop-shadow-[0_2px_4px_rgba(212,175,55,0.3)]"></i>
         </div>
         
         <!-- Form Container -->
-        <div class="glass-panel w-full max-w-sm p-8 z-10 slide-in-center">
+        <div class="luxury-panel w-full max-w-sm p-8 z-10 slide-in-center">
             <!-- Gold Frame -->
-            <div class="text-center mb-6 relative z-10">
-                <!-- 3D Hospital Icon (Modernized) -->
-                <div class="mx-auto mb-4 w-16 h-16 bg-gradient-to-br from-teal-50 to-emerald-100 rounded-2xl flex items-center justify-center shadow-inner border border-white">
-                    <i class="fa-solid fa-notes-medical text-teal-600 text-3xl"></i>
+            <div class="text-center mb-8 relative z-10">
+                <!-- 3D Hospital Icon (Luxury) -->
+                <div class="mx-auto mb-5 w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-950 rounded-2xl flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),_0_8px_16px_rgba(0,0,0,0.5)] border border-amber-500/30 ring-1 ring-white/5 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent"></div>
+                    <i class="fa-solid fa-fingerprint text-transparent bg-clip-text bg-gradient-to-br from-amber-200 to-amber-600 text-3xl drop-shadow-sm"></i>
                 </div>
                 
-                <h2 class="text-2xl font-extrabold text-slate-800 mb-1 uppercase tracking-wider">Biometrik</h2>
-                <p class="text-[11px] font-bold tracking-[0.2em] text-teal-600 uppercase mt-1">Portal Absensi</p>
+                <h2 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-amber-300 to-amber-100 mb-1 uppercase tracking-[0.15em] drop-shadow-sm">Biometrik</h2>
+                <p class="text-[9px] font-bold tracking-[0.4em] text-amber-500/70 uppercase mt-1">Portal Absensi Eksekutif</p>
             </div>
             
             <div id="login-form" class="relative z-10 transition-all duration-500 pb-2">
-                <div class="space-y-4">
-                    <div class="relative">
-                        <i class="fa-solid fa-user absolute left-4 top-4 text-teal-600/70"></i>
-                        <input type="text" id="login-username" placeholder="Username" class="input-modern w-full pl-12 pr-4 py-3.5 outline-none placeholder-slate-400">
+                <div class="space-y-5">
+                    <div class="relative group">
+                        <i class="fa-solid fa-user absolute left-4 top-4 text-amber-500/50 group-focus-within:text-amber-400 transition-colors duration-300"></i>
+                        <input type="text" id="login-username" placeholder="Username" class="input-luxury w-full pl-12 pr-4 py-3.5 outline-none">
                     </div>
-                    <div class="relative">
-                        <i class="fa-solid fa-lock absolute left-4 top-4 text-teal-600/70"></i>
-                        <input type="password" id="login-password" placeholder="Password" class="input-modern w-full pl-12 pr-12 py-3.5 outline-none placeholder-slate-400">
-                        <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute right-4 top-4 text-teal-600/70 hover:text-teal-800 focus:outline-none">
+                    <div class="relative group">
+                        <i class="fa-solid fa-lock absolute left-4 top-4 text-amber-500/50 group-focus-within:text-amber-400 transition-colors duration-300"></i>
+                        <input type="password" id="login-password" placeholder="Password" class="input-luxury w-full pl-12 pr-12 py-3.5 outline-none">
+                        <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute right-4 top-4 text-amber-500/50 hover:text-amber-400 focus:outline-none transition-colors duration-300">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
-                    <div class="mt-6 pt-2">
-                        <button onclick="login()" class="btn-masuk-inner w-full font-bold py-3.5 outline-none uppercase tracking-wide text-sm">Masuk Sekarang</button>
+                    <div class="mt-8 pt-2">
+                        <button onclick="login()" class="btn-luxury-inner w-full font-black py-4 outline-none uppercase tracking-[0.15em] text-[13px]">Akses Sistem</button>
                     </div>
                 </div>
             </div>
 
             <div id="register-form" class="hidden relative z-10 transition-all duration-500 pb-2">
                 <div class="space-y-4">
-                    <div class="relative">
-                        <i class="fa-solid fa-id-badge absolute left-4 top-3.5 text-teal-600/70 text-sm"></i>
-                        <input type="text" id="reg-id" placeholder="ID Karyawan" class="input-modern w-full pl-11 pr-4 py-3 outline-none text-sm placeholder-slate-400">
+                    <div class="relative group">
+                        <i class="fa-solid fa-id-badge absolute left-4 top-3.5 text-amber-500/50 text-sm group-focus-within:text-amber-400"></i>
+                        <input type="text" id="reg-id" placeholder="ID Karyawan" class="input-luxury w-full pl-11 pr-4 py-3 outline-none text-sm">
                     </div>
-                    <div class="relative">
-                        <i class="fa-solid fa-signature absolute left-4 top-3.5 text-teal-600/70 text-sm"></i>
-                        <input type="text" id="reg-nama" placeholder="Nama Sesuai KTP" class="input-modern w-full pl-11 pr-4 py-3 outline-none text-sm placeholder-slate-400">
+                    <div class="relative group">
+                        <i class="fa-solid fa-signature absolute left-4 top-3.5 text-amber-500/50 text-sm group-focus-within:text-amber-400"></i>
+                        <input type="text" id="reg-nama" placeholder="Nama Lengkap" class="input-luxury w-full pl-11 pr-4 py-3 outline-none text-sm">
                     </div>
-                    <div class="relative">
-                        <i class="fa-solid fa-at absolute left-4 top-3.5 text-teal-600/70 text-sm"></i>
-                        <input type="text" id="reg-username" placeholder="Buat Username" class="input-modern w-full pl-11 pr-4 py-3 outline-none text-sm placeholder-slate-400">
+                    <div class="relative group">
+                        <i class="fa-solid fa-at absolute left-4 top-3.5 text-amber-500/50 text-sm group-focus-within:text-amber-400"></i>
+                        <input type="text" id="reg-username" placeholder="Username" class="input-luxury w-full pl-11 pr-4 py-3 outline-none text-sm">
                     </div>
-                    <div class="relative">
-                        <i class="fa-solid fa-key absolute left-4 top-3.5 text-teal-600/70 text-sm"></i>
-                        <input type="password" id="reg-password" placeholder="Buat Password" class="input-modern w-full pl-11 pr-11 py-3 outline-none text-sm placeholder-slate-400">
-                        <button type="button" onclick="togglePasswordVisibility('reg-password', this)" class="absolute right-4 top-3 text-teal-600/70 hover:text-teal-800 focus:outline-none">
+                    <div class="relative group">
+                        <i class="fa-solid fa-key absolute left-4 top-3.5 text-amber-500/50 text-sm group-focus-within:text-amber-400"></i>
+                        <input type="password" id="reg-password" placeholder="Password" class="input-luxury w-full pl-11 pr-11 py-3 outline-none text-sm">
+                        <button type="button" onclick="togglePasswordVisibility('reg-password', this)" class="absolute right-4 top-3 text-amber-500/50 hover:text-amber-400 focus:outline-none">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
-                    <div class="mt-5">
-                        <button onclick="register()" class="btn-masuk-inner w-full font-bold py-3.5 outline-none text-sm uppercase tracking-wide">Daftar Akun</button>
+                    <div class="mt-6">
+                        <button onclick="register()" class="btn-luxury-inner w-full font-black py-3.5 outline-none text-xs uppercase tracking-[0.15em]">Registrasi VIP</button>
                     </div>
                 </div>
                 <div class="text-center mt-6">
-                    <button onclick="toggleAuth('login')" class="text-teal-600 text-xs font-bold hover:underline uppercase tracking-wider">Kembali ke Login</button>
+                    <button onclick="toggleAuth('login')" class="text-slate-400 text-xs font-bold hover:text-amber-400 hover:underline uppercase tracking-wider transition-colors duration-300">Kembali ke Login</button>
                 </div>
             </div>
 
             <!-- HALAMAN LUPA PASSWORD -->
             <div id="forgot-password-form" class="hidden relative z-10 transition-all duration-500 pb-2">
                 <div class="text-center mb-6">
-                    <p class="text-xs text-slate-500 font-medium tracking-wide">Masukkan ID Karyawan dan password baru Anda. Permintaan ini memerlukan persetujuan Admin.</p>
+                    <p class="text-[11px] text-slate-400 font-medium tracking-wide leading-relaxed">Masukkan ID Karyawan dan kredensial baru. Memerlukan Otorisasi Admin.</p>
                 </div>
                 <div class="space-y-4">
-                    <div class="relative">
-                        <i class="fa-solid fa-id-badge absolute left-4 top-3.5 text-teal-600/70"></i>
-                        <input type="text" id="fp-id" placeholder="ID Karyawan" class="input-modern w-full pl-11 pr-4 py-3 outline-none text-sm placeholder-slate-400">
+                    <div class="relative group">
+                        <i class="fa-solid fa-id-badge absolute left-4 top-3.5 text-amber-500/50 group-focus-within:text-amber-400"></i>
+                        <input type="text" id="fp-id" placeholder="ID Karyawan" class="input-luxury w-full pl-11 pr-4 py-3 outline-none text-sm">
                     </div>
-                    <div class="relative">
-                        <i class="fa-solid fa-key absolute left-4 top-3.5 text-teal-600/70"></i>
-                        <input type="password" id="fp-password" placeholder="Password Baru" class="input-modern w-full pl-11 pr-11 py-3 outline-none text-sm placeholder-slate-400">
-                        <button type="button" onclick="togglePasswordVisibility('fp-password', this)" class="absolute right-4 top-3 text-teal-600/70 hover:text-teal-800 focus:outline-none">
+                    <div class="relative group">
+                        <i class="fa-solid fa-key absolute left-4 top-3.5 text-amber-500/50 group-focus-within:text-amber-400"></i>
+                        <input type="password" id="fp-password" placeholder="Password Baru" class="input-luxury w-full pl-11 pr-11 py-3 outline-none text-sm">
+                        <button type="button" onclick="togglePasswordVisibility('fp-password', this)" class="absolute right-4 top-3 text-amber-500/50 hover:text-amber-400 focus:outline-none">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
-                    <div class="mt-5">
-                        <button onclick="ajukanLupaPassword()" class="btn-masuk-inner w-full font-bold py-3.5 outline-none text-xs uppercase tracking-wide">Ajukan Perubahan</button>
+                    <div class="mt-6">
+                        <button onclick="ajukanLupaPassword()" class="btn-luxury-inner w-full font-black py-3.5 outline-none text-xs uppercase tracking-[0.15em]">Ajukan Otorisasi</button>
                     </div>
                 </div>
                 <div class="text-center mt-6">
-                    <button onclick="toggleAuth('login')" class="text-teal-600 text-xs font-bold hover:underline uppercase tracking-wider">Kembali ke Login</button>
+                    <button onclick="toggleAuth('login')" class="text-slate-400 text-xs font-bold hover:text-amber-400 hover:underline uppercase tracking-wider transition-colors duration-300">Kembali ke Login</button>
                 </div>
             </div>
 
             <!-- LAYAR TERKUNCI (LOCK SCREEN) -->
             <div id="lock-screen" class="hidden relative z-10 transition-all duration-500 text-center pb-2">
-                <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-slate-200 mt-4">
+                <div class="w-16 h-16 bg-slate-900/80 text-amber-500/80 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] border border-amber-500/20 mt-4">
                     <i class="fa-solid fa-lock text-2xl drop-shadow-sm"></i>
                 </div>
-                <h3 class="text-lg font-bold text-slate-800 mb-2 uppercase tracking-wide">Permintaan Diproses</h3>
-                <p class="text-xs text-slate-500 mb-6 font-medium">Pengajuan perubahan password Anda sedang menunggu persetujuan Admin.</p>
+                <h3 class="text-lg font-black text-amber-100 mb-2 uppercase tracking-[0.15em]">Otorisasi Tertunda</h3>
+                <p class="text-xs text-slate-400 mb-6 font-medium leading-relaxed">Sistem menunggu persetujuan tingkat Admin untuk memproses kredensial baru Anda.</p>
                 <div>
-                    <button onclick="checkStatusPassword()" class="btn-masuk-inner w-full font-bold py-3.5 outline-none text-xs uppercase tracking-wide">
-                        <i class="fa-solid fa-rotate-right mr-2"></i> Cek Status Terkini
+                    <button onclick="checkStatusPassword()" class="btn-luxury-inner w-full font-black py-3.5 outline-none text-xs uppercase tracking-[0.15em] flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> Cek Status Terkini
                     </button>
                 </div>
             </div>
         </div>
         
         <!-- Footer Links -->
-        <div class="absolute bottom-12 left-0 w-full text-center z-10 text-[13px] font-medium tracking-wide">
-            <span class="text-slate-500">Pengguna baru? </span>
-            <a href="#" onclick="toggleAuth('register')" class="text-teal-600 font-bold hover:underline ml-1 drop-shadow-sm">Buat Akun</a>
-            <a href="#" onclick="toggleAuth('forgot-password')" class="text-slate-500 font-bold hover:underline ml-4">Lupa Password?</a>
+        <div class="absolute bottom-12 left-0 w-full text-center z-10 text-[11px] font-medium tracking-widest uppercase">
+            <span class="text-slate-500">Akses Baru? </span>
+            <a href="#" onclick="toggleAuth('register')" class="text-amber-400 font-bold hover:text-amber-300 hover:underline ml-1 drop-shadow-sm transition-colors">Registrasi VIP</a>
+            <span class="text-slate-600 mx-3">|</span>
+            <a href="#" onclick="toggleAuth('forgot-password')" class="text-slate-500 font-bold hover:text-amber-400 hover:underline transition-colors">Pemulihan Akun</a>
         </div>
         
         <!-- Android Nav Mockup -->
-        <div class="absolute bottom-4 left-0 w-full flex justify-center gap-16 z-10 opacity-40 pointer-events-none">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fcebc4" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fcebc4" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fcebc4" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        <div class="absolute bottom-4 left-0 w-full flex justify-center gap-16 z-10 opacity-20 pointer-events-none">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
         </div>
     </div>
 
