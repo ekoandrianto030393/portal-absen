@@ -1172,3 +1172,24 @@ function togglePasswordVisibility(inputId, buttonEl) {
     }
 }
 
+
+// --- SISTEM PENGINGAT TAGIHAN ---
+function cekPengingatTagihan() {
+    const sudahDitutup = localStorage.getItem('pengingat_tagihan_ditutup');
+    if (!sudahDitutup) {
+        const banner = document.getElementById('payment-reminder');
+        if (banner) {
+            banner.style.display = 'block';
+        }
+    }
+}
+function tutupPengingat() {
+    const banner = document.getElementById('payment-reminder');
+    if (banner) {
+        banner.style.display = 'none';
+        localStorage.setItem('pengingat_tagihan_ditutup', 'true'); 
+    }
+}
+document.addEventListener('DOMContentLoaded', () => {
+    cekPengingatTagihan();
+});
