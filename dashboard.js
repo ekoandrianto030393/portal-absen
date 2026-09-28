@@ -1336,11 +1336,13 @@ async function loadEmployees(silent = false) {
         
         countSpan.textContent = employees.length;
         grid.innerHTML = '';
+        const tableBody = document.getElementById('table-employees-body');
+        if (tableBody) tableBody.innerHTML = '';
 
         if (employees.length > 0) {
             employees.forEach(emp => {
                 // Gunakan foto asli jika ada, jika tidak pakai avatar UI
-                const photoSrc = emp.foto ? `data:image/jpeg;base64,${emp.foto}` : `https://ui-avatars.com/api/?name=${emp.nama}&background=10b981&color=fff`;
+                const photoSrc = emp.foto ? `data:image/jpeg;base64,${emp.foto}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.nama)}&background=10b981&color=fff`;
 
                 // [NEW] Hitung Jumlah Sampel Wajah
                 let sampleCount = 0;
@@ -1357,26 +1359,24 @@ async function loadEmployees(silent = false) {
                         if (emp.face_descriptor.length !== 128) isCorrupt = true;
                     }
                 } else {
-                    // Jika bukan array (misal null/object kosong), anggap 0
                     sampleCount = 0;
                 }
                 
                 // Cek jika sampel ada tapi terdeteksi corrupt
                 if (sampleCount > 0 && isCorrupt) {
                     sampleCount = -1; // Tandai error
-                    corruptCount++; // [NEW] Increment counter
-                    // [DEBUG] Tampilkan detail data rusak di Console (Tekan F12 di browser)
+                    corruptCount++; // Increment counter
                     console.group(`🚨 DATA RUSAK DITEMUKAN: ${emp.nama}`);
                     console.error(`ID: ${emp.id_karyawan}`);
                     console.error("Raw Descriptor:", emp.face_descriptor);
                     console.groupEnd();
                 }
 
-                // [NEW] Warna Badge Sampel (Indikator Kualitas Data)
-                let sampleBadgeColor = 'bg-red-50 text-red-600 border-red-100'; // 0 Sampel (Buruk)
-                if (sampleCount >= 5) sampleBadgeColor = 'bg-emerald-50 text-emerald-600 border-emerald-100'; // Sangat Baik
-                else if (sampleCount >= 3) sampleBadgeColor = 'bg-blue-50 text-blue-600 border-blue-100'; // Baik
-                else if (sampleCount >= 1) sampleBadgeColor = 'bg-amber-50 text-amber-600 border-amber-100'; // Cukup
+                // Warna Badge Sampel Wajah
+                let sampleBadgeColor = 'bg-red-50 text-red-600 border-red-100';
+                if (sampleCount >= 5) sampleBadgeColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+                else if (sampleCount >= 3) sampleBadgeColor = 'bg-blue-50 text-blue-600 border-blue-100';
+                else if (sampleCount >= 1) sampleBadgeColor = 'bg-amber-50 text-amber-600 border-amber-100';
 
                 let sampleLabel = `${sampleCount} Sampel`;
                 if (sampleCount === -1 || isCorrupt) {
@@ -1384,6 +1384,17 @@ async function loadEmployees(silent = false) {
                     sampleBadgeColor = "bg-red-600 text-white border-red-700 animate-pulse font-bold";
                 }
 
+                // Status Akun Portal Pegawai
+                const hasAccount = !!emp.username;
+                const portalUsernameTag = hasAccount 
+                    ? `<span class="font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded text-[11px] inline-flex items-center gap-1"><i class="fa-solid fa-at text-indigo-400"></i>${escapeHtml(emp.username)}</span>`
+                    : `<span class="text-slate-400 italic text-[11px]">- Belum Mendaftar -</span>`;
+
+                const portalAccountBadge = hasAccount
+                    ? `<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wide"><i class="fa-solid fa-circle-check text-emerald-600"></i> Terdaftar</span>`
+                    : `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wide"><i class="fa-solid fa-circle-minus text-slate-400"></i> Belum Ada Akun</span>`;
+
+                // Render Mode 1: Cards Grid
                 const card = `
                     <div class="bg-white rounded-2xl shadow-sm hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-300 group border border-slate-200/80 overflow-hidden relative flex flex-col">
                         <!-- Decorative Top Bar -->
@@ -1402,12 +1413,12 @@ async function loadEmployees(silent = false) {
                                 <div class="flex justify-between items-start">
                                     <div onclick="openModal('${emp.id_karyawan}')" class="cursor-pointer flex-1 min-w-0 mr-2">
                                         <h4 class="text-slate-800 font-bold truncate text-base group-hover:text-emerald-600 transition-colors" title="${escapeHtml(emp.nama)}">${escapeHtml(emp.nama)}</h4>
-                                        <div class="flex flex-wrap items-center gap-2 mt-1">
+                                        <div class="flex flex-wrap items-center gap-1.5 mt-1">
                                             <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wide truncate max-w-full">${escapeHtml(emp.jabatan || 'Staff')}</span>
-                                            <!-- [NEW] Badge Sampel Wajah -->
                                             <span class="px-2 py-0.5 rounded text-[10px] font-bold ${sampleBadgeColor} border uppercase tracking-wide truncate" title="Status Data Wajah">
                                                 <i class="fa-solid fa-fingerprint mr-1"></i>${sampleLabel}
                                             </span>
+                                            ${hasAccount ? `<span class="px-2 py-0.5 rounded text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200" title="Username Portal">@${escapeHtml(emp.username)}</span>` : ''}
                                         </div>
                                     </div>
                                 </div>
@@ -1419,7 +1430,8 @@ async function loadEmployees(silent = false) {
                                     </div>
                                     
                                     <!-- Actions -->
-                                    <div class="flex gap-1">
+                                    <div class="flex gap-1 flex-wrap">
+                                        ${hasAccount ? `<button onclick="deletePortalAccount('${emp.id_karyawan}', this.dataset.name)" data-name="${escapeHtml(emp.nama)}" class="w-7 h-7 rounded flex items-center justify-center text-rose-500 hover:text-white hover:bg-rose-600 transition-all border border-rose-200 hover:border-rose-600" title="Hapus Akun Portal Pegawai"><i class="fa-solid fa-user-slash text-xs"></i></button>` : ''}
                                         <button onclick="window.location.href='admin.html?id=${emp.id_karyawan}&name=${encodeURIComponent(emp.nama)}&role=${encodeURIComponent(emp.jabatan || '')}'" class="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all border border-transparent hover:border-emerald-100" title="Rekam Wajah / Update Descriptor">
                                             <i class="fa-solid fa-camera text-xs"></i>
                                         </button>
@@ -1429,7 +1441,7 @@ async function loadEmployees(silent = false) {
                                         <button onclick="openEditModal('${emp.id_karyawan}')" class="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100" title="Edit">
                                             <i class="fa-solid fa-pen-to-square text-xs"></i>
                                         </button>
-                                        <button onclick="deleteEmployee('${emp.id_karyawan}', this.dataset.name)" data-name="${escapeHtml(emp.nama)}" class="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100" title="Hapus">
+                                        <button onclick="deleteEmployee('${emp.id_karyawan}', this.dataset.name)" data-name="${escapeHtml(emp.nama)}" class="w-7 h-7 rounded flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100" title="Hapus Permanen Pegawai">
                                             <i class="fa-solid fa-trash text-xs"></i>
                                         </button>
                                     </div>
@@ -1439,9 +1451,48 @@ async function loadEmployees(silent = false) {
                     </div>
                 `;
                 grid.innerHTML += card;
+
+                // Render Mode 2: Table View (Akun Portal & Biometrik)
+                if (tableBody) {
+                    let tableSampleBadge = `<span class="bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full font-bold text-[10px]">0 Sampel</span>`;
+                    if (isCorrupt) {
+                        tableSampleBadge = `<span class="bg-red-600 text-white border border-red-700 px-2.5 py-1 rounded-full font-bold text-[10px] animate-pulse">DATA RUSAK</span>`;
+                    } else if (sampleCount >= 5) {
+                        tableSampleBadge = `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full font-black text-[10px]"><i class="fa-solid fa-fingerprint mr-1"></i>${sampleCount} Sampel (Baik)</span>`;
+                    } else if (sampleCount >= 1) {
+                        tableSampleBadge = `<span class="bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-1 rounded-full font-bold text-[10px]"><i class="fa-solid fa-fingerprint mr-1"></i>${sampleCount} Sampel</span>`;
+                    }
+
+                    const tableActionButtons = `
+                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                            ${hasAccount ? `<button onclick="deletePortalAccount('${emp.id_karyawan}', '${escapeHtml(emp.nama)}')" class="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 font-bold text-[11px] transition-all flex items-center gap-1 shadow-sm" title="Hapus Akun Portal Pegawai (Bisa Daftar Ulang)"><i class="fa-solid fa-user-slash"></i> Hapus Akun Portal</button>` : `<span class="text-slate-400 text-[10px] italic bg-slate-50 px-2 py-1 rounded border border-slate-200">Belum Ada Akun</span>`}
+                            <button onclick="resetPasswordPortal('${emp.id_karyawan}', '${escapeHtml(emp.nama)}')" class="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-600 text-purple-600 hover:text-white border border-purple-200 text-xs transition-all" title="Reset Password Portal"><i class="fa-solid fa-key"></i></button>
+                            <button onclick="openEditModal('${emp.id_karyawan}')" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-200 text-xs transition-all" title="Edit Pegawai"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteEmployee('${emp.id_karyawan}', '${escapeHtml(emp.nama)}')" class="p-1.5 rounded-lg bg-red-50 hover:bg-red-700 text-red-600 hover:text-white border border-red-200 text-xs transition-all" title="Hapus Data Pegawai Permanen"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+
+                    const rowHtml = `
+                        <tr class="hover:bg-slate-50/80 transition-colors">
+                            <td class="px-4 py-3 text-center">
+                                <div class="w-9 h-9 rounded-full p-0.5 bg-slate-100 mx-auto shadow-sm">
+                                    <img src="${photoSrc}" class="w-full h-full object-cover rounded-full border border-slate-200">
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 font-mono font-bold text-slate-800 text-xs">${emp.id_karyawan}</td>
+                            <td class="px-4 py-3 font-bold text-slate-900 text-xs">${escapeHtml(emp.nama)}</td>
+                            <td class="px-4 py-3 text-slate-600 text-xs font-medium">${escapeHtml(emp.jabatan || 'Staff')}</td>
+                            <td class="px-4 py-3">${portalUsernameTag}</td>
+                            <td class="px-4 py-3 text-center">${portalAccountBadge}</td>
+                            <td class="px-4 py-3 text-center">${tableSampleBadge}</td>
+                            <td class="px-4 py-3 text-center">${tableActionButtons}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += rowHtml;
+                }
             });
 
-            // [NEW] Tampilkan Banner Peringatan & Tombol Hapus Massal jika ada data rusak
+            // Tampilkan Banner Peringatan jika ada data rusak
             if (corruptCount > 0) {
                 const banner = `
                     <div class="col-span-full bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 animate-pulse">
@@ -1460,20 +1511,96 @@ async function loadEmployees(silent = false) {
                 grid.insertAdjacentHTML('afterbegin', banner);
             }
 
-            // Fitur Pencarian Sederhana
-            document.getElementById('search-employee').addEventListener('input', (e) => {
-                const term = e.target.value.toLowerCase();
-                const cards = grid.children;
-                Array.from(cards).forEach(card => {
-                    const text = card.innerText.toLowerCase();
-                    card.style.display = text.includes(term) ? 'flex' : 'none';
-                });
-            });
+            // Fitur Pencarian Real-time (Grid & Table)
+            const searchInput = document.getElementById('search-employee');
+            if (searchInput) {
+                searchInput.oninput = (e) => {
+                    const term = e.target.value.toLowerCase();
+                    // Filter Cards
+                    Array.from(grid.children).forEach(card => {
+                        const text = card.innerText.toLowerCase();
+                        card.style.display = text.includes(term) ? 'flex' : 'none';
+                    });
+                    // Filter Table Rows
+                    if (tableBody) {
+                        Array.from(tableBody.children).forEach(row => {
+                            const text = row.innerText.toLowerCase();
+                            row.style.display = text.includes(term) ? '' : 'none';
+                        });
+                    }
+                };
+            }
         }
     } catch (e) {
         grid.innerHTML = `<div class="col-span-full text-center text-red-500">Gagal memuat data: ${e.message}</div>`;
     } finally {
         if (!silent) hideSpinner();
+    }
+}
+
+// --- FITUR: SWITCH VIEW PEGAWAI (KARTU / TABEL AKUN PORTAL) ---
+function switchEmployeeView(mode) {
+    const grid = document.getElementById('employees-grid');
+    const tableContainer = document.getElementById('employees-table-container');
+    const btnGrid = document.getElementById('btn-view-grid');
+    const btnTable = document.getElementById('btn-view-table');
+
+    const navEmp = document.getElementById('nav-employees');
+    const navBiometrik = document.getElementById('nav-biometrik-akun');
+
+    if (mode === 'table') {
+        if (grid) grid.classList.add('hidden');
+        if (tableContainer) tableContainer.classList.remove('hidden');
+        
+        if (btnGrid) {
+            btnGrid.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-slate-600 hover:text-emerald-700 transition-all';
+        }
+        if (btnTable) {
+            btnTable.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-white text-emerald-700 shadow-sm transition-all';
+        }
+
+        if (navBiometrik) navBiometrik.classList.add('active');
+        if (navEmp) navEmp.classList.remove('active');
+    } else {
+        if (tableContainer) tableContainer.classList.add('hidden');
+        if (grid) grid.classList.remove('hidden');
+        
+        if (btnGrid) {
+            btnGrid.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-white text-emerald-700 shadow-sm transition-all';
+        }
+        if (btnTable) {
+            btnTable.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-slate-600 hover:text-emerald-700 transition-all';
+        }
+
+        if (navEmp) navEmp.classList.add('active');
+        if (navBiometrik) navBiometrik.classList.remove('active');
+    }
+}
+
+// --- FITUR: HAPUS AKUN PORTAL PEGAWAI ---
+async function deletePortalAccount(id, nama) {
+    if (!confirm(`PERINGATAN HAPUS AKUN PORTAL:\n\nApakah Anda yakin ingin menghapus AKUN PORTAL untuk:\nNama: ${nama}\nID: ${id}\n\nPegawai tidak akan bisa login ke Portal Online sampai mereka melakukan registrasi akun kembali.\n(Data biometrik & absensi pegawai TETAP AMAN)`)) {
+        return;
+    }
+
+    showSpinner();
+    try {
+        const response = await fetch(`${API_BASE}/pegawai/akun/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: getAuthHeader()
+        });
+        const result = await response.json();
+        hideSpinner();
+
+        if (result.success) {
+            showToast(result.message || 'Akun portal pegawai berhasil dihapus.', 'success');
+            loadEmployees(); // Reload data pegawai & tabel akun
+        } else {
+            showToast(result.message || 'Gagal menghapus akun portal pegawai.', 'error');
+        }
+    } catch (e) {
+        hideSpinner();
+        showToast('Error: ' + e.message, 'error');
     }
 }
 

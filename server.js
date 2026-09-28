@@ -895,10 +895,15 @@ app.get('/api/absensi/bulanan/matrix', (req, res) => {
     });
 });
 
-// Endpoint: Ambil Descriptors untuk Absensi (Scan Wajah)
+// Endpoint: Ambil Descriptors untuk Absensi (Scan Wajah) & Data Akun Portal
 app.get('/api/karyawan/descriptors', (req, res) => {
-    // UPDATE: Ambil data lengkap (id, jabatan, foto) agar scan.js bisa menampilkan profil
-    const sql = "SELECT id_karyawan, nama, jabatan, foto, face_descriptor, no_urut FROM karyawan ORDER BY no_urut ASC, nama ASC";
+    // UPDATE: Ambil data lengkap (id, jabatan, foto, username portal) agar dashboard & scan bisa menampilkan profil
+    const sql = `
+        SELECT k.id_karyawan, k.nama, k.jabatan, k.foto, k.face_descriptor, k.no_urut, a.username 
+        FROM karyawan k 
+        LEFT JOIN akun_pegawai a ON LOWER(TRIM(k.id_karyawan)) = LOWER(TRIM(a.id_karyawan))
+        ORDER BY k.no_urut ASC, k.nama ASC
+    `;
 
     pool.query(sql, (err, results) => {
         if (err) {
@@ -923,7 +928,8 @@ app.get('/api/karyawan/descriptors', (req, res) => {
                         jabatan: row.jabatan,
                         foto: fotoBase64,
                         face_descriptor: parsedDescriptor,
-                        no_urut: row.no_urut || 9999
+                        no_urut: row.no_urut || 9999,
+                        username: row.username || null
                     };
                 } catch (e) {
                     return null;

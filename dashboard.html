@@ -180,6 +180,9 @@
                 <li><button id="nav-employees" onclick="switchTab('employees')"
                         class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><i
                             class="fa-solid fa-users w-5 text-center text-emerald-400/60 group-hover:text-white"></i> <span class="font-medium">Data Pegawai</span></button></li>
+                <li><button id="nav-biometrik-akun" onclick="switchTab('employees'); switchEmployeeView('table');"
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><i
+                            class="fa-solid fa-id-card-clip w-5 text-center text-cyan-400/80 group-hover:text-white"></i> <span class="font-medium">Tabel Akun Portal</span></button></li>
                 <li><button id="nav-req-password" onclick="switchTab('req-password')"
                         class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><i
                             class="fa-solid fa-key w-5 text-center text-orange-400/80 group-hover:text-white"></i> <span class="font-medium">Req Ubah Password</span></button></li>
@@ -435,21 +438,67 @@
                 </div>
             </div>
 
-            <!-- VIEW: EMPLOYEES -->
+            <!-- VIEW: EMPLOYEES & AKUN PORTAL -->
             <div id="view-employees" class="hidden space-y-6">
-                <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                <div class="flex flex-wrap gap-4 justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <div class="relative w-full max-w-md">
-                        <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
-                        <input type="text" id="search-employee" placeholder="Cari nama atau jabatan..."
-                            class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#3498db] focus:ring-1 focus:ring-[#3498db] transition-all">
+                        <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400"></i>
+                        <input type="text" id="search-employee" placeholder="Cari nama, ID, username, atau jabatan..."
+                            class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm">
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <!-- Switcher View Mode (Grid vs Table) -->
+                        <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                            <button id="btn-view-grid" onclick="switchEmployeeView('grid')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-white text-emerald-700 shadow-sm transition-all">
+                                <i class="fa-solid fa-border-all"></i> Mode Kartu
+                            </button>
+                            <button id="btn-view-table" onclick="switchEmployeeView('table')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-slate-600 hover:text-emerald-700 transition-all">
+                                <i class="fa-solid fa-table-list"></i> Tabel Akun & Biometrik
+                            </button>
                         </div>
-                    <div class="text-sm text-gray-500">Total: <span id="total-emp-count" class="font-bold text-[#2c3e50]">0</span> Pegawai
+                        
+                        <div class="text-sm text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                            Total: <span id="total-emp-count" class="font-black text-emerald-800">0</span> Pegawai
+                        </div>
                     </div>
-                    </div>
+                </div>
+
+                <!-- Grid View (Default) -->
                 <div id="employees-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- JS Injected Cards -->
+                </div>
+
+                <!-- Table View (Akun Portal & Biometrik) -->
+                <div id="employees-table-container" class="hidden card-academic overflow-hidden shadow-md">
+                    <div class="p-4 bg-slate-800 text-white flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-users-gear text-emerald-400 text-lg"></i>
+                            <h3 class="font-bold text-sm uppercase tracking-wider">Tabel Akun Portal Online & Biometrik Wajah</h3>
+                        </div>
+                        <span class="text-[11px] text-slate-300 bg-slate-700/60 px-3 py-1 rounded-full border border-slate-600">Fitur Manajemen & Penghapusan Akun</span>
                     </div>
+                    <div class="overflow-x-auto min-h-[50vh]">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-700 text-slate-100 uppercase font-bold tracking-wider">
+                                <tr>
+                                    <th class="px-4 py-3.5 text-center">Foto</th>
+                                    <th class="px-4 py-3.5">ID Karyawan</th>
+                                    <th class="px-4 py-3.5">Nama Pegawai</th>
+                                    <th class="px-4 py-3.5">Jabatan</th>
+                                    <th class="px-4 py-3.5">Username Portal</th>
+                                    <th class="px-4 py-3.5 text-center">Status Akun Portal</th>
+                                    <th class="px-4 py-3.5 text-center">Biometrik Wajah</th>
+                                    <th class="px-4 py-3.5 text-center">Aksi / Kontrol</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-employees-body" class="divide-y divide-slate-200 text-slate-700 bg-white">
+                                <!-- JS Injected Rows -->
+                            </tbody>
+                        </table>
                     </div>
+                </div>
+            </div>
 
             <!-- VIEW: DATABASE (RAW VIEW ABSENSI HARIAN) -->
             <div id="view-view-db" class="hidden space-y-6">
