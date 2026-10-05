@@ -17,7 +17,6 @@
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.41.1",
     "@tensorflow/tfjs": "^4.22.0",
-    "blaze": "^5.0.0-old",
     "body-parser": "^2.2.1",
     "canvas": "^2.11.2",
     "cors": "^2.8.5",
@@ -25,24 +24,17 @@
     "dotenv": "^16.6.1",
     "express": "^4.22.1",
     "express-rate-limit": "^8.7.0",
-    "face": "^1.0.0",
     "face-api.js": "^0.20.0",
-    "init": "^0.1.2",
     "jsonwebtoken": "^9.0.3",
-    "lib": "^5.1.0",
     "microsoft-cognitiveservices-speech-sdk": "^1.48.0",
     "multer": "^1.4.5-lts.1",
-    "my": "^0.3.3",
-    "mysql2": "3.16.0",
+    "mysql2": "^3.24.5",
     "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
     "onnxruntime-web": "^1.24.3",
-    "partial": "^0.0.7",
     "path": "^0.12.7",
     "router": "^2.2.0",
-    "sql-escaper": "^1.5.2",
-    "sql2": "^0.0.1",
-    "tts": "^0.1.0"
+    "sql-escaper": "^1.5.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
