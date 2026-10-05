@@ -146,21 +146,27 @@ app.use((req, res, next) => {
 
 // Konfigurasi Database menggunakan POOL (Lebih stabil daripada createConnection)
 // Pool akan otomatis menyambung ulang jika koneksi putus (wait_timeout)
-const pool = mysql.createPool({
+const dbConfig = {
     host: process.env.DB_HOST || '127.0.0.1',
     port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASS || '',
     database: process.env.DB_NAME || 'biometrik_absensi_wajah_db',
     timezone: '+07:00',
-    ssl: process.env.DB_HOST && process.env.DB_HOST.includes('aivencloud') ? { rejectUnauthorized: false } : undefined,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
     // [FIX] Mencegah driver mengubah DATE/TIME menjadi JavaScript Date object
     // Tanpa ini, DATE '2026-06-02' → JS Date → JSON "2026-06-01T17:00:00Z" (mundur 1 hari di UTC+7)
     dateStrings: ['DATE', 'DATETIME']
-});
+};
+
+// [NEW] Dukungan otomatis untuk TiDB Serverless & Aiven (Wajib SSL)
+if (process.env.DB_SSL === 'true' || (process.env.DB_HOST && (process.env.DB_HOST.includes('tidbcloud') || process.env.DB_HOST.includes('aivencloud')))) {
+    dbConfig.ssl = { minVersion: 'TLSv1.2', rejectUnauthorized: true };
+}
+
+const pool = mysql.createPool(dbConfig);
 
 pool.on('connection', function (connection) {
     connection.query("SET time_zone = '+07:00'");
