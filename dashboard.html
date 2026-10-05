@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="Biometrik">
     <link rel="apple-touch-icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%2300FFFF;stop-opacity:1' /><stop offset='100%' style='stop-color:%230088FF;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='180' height='180' rx='40'/><text x='90' y='90' font-size='90' fill='white' text-anchor='middle' dominant-baseline='central' font-weight='bold' font-family='Arial'>B</text></svg>">
-    <title>Dashboard Absensi - Puskesmas Wana</title>
+    <title>Dashboard Absensi - <span class="dynamic-instansi-nama">Puskesmas Wana</span></title>
 
     <!-- 1. TIPOGRAFI: Font Inter (Modern Sans Serif) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -205,7 +205,7 @@
         </nav>
 
         <div class="p-5 border-t border-white/10 bg-black/20 text-center shadow-inner">
-            <p class="font-serif italic text-[11px] text-white">PUSKESMAS WANA</p>
+            <p class="font-serif italic text-[11px] text-white"><span class="dynamic-instansi-nama">PUSKESMAS WANA</span></p>
             <p class="font-sans text-[9px] text-emerald-500/60 tracking-widest uppercase mt-1">Ver 4.5.2 (Premium)</p>
         </div>
         </aside>
@@ -720,7 +720,7 @@
                 <div class="h-16 w-16 mx-auto mb-4 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl"><i class="fa-solid fa-hospital"></i></div>
                 <h2 id="login-title" class="text-2xl font-bold text-white font-serif">Sistem
                     Administrasi</h2>
-                <p id="login-subtitle" class="text-emerald-200/80 text-sm">Puskesmas Wana - Silakan Login</p>
+                <p id="login-subtitle" class="text-emerald-200/80 text-sm"><span class="dynamic-instansi-nama">Puskesmas Wana</span> - Silakan Login</p>
             </div>
             <form onsubmit="event.preventDefault(); handleLogin();" class="space-y-4">
                 <div>
@@ -747,7 +747,7 @@
                 </button>
             </form>
             <div class="mt-8 text-center text-[10px] text-white/30 uppercase tracking-widest">
-                PUSKESMAS WANA v4.5.2
+                <span class="dynamic-instansi-nama">PUSKESMAS WANA</span> v4.5.2
             </div>
         </div>
     </div>
@@ -911,9 +911,9 @@
             </div>
             <!-- Teks Tengah -->
             <div class="text-center flex-1 px-4 text-black">
-                <h3 class="text-lg font-bold uppercase leading-tight font-serif">PEMERINTAH KABUPATEN LAMPUNG TIMUR</h3>
+                <h3 class="text-lg font-bold uppercase leading-tight font-serif">PEMERINTAH <span class="dynamic-instansi-lokasi">KABUPATEN LAMPUNG TIMUR</span></h3>
                 <h3 class="text-lg font-bold uppercase leading-tight font-serif">DINAS KESEHATAN</h3>
-                <h1 class="text-3xl font-black uppercase leading-tight font-serif tracking-wider mt-1">UPTD PUSKESMAS WANA</h1>
+                <h1 class="text-3xl font-black uppercase leading-tight font-serif tracking-wider mt-1">UPTD <span class="dynamic-instansi-nama">PUSKESMAS WANA</span></h1>
                 <p class="text-sm font-serif italic mt-1">Jl. Pengiran Iro Kusumo Wana Kecamatan Melinting</p>
             </div>
 <!-- Logo Kanan (Puskesmas) -->
@@ -948,7 +948,7 @@
         <!-- Footer Cetak Tetap (Muncul di setiap halaman karena position:fixed) -->
         <div
             class="fixed bottom-0 left-0 w-full text-center text-[10px] text-black border-t border-black pt-2 font-serif italic bg-white">
-            Dicetak pada: <span id="print-timestamp"></span> | Sistem Informasi Manajemen Puskesmas Wana
+            Dicetak pada: <span id="print-timestamp"></span> | Sistem Informasi Manajemen <span class="dynamic-instansi-nama">Puskesmas Wana</span>
         </div>
         </div>
 <!-- LOADING SPINNER OVERLAY -->
@@ -962,5 +962,6 @@
     <!-- Load Logic -->
     <script src="dashboard.js?v=2.0"></script>
     <script src="pwa.js?v=2.0"></script>
+    <script src="instansi_config.js"></script>
 </body>
 </html>

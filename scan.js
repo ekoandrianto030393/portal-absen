@@ -727,7 +727,7 @@ const NAME_HIGHLIGHT_COLOR = '#1a1500'; // Deep Gold Black
 const HEADER_COLOR = '#B8860B'; // Dark Goldenrod
 const ABSEN_GANDA_BG = 'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(220,38,38,0.2) 100%)'; 
 const ABSEN_NORMAL_BG = 'linear-gradient(135deg, rgba(218,165,32,0.15) 0%, rgba(255,215,0,0.2) 100%)';
-const AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
+let AGENCY_NAME = 'PUSKESMAS WANA'; // Nama Instansi Global
 
 // --- NEW FEATURE: DYNAMIC SYSTEM THEME ---
 function setSystemTheme(status) {
@@ -3005,6 +3005,7 @@ async function initializeApp() {
                     SoundFX.elevenLabs.apiKey = configData.config.elevenlabs_api_key || SoundFX.elevenLabs.apiKey;
                     SoundFX.elevenLabs.voiceId = configData.config.elevenlabs_voice_id || SoundFX.elevenLabs.voiceId;
                     SoundFX.cfWorkerUrl = configData.config.cf_worker_tts_url || null;
+                    if (configData.config.nama_instansi) AGENCY_NAME = configData.config.nama_instansi;
                     logSystem(`VOICE MODULE: Sync OK (Voice: ${SoundFX.elevenLabs.voiceId.substring(0, 6)}...)`, 'text-purple-400');
                 }
             })
@@ -3824,7 +3825,7 @@ async function processAttendance(karyawanId, imageBase64) {
                 if (result.telat_menit > 0) {
                     SoundFX.speak(`${display_name}, Anda terlambat ${result.telat_menit} menit. Mohon lebih disiplin lagi besok.`);
                 } else {
-                    SoundFX.speak(`Selamat datang di Puskesmas Wana, ${display_name}. Data kehadiran masuk atas nama ${display_name} berhasil dicatat. terima kasih.`);
+                    SoundFX.speak(`Selamat datang di ${AGENCY_NAME}, ${display_name}. Data kehadiran masuk atas nama ${display_name} berhasil dicatat. terima kasih.`);
                 }
             }
             
@@ -4108,7 +4109,7 @@ async function processAttendance(karyawanId, imageBase64) {
         if (successOverlay) {
             // --- [NEW] Academic & Advanced Stamp SVGs ---
             const guillocheSvg = `<svg width='100' height='100' xmlns='http://www.w3.org/2000/svg'><path d='M 0,50 C 25,0 75,100 100,50 M 0,50 C 25,100 75,0 100,50' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/><path d='M 50,0 C 0,25 100,75 50,100 M 50,0 C 100,25 0,75 50,100' stroke='${finalStatusColor}' stroke-width='0.5' fill='none' opacity='0.2'/></svg>`; // Restored
-            const watermarkSvg = `<svg width='300' height='300' xmlns='http://www.w3.org/2000/svg'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='"Times New Roman", serif' font-size='30' font-weight='bold' fill='${finalStatusColor}' opacity='0.06' transform='rotate(-45 150 150)'>PUSKESMAS WANA</text></svg>`;
+            const watermarkSvg = `<svg width='300' height='300' xmlns='http://www.w3.org/2000/svg'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='"Times New Roman", serif' font-size='30' font-weight='bold' fill='${finalStatusColor}' opacity='0.06' transform='rotate(-45 150 150)'>${AGENCY_NAME}</text></svg>`;
 
             // [IDE BARU] DNA Pulse Curve with Glitch & Color Shift (God-Level Custom)
             const dnaHelixStampHTML = `
@@ -4234,7 +4235,7 @@ async function processAttendance(karyawanId, imageBase64) {
                                 <img src="logo.jpg" class="w-full h-full object-cover rounded-full opacity-90">
                             </div>
                             <div class="z-10">
-                                <h2 class="text-xl font-black text-white tracking-wider uppercase leading-none whitespace-nowrap" style="font-family: 'Times New Roman', serif; text-shadow: 2px 2px 0px #000;">PUSKESMAS WANA</h2>
+                                <h2 class="text-xl font-black text-white tracking-wider uppercase leading-none whitespace-nowrap" style="font-family: 'Times New Roman', serif; text-shadow: 2px 2px 0px #000;">${AGENCY_NAME}</h2>
                                 <div class="flex items-center gap-2 mt-2">
                                     <div class="h-[2px] w-8 bg-[#FFD700]"></div>
                                     <p class="text-[11px] text-[#FFD700] tracking-[0.3em] uppercase font-black" style="text-shadow: 1px 1px 0px #000;">KARTU IDENTITAS PEGAWAI</p>
@@ -4310,7 +4311,7 @@ async function processAttendance(karyawanId, imageBase64) {
                             <!-- Subtle carbon pattern for footer -->
                             <div class="absolute inset-0 opacity-10" style="background-image: repeating-linear-gradient(45deg, #FFD700 0, #FFD700 1px, transparent 0, transparent 5px); background-size: 10px 10px;"></div>
                             
-                            <span class="text-[11px] text-[#FFD700] tracking-[0.25em] font-serif uppercase relative z-10 font-black" style="text-shadow: 1px 1px 0px #000;">KARTU INI MILIK UPTD PUSKESMAS WANA</span>
+                            <span class="text-[11px] text-[#FFD700] tracking-[0.25em] font-serif uppercase relative z-10 font-black" style="text-shadow: 1px 1px 0px #000;">KARTU INI MILIK UPTD ${AGENCY_NAME}</span>
                         </div>
                     </div>
                 </div>
@@ -5662,7 +5663,7 @@ async function processAttendance(karyawanId, imageBase64) {
                                     <img src="logo.jpg" alt="Logo" style="border-radius:50%; width: 50px; height: 50px; object-fit: cover;" onerror="this.style.display='none'">
                                 </div>
                                 <div class="emblem-text" style="font-family: 'Rajdhani', sans-serif; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
-                                    <span style="font-size: 1.3rem; font-weight: 800; background: linear-gradient(90deg, #DAA520, #DAA520); -webkit-background-clip: text; color: transparent; letter-spacing: 1px; text-shadow: 0 0 20px rgba(255,215,0,0.3);">UPTD PUSKESMAS WANA</span>
+                                    <span style="font-size: 1.3rem; font-weight: 800; background: linear-gradient(90deg, #DAA520, #DAA520); -webkit-background-clip: text; color: transparent; letter-spacing: 1px; text-shadow: 0 0 20px rgba(255,215,0,0.3);">UPTD ${AGENCY_NAME}</span>
                                     <div style="font-size: 0.55rem; color: #94a3b8; letter-spacing: 5px; text-transform: uppercase; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">Biometric Clearance System</div>
                                 </div>
                             </div>

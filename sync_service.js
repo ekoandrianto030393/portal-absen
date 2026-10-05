@@ -67,29 +67,48 @@ async function startSync() {
 
             // --- SYNC AKUN (Bi-directional: Cloud → Lokal DULU, baru Lokal → Cloud) ---
             // Ini mencegah password lama di lokal menimpa password baru yang sudah disetujui di Cloud
+            // --- SYNC AKUN (Bi-directional: Cloud -> Lokal DULU, baru Lokal -> Cloud) ---
             try {
                 // LANGKAH 1: Tarik akun dari Cloud → Lokal (agar password terbaru dari Cloud masuk ke Lokal)
                 const [akunCloud] = await cloudDb.query("SELECT * FROM akun_pegawai");
-                for (const ak of akunCloud) {
-                    await localDb.query(
-                        `INSERT INTO akun_pegawai (id_akun, id_karyawan, username, password, created_at) 
-                         VALUES (?, ?, ?, ?, ?) 
-                         ON DUPLICATE KEY UPDATE 
-                         username = VALUES(username), password = VALUES(password)`,
-                        [ak.id_akun, ak.id_karyawan, ak.username, ak.password, ak.created_at]
-                    );
+                if (akunCloud.length > 0) {
+                    const [karyawanLokal] = await localDb.query("SELECT id_karyawan FROM karyawan");
+                    const localIdMap = new Map(karyawanLokal.map(k => [k.id_karyawan.toLowerCase().trim(), k.id_karyawan]));
+
+                    for (const ak of akunCloud) {
+                        try {
+                            const matchedId = localIdMap.get((ak.id_karyawan || '').toLowerCase().trim());
+                            if (!matchedId) continue; // Skip jika pegawai tidak ada di lokal
+
+                            await localDb.query(
+                                `INSERT INTO akun_pegawai (id_karyawan, username, password, created_at) 
+                                 VALUES (?, ?, ?, ?) 
+                                 ON DUPLICATE KEY UPDATE 
+                                 username = VALUES(username), password = VALUES(password)`,
+                                [matchedId, ak.username, ak.password, ak.created_at]
+                            );
+                        } catch (e) {
+                            // Ignore single row constraint error
+                        }
+                    }
                 }
 
                 // LANGKAH 2: Dorong akun dari Lokal → Cloud (agar akun baru dari lokal masuk ke Cloud)
                 const [akunLocal] = await localDb.query("SELECT * FROM akun_pegawai");
-                for (const ak of akunLocal) {
-                    await cloudDb.query(
-                        `INSERT INTO akun_pegawai (id_akun, id_karyawan, username, password, created_at) 
-                         VALUES (?, ?, ?, ?, ?) 
-                         ON DUPLICATE KEY UPDATE 
-                         username = VALUES(username), password = VALUES(password)`,
-                        [ak.id_akun, ak.id_karyawan, ak.username, ak.password, ak.created_at]
-                    );
+                if (akunLocal.length > 0) {
+                    for (const ak of akunLocal) {
+                        try {
+                            await cloudDb.query(
+                                `INSERT INTO akun_pegawai (id_karyawan, username, password, created_at) 
+                                 VALUES (?, ?, ?, ?) 
+                                 ON DUPLICATE KEY UPDATE 
+                                 username = VALUES(username), password = VALUES(password)`,
+                                [ak.id_karyawan, ak.username, ak.password, ak.created_at]
+                            );
+                        } catch (e) {
+                            // Ignore single row constraint error
+                        }
+                    }
                 }
             } catch (e) {
                 // Ignore if table doesn't exist

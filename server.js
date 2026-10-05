@@ -18,8 +18,15 @@ const express = require('express');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
 const path = require('path');
+const NodeCache = require('node-cache'); // [NEW] In-memory cache
+
+// Inisialisasi Cache (Default TTL 10 menit, cek kedaluwarsa tiap 2 menit)
+const cache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
+
 const cors = require('cors');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken'); // [NEW] JWT Authentication
+const rateLimit = require('express-rate-limit'); // [SECURITY] Rate Limiting
 const { exec } = require('child_process'); // [NEW] Untuk menjalankan mysqldump
 const fs = require('fs'); // [NEW] Untuk manajemen file backup
 
@@ -30,6 +37,21 @@ function hashPassword(password) {
 
 const app = express();
 const port = 3000;
+const JWT_SECRET = process.env.JWT_SECRET; // [SECURITY] JWT Secret dari .env (WAJIB diisi)
+
+// Middleware Verifikasi JWT
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Format: "Bearer <token>"
+    
+    if (token == null) return res.status(401).json({ success: false, message: 'Token tidak ditemukan. Akses ditolak.' });
+    
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ success: false, message: 'Sesi telah kedaluwarsa atau token tidak valid. Silakan login ulang.' });
+        req.user = user; // Simpan info user ke request
+        next();
+    });
+};
 
 // --- HELPER: TIME SANITIZER ---
 // Memastikan format jam dari .env selalu HH:MM:SS (misal 7:30:00 -> 07:30:00)
@@ -60,12 +82,33 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID;
 const CF_AIG_TOKEN = process.env.CF_AIG_TOKEN;
 const CF_WORKER_TTS_URL = process.env.CF_WORKER_TTS_URL || 'https://biometrik-ai-worker.biometrikworkersaiaibinding.workers.dev';
+const NAMA_INSTANSI = process.env.NAMA_INSTANSI || 'PUSKESMAS WANA';
+const LOKASI_INSTANSI = process.env.LOKASI_INSTANSI || 'KABUPATEN LAMPUNG TIMUR';
 
 // Middleware untuk parsing JSON body (limit besar untuk upload foto)
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // Endpoint khusus untuk mencegah error 404 favicon.ico di browser
+// [SECURITY] Blokir akses ke file sensitif via browser
+app.use((req, res, next) => {
+    const blockedFiles = ['.env', 'server.js', 'sync_service.js', 'package.json', 'package-lock.json', '.gitignore'];
+    const requestedFile = req.path.split('/').pop();
+    if (blockedFiles.includes(requestedFile)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak.' });
+    }
+    next();
+});
+
+// [SECURITY] Rate Limiter untuk endpoint login & register
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 menit
+    max: 10, // Maksimal 10 percobaan per 15 menit per IP
+    message: { success: false, message: 'Terlalu banyak percobaan login. Coba lagi setelah 15 menit.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // Serve file statis dengan optimasi caching untuk file model
@@ -196,6 +239,18 @@ pool.getConnection((err, connection) => {
                 id_karyawan VARCHAR(50) NOT NULL,
                 password_baru VARCHAR(255) NOT NULL,
                 status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (id_karyawan) REFERENCES karyawan(id_karyawan) ON DELETE CASCADE
+            ) ENGINE=InnoDB;
+        `;
+        
+        // 2.6 Tabel Akun Pegawai
+        const createAkunPegawaiSql = `
+            CREATE TABLE IF NOT EXISTS akun_pegawai (
+                id_akun INT AUTO_INCREMENT PRIMARY KEY,
+                id_karyawan VARCHAR(50) NOT NULL UNIQUE,
+                username VARCHAR(50) NOT NULL UNIQUE,
+                password VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (id_karyawan) REFERENCES karyawan(id_karyawan) ON DELETE CASCADE
             ) ENGINE=InnoDB;
@@ -383,6 +438,9 @@ app.post('/register', (req, res) => {
 
         pool.query(sql, [id_karyawan, nama, jabatan, buffer, finalDescriptorString], (err, result) => {
             if (err) return res.status(500).json({ success: false, message: err.message });
+            
+            // [NEW] Hapus Cache Wajah agar Data Baru Langsung Terbaca
+            cache.del("api_karyawan_descriptors");
             
             console.log(`✅ Data tersimpan: ${id_karyawan} - ${nama} (Total Sampel: ${descriptorList.length})`);
             res.json({ success: true, message: `Berhasil disimpan. Total sampel wajah: ${descriptorList.length}` });
@@ -722,9 +780,19 @@ app.get('/api/absensi/harian', (req, res) => {
 
 // Endpoint: Data Absensi Hari Ini (Khusus Scan Page Diagnostic)
 app.get('/api/absensi/today', (req, res) => {
+    // [NEW] Cek Cache
+    const cacheKey = "api_absensi_today";
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+        return res.json(cachedData);
+    }
+
     const sql = "SELECT id_karyawan, nama_karyawan AS nama, jabatan, jam_masuk, jam_keluar, status FROM view_absensi_harian WHERE tanggal = CURDATE() ORDER BY jam_masuk DESC";
     pool.query(sql, (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
+        
+        // [NEW] Simpan ke Cache selama 10 menit
+        cache.set(cacheKey, results, 600);
         res.json(results);
     });
 });
@@ -897,6 +965,13 @@ app.get('/api/absensi/bulanan/matrix', (req, res) => {
 
 // Endpoint: Ambil Descriptors untuk Absensi (Scan Wajah) & Data Akun Portal
 app.get('/api/karyawan/descriptors', (req, res) => {
+    // [NEW] Cek Cache (Memori RAM)
+    const cacheKey = "api_karyawan_descriptors";
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+        return res.json(cachedData); // Langsung kirim dari RAM jika ada
+    }
+
     // UPDATE: Ambil data lengkap (id, jabatan, foto, username portal) agar dashboard & scan bisa menampilkan profil
     const sql = `
         SELECT k.id_karyawan, k.nama, k.jabatan, k.foto, k.face_descriptor, k.no_urut, a.username 
@@ -929,7 +1004,8 @@ app.get('/api/karyawan/descriptors', (req, res) => {
                         foto: fotoBase64,
                         face_descriptor: parsedDescriptor,
                         no_urut: row.no_urut || 9999,
-                        username: row.username || null
+                        username: row.username || null,
+                        // password_plain DIHAPUS untuk keamanan
                     };
                 } catch (e) {
                     return null;
@@ -938,12 +1014,17 @@ app.get('/api/karyawan/descriptors', (req, res) => {
             .filter(item => item !== null);
 
         // UPDATE: Bungkus dengan { success: true, descriptors: [...] } sesuai format scan.js
-        res.json({ success: true, descriptors: faces });
+        const responseData = { success: true, descriptors: faces };
+        
+        // [NEW] Simpan ke Cache selama 1 jam (3600 detik)
+        cache.set(cacheKey, responseData, 3600);
+        
+        res.json(responseData);
     });
 });
 
 // [FIX] Endpoint: Get Detail Karyawan (Single) - Diperlukan untuk Modal Dashboard
-app.get('/api/karyawan/:id', (req, res) => {
+app.get('/api/karyawan/:id', authenticateToken, (req, res) => {
     const id = req.params.id;
     pool.query('SELECT id_karyawan, nama, jabatan, foto FROM karyawan WHERE id_karyawan = ?', [id], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
@@ -956,7 +1037,7 @@ app.get('/api/karyawan/:id', (req, res) => {
 });
 
 // 3. API Hapus Akun Pegawai (Untuk reset akun portal)
-app.delete('/api/pegawai/akun/:id_karyawan', (req, res) => {
+app.delete('/api/pegawai/akun/:id_karyawan', authenticateToken, (req, res) => {
     const id = req.params.id_karyawan;
     pool.query('DELETE FROM akun_pegawai WHERE id_karyawan = ?', [id], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
@@ -966,7 +1047,7 @@ app.delete('/api/pegawai/akun/:id_karyawan', (req, res) => {
 });
 
 // 4. API Riwayat Rekap Bulanan Karyawan
-app.get('/api/riwayat/rekap/:id_karyawan', (req, res) => {
+app.get('/api/riwayat/rekap/:id_karyawan', authenticateToken, (req, res) => {
     const id = req.params.id_karyawan;
     pool.query('SELECT * FROM view_rekap_bulanan WHERE id_karyawan = ? ORDER BY periode DESC', [id], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Server error' });
@@ -975,7 +1056,7 @@ app.get('/api/riwayat/rekap/:id_karyawan', (req, res) => {
 });
 
 // Endpoint untuk Dashboard Karyawan (Edit Nama/Jabatan)
-app.put('/api/karyawan/:id', (req, res) => {
+app.put('/api/karyawan/:id', authenticateToken, (req, res) => {
     const id = req.params.id;
     const { nama, jabatan, no_urut } = req.body;
 
@@ -987,12 +1068,14 @@ app.put('/api/karyawan/:id', (req, res) => {
     pool.query(sql, [nama, jabatan, no_urut || 9999, id], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'ID tidak ditemukan' });
+        
+        cache.del("api_karyawan_descriptors"); // [NEW] Invalidate cache
         res.json({ success: true, message: 'Data karyawan berhasil diperbarui.' });
     });
 });
 
 // [NEW] Endpoint: Update Foto Karyawan Manual (Tanpa Ubah Biometrik)
-app.put('/api/karyawan/:id/photo', (req, res) => {
+app.put('/api/karyawan/:id/photo', authenticateToken, (req, res) => {
     const id = req.params.id;
     const { foto } = req.body; // Base64 string
 
@@ -1005,27 +1088,33 @@ app.put('/api/karyawan/:id/photo', (req, res) => {
     pool.query(sql, [buffer, id], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'ID tidak ditemukan' });
+        
+        cache.del("api_karyawan_descriptors"); // [NEW] Invalidate cache
         res.json({ success: true, message: 'Foto profil berhasil diperbarui.' });
     });
 });
 
 // [NEW] Endpoint: Reset Biometric Data (Hapus Foto & Descriptor Wajah)
-app.put('/api/karyawan/:id/reset_biometric', (req, res) => {
+app.put('/api/karyawan/:id/reset_biometric', authenticateToken, (req, res) => {
     const id = req.params.id;
     const sql = 'UPDATE karyawan SET face_descriptor = NULL, foto = NULL WHERE id_karyawan = ?';
     pool.query(sql, [id], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'ID tidak ditemukan' });
+        
+        cache.del("api_karyawan_descriptors"); // [NEW] Invalidate cache
         res.json({ success: true, message: 'Data biometrik (Wajah & Foto) berhasil direset.' });
     });
 });
 
 // Endpoint: Hapus Karyawan (Beserta data absensinya karena CASCADE)
-app.delete('/api/karyawan/:id', (req, res) => {
+app.delete('/api/karyawan/:id', authenticateToken, (req, res) => {
     const id = req.params.id;
     pool.query('DELETE FROM karyawan WHERE id_karyawan = ?', [id], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'ID tidak ditemukan' });
+        
+        cache.del("api_karyawan_descriptors"); // [NEW] Invalidate cache
         res.json({ success: true, message: 'Data karyawan dan absensi berhasil dihapus.' });
     });
 });
@@ -1088,6 +1177,7 @@ app.post('/api/absensi', (req, res) => {
                     // [UPDATE] Tentukan warna status (Kuning jika telat)
                     const responseColor = telatMenit > 0 ? 'yellow' : 'green';
 
+                    cache.del("api_absensi_today"); // [NEW] Invalidate cache absensi
                     res.json({
                         success: true,
                         message: `Selamat Pagi, Absensi Masuk Berhasil.`,
@@ -1192,6 +1282,7 @@ app.post('/api/absensi', (req, res) => {
                     pool.query(sqlUpdate, [currentTime, ketTambahan, pswMenit, dataAbsen.id_absensi], (err) => {
                         if (err) return res.status(500).json({ success: false, message: err.message });
 
+                        cache.del("api_absensi_today"); // [NEW] Invalidate cache absensi
                         res.json({
                             success: true,
                             message: pesanRespon,
@@ -1209,7 +1300,7 @@ app.post('/api/absensi', (req, res) => {
 });
 
 // Endpoint: Input Manual Absensi (Dinas Luar / Izin / Sakit)
-app.post('/api/absensi/manual', (req, res) => {
+app.post('/api/absensi/manual', authenticateToken, (req, res) => {
     const { id_karyawan, status, keterangan, tanggal, jam_masuk, jam_keluar } = req.body;
 
     if (!id_karyawan || !status || !tanggal) {
@@ -1256,6 +1347,14 @@ app.post('/api/absensi/manual', (req, res) => {
         }
     }
 
+    // [NEW] Auto-append keterangan PSW
+    let finalKeterangan = keterangan || '';
+    // Hapus teks [PSW: ...] lama jika ada agar tidak double
+    finalKeterangan = finalKeterangan.replace(/\s*\[PSW: \d+ menit\]/g, '').trim();
+    if (pswMenit > 0) {
+        finalKeterangan += (finalKeterangan ? ` [PSW: ${pswMenit} menit]` : `[PSW: ${pswMenit} menit]`);
+    }
+
     // UPDATE: Tambahkan kolom telat_menit dan psw_menit ke query INSERT
     const sql = `INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -1263,24 +1362,27 @@ app.post('/api/absensi/manual', (req, res) => {
                  jam_masuk = VALUES(jam_masuk), jam_keluar = VALUES(jam_keluar), status = VALUES(status), keterangan = VALUES(keterangan),
                  telat_menit = VALUES(telat_menit), psw_menit = VALUES(psw_menit)`;
 
-    pool.query(sql, [id_karyawan, tanggal, finalJamMasuk, finalJamKeluar, finalStatus, keterangan, telatMenit, pswMenit], (err, result) => {
+    pool.query(sql, [id_karyawan, tanggal, finalJamMasuk, finalJamKeluar, finalStatus, finalKeterangan, telatMenit, pswMenit], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
+        cache.del("api_absensi_today"); // [NEW] Invalidate cache absensi
         res.json({ success: true, message: 'Data manual berhasil disimpan (Telat/PSW terhitung).' });
     });
 });
 
 // Endpoint: Hapus Absensi Harian
-app.delete('/api/absensi/:id', (req, res) => {
+app.delete('/api/absensi/:id', authenticateToken, (req, res) => {
     const id = req.params.id;
     pool.query('DELETE FROM absensi WHERE id_absensi = ?', [id], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Data absensi tidak ditemukan' });
+        
+        cache.del("api_absensi_today"); // [NEW] Invalidate cache absensi
         res.json({ success: true, message: 'Data absensi berhasil dihapus.' });
     });
 });
 
 // Endpoint: Update Absensi (Edit Manual dari Dashboard)
-app.put('/api/absensi/:id', (req, res) => {
+app.put('/api/absensi/:id', authenticateToken, (req, res) => {
     const id = req.params.id;
     const { tanggal, jam_masuk, jam_keluar, status, keterangan } = req.body;
 
@@ -1318,11 +1420,19 @@ app.put('/api/absensi/:id', (req, res) => {
         pswMenit = Math.floor((batasPulangSec - pulangSec) / 60);
     }
 
+    // [NEW] Auto-append keterangan PSW
+    let finalKeterangan = keterangan || '';
+    // Hapus teks [PSW: ...] lama jika ada agar tidak double
+    finalKeterangan = finalKeterangan.replace(/\s*\[PSW: \d+ menit\]/g, '').trim();
+    if (pswMenit > 0) {
+        finalKeterangan += (finalKeterangan ? ` [PSW: ${pswMenit} menit]` : `[PSW: ${pswMenit} menit]`);
+    }
+
     const sql = `UPDATE absensi SET tanggal = ?, jam_masuk = ?, jam_keluar = ?, status = ?, keterangan = ?, telat_menit = ?, psw_menit = ? WHERE id_absensi = ?`;
     const finalMasuk = jam_masuk || null;
     const finalKeluar = jam_keluar || null;
 
-    pool.query(sql, [tanggal, finalMasuk, finalKeluar, status, keterangan, telatMenit, pswMenit, id], (err, result) => {
+    pool.query(sql, [tanggal, finalMasuk, finalKeluar, status, finalKeterangan, telatMenit, pswMenit, id], (err, result) => {
         if (err) {
             // [FIX] Handle Duplicate Entry Error specifically
             if (err.code === 'ER_DUP_ENTRY') {
@@ -1335,6 +1445,7 @@ app.put('/api/absensi/:id', (req, res) => {
         // [NEW] Trigger instant push to Aiven
         pushToAiven(id);
         
+        cache.del("api_absensi_today"); // [NEW] Invalidate cache absensi
         res.json({ success: true, message: 'Data absensi berhasil diperbarui.' });
     });
 });
@@ -1486,13 +1597,15 @@ app.get('/api/config', (req, res) => {
             potongan_lupa_pulang: POTONGAN_LUPA_PULANG,
             elevenlabs_api_key: ELEVENLABS_API_KEY,
             elevenlabs_voice_id: ELEVENLABS_VOICE_ID,
-            cf_worker_tts_url: CF_WORKER_TTS_URL
+            cf_worker_tts_url: CF_WORKER_TTS_URL,
+            nama_instansi: NAMA_INSTANSI,
+            lokasi_instansi: LOKASI_INSTANSI
         }
     });
 });
 
 // [NEW] Endpoint: Update System Config (Dari Dashboard)
-app.post('/api/config', (req, res) => {
+app.post('/api/config', authenticateToken, (req, res) => {
     const { jam_pulang_jumat, jam_pulang_sabtu } = req.body;
     
     if (jam_pulang_jumat) JAM_PULANG_JUMAT = formatTime(jam_pulang_jumat);
@@ -1633,7 +1746,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // ==========================================
 
 // 1. API Registrasi Akun Pegawai
-app.post('/api/pegawai/register', (req, res) => {
+app.post('/api/pegawai/register', loginLimiter, (req, res) => {
     const { id_karyawan, nama, username, password } = req.body;
     
     // Cek apakah ID dan Nama cocok di database karyawan
@@ -1663,57 +1776,54 @@ app.post('/api/pegawai/register', (req, res) => {
 });
 
 // 1.5 API Login Admin
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', loginLimiter, (req, res) => {
     const { username, password } = req.body;
     const adminUser = process.env.ADMIN_USER || 'Pkm-wana';
     const adminPass = process.env.ADMIN_PASS || 'Wana2026?';
     
     if (username === adminUser && password === adminPass) {
-        res.json({ success: true, message: 'Login berhasil' });
+        // Generate JWT Token untuk Admin
+        const token = jwt.sign(
+            { role: 'admin', username: username },
+            JWT_SECRET,
+            { expiresIn: '12h' }
+        );
+        res.json({ success: true, message: 'Login berhasil', token: token });
     } else {
         res.status(401).json({ success: false, message: 'Username atau password salah!' });
     }
 });
 
 // 2. API Login Pegawai
-app.post('/api/pegawai/login', (req, res) => {
+app.post('/api/pegawai/login', loginLimiter, (req, res) => {
     const { username, password } = req.body;
     const hashedPassword = hashPassword(String(password));
     
     const sql = `
-        SELECT a.id_karyawan, a.username, a.password as stored_hash, k.nama, k.jabatan 
+        SELECT a.id_karyawan, a.username, k.nama, k.jabatan 
         FROM akun_pegawai a 
         JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
-        WHERE (a.username = ? OR a.id_karyawan = ?)
+        WHERE (a.username = ? OR a.id_karyawan = ?) AND a.password = ?
     `;
     
-    pool.query(sql, [username, username], (err, results) => {
+    pool.query(sql, [username, username, hashedPassword], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
+        if (results.length === 0) return res.status(401).json({ success: false, message: 'Username/ID atau Password salah!' });
         
-        if (results.length === 0) {
-            console.log(`\n🔐 [LOGIN GAGAL] Username/ID "${username}" tidak ditemukan di akun_pegawai`);
-            return res.status(401).json({ success: false, message: 'Username/ID atau Password salah!' });
-        }
+        const userData = results[0];
+        // Generate JWT Token
+        const token = jwt.sign(
+            { id_karyawan: userData.id_karyawan, username: userData.username },
+            JWT_SECRET,
+            { expiresIn: '30d' } // Token berlaku 30 hari
+        );
         
-        const user = results[0];
-        const isPasswordMatch = user.stored_hash === hashedPassword;
-        
-        if (!isPasswordMatch) {
-            console.log(`\n🔐 [LOGIN GAGAL] Password tidak cocok untuk "${username}"`);
-            console.log(`   Hash dari input : ${hashedPassword.substring(0, 16)}...`);
-            console.log(`   Hash di database: ${user.stored_hash ? user.stored_hash.substring(0, 16) + '...' : 'NULL'}`);
-            return res.status(401).json({ success: false, message: 'Username/ID atau Password salah!' });
-        }
-        
-        // Password cocok, hapus stored_hash dari response
-        const { stored_hash, ...userData } = user;
-        console.log(`\n🔐 [LOGIN SUKSES] ${userData.nama} (${userData.id_karyawan})`);
-        res.json({ success: true, data: userData });
+        res.json({ success: true, token: token, data: userData });
     });
 });
 
 // 3. API Reset Password Pegawai (Dari Admin Dashboard)
-app.put('/api/pegawai/reset_password/:id', (req, res) => {
+app.put('/api/pegawai/reset_password/:id', authenticateToken, (req, res) => {
     const id_karyawan = req.params.id;
     const defaultPassword = '123456';
     const hashedPassword = hashPassword(defaultPassword);
@@ -1741,34 +1851,23 @@ app.put('/api/pegawai/reset_password/:id', (req, res) => {
 
 // 3.1 Pegawai Mengajukan Lupa Password
 app.post('/api/pegawai/lupa-password', (req, res) => {
-    let { id_karyawan, password_baru } = req.body;
+    const { id_karyawan, password_baru } = req.body;
     if (!id_karyawan || !password_baru) return res.status(400).json({ success: false, message: 'ID Karyawan dan Password Baru wajib diisi' });
 
-    // Normalisasi ID: trim whitespace dan uppercase untuk konsistensi
-    id_karyawan = id_karyawan.trim().toUpperCase();
-
-    console.log(`\n🔑 [REQ UBAH PASSWORD] ID: ${id_karyawan}`);
-
-    // Cek apakah akun pegawai ada (gunakan LOWER TRIM untuk menghindari mismatch)
-    pool.query('SELECT id_karyawan FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [id_karyawan], (err, results) => {
+    // Cek apakah akun pegawai ada
+    pool.query('SELECT * FROM akun_pegawai WHERE id_karyawan = ?', [id_karyawan], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (results.length === 0) return res.status(404).json({ success: false, message: 'ID Karyawan belum terdaftar di Portal.' });
 
-        // Gunakan id_karyawan yang tersimpan di database (bukan input user) agar konsisten
-        const dbIdKaryawan = results[0].id_karyawan;
-        console.log(`   ID di DB akun_pegawai: "${dbIdKaryawan}"`);
-
         // Cek apakah sudah ada request pending untuk ID ini
-        pool.query("SELECT * FROM req_ubah_password WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?)) AND status = 'pending'", [dbIdKaryawan], (err2, reqResults) => {
+        pool.query("SELECT * FROM req_ubah_password WHERE id_karyawan = ? AND status = 'pending'", [id_karyawan], (err2, reqResults) => {
             if (err2) return res.status(500).json({ success: false, message: err2.message });
             if (reqResults.length > 0) return res.status(400).json({ success: false, message: 'Anda sudah mengajukan perubahan password. Harap tunggu persetujuan Admin.' });
 
-            // Simpan request baru — gunakan id_karyawan dari DB agar approve bisa match
+            // Simpan request baru (password langsung di-hash untuk keamanan)
             const hashedPassword = hashPassword(String(password_baru));
-            console.log(`   Hash password baru: ${hashedPassword.substring(0, 16)}...`);
-            pool.query("INSERT INTO req_ubah_password (id_karyawan, password_baru, status) VALUES (?, ?, 'pending')", [dbIdKaryawan, hashedPassword], (err3) => {
+            pool.query("INSERT INTO req_ubah_password (id_karyawan, password_baru, status) VALUES (?, ?, 'pending')", [id_karyawan, hashedPassword], (err3) => {
                 if (err3) return res.status(500).json({ success: false, message: err3.message });
-                console.log(`   ✅ Request tersimpan dengan ID: "${dbIdKaryawan}"`);
                 res.json({ success: true, message: 'Pengajuan perubahan password berhasil. Menunggu persetujuan Admin.' });
             });
         });
@@ -1778,14 +1877,14 @@ app.post('/api/pegawai/lupa-password', (req, res) => {
 // 3.2 Pegawai Cek Status Lupa Password
 app.get('/api/pegawai/lupa-password/status/:id_karyawan', (req, res) => {
     const { id_karyawan } = req.params;
-    pool.query("SELECT * FROM req_ubah_password WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?)) AND status = 'pending'", [id_karyawan], (err, results) => {
+    pool.query("SELECT * FROM req_ubah_password WHERE id_karyawan = ? AND status = 'pending'", [id_karyawan], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, hasPending: results.length > 0 });
     });
 });
 
 // 3.3 Admin Mengambil Daftar Pending Password
-app.get('/api/admin/lupa-password/pending', (req, res) => {
+app.get('/api/admin/lupa-password/pending', authenticateToken, (req, res) => {
     const sql = `
         SELECT r.id_req, r.id_karyawan, k.nama, r.status, r.created_at 
         FROM req_ubah_password r
@@ -1800,7 +1899,7 @@ app.get('/api/admin/lupa-password/pending', (req, res) => {
 });
 
 // 3.4 Admin Menyetujui Password Baru
-app.post('/api/admin/lupa-password/approve/:id_req', async (req, res) => {
+app.post('/api/admin/lupa-password/approve/:id_req', authenticateToken, async (req, res) => {
     const { id_req } = req.params;
     
     try {
@@ -1822,7 +1921,7 @@ app.post('/api/admin/lupa-password/approve/:id_req', async (req, res) => {
         console.log(`   Hash Password Baru: ${passwordBaruHash ? passwordBaruHash.substring(0, 16) + '...' : 'KOSONG!'}`);
 
         // ====================================================================
-        // LANGKAH 1: Update password di database utama (pool = bisa lokal / cloud)
+        // LANGKAH 1: Update password di database utama (pool)
         // ====================================================================
         const updateResult = await new Promise((resolve, reject) => {
             pool.query('UPDATE akun_pegawai SET password = ? WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', 
@@ -1839,21 +1938,15 @@ app.post('/api/admin/lupa-password/approve/:id_req', async (req, res) => {
 
         // ====================================================================
         // LANGKAH 2: JUGA update di database KEDUA agar kedua DB sinkron
-        // Ini mencegah sync_service menimpa password baru dengan password lama
         // ====================================================================
         try {
             const mysqlPromise = require('mysql2/promise');
-            
-            // Tentukan koneksi ke DB yang LAIN dari pool utama
             const isPoolCloud = (process.env.DB_HOST || '').includes('aivencloud');
-            
             let otherDbConfig;
+            
             if (isPoolCloud) {
-                // Pool utama = Cloud (Render), maka DB lain = Lokal
-                // Lokal biasanya tidak bisa diakses dari Render, jadi skip
                 console.log(`   ☁️ Server ini = Render (Cloud). Lokal tidak bisa diakses dari sini.`);
             } else {
-                // Pool utama = Lokal (XAMPP), maka DB lain = Cloud (Aiven)
                 if (process.env.CLOUD_DB_HOST) {
                     otherDbConfig = {
                         host: process.env.CLOUD_DB_HOST,
@@ -1876,14 +1969,10 @@ app.post('/api/admin/lupa-password/approve/:id_req', async (req, res) => {
                 );
                 console.log(`   ☁️ UPDATE di DB Cloud (Aiven): ${otherResult.affectedRows} baris`);
                 
-                // Juga update status req di Cloud agar tidak muncul lagi sebagai pending
                 await otherDb.query("UPDATE req_ubah_password SET status = 'approved' WHERE id_req = ?", [id_req]);
-                console.log(`   ☁️ Status req juga di-update di Cloud`);
-                
                 await otherDb.end();
             }
         } catch (syncErr) {
-            // Jangan gagalkan response, DB utama sudah berhasil
             console.error(`   ⚠️ Gagal sinkron ke DB lain (tidak fatal): ${syncErr.message}`);
         }
 
@@ -1897,7 +1986,7 @@ app.post('/api/admin/lupa-password/approve/:id_req', async (req, res) => {
         });
 
         console.log(`   ✅ Password untuk ${idKaryawan} BERHASIL diubah di KEDUA database.`);
-        res.json({ success: true, message: 'Perubahan password disetujui dan langsung aktif.' });
+        res.json({ success: true, message: 'Perubahan password disetujui.' });
 
     } catch (err) {
         console.error(`   ❌ Error approve password:`, err.message);
@@ -1906,7 +1995,7 @@ app.post('/api/admin/lupa-password/approve/:id_req', async (req, res) => {
 });
 
 // 3.5 Admin Menolak Password Baru
-app.post('/api/admin/lupa-password/reject/:id_req', (req, res) => {
+app.post('/api/admin/lupa-password/reject/:id_req', authenticateToken, (req, res) => {
     const { id_req } = req.params;
     pool.query("UPDATE req_ubah_password SET status = 'rejected' WHERE id_req = ?", [id_req], (err) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
@@ -1916,7 +2005,7 @@ app.post('/api/admin/lupa-password/reject/:id_req', (req, res) => {
 
 
 // 4. API Dashboard Pegawai (Data Hari Ini)
-app.get('/api/pegawai/dashboard/today/:id', (req, res) => {
+app.get('/api/pegawai/dashboard/today/:id', authenticateToken, (req, res) => {
     const id = req.params.id;
     const sql = `
         SELECT jam_masuk, jam_keluar, status, keterangan 
@@ -1933,7 +2022,7 @@ app.get('/api/pegawai/dashboard/today/:id', (req, res) => {
 // Jalankan Server
 app.listen(port, () => {
     console.log(`🚀 Server berjalan di http://localhost:${port}`);
-    console.log(`📂 Buka http://localhost:${port}/admin.html di browser agar suaranya dari AI ini`);
+    // console.log(`📂 Buka http://localhost:${port}/admin.html di browser agar suaranya dari AI ini`);
 
     // [NEW] Deteksi Hari Jumat & Sabtu
     const today = new Date();

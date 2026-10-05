@@ -1,5 +1,87 @@
+const originalFetch = window.fetch;
+window.fetch = async function() {
+    let [resource, config] = arguments;
+    if (!config) config = {};
+    
+    // Jangan ubah headers jika config.body adalah FormData (browser otomatis set Content-Type dengan boundary)
+    if (!(config.body instanceof FormData)) {
+        if (!config.headers) config.headers = {};
+    }
+    
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+        if (!config.headers) config.headers = {};
+        // Periksa apakah headers adalah Headers object atau object biasa
+        if (config.headers instanceof Headers) {
+            config.headers.append('Authorization', 'Bearer ' + token);
+        } else {
+            config.headers['Authorization'] = 'Bearer ' + token;
+        }
+    }
+    
+    const response = await originalFetch(resource, config);
+    if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('admin_token');
+        const overlay = document.getElementById('login-overlay');
+        if (overlay) overlay.classList.remove('hidden');
+    }
+    return response;
+};
+
+async function handleLogin() {
+    const user = document.getElementById('login-username').value;
+    const pass = document.getElementById('login-password').value;
+    const errDiv = document.getElementById('login-error');
+    if(errDiv) errDiv.classList.add('hidden');
+    
+    const btn = document.getElementById('btn-login-submit');
+    const originalText = btn ? btn.innerHTML : '';
+    if(btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+    
+    try {
+        const response = await originalFetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+        const result = await response.json();
+        
+        if(btn) btn.innerHTML = originalText;
+        
+        if (result.success && result.token) {
+            localStorage.setItem('admin_token', result.token);
+            const overlay = document.getElementById('login-overlay');
+            if(overlay) overlay.classList.add('hidden');
+            
+            // Coba panggil inisialisasi awal dashboard jika fungsi ada
+            if(typeof window.loadDashboard === 'function') window.loadDashboard();
+            if(typeof window.initKaryawanView === 'function') window.initKaryawanView();
+        } else {
+            if(errDiv) {
+                errDiv.textContent = result.message || 'Login gagal';
+                errDiv.classList.remove('hidden');
+            }
+        }
+    } catch(e) {
+        if(btn) btn.innerHTML = originalText;
+        if(errDiv) {
+            errDiv.textContent = 'Terjadi kesalahan jaringan';
+            errDiv.classList.remove('hidden');
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('login-overlay');
+    if (overlay && !localStorage.getItem('admin_token')) {
+        overlay.classList.remove('hidden');
+    } else if (overlay) {
+        overlay.classList.add('hidden');
+    }
+});
+
 /**
- * dashboard.js - Logika Dashboard Puskesmas Wana
+ * dashboard.js - Logika Dashboard <span class="dynamic-instansi-nama">Puskesmas Wana</span>
  * Mengelola data statistik, tabel, dan grafik kinerja.
  */
 
@@ -110,7 +192,54 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeTab === 'nav-overview') loadOverviewData(true); // true = silent refresh
         if (activeTab === 'nav-daily') loadDailyData(true); // true = silent refresh
     }, 60000);
+
+    // --- DRAG-SCROLL untuk Tabel Akun Portal & Grid Pegawai ---
+    initDragScroll('akun-table-scroll');
+    initDragScroll('employees-grid');
 });
+
+// Fungsi Drag-Scroll Universal (Mouse + Touch)
+function initDragScroll(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    
+    let isDown = false;
+    let startX, startY, scrollLeft, scrollTop;
+
+    // Mouse Events
+    el.addEventListener('mousedown', (e) => {
+        // Jangan aktifkan drag jika klik pada tombol/link/input
+        if (e.target.closest('button, a, input, select, textarea')) return;
+        isDown = true;
+        el.style.cursor = 'grabbing';
+        startX = e.pageX - el.offsetLeft;
+        startY = e.pageY - el.offsetTop;
+        scrollLeft = el.scrollLeft;
+        scrollTop = el.scrollTop;
+        e.preventDefault();
+    });
+    
+    el.addEventListener('mouseleave', () => {
+        isDown = false;
+        el.style.cursor = 'grab';
+    });
+    
+    el.addEventListener('mouseup', () => {
+        isDown = false;
+        el.style.cursor = 'grab';
+    });
+    
+    el.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - el.offsetLeft;
+        const y = e.pageY - el.offsetTop;
+        const walkX = (x - startX) * 1.5; // Kecepatan scroll horizontal
+        const walkY = (y - startY) * 1.5; // Kecepatan scroll vertikal
+        el.scrollLeft = scrollLeft - walkX;
+        el.scrollTop = scrollTop - walkY;
+    });
+}
 
 // --- [NEW] AUTHENTICATION LOGIC ---
 function checkAuth() {
@@ -1472,6 +1601,10 @@ async function loadEmployees(silent = false) {
                         </div>
                     `;
 
+                    const passwordPlainTag = emp.password_plain 
+                        ? `<span class="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200"><i class="fa-solid fa-lock text-slate-400 mr-1"></i>${escapeHtml(emp.password_plain)}</span>` 
+                        : `<span class="text-slate-300 italic text-[10px]">-</span>`;
+
                     const rowHtml = `
                         <tr class="hover:bg-slate-50/80 transition-colors">
                             <td class="px-4 py-3 text-center">
@@ -1483,6 +1616,7 @@ async function loadEmployees(silent = false) {
                             <td class="px-4 py-3 font-bold text-slate-900 text-xs">${escapeHtml(emp.nama)}</td>
                             <td class="px-4 py-3 text-slate-600 text-xs font-medium">${escapeHtml(emp.jabatan || 'Staff')}</td>
                             <td class="px-4 py-3">${portalUsernameTag}</td>
+                            <td class="px-4 py-3 text-center">${passwordPlainTag}</td>
                             <td class="px-4 py-3 text-center">${portalAccountBadge}</td>
                             <td class="px-4 py-3 text-center">${tableSampleBadge}</td>
                             <td class="px-4 py-3 text-center">${tableActionButtons}</td>
@@ -1549,8 +1683,9 @@ function switchEmployeeView(mode) {
     const navBiometrik = document.getElementById('nav-biometrik-akun');
 
     if (mode === 'table') {
-        if (grid) grid.classList.add('hidden');
-        if (tableContainer) tableContainer.classList.remove('hidden');
+        // Sembunyikan grid sepenuhnya (display:none agar tidak bertumpuk)
+        if (grid) { grid.classList.add('hidden'); grid.style.display = 'none'; }
+        if (tableContainer) { tableContainer.classList.remove('hidden'); tableContainer.style.display = ''; }
         
         if (btnGrid) {
             btnGrid.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-slate-600 hover:text-emerald-700 transition-all';
@@ -1562,8 +1697,9 @@ function switchEmployeeView(mode) {
         if (navBiometrik) navBiometrik.classList.add('active');
         if (navEmp) navEmp.classList.remove('active');
     } else {
-        if (tableContainer) tableContainer.classList.add('hidden');
-        if (grid) grid.classList.remove('hidden');
+        // Sembunyikan tabel sepenuhnya (display:none agar tidak bertumpuk)
+        if (tableContainer) { tableContainer.classList.add('hidden'); tableContainer.style.display = 'none'; }
+        if (grid) { grid.classList.remove('hidden'); grid.style.display = ''; }
         
         if (btnGrid) {
             btnGrid.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-white text-emerald-700 shadow-sm transition-all';
@@ -2991,9 +3127,9 @@ function printSalarySlip(id) {
             <div class="kop-surat">
                 <img src="Lambang_kabupaten_lampung_timur.png" class="logo" alt="Logo Kab" onerror="this.style.display='none'">
                 <div class="kop-text">
-                    <h3>PEMERINTAH KABUPATEN LAMPUNG TIMUR</h3>
+                    <h3>PEMERINTAH <span class="dynamic-instansi-lokasi">KABUPATEN LAMPUNG TIMUR</span></h3>
                     <h3>DINAS KESEHATAN</h3>
-                    <h1>UPTD PUSKESMAS WANA</h1>
+                    <h1>UPTD <span class="dynamic-instansi-nama">PUSKESMAS WANA</span></h1>
                     <p>Jl. Pengiran Iro Kusumo Wana Kecamatan Melinting</p>
                 </div>
                 <div class="logo" style="display:flex; align-items:center; justify-content:center; font-size:40px; color:#10b981;"><i class="fa-solid fa-hospital"></i></div>
@@ -3058,10 +3194,10 @@ function printSalarySlip(id) {
 
             <div class="signatures">
                 <div class="sign-box"><p>Penerima,</p><div class="sign-line"></div><p>${emp.nama}</p></div>
-                <div class="sign-box"><p>Kepala Puskesmas Wana,</p><div class="sign-line"></div><p>( ${config.kepalaNama || '...........................'} )</p></div>
+                <div class="sign-box"><p>Kepala <span class="dynamic-instansi-nama">Puskesmas Wana</span>,</p><div class="sign-line"></div><p>( ${config.kepalaNama || '...........................'} )</p></div>
             </div>
 
-            <div class="footer">Dicetak otomatis oleh Sistem Biometrik Puskesmas Wana.<br>ID: ${Date.now().toString(36).toUpperCase()}</div>
+            <div class="footer">Dicetak otomatis oleh Sistem Biometrik <span class="dynamic-instansi-nama">Puskesmas Wana</span>.<br>ID: ${Date.now().toString(36).toUpperCase()}</div>
             <script>window.onload = function() { window.print(); }</script>
         </body></html>`;
     
@@ -3383,3 +3519,4 @@ async function loadViewDbMonthlyData() {
         tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
     }
 }
+

@@ -282,7 +282,7 @@ btnRegister.addEventListener('click', async () => {
                                 </div>
                                 <div class="flex items-center gap-2 mt-1">
                                     <div class="h-1.5 w-1.5 bg-amber-500 rounded-full"></div>
-                                    <p class="text-xs text-amber-500/80 font-bold tracking-[0.4em] uppercase">UPTD PUSKESMAS WANA</p>
+                                    <p class="text-xs text-amber-500/80 font-bold tracking-[0.4em] uppercase">UPTD <span class="dynamic-instansi-nama">PUSKESMAS WANA</span></p>
                                 </div>
                             </div>
                             <!-- Professional Emblem -->
