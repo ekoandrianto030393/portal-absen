@@ -161,9 +161,13 @@ const dbConfig = {
     dateStrings: ['DATE', 'DATETIME']
 };
 
-// [NEW] Dukungan otomatis untuk TiDB Serverless & Aiven (Wajib SSL)
-if (process.env.DB_SSL === 'true' || (process.env.DB_HOST && (process.env.DB_HOST.includes('tidbcloud') || process.env.DB_HOST.includes('aivencloud')))) {
+// [NEW] Dukungan otomatis untuk TiDB Serverless & Aiven
+if (process.env.DB_SSL === 'true' || (process.env.DB_HOST && process.env.DB_HOST.includes('tidbcloud'))) {
+    // TiDB sangat ketat, butuh TLS 1.2
     dbConfig.ssl = { minVersion: 'TLSv1.2', rejectUnauthorized: true };
+} else if (process.env.DB_HOST && process.env.DB_HOST.includes('aivencloud')) {
+    // Aiven default (tanpa CA certificate manual)
+    dbConfig.ssl = { rejectUnauthorized: false };
 }
 
 const pool = mysql.createPool(dbConfig);
