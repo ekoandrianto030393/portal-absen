@@ -36,6 +36,7 @@ function hashPassword(password) {
 }
 
 const app = express();
+app.set('trust proxy', 1); // [FIX] Render/Cloud: Baca IP asli dari X-Forwarded-For header
 const port = 3000;
 const JWT_SECRET = process.env.JWT_SECRET; // [SECURITY] JWT Secret dari .env (WAJIB diisi)
 
@@ -91,20 +92,69 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // Endpoint khusus untuk mencegah error 404 favicon.ico di browser
 // [SECURITY] Blokir akses ke file sensitif via browser
+// express.static menyajikan SELURUH folder proyek, jadi semua file backend / data / rahasia
+// WAJIB diblokir di sini. Pengecekan dibuat case-insensitive (Windows) & setelah URL-decode.
+const BLOCKED_DIRS = new Set([
+    'backups', 'android', 'app', 'build', 'gradle', 'my-project', 'piper', 'scratch',
+    '__pycache__', 'gtk-for-windows-runtime-environment-installer'
+]);
+const BLOCKED_EXT = new Set([
+    '.env', '.sql', '.db', '.sqlite', '.sqlite3', '.py', '.pyc', '.txt', '.log', '.bak',
+    '.bat', '.cmd', '.vbs', '.ps1', '.sh', '.php', '.toml', '.properties', '.kts', '.gradle',
+    '.pem', '.key', '.crt', '.p12', '.jks', '.keystore', '.md', '.jsonl', '.yml', '.yaml'
+]);
+const BLOCKED_FILES = new Set([
+    // Backend / skrip Node.js (berisi logika server & akses process.env)
+    'server.js', 'sync_service.js', 'force_sync.js', 'migrate_db.js', 'setup_db.js',
+    'delete-today.js', 'create-table.js', 'absensi.js', 'karyawan.js', 'monitoring.js',
+    'rekap_api.js', 'check_divs.js', 'check_view.js', 'redesign_script.js',
+    'refactor_js.js', 'refactor_names.js', 'test-db.js', 'test-db2.js', 'test-db3.js',
+    'test-login.js', 'test_history.js', 'cloudflare-worker-tts.js', 'app.js',
+    'scan_gold_backup.js',
+    // Konfigurasi / data
+    'package.json', 'package-lock.json', 'capacitor.config.json', 'db_out.json',
+    'test-rekap.json', 'id_id-news_tts-medium.onnx', 'id_id-news_tts-medium.onnx.json',
+    'gradlew', '='
+]);
+
 app.use((req, res, next) => {
-    const blockedFiles = ['.env', 'server.js', 'sync_service.js', 'package.json', 'package-lock.json', '.gitignore'];
-    const requestedFile = req.path.split('/').pop();
-    if (blockedFiles.includes(requestedFile)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak.' });
-    }
+    if (req.path.startsWith('/api/')) return next();
+
+    let p;
+    try { p = decodeURIComponent(req.path); } catch (e) { return res.status(400).end(); }
+    p = p.replace(/\\/g, '/').toLowerCase();
+    const segments = p.split('/').filter(Boolean);
+    const fileName = segments[segments.length - 1] || '';
+    const ext = path.extname(fileName);
+
+    const deny =
+        segments.some(s => s.startsWith('.')) ||                       // .env, .git/, .vscode/, .idea/, .gradle/ dll
+        (segments.length > 0 && BLOCKED_DIRS.has(segments[0])) ||
+        (segments[0] === 'node_modules' && !p.startsWith('/node_modules/onnxruntime-web/dist/')) ||
+        BLOCKED_EXT.has(ext) ||
+        fileName.includes('.env') ||
+        (segments.length === 1 && BLOCKED_FILES.has(fileName));
+
+    if (deny) return res.status(403).json({ success: false, message: 'Akses ditolak.' });
     next();
 });
 
 // [SECURITY] Rate Limiter untuk endpoint login & register
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 menit
-    max: 10, // Maksimal 10 percobaan per 15 menit per IP
-    message: { success: false, message: 'Terlalu banyak percobaan login. Coba lagi setelah 15 menit.' },
+    max: 30, // Maksimal 30 percobaan per 15 menit per IP
+    keyGenerator: (req) => {
+        // [FIX] Gunakan IP asli client (bukan IP proxy Render)
+        return req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+    },
+    handler: (req, res) => {
+        const retryAfter = Math.ceil(req.rateLimit.resetTime / 1000 / 60);
+        res.status(429).json({ 
+            success: false, 
+            message: `Terlalu banyak percobaan login. Coba lagi dalam ${retryAfter} menit.`,
+            retry_after_minutes: retryAfter
+        });
+    },
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -113,6 +163,7 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // Serve file statis dengan optimasi caching untuk file model
 app.use(express.static(path.join(__dirname, '.'), {
+    dotfiles: 'deny', // [SECURITY] Lapisan kedua: tolak semua dotfile (.env, .git, dll)
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.bin') || filePath.endsWith('.onnx') || filePath.endsWith('.wasm')) {
             res.setHeader('Cache-Control', 'public, max-age=31536000');
@@ -1605,9 +1656,8 @@ app.get('/api/config', (req, res) => {
             batas_min_pulang: BATAS_MIN_PULANG,
             auto_pulang_default: AUTO_PULANG_DEFAULT,
             potongan_lupa_pulang: POTONGAN_LUPA_PULANG,
-            elevenlabs_api_key: ELEVENLABS_API_KEY,
-            elevenlabs_voice_id: ELEVENLABS_VOICE_ID,
-            cf_worker_tts_url: CF_WORKER_TTS_URL,
+            // [SECURITY] ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, CF_WORKER_TTS_URL
+            // TIDAK BOLEH dikirim ke browser. Hanya dipakai di sisi server (.env).
             nama_instansi: NAMA_INSTANSI,
             lokasi_instansi: LOKASI_INSTANSI
         }

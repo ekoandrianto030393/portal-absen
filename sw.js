@@ -1,4 +1,4 @@
-const CACHE_NAME = 'portal-absen-v56';
+const CACHE_NAME = 'portal-absen-v57';
 const urlsToCache = [
   '/portal.html',
   '/portal.js',
@@ -48,16 +48,27 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        if (response && response.status === 200 && response.type === 'basic') {
+        // [FIX] Caches API only supports GET requests
+        if (event.request.method === 'GET' && response && response.status === 200 && response.type === 'basic') {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then(cache => {
-                cache.put(event.request, responseClone);
+                cache.put(event.request, responseClone).catch(err => console.error('Cache error:', err));
             });
         }
         return response;
       })
       .catch(() => {
-        return caches.match(event.request);
+        return caches.match(event.request).then(cachedResponse => {
+            // [FIX] Cegah error "Failed to convert value to 'Response'"
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+            // Fallback kosong jika file tidak ada di cache dan sedang offline
+            return new Response("Offline Content Not Available", {
+                status: 503,
+                statusText: "Service Unavailable"
+            });
+        });
       })
   );
 });
