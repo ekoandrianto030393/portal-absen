@@ -556,14 +556,8 @@ const SoundFX = {
             mod.stop(t + 0.3); osc.stop(t + 0.3);
         }
     },
-    // --- ELEVENLABS TTS ENGINE CONFIG ---
-    elevenLabs: {
-        // PERINGATAN: Pastikan API Key di bawah ini valid dari Dashboard ElevenLabs
-        apiKey: "12d381ffd65727d06fc3f0dd0c704ad6b8d80b19ff742e577ab3b59994234c06",
-        voiceId: "21m00Tcm4TlvDq8ikWAM", // Menggunakan ID Suara standar "George" (Pre-made) yang lebih stabil
-        quotaExceeded: false // [FIX] Flag untuk skip ElevenLabs setelah error 402
-    },
-    cfWorkerUrl: null, // [NEW] Endpoint Cloudflare Worker TTS
+    // [SECURITY] Kredensial TTS (ElevenLabs / Cloudflare Worker) TIDAK disimpan di browser.
+    // Semua kredensial rahasia hanya ada di file .env server.
     speak: async (text) => {
         if (isStealthMode) return; // Mute jika Stealth Mode aktif
 
@@ -3002,11 +2996,8 @@ async function initializeApp() {
         const configLoad = api.getConfig()
             .then(configData => {
                 if (configData && configData.success) {
-                    SoundFX.elevenLabs.apiKey = configData.config.elevenlabs_api_key || SoundFX.elevenLabs.apiKey;
-                    SoundFX.elevenLabs.voiceId = configData.config.elevenlabs_voice_id || SoundFX.elevenLabs.voiceId;
-                    SoundFX.cfWorkerUrl = configData.config.cf_worker_tts_url || null;
                     if (configData.config.nama_instansi) AGENCY_NAME = configData.config.nama_instansi;
-                    logSystem(`VOICE MODULE: Sync OK (Voice: ${SoundFX.elevenLabs.voiceId.substring(0, 6)}...)`, 'text-purple-400');
+                    logSystem('CONFIG: Sync OK', 'text-purple-400');
                 }
             })
             .catch(() => {});

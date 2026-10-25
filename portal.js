@@ -44,7 +44,7 @@ window.onload = () => {
     // Paksa Logout jika user punya sesi tapi tidak punya token (Migrasi JWT)
     if (session && !token) {
         localStorage.removeItem('pegawai_session');
-    localStorage.removeItem('pegawai_token');
+        localStorage.removeItem('pegawai_token');
         window.location.reload();
         return;
     }
@@ -59,6 +59,31 @@ window.onload = () => {
         
         if (session) {
             showDashboard(JSON.parse(session));
+        } else if (token) {
+            // Punya token tapi session hilang (misalnya clear storage sebagian)
+            // Coba restore session dari server menggunakan token
+            fetch(`${API_BASE}/pegawai/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('Token tidak valid');
+                return r.json();
+            })
+            .then(data => {
+                if (data.success && data.data) {
+                    localStorage.setItem('pegawai_session', JSON.stringify(data.data));
+                    showDashboard(data.data);
+                } else {
+                    // Token invalid, bersihkan
+                    localStorage.removeItem('pegawai_token');
+                    showAuthPage();
+                }
+            })
+            .catch(() => {
+                // Gagal verifikasi token, bersihkan dan minta login ulang
+                localStorage.removeItem('pegawai_token');
+                showAuthPage();
+            });
         } else {
             // Cek apakah ada request ganti password yang pending di localStorage
             const pendingReqId = localStorage.getItem('pending_reset_id');
@@ -218,6 +243,7 @@ async function checkStatusPassword() {
 
 function logout() {
     localStorage.removeItem('pegawai_session');
+    localStorage.removeItem('pegawai_token');
     window.location.reload();
 }
 
@@ -261,6 +287,7 @@ async function hapusAkun() {
         
         if (data.success) {
             localStorage.removeItem('pegawai_session');
+            localStorage.removeItem('pegawai_token');
             window.location.reload();
         }
     } catch (e) {

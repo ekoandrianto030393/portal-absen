@@ -1808,11 +1808,15 @@ process.on('unhandledRejection', (reason, promise) => {
 // 1. API Registrasi Akun Pegawai
 app.post('/api/pegawai/register', loginLimiter, (req, res) => {
     const { id_karyawan, nama, username, password } = req.body;
-    
-    // Cek apakah ID dan Nama cocok di database karyawan
-    pool.query('SELECT * FROM karyawan WHERE id_karyawan = ?', [id_karyawan], (err, results) => {
+
+    if (!id_karyawan || !nama || !username || !password) {
+        return res.status(400).json({ success: false, message: 'Semua field harus diisi.' });
+    }
+
+    // Cek apakah ID dan Nama cocok di database karyawan (case-insensitive)
+    pool.query('SELECT * FROM karyawan WHERE UPPER(TRIM(id_karyawan)) = UPPER(TRIM(?))', [id_karyawan], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
-        if (results.length === 0) return res.status(400).json({ success: false, message: 'ID Karyawan tidak ditemukan.' });
+        if (results.length === 0) return res.status(400).json({ success: false, message: 'ID Karyawan tidak ditemukan. Pastikan ID sudah terdaftar di sistem.' });
         
         // Kita bandingkan nama case-insensitive
         const dbName = results[0].nama.trim().toLowerCase();
@@ -1852,6 +1856,25 @@ app.post('/api/admin/login', loginLimiter, (req, res) => {
     } else {
         res.status(401).json({ success: false, message: 'Username atau password salah!' });
     }
+});
+
+// 1.6 API Get Data Pegawai dari Token (untuk restore session tanpa login ulang)
+app.get('/api/pegawai/me', authenticateToken, (req, res) => {
+    const id_karyawan = req.user.id_karyawan;
+    
+    const sql = `
+        SELECT a.id_karyawan, a.username, k.nama, k.jabatan 
+        FROM akun_pegawai a 
+        JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
+        WHERE a.id_karyawan = ?
+    `;
+    
+    pool.query(sql, [id_karyawan], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
+        if (results.length === 0) return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
+        
+        res.json({ success: true, data: results[0] });
+    });
 });
 
 // 2. API Login Pegawai

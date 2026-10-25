@@ -20,14 +20,18 @@ async function startSync() {
                 timezone: '+07:00'
             });
 
-            // 2. Koneksi ke Cloud Aiven
+            // 2. Koneksi ke Cloud Database (TiDB Cloud / Aiven)
+            const cloudSsl = (process.env.CLOUD_DB_HOST && process.env.CLOUD_DB_HOST.includes('tidbcloud'))
+                ? { minVersion: 'TLSv1.2', rejectUnauthorized: true }
+                : { rejectUnauthorized: false };
+
             const cloudDb = await mysql.createConnection({
                 host: process.env.CLOUD_DB_HOST,
-                port: process.env.CLOUD_DB_PORT,
+                port: process.env.CLOUD_DB_PORT || 4000,
                 user: process.env.CLOUD_DB_USER,
                 password: process.env.CLOUD_DB_PASS,
                 database: process.env.CLOUD_DB_NAME,
-                ssl: { rejectUnauthorized: false },
+                ssl: cloudSsl,
                 dateStrings: true,
                 timezone: '+07:00'
             });
