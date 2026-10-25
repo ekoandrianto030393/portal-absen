@@ -1886,7 +1886,7 @@ app.post('/api/pegawai/login', loginLimiter, (req, res) => {
         SELECT a.id_karyawan, a.username, k.nama, k.jabatan 
         FROM akun_pegawai a 
         JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
-        WHERE (a.username = ? OR a.id_karyawan = ?) AND a.password = ?
+        WHERE (LOWER(TRIM(a.username)) = LOWER(TRIM(?)) OR LOWER(TRIM(a.id_karyawan)) = LOWER(TRIM(?))) AND a.password = ?
     `;
     
     pool.query(sql, [username, username, hashedPassword], (err, results) => {
