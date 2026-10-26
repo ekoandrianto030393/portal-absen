@@ -375,8 +375,8 @@ function switchTab(tabName) {
     
     // Define classes for modern floating dock navigation (with Ripple & Spring)
     // Define classes for modern floating dock navigation
-    const inactiveClass = "flex flex-col items-center justify-center gap-1 p-2 text-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 hover:border-indigo-100/50 border border-transparent w-[70px] h-14 rounded-2xl active:scale-95 transition-all relative";
-    const activeClass = "flex flex-col items-center justify-center gap-1 p-2 text-indigo-600 bg-indigo-50/80 w-[70px] h-14 rounded-2xl active:scale-95 transition-all border border-indigo-100/50 shadow-inner relative";
+    const inactiveClass = "flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-teal-700 hover:bg-teal-50/50 hover:border-teal-100 border border-transparent w-[76px] h-14 rounded-2xl active:scale-95 transition-all relative";
+    const activeClass = "flex flex-col items-center justify-center gap-1 p-2 text-teal-700 bg-teal-50/90 w-[76px] h-14 rounded-2xl active:scale-95 transition-all border border-teal-200/80 shadow-inner relative";
     
     // Profil classes
     const profilInactiveClass = inactiveClass;
@@ -782,11 +782,7 @@ function renderRiwayatChart(data) {
     const pangkatEl = document.getElementById('profil-pangkat');
     const notesEl = document.getElementById('profil-notes');
     
-    // Terapkan warna background header secara dinamis
-    const headers = document.querySelectorAll('.bg-gradient-premium');
-    headers.forEach(el => {
-        el.style.background = rankInfo.headerBg;
-    });
+    // Pertahankan warna gradien utama Emerald-Teal-Ocean pada header agar tampilan Beranda selalu segar & elegan
     
     if(xpEl && pangkatEl) {
         xpEl.innerHTML = `${userXP} <span class="text-xs text-teal-400">XP</span>`;
@@ -873,15 +869,15 @@ async function loadDashboardData(idKaryawan) {
             document.getElementById('today-pulang').textContent = result.data.jam_keluar || '--:--';
             elStatus.textContent = result.data.status || 'Hadir';
             
-            // Kalau telat, buat merah
+            // Kalau telat, buat merah menyala; kalau tepat waktu, hijau zamrud
             if (result.data.status && result.data.status.toLowerCase().includes('telat')) {
-                elMasuk.classList.add('text-rose-500', 'font-bold');
-                elStatus.classList.remove('text-slate-700', 'bg-slate-50/80');
-                elStatus.classList.add('text-rose-600', 'bg-rose-50', 'border-rose-200');
+                elMasuk.classList.add('text-rose-600', 'font-black');
+                elStatus.style.background = 'linear-gradient(135deg, #ffe4e6, #fecdd3)';
+                elStatus.className = 'mt-4 text-center text-xs font-black text-rose-800 py-3 rounded-xl shadow-sm uppercase tracking-widest transition-all duration-300 border border-rose-300 relative z-10';
             } else {
-                elMasuk.classList.remove('text-rose-500', 'font-bold');
-                elStatus.classList.remove('text-rose-600', 'bg-rose-50', 'border-rose-200');
-                elStatus.classList.add('text-slate-700', 'bg-slate-50/80');
+                elMasuk.classList.remove('text-rose-600', 'font-black');
+                elStatus.style.background = 'linear-gradient(135deg, #d1fae5, #a7f3d0)';
+                elStatus.className = 'mt-4 text-center text-xs font-black text-emerald-900 py-3 rounded-xl shadow-sm uppercase tracking-widest transition-all duration-300 border border-emerald-300 relative z-10';
             }
         }
     } catch(e) {}
@@ -1020,11 +1016,19 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     // Data ada
                     let statusLabel = '';
                     if (d.status === 'IZIN' || d.status === 'SAKIT' || d.status === 'CUTI' || d.status === 'DL' || d.status === 'DINAS_LUAR') {
-                         html += `
-                            <tr class="border-b border-slate-200 hover:bg-slate-100 transition-colors even:bg-slate-50">
-                                <td class="p-2 border-r border-slate-200 text-center font-bold text-teal-700">${i}</td>
-                                <td class="p-2 border-r border-slate-200 text-center font-bold text-blue-500" colspan="2">${d.status}</td>
-                                <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
+                        const badgeMap = {
+                            'IZIN': 'bg-amber-50 text-amber-700 border-amber-200',
+                            'CUTI': 'bg-amber-50 text-amber-700 border-amber-200',
+                            'SAKIT': 'bg-sky-50 text-sky-700 border-sky-200',
+                            'DL': 'bg-violet-50 text-violet-700 border-violet-200',
+                            'DINAS_LUAR': 'bg-violet-50 text-violet-700 border-violet-200'
+                        };
+                        const badgeCls = badgeMap[d.status] || 'bg-teal-50 text-teal-700 border-teal-200';
+                        html += `
+                            <tr class="border-b border-teal-100/60 hover:bg-teal-50/40 transition-colors even:bg-slate-50/60">
+                                <td class="p-2 border-r border-teal-100/60 text-center font-black text-teal-700 bg-teal-50/30">${i}</td>
+                                <td class="p-2 border-r border-teal-100/60 text-center" colspan="2"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider border ${badgeCls}">${d.status}</span></td>
+                                <td class="p-2 border-r border-teal-100/60 text-center text-slate-300">-</td>
                                 <td class="p-2 text-center text-slate-300">-</td>
                             </tr>
                         `;
@@ -1035,22 +1039,24 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     let pulang = d.jam_keluar && d.jam_keluar !== '-' ? d.jam_keluar.slice(0, 5) : '-';
                     
                     if ((masuk !== '-' && pulang === '-') || (d.keterangan && (d.keterangan.includes('Otomatis') || d.keterangan.includes('Tanpa Absen Pulang')))) {
-                        pulang = '<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider border border-red-200 shadow-sm">TAP</span>';
+                        pulang = '<span class="bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider border border-rose-200 shadow-sm">TAP</span>';
+                    } else if (pulang !== '-') {
+                        pulang = `<span class="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md font-bold text-[11px] border border-sky-200/80">${pulang}</span>`;
                     }
 
-                    const psw = (d.psw_menit && d.psw_menit > 0) ? `<span class="text-rose-500 font-bold text-[11px]">P:${d.psw_menit}m</span>` : `<span class="text-slate-300">-</span>`;
-                    const telat = (d.telat_menit && d.telat_menit > 0) ? `<span class="text-rose-500 font-bold text-[11px]">T:${d.telat_menit}m</span>` : `<span class="text-slate-300">-</span>`;
+                    const psw = (d.psw_menit && d.psw_menit > 0) ? `<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-bold text-[10px] border border-purple-200/70">P:${d.psw_menit}m</span>` : `<span class="text-slate-300">-</span>`;
+                    const telat = (d.telat_menit && d.telat_menit > 0) ? `<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-bold text-[10px] border border-amber-200/70">T:${d.telat_menit}m</span>` : `<span class="text-slate-300">-</span>`;
                     
-                    // Kalau telat, buat text merah
+                    // Kalau telat, buat pill rose; kalau tepat waktu, pill emerald
                     const isTelat = d.status && d.status.toLowerCase().includes('telat');
-                    const masukHTML = isTelat ? `<span class="text-rose-500 font-bold">${masuk}</span>` : `<span class="font-medium">${masuk}</span>`;
+                    const masukHTML = masuk === '-' ? '<span class="text-slate-300">-</span>' : (isTelat ? `<span class="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md font-bold text-[11px] border border-rose-200/80">${masuk}</span>` : `<span class="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-bold text-[11px] border border-emerald-200/80">${masuk}</span>`);
                     
                     html += `
-                        <tr class="border-b border-slate-200 hover:bg-slate-100 transition-colors even:bg-slate-50">
-                            <td class="p-2 border-r border-slate-200 text-center font-bold text-blue-600 bg-blue-50/30">${i}</td>
-                            <td class="p-2 border-r border-slate-200 text-center">${masukHTML}</td>
-                            <td class="p-2 border-r border-slate-200 text-center font-medium">${pulang}</td>
-                            <td class="p-2 border-r border-slate-200 text-center">${psw}</td>
+                        <tr class="border-b border-teal-100/60 hover:bg-teal-50/40 transition-colors even:bg-slate-50/60">
+                            <td class="p-2 border-r border-teal-100/60 text-center font-black text-teal-800 bg-teal-50/40">${i}</td>
+                            <td class="p-2 border-r border-teal-100/60 text-center">${masukHTML}</td>
+                            <td class="p-2 border-r border-teal-100/60 text-center font-medium">${pulang}</td>
+                            <td class="p-2 border-r border-teal-100/60 text-center">${psw}</td>
                             <td class="p-2 text-center">${telat}</td>
                         </tr>
                     `;

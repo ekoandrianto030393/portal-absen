@@ -1,4 +1,4 @@
-const CACHE_NAME = 'portal-absen-v57';
+const CACHE_NAME = 'portal-absen-v58';
 const urlsToCache = [
   '/portal.html',
   '/portal.js',
