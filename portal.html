@@ -580,23 +580,40 @@
 
             <!-- Grid Rekap (Vibrant Jewel & Pastel Bento Style) -->
             <div class="bento-grid pb-1">
-                <!-- Card Hadir (Wide Hero Card) -->
-                <div class="bento-item bento-item-wide ripple p-4 flex flex-row items-center justify-between rounded-[1.5rem] shadow-[0_12px_30px_-6px_rgba(16,185,129,0.4)] border border-emerald-300/40 transition-all duration-300" style="background: linear-gradient(135deg, #047857 0%, #0d9488 55%, #0284c7 100%);">
-                    <i class="fa-solid fa-check-double absolute -right-3 -bottom-3 text-6xl text-white/10 pointer-events-none"></i>
-                    <div class="flex items-center gap-4 relative z-10">
-                        <div class="w-12 h-12 text-emerald-950 rounded-2xl flex items-center justify-center shadow-[0_8px_20px_-3px_rgba(251,191,36,0.5)] border border-amber-200/80 relative overflow-hidden" style="background: linear-gradient(135deg, #fde68a, #f59e0b);">
-                            <i class="fa-solid fa-user-check text-xl drop-shadow-sm"></i>
+                <!-- Card Hadir (Wide Hero Card + Progress Bar) -->
+                <div class="bento-item bento-item-wide ripple p-4 flex flex-col justify-between rounded-[1.5rem] shadow-[0_12px_30px_-6px_rgba(16,185,129,0.4)] border border-emerald-300/40 transition-all duration-300 relative overflow-hidden" style="background: linear-gradient(135deg, #047857 0%, #0d9488 55%, #0284c7 100%);">
+                    <i class="fa-solid fa-check-double absolute -right-3 -bottom-3 text-7xl text-white/10 pointer-events-none"></i>
+                    <div class="flex items-center justify-between w-full relative z-10">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 text-emerald-950 rounded-2xl flex items-center justify-center shadow-[0_8px_20px_-3px_rgba(251,191,36,0.5)] border border-amber-200/80 relative overflow-hidden" style="background: linear-gradient(135deg, #fde68a, #f59e0b);">
+                                <i class="fa-solid fa-user-check text-xl drop-shadow-sm"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-[10px] font-extrabold text-emerald-100 uppercase tracking-widest leading-tight mb-0.5">Total Kehadiran</p>
+                                <div class="flex items-baseline gap-1.5">
+                                    <p class="text-3xl font-black text-white tracking-tight leading-none drop-shadow-sm" id="rekap-hadir">0</p>
+                                    <span class="text-[10px] font-bold text-teal-100/90 uppercase">Hari</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="text-left">
-                            <p class="text-[10px] font-extrabold text-emerald-100 uppercase tracking-widest leading-tight mb-0.5">Total Kehadiran</p>
-                            <div class="flex items-baseline gap-1.5">
-                                <p class="text-3xl font-black text-white tracking-tight leading-none drop-shadow-sm" id="rekap-hadir">0</p>
-                                <span class="text-[10px] font-bold text-teal-100/90 uppercase">Hari</span>
+                        <div class="flex items-center gap-2">
+                            <div class="text-right">
+                                <span id="rekap-hadir-pct" class="inline-block px-2.5 py-1 rounded-xl text-xs font-black text-emerald-950 border border-amber-200/90 shadow-md font-mono" style="background: linear-gradient(135deg, #fef08a, #fbbf24);">0%</span>
+                            </div>
+                            <div class="w-10 h-10 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-amber-300 shadow-inner">
+                                <i class="fa-solid fa-award text-lg"></i>
                             </div>
                         </div>
                     </div>
-                    <div class="w-10 h-10 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-amber-300 shadow-inner relative z-10">
-                        <i class="fa-solid fa-award text-lg"></i>
+                    <!-- Progress Bar Capaian Kehadiran -->
+                    <div class="w-full mt-3.5 pt-2.5 border-t border-white/15 relative z-10">
+                        <div class="flex justify-between items-center text-[9px] font-extrabold uppercase tracking-wider mb-1.5">
+                            <span id="rekap-hadir-label" class="text-emerald-100/95 flex items-center gap-1"><i class="fa-solid fa-chart-line text-amber-300"></i> Capaian Hari Kerja</span>
+                            <span id="rekap-hadir-rasio" class="text-amber-200 font-mono">0 / 0 Hari</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-950/35 rounded-full overflow-hidden p-0.5 border border-white/15 shadow-inner">
+                            <div id="rekap-hadir-bar" class="h-full rounded-full transition-all duration-700 ease-out shadow-[0_0_10px_rgba(251,191,36,0.7)]" style="width: 0%; background: linear-gradient(90deg, #34d399 0%, #fde047 60%, #f59e0b 100%);"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -695,21 +712,26 @@
             </div>
 
             <!-- Header Tabel Harian -->
-            <div class="flex justify-between items-center px-1 pt-4 mt-1 border-t border-teal-200/60">
+            <div class="flex justify-between items-center px-1 pt-4 mt-1 border-t border-teal-200/60 gap-2">
                 <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
                     <span class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center text-xs shadow-sm"><i class="fa-solid fa-calendar-days"></i></span>
                     Metrik Harian
                 </h3>
-                <input type="month" id="filter-bulan" class="text-xs border border-teal-300 rounded-xl px-3 py-1.5 text-teal-900 bg-white focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 font-extrabold shadow-sm" onchange="onMonthFilterChange(this.value)">
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="scrollToTodayMetric()" title="Lompat ke Hari Ini" class="text-[10px] font-black text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-300/80 px-2.5 py-1.5 rounded-xl shadow-sm active:scale-95 transition flex items-center gap-1">
+                        <i class="fa-solid fa-location-crosshairs text-teal-600"></i> Hari Ini
+                    </button>
+                    <input type="month" id="filter-bulan" class="text-xs border border-teal-300 rounded-xl px-2.5 py-1.5 text-teal-900 bg-white focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 font-extrabold shadow-sm" onchange="onMonthFilterChange(this.value)">
+                </div>
             </div>
             
             <!-- Tabel Harian -->
             <div class="rounded-[1.5rem] shadow-[0_14px_35px_-10px_rgba(13,148,136,0.18)] border border-teal-200/70 mt-2 relative overflow-hidden bg-white">
-                <div class="overflow-x-auto overflow-y-auto max-h-[55vh] relative">
+                <div id="daily-metrics-scroll" class="overflow-x-auto overflow-y-auto max-h-[55vh] relative scroll-smooth">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead class="sticky top-0 z-20">
                             <tr class="text-white shadow-md" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 50%, #0284c7 100%);">
-                                <th class="p-3.5 font-black uppercase tracking-wider text-center w-10" style="background: inherit;">Tgl</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center w-20" style="background: inherit;">Hari / Tgl</th>
                                 <th class="p-3.5 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;">Masuk</th>
                                 <th class="p-3.5 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;">Pulang</th>
                                 <th class="p-3.5 font-black uppercase tracking-wider text-center w-12" style="background: inherit;" title="PSW (Menit)">P</th>
@@ -896,87 +918,172 @@
             <div class="h-8"></div>
         </div>
     </div>
-    <!-- HALAMAN PROFIL -->
+    <!-- HALAMAN PROFIL (DENGAN KARTU PEGAWAI DIGITAL / E-ID CARD) -->
     <div id="profil-page" class="hidden min-h-screen pb-24" style="background: linear-gradient(180deg, #e0f2fe 0%, #f0fdfa 30%, #f8fafc 65%, #f1f5f9 100%);">
-        <!-- Fresh Emerald Header -->
-        <div class="pt-12 pb-24 px-6 rounded-b-[3rem] shadow-[0_25px_60px_-12px_rgba(16,185,129,0.4)] relative overflow-hidden border-b border-emerald-500/30" style="background: linear-gradient(135deg, #064e3b 0%, #047857 30%, #0d9488 65%, #06b6d4 100%);">
+        <!-- Royal Emerald-Teal Top Banner -->
+        <div class="pt-10 pb-24 px-6 rounded-b-[2.75rem] shadow-[0_20px_50px_-12px_rgba(13,148,136,0.35)] relative overflow-hidden border-b border-teal-300/30" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 40%, #0284c7 80%, #1d4ed8 100%);">
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
-                <i class="fa-solid fa-user-shield absolute top-8 right-10 text-[5rem] opacity-[0.06] animate-orb-1 rotate-12 text-teal-300 blur-[1px]"></i>
-                <i class="fa-solid fa-shield-halved absolute top-32 left-10 text-[6rem] opacity-[0.04] animate-orb-2 -rotate-12 text-cyan-300 blur-[2px]"></i>
-                <!-- Emerald Glow Blobs -->
-                <div class="absolute -right-20 -top-20 w-[400px] h-[400px] bg-gradient-to-br from-emerald-500/30 via-teal-500/15 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-1"></div>
-                <div class="absolute -left-10 top-20 w-[350px] h-[350px] bg-gradient-to-tr from-cyan-500/25 via-sky-400/10 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-2"></div>
+                <i class="fa-solid fa-id-card-clip absolute top-6 right-8 text-[5.5rem] opacity-[0.07] animate-orb-1 rotate-12 text-amber-200"></i>
+                <i class="fa-solid fa-shield-halved absolute top-20 left-8 text-[6rem] opacity-[0.05] animate-orb-2 -rotate-12 text-cyan-200"></i>
+                <div class="absolute -right-20 -top-20 w-[360px] h-[360px] bg-gradient-to-br from-amber-300/20 via-teal-400/15 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-1"></div>
             </div>
-            <div class="relative z-10 text-center flex flex-col items-center">
-                <div class="w-28 h-28 flex items-center justify-center text-4xl font-bold text-slate-300 relative mb-5 group">
-                    <!-- Animated Ring -->
-                    <div class="absolute inset-[-4px] bg-gradient-to-br from-teal-400 via-emerald-400 to-cyan-400 rounded-[1.5rem] z-[-1] shadow-[0_0_30px_rgba(16,185,129,0.5)]" style="animation: spin-slow 4s linear infinite;"></div>
-                    <!-- Image Container -->
-                    <div class="relative w-full h-full rounded-[1.5rem] backdrop-blur-xl border-4 border-emerald-900/50 overflow-hidden flex items-center justify-center z-10 shadow-inner" style="background: rgba(6,78,59,0.8);">
-                        <img id="profil-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden transition-transform duration-500 group-hover:scale-110" alt="Foto Profil">
-                        <i id="profil-foto-icon" class="fa-solid fa-user-astronaut text-emerald-300"></i>
-                    </div>
+            <div class="relative z-10 text-center">
+                <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-amber-300/35 shadow-lg backdrop-blur-xl mb-2" style="background: rgba(15, 23, 42, 0.28);">
+                    <i class="fa-solid fa-id-badge text-amber-300 text-xs"></i>
+                    <span class="text-amber-100 text-[10px] font-black uppercase tracking-[0.22em]">E-ID Card Resmi</span>
                 </div>
-                <h2 id="profil-nama" class="font-black text-2xl text-white tracking-wide leading-tight drop-shadow-lg">Nama Pegawai</h2>
-                <p id="profil-jabatan" class="text-emerald-100/90 text-[10px] font-black mt-2 uppercase tracking-[0.2em] px-4 py-1.5 rounded-md border border-white/20 shadow-inner backdrop-blur-md" style="background: rgba(255,255,255,0.1);">Jabatan</p>
+                <h2 class="font-black text-xl text-white tracking-wide drop-shadow-md">Kartu Identitas Pegawai</h2>
             </div>
         </div>
 
-        <div class="px-5 -mt-8 relative z-20 space-y-4">
+        <div class="px-5 -mt-16 relative z-20 space-y-4">
             
-            <!-- GAMIFIKASI: Prestasi & Pangkat -->
-            <div class="rounded-[1.5rem] p-5 shadow-[0_15px_50px_-12px_rgba(99,102,241,0.15)] border border-indigo-100/50 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #faf8ff 40%, #f5f3ff 100%);">
-                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-200/20 to-transparent rounded-full blur-2xl pointer-events-none"></div>
-                <h3 class="text-xs font-black text-indigo-900 uppercase tracking-widest mb-4 border-b border-indigo-100/50 pb-3 flex items-center gap-2 relative z-10"><i class="fa-solid fa-trophy text-amber-500"></i> Prestasi Kehadiran</h3>
-                <div class="flex items-center justify-between relative z-10">
-                    <div>
-                        <p class="text-[10px] text-indigo-400 font-bold uppercase mb-1.5 tracking-wider">Pangkat Saat Ini</p>
-                        <p id="profil-pangkat" class="px-3.5 py-1.5 text-xs font-black rounded-xl text-white inline-block shadow-[0_8px_15px_-3px_rgba(99,102,241,0.4)]" style="background: linear-gradient(135deg, #6366f1, #4338ca);">-</p>
+            <!-- E-ID CARD (KARTU PEGAWAI DIGITAL MODERN) -->
+            <div class="rounded-[1.85rem] p-5 shadow-[0_24px_50px_-12px_rgba(4,47,46,0.55)] border border-amber-300/45 relative overflow-hidden text-white" style="background: linear-gradient(135deg, #042f2e 0%, #0f172a 45%, #134e4a 80%, #0369a1 100%);">
+                <!-- Holographic Shine & Medical Watermark -->
+                <div class="absolute -top-24 -right-24 w-64 h-64 bg-gradient-to-bl from-amber-300/20 via-cyan-300/15 to-transparent rounded-full blur-2xl pointer-events-none"></div>
+                <div class="absolute -bottom-24 -left-24 w-64 h-64 bg-gradient-to-tr from-emerald-400/20 via-teal-300/10 to-transparent rounded-full blur-2xl pointer-events-none"></div>
+                <i class="fa-solid fa-staff-snake absolute right-4 bottom-14 text-[7.5rem] text-white/[0.04] -rotate-12 pointer-events-none"></i>
+                <div class="absolute top-0 left-0 right-0 h-1" style="background: linear-gradient(90deg, #fde68a 0%, #f59e0b 35%, #10b981 70%, #38bdf8 100%);"></div>
+
+                <!-- E-ID Top Header -->
+                <div class="flex items-center justify-between pb-3.5 mb-4 border-b border-white/15 relative z-10">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-950 shadow-[0_4px_14px_rgba(251,191,36,0.45)] border border-amber-200" style="background: linear-gradient(135deg, #fef08a, #f59e0b);">
+                            <i class="fa-solid fa-hospital text-base"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-[8px] font-extrabold text-amber-300/90 uppercase tracking-[0.22em] leading-none mb-1">UPTD Layanan Kesehatan</p>
+                            <p class="text-xs font-black text-white uppercase tracking-wider leading-none dynamic-instansi-nama">Puskesmas</p>
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-[10px] text-indigo-400 font-bold uppercase mb-1.5 tracking-wider">Total Poin (XP)</p>
-                        <p id="profil-xp" class="text-2xl font-black text-indigo-600">0 <span class="text-xs text-indigo-400 font-bold">XP</span></p>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 flex items-center gap-1 shadow-inner">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Verified
+                        </span>
                     </div>
                 </div>
-                <div class="mt-4 pt-3 border-t border-indigo-100/50 relative z-10">
-                    <p id="profil-notes" class="text-[10px] leading-relaxed font-semibold text-indigo-800 p-3 rounded-xl border border-indigo-200/50 shadow-inner" style="background: linear-gradient(135deg, #eef2ff, #e0e7ff);">
+
+                <!-- E-ID Body (Photo + Details + Smart Chip) -->
+                <div class="flex items-center gap-4 relative z-10">
+                    <!-- Photo Column -->
+                    <div class="flex flex-col items-center shrink-0">
+                        <div class="w-24 h-28 rounded-2xl p-0.5 shadow-[0_10px_25px_rgba(0,0,0,0.45)] relative group" style="background: linear-gradient(135deg, #fde68a, #10b981, #38bdf8);">
+                            <div class="w-full h-full rounded-[14px] overflow-hidden flex items-center justify-center relative bg-slate-900">
+                                <img id="profil-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden transition-transform duration-500 group-hover:scale-110" alt="Foto Profil">
+                                <i id="profil-foto-icon" class="fa-solid fa-user-doctor text-3xl text-amber-200/80"></i>
+                            </div>
+                        </div>
+                        <span class="mt-2 px-2.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest text-emerald-950 shadow-sm" style="background: linear-gradient(135deg, #6ee7b7, #10b981);">Pegawai Aktif</span>
+                    </div>
+
+                    <!-- Identity Details Column -->
+                    <div class="flex-1 min-w-0 text-left">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[9px] font-bold text-teal-200/80 uppercase tracking-widest">Nama Lengkap</span>
+                            <!-- Realistic Gold Smart Chip -->
+                            <div class="w-8 h-6 rounded-md border border-amber-200/70 shadow-inner flex items-center justify-center opacity-90" style="background: linear-gradient(135deg, #fef08a 0%, #d97706 50%, #fde047 100%);">
+                                <div class="w-5 h-3.5 border border-amber-900/40 rounded-sm grid grid-cols-2 gap-px p-px">
+                                    <div class="bg-amber-900/20"></div><div class="bg-amber-900/20"></div>
+                                    <div class="bg-amber-900/20"></div><div class="bg-amber-900/20"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <h2 id="profil-nama" class="font-black text-lg text-white tracking-wide leading-snug truncate drop-shadow-sm">Nama Pegawai</h2>
+                        <p id="profil-jabatan" class="inline-block text-amber-200 text-[9px] font-black mt-1 uppercase tracking-[0.16em] px-2.5 py-0.5 rounded-md border border-amber-300/35 bg-amber-400/10">Jabatan</p>
+
+                        <div class="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-white/10">
+                            <div class="bg-white/5 border border-white/10 rounded-xl px-2.5 py-1.5">
+                                <p class="text-[8px] font-bold text-teal-200/70 uppercase tracking-wider">ID Biometrik</p>
+                                <p id="profil-id" class="text-xs font-black text-amber-300 font-mono tracking-wider mt-0.5">ID</p>
+                            </div>
+                            <div class="bg-white/5 border border-white/10 rounded-xl px-2.5 py-1.5">
+                                <p class="text-[8px] font-bold text-teal-200/70 uppercase tracking-wider">Otorisasi</p>
+                                <p class="text-xs font-black text-emerald-300 tracking-wider mt-0.5 flex items-center gap-1"><i class="fa-solid fa-fingerprint text-[10px]"></i> Wajah/FP</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- E-ID Bottom Barcode Verification Strip -->
+                <div class="mt-4 pt-3 border-t border-white/15 flex items-center justify-between gap-3 relative z-10">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-amber-300">
+                            <i class="fa-solid fa-qrcode text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-[8px] font-extrabold text-teal-200 uppercase tracking-widest">Kartu Presensi Digital</p>
+                            <p class="text-[9px] font-mono text-white/80 tracking-wider">PORTAL-BIO-VERIFIED</p>
+                        </div>
+                    </div>
+                    <!-- Crisp SVG Barcode Visual -->
+                    <div class="bg-white/95 px-2.5 py-1 rounded-lg shadow-inner flex flex-col items-center">
+                        <svg class="h-5 w-24 text-slate-900" viewBox="0 0 120 24" fill="currentColor">
+                            <rect x="2" y="2" width="3" height="20"/><rect x="7" y="2" width="1.5" height="20"/><rect x="11" y="2" width="4" height="20"/><rect x="17" y="2" width="2" height="20"/><rect x="22" y="2" width="1.5" height="20"/><rect x="26" y="2" width="5" height="20"/><rect x="33" y="2" width="2" height="20"/><rect x="37" y="2" width="3" height="20"/><rect x="43" y="2" width="1.5" height="20"/><rect x="47" y="2" width="4" height="20"/><rect x="53" y="2" width="2" height="20"/><rect x="58" y="2" width="4.5" height="20"/><rect x="65" y="2" width="1.5" height="20"/><rect x="69" y="2" width="3" height="20"/><rect x="75" y="2" width="2" height="20"/><rect x="79" y="2" width="4" height="20"/><rect x="85" y="2" width="1.5" height="20"/><rect x="89" y="2" width="3.5" height="20"/><rect x="95" y="2" width="2" height="20"/><rect x="100" y="2" width="4" height="20"/><rect x="106" y="2" width="1.5" height="20"/><rect x="110" y="2" width="3" height="20"/><rect x="115" y="2" width="2" height="20"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GAMIFIKASI: Prestasi & Pangkat (Harmonized Emerald-Teal-Gold) -->
+            <div class="rounded-[1.5rem] p-5 shadow-[0_14px_35px_-10px_rgba(13,148,136,0.16)] border border-teal-200/80 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #f0fdfa 55%, #ecfdf5 100%);">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-200/30 to-transparent rounded-full blur-2xl pointer-events-none"></div>
+                <h3 class="text-xs font-black text-teal-950 uppercase tracking-widest mb-4 border-b border-teal-100 pb-3 flex items-center gap-2 relative z-10">
+                    <span class="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center text-[11px] shadow-sm"><i class="fa-solid fa-trophy"></i></span>
+                    Prestasi & Predikat Disiplin
+                </h3>
+                <div class="flex items-center justify-between relative z-10">
+                    <div>
+                        <p class="text-[10px] text-teal-700 font-bold uppercase mb-1.5 tracking-wider">Pangkat Saat Ini</p>
+                        <p id="profil-pangkat" class="px-3.5 py-1.5 text-xs font-black rounded-xl text-white inline-block shadow-[0_8px_15px_-3px_rgba(13,148,136,0.4)]" style="background: linear-gradient(135deg, #0d9488, #0284c7);">-</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-teal-700 font-bold uppercase mb-1.5 tracking-wider">Total Poin (XP)</p>
+                        <p id="profil-xp" class="text-2xl font-black text-teal-900">0 <span class="text-xs text-teal-600 font-bold">XP</span></p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-teal-100 relative z-10">
+                    <p id="profil-notes" class="text-[10px] leading-relaxed font-semibold text-teal-950 p-3 rounded-xl border border-teal-200/70 shadow-inner" style="background: linear-gradient(135deg, #f0fdfa, #ccfbf1);">
                         Memuat rekam jejak kedisiplinan...
                     </p>
                 </div>
             </div>
             
-            <div class="rounded-[1.5rem] p-5 shadow-[0_15px_50px_-12px_rgba(99,102,241,0.15)] border border-indigo-100/50 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #faf8ff 40%, #f5f3ff 100%);">
-                <h3 class="text-xs font-black text-indigo-900 uppercase tracking-widest mb-4 border-b border-indigo-100/50 pb-3 flex items-center gap-2 relative z-10"><i class="fa-solid fa-circle-info text-indigo-500"></i> Informasi Akun</h3>
+            <!-- Informasi Koneksi & Keamanan -->
+            <div class="rounded-[1.5rem] p-5 shadow-[0_14px_35px_-10px_rgba(13,148,136,0.14)] border border-teal-200/70 relative overflow-hidden bg-white">
+                <h3 class="text-xs font-black text-teal-950 uppercase tracking-widest mb-3 border-b border-slate-100 pb-3 flex items-center gap-2 relative z-10">
+                    <span class="w-6 h-6 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center text-[11px] shadow-sm"><i class="fa-solid fa-shield-Nodes"></i></span>
+                    Status Sinkronisasi Portal
+                </h3>
                 
-                <div class="flex justify-between items-center py-3.5 border-b border-indigo-100/50 last:border-0 relative z-10">
+                <div class="flex justify-between items-center py-2.5 relative z-10">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-[0_8px_15px_-3px_rgba(99,102,241,0.4)]" style="background: linear-gradient(135deg, #818cf8, #4f46e5);"><i class="fa-solid fa-id-badge text-sm"></i></div>
-                        <span class="text-sm font-bold text-indigo-950">ID Pegawai</span>
+                        <div class="w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-[0_6px_14px_-3px_rgba(16,185,129,0.45)]" style="background: linear-gradient(135deg, #10b981, #047857);"><i class="fa-solid fa-server text-sm"></i></div>
+                        <div>
+                            <span class="text-sm font-bold text-slate-800 block leading-tight">Server Database Cloud</span>
+                            <span class="text-[10px] text-slate-400 font-semibold">Sinkronisasi Real-Time Aktif</span>
+                        </div>
                     </div>
-                    <span id="profil-id" class="text-sm font-black text-white px-3 py-1 rounded-lg font-mono shadow-sm" style="background: linear-gradient(135deg, #312e81, #4338ca);">ID</span>
-                </div>
-                
-                <div class="flex justify-between items-center py-3.5 border-b border-indigo-100/50 last:border-0 relative z-10">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-[0_8px_15px_-3px_rgba(16,185,129,0.4)]" style="background: linear-gradient(135deg, #34d399, #059669);"><i class="fa-solid fa-server text-sm"></i></div>
-                        <span class="text-sm font-bold text-indigo-950">Status Server</span>
-                    </div>
-                    <span class="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200/50 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow-sm"><span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse inline-block"></span>Terhubung</span>
+                    <span class="text-[10px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow-sm"><span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse inline-block"></span>Online</span>
                 </div>
             </div>
             
-            <div class="rounded-[1.5rem] p-5 shadow-[0_15px_50px_-12px_rgba(99,102,241,0.15)] border border-indigo-100/50 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #faf8ff 40%, #f5f3ff 100%);">
-                <h3 class="text-xs font-black text-indigo-900 uppercase tracking-widest mb-4 border-b border-indigo-100/50 pb-3 flex items-center gap-2 relative z-10"><i class="fa-solid fa-gear text-indigo-400"></i> Pengaturan</h3>
+            <!-- Pengaturan Perangkat -->
+            <div class="rounded-[1.5rem] p-5 shadow-[0_14px_35px_-10px_rgba(244,63,94,0.12)] border border-rose-200/70 relative overflow-hidden bg-white">
+                <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-3 border-b border-slate-100 pb-3 flex items-center gap-2 relative z-10">
+                    <span class="w-6 h-6 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800 text-white flex items-center justify-center text-[11px] shadow-sm"><i class="fa-solid fa-gear"></i></span>
+                    Pengaturan Akun
+                </h3>
                 
-                <button onclick="hapusAkun()" class="w-full flex items-center justify-between py-3.5 group rounded-xl hover:bg-rose-50 px-2 transition-colors duration-200 relative z-10">
-                    <div class="flex items-center gap-3 text-rose-500 group-hover:text-rose-600 transition-colors">
-                        <div class="w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-[0_8px_15px_-3px_rgba(244,63,94,0.4)]" style="background: linear-gradient(135deg, #fb7185, #e11d48);"><i class="fa-solid fa-trash-can text-sm"></i></div>
+                <button onclick="hapusAkun()" class="w-full flex items-center justify-between py-2.5 group rounded-xl hover:bg-rose-50 px-2 transition-colors duration-200 relative z-10">
+                    <div class="flex items-center gap-3 text-rose-600 group-hover:text-rose-700 transition-colors">
+                        <div class="w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-[0_6px_14px_-3px_rgba(244,63,94,0.45)]" style="background: linear-gradient(135deg, #fb7185, #e11d48);"><i class="fa-solid fa-trash-can text-sm"></i></div>
                         <div class="text-left">
                             <p class="text-sm font-black">Hapus Akun Perangkat</p>
-                            <p class="text-[10px] font-semibold text-rose-400/80">Hapus sesi login dari HP ini</p>
+                            <p class="text-[10px] font-semibold text-rose-400">Reset kredensial login dari HP ini</p>
                         </div>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-indigo-200 text-xs group-hover:text-rose-400 transition-colors"></i>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-xs group-hover:text-rose-500 transition-colors"></i>
                 </button>
             </div>
             
@@ -1013,7 +1120,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/portal.js?v=35"></script>
+    <script src="/portal.js?v=36"></script>
     <script src="instansi_config.js"></script>
 </body>
 </html>

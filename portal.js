@@ -889,8 +889,28 @@ async function loadDashboardData(idKaryawan) {
         if(result.success) {
             const myData = result.data.find(d => String(d.id_karyawan).trim().toLowerCase() === String(idKaryawan).trim().toLowerCase());
             if (myData) {
-                document.getElementById('rekap-hadir').textContent = myData.total_masuk || 0;
-                document.getElementById('rekap-alpa').textContent = myData.alpa || 0;
+                const hadirCount = parseInt(myData.total_masuk) || 0;
+                const alpaCount = parseInt(myData.alpa) || 0;
+                const dlCount = parseInt(myData.total_dl) || 0;
+                const iscCount = (parseInt(myData.total_izin)||0) + (parseInt(myData.total_sakit)||0) + (parseInt(myData.total_cuti)||0);
+                document.getElementById('rekap-hadir').textContent = hadirCount;
+                document.getElementById('rekap-alpa').textContent = alpaCount;
+
+                // Hitung total hari kerja (Senin-Sabtu) dalam bulan berjalan
+                const nowDate = new Date();
+                const totalDaysMonth = new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0).getDate();
+                let targetHariKerja = 0;
+                for (let dIdx = 1; dIdx <= totalDaysMonth; dIdx++) {
+                    if (new Date(nowDate.getFullYear(), nowDate.getMonth(), dIdx).getDay() !== 0) targetHariKerja++;
+                }
+                const efektifHadir = hadirCount + dlCount;
+                const pctCapaian = targetHariKerja > 0 ? Math.min(100, Math.round((efektifHadir / targetHariKerja) * 100)) : 0;
+                const elPct = document.getElementById('rekap-hadir-pct');
+                const elRasio = document.getElementById('rekap-hadir-rasio');
+                const elBar = document.getElementById('rekap-hadir-bar');
+                if (elPct) elPct.textContent = pctCapaian + '%';
+                if (elRasio) elRasio.textContent = efektifHadir + ' / ' + targetHariKerja + ' Hari Kerja';
+                if (elBar) setTimeout(() => { elBar.style.width = pctCapaian + '%'; }, 100);
                 document.getElementById('rekap-telat').textContent = myData.telat_kali || 0;
                 
                 const isc = (parseInt(myData.total_izin)||0) + (parseInt(myData.total_cuti)||0);
@@ -997,24 +1017,40 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                 }
             }
 
+            const namaHariList = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+            const isCurrentMonth = (parseInt(year) === now.getFullYear()) && (parseInt(month) === (now.getMonth() + 1));
+
             for (let i = 1; i <= 31; i++) {
                 if (i > daysInMonth) {
-                    html += `
-                        <tr class="border-b border-slate-200 bg-slate-50/50 even:bg-white">
-                            <td class="p-2 border-r border-slate-200 text-center font-bold text-slate-400">${i}</td>
-                            <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
-                            <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
-                            <td class="p-2 border-r border-slate-200 text-center text-slate-300">-</td>
-                            <td class="p-2 text-center text-slate-300">-</td>
-                        </tr>
-                    `;
                     continue;
                 }
 
+                const dateObj = new Date(year, targetDate.getMonth(), i);
+                const dayOfWeek = dateObj.getDay();
+                const namaHari = namaHariList[dayOfWeek];
+                const isSunday = dayOfWeek === 0;
+                const isToday = isCurrentMonth && (i === now.getDate());
+                const rowIdAttr = isToday ? 'id="daily-row-today"' : '';
+                const todayRowCls = isToday
+                    ? 'bg-gradient-to-r from-emerald-50 via-teal-50/95 to-sky-50 ring-2 ring-inset ring-teal-500/80 shadow-sm relative z-10'
+                    : 'hover:bg-teal-50/40 transition-colors even:bg-slate-50/60';
+                const dayNameCls = isSunday
+                    ? 'text-rose-600 bg-rose-100/80 border-rose-200'
+                    : (isToday ? 'text-teal-900 bg-amber-200/90 border-amber-300' : 'text-teal-700 bg-teal-50 border-teal-200/60');
+                const todayBadge = isToday
+                    ? '<span class="block mt-0.5 px-1.5 py-0.2 rounded bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-[7px] font-black uppercase tracking-wider shadow-sm">Hari Ini</span>'
+                    : '';
+                const tglCellHtml = `
+                    <div class="flex flex-col items-center justify-center leading-tight">
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-black ${isSunday ? 'text-rose-600' : 'text-teal-950'}">${String(i).padStart(2, '0')}</span>
+                            <span class="text-[8px] font-extrabold uppercase px-1 py-0.2 rounded border ${dayNameCls}">${namaHari}</span>
+                        </div>
+                        ${todayBadge}
+                    </div>`;
+
                 const d = historyMap[i];
                 if (d) {
-                    // Data ada
-                    let statusLabel = '';
                     if (d.status === 'IZIN' || d.status === 'SAKIT' || d.status === 'CUTI' || d.status === 'DL' || d.status === 'DINAS_LUAR') {
                         const badgeMap = {
                             'IZIN': 'bg-amber-50 text-amber-700 border-amber-200',
@@ -1025,8 +1061,8 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                         };
                         const badgeCls = badgeMap[d.status] || 'bg-teal-50 text-teal-700 border-teal-200';
                         html += `
-                            <tr class="border-b border-teal-100/60 hover:bg-teal-50/40 transition-colors even:bg-slate-50/60">
-                                <td class="p-2 border-r border-teal-100/60 text-center font-black text-teal-700 bg-teal-50/30">${i}</td>
+                            <tr ${rowIdAttr} class="border-b border-teal-100/60 ${todayRowCls}">
+                                <td class="p-2 border-r border-teal-100/60 text-center bg-teal-50/30">${tglCellHtml}</td>
                                 <td class="p-2 border-r border-teal-100/60 text-center" colspan="2"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider border ${badgeCls}">${d.status}</span></td>
                                 <td class="p-2 border-r border-teal-100/60 text-center text-slate-300">-</td>
                                 <td class="p-2 text-center text-slate-300">-</td>
@@ -1047,13 +1083,12 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     const psw = (d.psw_menit && d.psw_menit > 0) ? `<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-bold text-[10px] border border-purple-200/70">P:${d.psw_menit}m</span>` : `<span class="text-slate-300">-</span>`;
                     const telat = (d.telat_menit && d.telat_menit > 0) ? `<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-bold text-[10px] border border-amber-200/70">T:${d.telat_menit}m</span>` : `<span class="text-slate-300">-</span>`;
                     
-                    // Kalau telat, buat pill rose; kalau tepat waktu, pill emerald
                     const isTelat = d.status && d.status.toLowerCase().includes('telat');
                     const masukHTML = masuk === '-' ? '<span class="text-slate-300">-</span>' : (isTelat ? `<span class="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md font-bold text-[11px] border border-rose-200/80">${masuk}</span>` : `<span class="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-bold text-[11px] border border-emerald-200/80">${masuk}</span>`);
                     
                     html += `
-                        <tr class="border-b border-teal-100/60 hover:bg-teal-50/40 transition-colors even:bg-slate-50/60">
-                            <td class="p-2 border-r border-teal-100/60 text-center font-black text-teal-800 bg-teal-50/40">${i}</td>
+                        <tr ${rowIdAttr} class="border-b border-teal-100/60 ${todayRowCls}">
+                            <td class="p-2 border-r border-teal-100/60 text-center bg-teal-50/35">${tglCellHtml}</td>
                             <td class="p-2 border-r border-teal-100/60 text-center">${masukHTML}</td>
                             <td class="p-2 border-r border-teal-100/60 text-center font-medium">${pulang}</td>
                             <td class="p-2 border-r border-teal-100/60 text-center">${psw}</td>
@@ -1061,25 +1096,25 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                         </tr>
                     `;
                 } else {
-                    const dateObj = new Date(year, targetDate.getMonth(), i);
-                    const dayOfWeek = dateObj.getDay(); 
-                    const isFuture = dateObj > now;
+                    const isFuture = dateObj > now && !isToday;
                     
-                    let bg = '';
+                    let bg = isToday ? todayRowCls : '';
                     let info = '<span class="text-slate-300">-</span>';
                     
-                    if (isFuture) {
-                        bg = 'bg-slate-50/50';
-                    } else if (dayOfWeek === 0) {
-                        bg = 'bg-rose-50/30';
-                        info = '<span class="text-rose-400 text-[10px] font-bold">LBR</span>';
+                    if (isToday) {
+                        info = '<span class="bg-teal-100/80 text-teal-800 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider border border-teal-300">BELUM PRESENSI</span>';
+                    } else if (isFuture) {
+                        bg = 'bg-slate-50/40';
+                    } else if (isSunday) {
+                        bg = 'bg-rose-50/35';
+                        info = '<span class="bg-rose-50 text-rose-500 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-widest border border-rose-200/70">MINGGU / LIBUR</span>';
                     } else if (alpaDates.has(i)) {
-                        info = '<span class="text-rose-500 text-[10px] font-bold">ALPA</span>';
+                        info = '<span class="bg-rose-100 text-rose-600 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-widest border border-rose-200 shadow-sm">ALPA</span>';
                     }
 
                     html += `
-                        <tr class="border-b border-slate-200 ${bg} even:bg-slate-50">
-                            <td class="p-2 border-r border-slate-200 text-center font-bold text-slate-500">${i}</td>
+                        <tr ${rowIdAttr} class="border-b border-slate-200/80 ${bg} even:bg-slate-50/50">
+                            <td class="p-2 border-r border-slate-200/80 text-center">${tglCellHtml}</td>
                             <td class="p-2 text-center" colspan="4">${info}</td>
                         </tr>
                     `;
@@ -1093,6 +1128,26 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
     } catch (e) {
         console.error("Error daily metrics:", e);
         tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-rose-500 text-xs">Koneksi Error</td></tr>`;
+    }
+}
+
+function scrollToTodayMetric() {
+    const rowToday = document.getElementById('daily-row-today');
+    const scrollContainer = document.getElementById('daily-metrics-scroll');
+    if (rowToday && scrollContainer) {
+        const topOffset = rowToday.offsetTop - 48;
+        scrollContainer.scrollTo({ top: Math.max(0, topOffset), behavior: 'smooth' });
+        rowToday.classList.add('animate-pulse');
+        setTimeout(() => rowToday.classList.remove('animate-pulse'), 1500);
+    } else {
+        // Jika sedang memilih bulan lain, kembalikan ke bulan ini
+        const now = new Date();
+        const curPeriode = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const filterInput = document.getElementById('filter-bulan');
+        if (filterInput && filterInput.value !== curPeriode) {
+            filterInput.value = curPeriode;
+            onMonthFilterChange(curPeriode);
+        }
     }
 }
 
