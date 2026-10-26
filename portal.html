@@ -168,6 +168,13 @@
 
         /* Premium Profile Ring */
         @keyframes spin-slow { 100% { transform: rotate(360deg); } }
+        @keyframes mascot-float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-4px) rotate(2deg); }
+        }
+        .animate-mascot {
+            animation: mascot-float 3.5s ease-in-out infinite;
+        }
         .premium-profile-ring {
             position: absolute;
             inset: -4px;
@@ -480,9 +487,17 @@
                     </div>
                 </div>
 
-                <!-- Real-time Clock -->
-                <div class="flex items-center justify-between mt-2 mb-3">
-                    <span id="greeting-text" class="text-emerald-100 text-xs font-extrabold uppercase tracking-wider drop-shadow-sm">Selamat Pagi,</span>
+                <!-- Real-time Clock & Mini Doctor Mascot -->
+                <div class="flex items-center justify-between mt-1 mb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 rounded-full bg-white/15 border border-amber-200/40 backdrop-blur-md flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.2)] overflow-visible relative">
+                            <img src="/anime.png" alt="Maskot Dokter" class="w-10 h-10 object-contain animate-mascot drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)] -mt-1">
+                        </div>
+                        <div>
+                            <span id="greeting-text" class="text-emerald-100 text-xs font-extrabold uppercase tracking-wider drop-shadow-sm block leading-none">Selamat Pagi,</span>
+                            <span class="text-[9px] text-amber-200/90 font-bold tracking-widest uppercase">Salam Sehat & Semangat!</span>
+                        </div>
+                    </div>
                     <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl border border-amber-300/35 shadow-inner backdrop-blur-md" style="background: rgba(15, 23, 42, 0.28);">
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping"></span>
                         <span id="realtime-clock" class="text-amber-200 text-xs font-mono font-black tracking-widest">00:00:00</span>
@@ -493,7 +508,7 @@
                     <div class="flex items-center gap-4">
                         <div class="w-16 h-16 backdrop-blur-xl border-2 border-amber-200/50 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-[0_10px_30px_rgba(6,182,212,0.45)] overflow-hidden relative group" style="background: linear-gradient(135deg, rgba(20,184,166,0.45), rgba(14,165,233,0.45));">
                             <img id="user-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-transform duration-500 group-hover:scale-110" alt="Foto Pegawai">
-                            <i id="user-foto-icon" class="fa-regular fa-face-smile relative z-0 text-amber-200"></i>
+                            <img id="user-foto-icon" src="/anime.png" alt="Default Avatar" class="w-14 h-14 object-contain relative z-0 drop-shadow-md mt-1">
                         </div>
                         <div>
                             <p class="text-teal-100/90 text-[10px] font-bold mb-0.5 uppercase tracking-[0.15em]">Selamat datang,</p>
@@ -997,7 +1012,7 @@
                         <div class="w-24 h-28 rounded-2xl p-0.5 shadow-[0_10px_25px_rgba(0,0,0,0.45)] relative group" style="background: linear-gradient(135deg, #fde68a, #10b981, #38bdf8);">
                             <div class="w-full h-full rounded-[14px] overflow-hidden flex items-center justify-center relative bg-slate-900">
                                 <img id="profil-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden transition-transform duration-500 group-hover:scale-110" alt="Foto Profil">
-                                <i id="profil-foto-icon" class="fa-solid fa-user-doctor text-3xl text-amber-200/80"></i>
+                                <img id="profil-foto-icon" src="/anime.png" alt="Default Avatar" class="w-20 h-24 object-contain drop-shadow-md mt-1">
                             </div>
                         </div>
                         <span class="mt-2 px-2.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest text-emerald-950 shadow-sm" style="background: linear-gradient(135deg, #6ee7b7, #10b981);">Pegawai Aktif</span>
