@@ -423,10 +423,9 @@ function switchTab(tabName) {
     const navRiwayat = document.getElementById('nav-riwayat');
     const navProfil = document.getElementById('nav-profil');
     
-    // Define classes for modern floating dock navigation (with Ripple & Spring)
-    // Define classes for modern floating dock navigation
-    const inactiveClass = "flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-teal-700 hover:bg-teal-50/50 hover:border-teal-100 border border-transparent w-[76px] h-14 rounded-2xl active:scale-95 transition-all relative";
-    const activeClass = "flex flex-col items-center justify-center gap-1 p-2 text-teal-700 bg-teal-50/90 w-[76px] h-14 rounded-2xl active:scale-95 transition-all border border-teal-200/80 shadow-inner relative";
+    // Define classes for Luxury Floating Capsule Dock
+    const inactiveClass = "nav-dock-btn active:scale-95";
+    const activeClass = "nav-dock-btn nav-dock-btn-active active:scale-95";
     
     // Profil classes
     const profilInactiveClass = inactiveClass;
@@ -867,6 +866,50 @@ function renderRiwayatChart(data) {
     if (berandaPangkatEl) berandaPangkatEl.textContent = rankInfo.title;
     if (berandaXpEl) berandaXpEl.textContent = userXP + ' XP';
 
+    // Update Progress Bar Level XP & 5-Tier Roadmap di halaman Profil
+    const xpBarEl = document.getElementById('profil-xp-bar');
+    const nextRankLbl = document.getElementById('profil-next-rank-label');
+    const nextRankTarget = document.getElementById('profil-next-rank-target');
+    let nextTargetXP = 180;
+    let nextRankName = 'Legend Teladan 👑';
+    let currentTierIdx = 1;
+    if (userXP > 180) {
+        nextTargetXP = 200;
+        nextRankName = 'Level Maksimal Tercapai 👑';
+        currentTierIdx = 5;
+    } else if (userXP > 130) {
+        nextTargetXP = 181;
+        nextRankName = 'Menuju Legend Teladan 👑';
+        currentTierIdx = 4;
+    } else if (userXP > 80) {
+        nextTargetXP = 131;
+        nextRankName = 'Menuju Bintang Puskesmas ⭐';
+        currentTierIdx = 3;
+    } else if (userXP >= 10) {
+        nextTargetXP = 81;
+        nextRankName = 'Menuju Pegawai Andalan 🚀';
+        currentTierIdx = 2;
+    } else {
+        nextTargetXP = 10;
+        nextRankName = 'Menuju Pegawai Aktif 🎖️';
+        currentTierIdx = 1;
+    }
+    const xpPct = currentTierIdx === 5 ? 100 : Math.min(100, Math.round((userXP / nextTargetXP) * 100));
+    if (xpBarEl) xpBarEl.style.width = xpPct + '%';
+    if (nextRankLbl) nextRankLbl.innerHTML = '<i class="fa-solid fa-bolt text-amber-500"></i> ' + nextRankName;
+    if (nextRankTarget) nextRankTarget.textContent = currentTierIdx === 5 ? (userXP + ' XP (MAX)') : (userXP + ' / ' + nextTargetXP + ' XP');
+    for (let t = 1; t <= 5; t++) {
+        const pill = document.getElementById('tier-pill-' + t);
+        if (!pill) continue;
+        if (t === currentTierIdx) {
+            pill.className = 'rounded-lg py-1 px-0.5 border border-amber-400 bg-gradient-to-b from-amber-50 to-amber-100/90 text-[7px] font-black text-teal-950 shadow-sm scale-105 transition-all';
+        } else if (t < currentTierIdx) {
+            pill.className = 'rounded-lg py-1 px-0.5 border border-emerald-200 bg-emerald-50/70 text-[7px] font-extrabold text-emerald-700 transition-all';
+        } else {
+            pill.className = 'rounded-lg py-1 px-0.5 border border-slate-200 bg-white/80 text-[7px] font-extrabold text-slate-400 transition-all';
+        }
+    }
+
     // Update Persentase di Tengah Grafik Doughnut Riwayat
     const chartPctEl = document.getElementById('riwayat-chart-pct');
     const sumChart = totalHadir + totalAlpa + totalIzinDll;
@@ -1206,6 +1249,58 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
             const namaHariList = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
             const isCurrentMonth = (parseInt(year) === now.getFullYear()) && (parseInt(month) === (now.getMonth() + 1));
 
+            // Render Strip Jejak Presensi Pekan Ini (Senin - Sabtu) jika sedang memuat bulan berjalan
+            if (isCurrentMonth) {
+                const streakGrid = document.getElementById('weekly-streak-grid');
+                const streakBadge = document.getElementById('weekly-streak-badge');
+                if (streakGrid) {
+                    const todayDow = now.getDay(); // 0=Min, 1=Sen, ...
+                    const diffToMonday = todayDow === 0 ? -6 : (1 - todayDow);
+                    const mondayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
+                    let streakHtml = '';
+                    let hadirPekanIni = 0;
+                    const labelHari6 = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+                    for (let w = 0; w < 6; w++) {
+                        const dCheck = new Date(mondayDate.getFullYear(), mondayDate.getMonth(), mondayDate.getDate() + w);
+                        const dNum = dCheck.getDate();
+                        const isSameMonth = dCheck.getMonth() === now.getMonth();
+                        const isTodayW = isSameMonth && dNum === now.getDate();
+                        const recW = isSameMonth ? historyMap[dNum] : null;
+                        let boxCls = 'bg-slate-50 border-slate-200 text-slate-400';
+                        let iconHtml = '<i class="fa-solid fa-minus text-[8px]"></i>';
+                        if (recW) {
+                            if (recW.status === 'IZIN' || recW.status === 'SAKIT' || recW.status === 'CUTI' || recW.status === 'DL' || recW.status === 'DINAS_LUAR') {
+                                boxCls = 'bg-sky-50 border-sky-200 text-sky-700';
+                                iconHtml = '<i class="fa-solid fa-suitcase-medical text-[9px]"></i>';
+                                hadirPekanIni++;
+                            } else if (recW.jam_masuk && recW.jam_masuk !== '-') {
+                                hadirPekanIni++;
+                                const telatW = (recW.telat_menit && recW.telat_menit > 0) || (recW.status && recW.status.toLowerCase().includes('telat'));
+                                if (telatW) {
+                                    boxCls = 'bg-amber-50 border-amber-300 text-amber-800';
+                                    iconHtml = '<i class="fa-solid fa-clock text-[9px] text-amber-600"></i>';
+                                } else {
+                                    boxCls = 'bg-emerald-50 border-emerald-300 text-emerald-800';
+                                    iconHtml = '<i class="fa-solid fa-circle-check text-[9px] text-emerald-600"></i>';
+                                }
+                            }
+                        } else if (isSameMonth && alpaDates.has(dNum)) {
+                            boxCls = 'bg-rose-50 border-rose-200 text-rose-700';
+                            iconHtml = '<i class="fa-solid fa-circle-xmark text-[9px] text-rose-500"></i>';
+                        }
+                        const ringToday = isTodayW ? 'ring-2 ring-teal-500 shadow-sm' : '';
+                        streakHtml += `
+                            <div class="rounded-xl p-1.5 border ${boxCls} ${ringToday} flex flex-col items-center justify-center gap-0.5 transition-all">
+                                <span class="text-[8px] font-black uppercase tracking-wider">${labelHari6[w]}</span>
+                                ${iconHtml}
+                                <span class="text-[8px] font-mono font-bold opacity-80">${String(dNum).padStart(2, '0')}</span>
+                            </div>`;
+                    }
+                    streakGrid.innerHTML = streakHtml;
+                    if (streakBadge) streakBadge.textContent = hadirPekanIni + ' / 6 Hari Aktif';
+                }
+            }
+
             for (let i = 1; i <= 31; i++) {
                 if (i > daysInMonth) {
                     continue;
@@ -1247,7 +1342,7 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                         };
                         const badgeCls = badgeMap[d.status] || 'bg-teal-50 text-teal-700 border-teal-200';
                         html += `
-                            <tr ${rowIdAttr} class="border-b border-teal-100/60 ${todayRowCls}">
+                            <tr ${rowIdAttr} data-row-tags="ISC" class="daily-metric-row border-b border-teal-100/60 ${todayRowCls}">
                                 <td class="p-2 border-r border-teal-100/60 text-center bg-teal-50/30">${tglCellHtml}</td>
                                 <td class="p-2 border-r border-teal-100/60 text-center" colspan="2"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider border ${badgeCls}">${d.status}</span></td>
                                 <td class="p-2 border-r border-teal-100/60 text-center text-slate-300">-</td>
@@ -1271,9 +1366,13 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     
                     const isTelat = d.status && d.status.toLowerCase().includes('telat');
                     const masukHTML = masuk === '-' ? '<span class="text-slate-300">-</span>' : (isTelat ? `<span class="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md font-bold text-[11px] border border-rose-200/80">${masuk}</span>` : `<span class="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-bold text-[11px] border border-emerald-200/80">${masuk}</span>`);
+                    const rowTags = ['HADIR'];
+                    if (isTelat || (d.telat_menit && d.telat_menit > 0)) rowTags.push('TELAT');
+                    if (d.psw_menit && d.psw_menit > 0) rowTags.push('PSW');
+                    if ((masuk !== '-' && (d.jam_keluar === '-' || !d.jam_keluar)) || (d.keterangan && (d.keterangan.includes('Otomatis') || d.keterangan.includes('Tanpa Absen Pulang')))) rowTags.push('TAP');
                     
                     html += `
-                        <tr ${rowIdAttr} class="border-b border-teal-100/60 ${todayRowCls}">
+                        <tr ${rowIdAttr} data-row-tags="${rowTags.join(' ')}" class="daily-metric-row border-b border-teal-100/60 ${todayRowCls}">
                             <td class="p-2 border-r border-teal-100/60 text-center bg-teal-50/35">${tglCellHtml}</td>
                             <td class="p-2 border-r border-teal-100/60 text-center">${masukHTML}</td>
                             <td class="p-2 border-r border-teal-100/60 text-center font-medium">${pulang}</td>
@@ -1298,8 +1397,9 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                         info = '<span class="bg-rose-100 text-rose-600 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-widest border border-rose-200 shadow-sm">ALPA</span>';
                     }
 
+                    const emptyTag = alpaDates.has(i) ? 'ALPA' : 'NONE';
                     html += `
-                        <tr ${rowIdAttr} class="border-b border-slate-200/80 ${bg} even:bg-slate-50/50">
+                        <tr ${rowIdAttr} data-row-tags="${emptyTag}" class="daily-metric-row border-b border-slate-200/80 ${bg} even:bg-slate-50/50">
                             <td class="p-2 border-r border-slate-200/80 text-center">${tglCellHtml}</td>
                             <td class="p-2 text-center" colspan="4">${info}</td>
                         </tr>
@@ -1372,6 +1472,69 @@ function closeSlipModal() {
     modal.classList.add('opacity-0', 'pointer-events-none');
     content.classList.remove('scale-100');
     content.classList.add('scale-95');
+}
+
+function filterDailyTableByStatus(tag) {
+    const rows = document.querySelectorAll('.daily-metric-row');
+    const banner = document.getElementById('daily-filter-banner');
+    const label = document.getElementById('daily-filter-label');
+    const tableCard = document.getElementById('daily-table-card');
+    if (!rows.length) return;
+
+    const labelMap = {
+        'HADIR': 'Hari Kehadiran (Hadir)',
+        'ALPA': 'Hari Tanpa Keterangan (Alpa)',
+        'ISC': 'Izin / Sakit / Cuti / Dinas Luar',
+        'TELAT': 'Hari Terlambat (Telat)',
+        'PSW': 'Pulang Sebelum Waktu (PSW)',
+        'TAP': 'Tanpa Absen Pulang (TAP)'
+    };
+
+    if (!tag || tag === 'ALL') {
+        rows.forEach(r => r.classList.remove('hidden'));
+        if (banner) banner.classList.add('hidden');
+        return;
+    }
+
+    rows.forEach(r => {
+        const tags = (r.getAttribute('data-row-tags') || '').split(' ');
+        if (tags.includes(tag)) {
+            r.classList.remove('hidden');
+        } else {
+            r.classList.add('hidden');
+        }
+    });
+
+    if (banner && label) {
+        label.textContent = labelMap[tag] || tag;
+        banner.classList.remove('hidden');
+    }
+    if (tableCard) {
+        tableCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function openPhotoZoomModal() {
+    const modal = document.getElementById('photo-zoom-modal');
+    const imgEl = document.getElementById('zoom-foto-img');
+    const namaEl = document.getElementById('zoom-foto-nama');
+    const jabEl = document.getElementById('zoom-foto-jabatan');
+    const idEl = document.getElementById('zoom-foto-id');
+    if (!modal || !imgEl) return;
+
+    const userFoto = document.getElementById('user-foto');
+    const hasCustomFoto = userFoto && !userFoto.classList.contains('hidden') && userFoto.src;
+    imgEl.src = hasCustomFoto ? userFoto.src : '/anime.png';
+    if (namaEl) namaEl.textContent = document.getElementById('user-nama')?.textContent || 'Pegawai';
+    if (jabEl) jabEl.textContent = document.getElementById('user-jabatan')?.textContent || 'Pegawai';
+    if (idEl) idEl.textContent = 'ID: ' + (document.getElementById('user-id')?.textContent || '-');
+
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+}
+
+function closePhotoZoomModal() {
+    const modal = document.getElementById('photo-zoom-modal');
+    if (modal) modal.classList.add('opacity-0', 'pointer-events-none');
 }
 
 function scrollToTodayMetric() {
