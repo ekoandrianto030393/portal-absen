@@ -622,10 +622,10 @@
 
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-4">
-                        <div onclick="openPhotoZoomModal()" title="Klik untuk memperbesar foto" class="cursor-pointer w-16 h-16 backdrop-blur-xl border-2 border-amber-200/50 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-[0_10px_30px_rgba(6,182,212,0.45)] overflow-hidden relative group active:scale-95 transition-transform" style="background: linear-gradient(135deg, rgba(20,184,166,0.45), rgba(14,165,233,0.45));">
+                        <div onclick="openPhotoZoomModal()" title="Klik untuk memperbesar foto" class="cursor-pointer w-20 h-20 shrink-0 backdrop-blur-xl border-2 border-amber-200/65 rounded-[1.35rem] flex items-center justify-center text-3xl font-bold text-white shadow-[0_12px_32px_rgba(6,182,212,0.5)] overflow-hidden relative group active:scale-95 transition-transform" style="background: linear-gradient(135deg, rgba(20,184,166,0.45), rgba(14,165,233,0.45));">
                             <img id="user-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-transform duration-500 group-hover:scale-110" alt="Foto Pegawai">
-                            <img id="user-foto-icon" src="/anime.png" alt="Default Avatar" class="w-14 h-14 object-contain relative z-0 drop-shadow-md mt-1">
-                            <span class="absolute bottom-0.5 right-0.5 z-20 w-4 h-4 rounded-full bg-slate-900/60 text-amber-300 flex items-center justify-center text-[8px] border border-amber-300/40"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
+                            <img id="user-foto-icon" src="/anime.png" alt="Default Avatar" class="w-[72px] h-[72px] object-contain relative z-0 drop-shadow-md mt-1">
+                            <span class="absolute bottom-1 right-1 z-20 w-5 h-5 rounded-full bg-slate-900/65 text-amber-300 flex items-center justify-center text-[9px] border border-amber-300/50"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
                         </div>
                         <div>
                             <p class="text-teal-100/90 text-[10px] font-bold mb-0.5 uppercase tracking-[0.15em]">Selamat datang,</p>
@@ -1206,11 +1206,11 @@
                     <div class="flex items-center gap-4">
                         <!-- Photo Column -->
                         <div class="flex flex-col items-center shrink-0">
-                            <div onclick="openPhotoZoomModal()" title="Klik untuk memperbesar foto" class="cursor-pointer w-24 h-28 rounded-2xl p-0.5 shadow-[0_10px_25px_rgba(0,0,0,0.45)] relative group active:scale-95 transition-transform" style="background: linear-gradient(135deg, #fde68a, #10b981, #38bdf8);">
+                            <div onclick="openPhotoZoomModal()" title="Klik untuk memperbesar foto" class="cursor-pointer w-28 h-36 rounded-2xl p-0.5 shadow-[0_12px_28px_rgba(0,0,0,0.5)] relative group active:scale-95 transition-transform" style="background: linear-gradient(135deg, #fde68a, #10b981, #38bdf8);">
                                 <div class="w-full h-full rounded-[14px] overflow-hidden flex items-center justify-center relative bg-slate-900">
                                     <img id="profil-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden transition-transform duration-500 group-hover:scale-110" alt="Foto Profil">
-                                    <img id="profil-foto-icon" src="/anime.png" alt="Default Avatar" class="w-20 h-24 object-contain drop-shadow-md mt-1">
-                                    <span class="absolute bottom-1 right-1 z-20 w-5 h-5 rounded-full bg-slate-900/75 text-amber-300 flex items-center justify-center text-[9px] border border-amber-300/50"><i class="fa-solid fa-expand"></i></span>
+                                    <img id="profil-foto-icon" src="/anime.png" alt="Default Avatar" class="w-24 h-32 object-contain drop-shadow-md mt-1">
+                                    <span class="absolute bottom-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-slate-900/75 text-amber-300 flex items-center justify-center text-[9px] border border-amber-300/50"><i class="fa-solid fa-expand"></i></span>
                                 </div>
                             </div>
                             <span class="mt-2 px-2.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest text-emerald-950 shadow-sm" style="background: linear-gradient(135deg, #6ee7b7, #10b981);">Pegawai Aktif</span>
@@ -1448,7 +1448,7 @@
             <button type="button" onclick="closePhotoZoomModal()" class="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/15 hover:bg-rose-500 text-white flex items-center justify-center transition-colors z-20">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <div class="w-48 h-56 mx-auto rounded-2xl p-1 shadow-2xl mt-2 mb-4" style="background: linear-gradient(135deg, #fde68a, #10b981, #38bdf8);">
+            <div class="w-56 h-64 mx-auto rounded-2xl p-1 shadow-2xl mt-2 mb-4" style="background: linear-gradient(135deg, #fde68a, #10b981, #38bdf8);">
                 <div class="w-full h-full rounded-[14px] overflow-hidden bg-slate-900 flex items-center justify-center">
                     <img id="zoom-foto-img" src="/anime.png" alt="Foto Pegawai HD" class="w-full h-full object-cover">
                 </div>
