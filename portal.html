@@ -368,6 +368,16 @@
                 
                 <h2 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-900 via-teal-700 to-sky-700 mb-0.5 uppercase tracking-[0.12em]">Portal Presensi</h2>
                 <p class="text-[10px] font-extrabold tracking-[0.25em] text-teal-600 uppercase">Sistem Biometrik Pegawai</p>
+
+                <!-- Segmented Tab Switcher (Masuk / Registrasi) -->
+                <div id="auth-tab-switcher" class="mt-4 p-1 rounded-2xl bg-slate-200/75 border border-slate-300/60 grid grid-cols-2 gap-1 shadow-inner">
+                    <button type="button" id="tab-btn-login" onclick="toggleAuth('login')" class="py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all bg-white text-teal-800 shadow-sm border border-teal-200/80">
+                        <i class="fa-solid fa-right-to-bracket mr-1 text-teal-600"></i> Masuk
+                    </button>
+                    <button type="button" id="tab-btn-register" onclick="toggleAuth('register')" class="py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all text-slate-500 hover:text-teal-700">
+                        <i class="fa-solid fa-user-plus mr-1"></i> Registrasi
+                    </button>
+                </div>
             </div>
             
             <!-- FORM LOGIN -->
@@ -414,8 +424,9 @@
                 <div class="space-y-3">
                     <div class="relative group">
                         <i class="fa-solid fa-id-badge absolute left-4 top-3.5 text-teal-600 text-sm"></i>
-                        <input type="text" id="reg-id" placeholder="ID Karyawan (Contoh: A91)" class="input-luxury w-full pl-11 pr-4 py-3 outline-none text-sm">
+                        <input type="text" id="reg-id" oninput="onRegIdInput(this.value)" placeholder="Ketik ID Karyawan (Contoh: A91)" class="input-luxury w-full pl-11 pr-4 py-3 outline-none text-sm uppercase">
                     </div>
+                    <div id="reg-id-status" class="hidden text-[10px] font-extrabold px-3 py-2 rounded-xl border transition-all leading-snug"></div>
                     <div class="relative group">
                         <i class="fa-solid fa-signature absolute left-4 top-3.5 text-teal-600 text-sm"></i>
                         <input type="text" id="reg-nama" placeholder="Nama Lengkap" class="input-luxury w-full pl-11 pr-4 py-3 outline-none text-sm">
@@ -552,9 +563,15 @@
                         <div>
                             <p class="text-teal-100/90 text-[10px] font-bold mb-0.5 uppercase tracking-[0.15em]">Selamat datang,</p>
                             <h2 id="user-nama" class="font-black text-2xl leading-tight text-white tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]">Nama Pegawai</h2>
-                            <div class="flex flex-wrap items-center gap-2 mt-2">
+                            <div class="flex flex-wrap items-center gap-1.5 mt-2">
                                 <span id="user-jabatan" class="text-[9px] bg-gradient-to-r from-emerald-400/30 to-cyan-400/30 text-white px-2.5 py-1 rounded-lg font-black border border-emerald-200/40 uppercase tracking-widest shadow-sm backdrop-blur-sm">Jabatan</span>
                                 <span id="user-id" class="text-[9px] text-amber-200 px-2.5 py-1 rounded-lg font-mono font-black border border-amber-300/35 tracking-widest shadow-sm backdrop-blur-sm" style="background: rgba(251,191,36,0.14);">ID</span>
+                                <span id="beranda-pangkat-badge" onclick="switchTab('profil')" title="Klik untuk melihat Profil & Prestasi" class="cursor-pointer text-[9px] text-slate-950 px-2.5 py-1 rounded-lg font-black border border-amber-200 tracking-wider shadow-[0_2px_10px_rgba(251,191,36,0.4)] flex items-center gap-1 active:scale-95 transition-transform" style="background: linear-gradient(135deg, #fef08a, #f59e0b);">
+                                    <i class="fa-solid fa-crown text-[8px] text-amber-800"></i>
+                                    <span id="beranda-pangkat-text">Pegawai Aktif</span>
+                                    <span class="opacity-50">•</span>
+                                    <span id="beranda-xp-text" class="font-mono text-amber-950">0 XP</span>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -798,6 +815,28 @@
                 </div>
             </div>
             
+            <!-- Ringkasan Rata-Rata Jam Masuk & Jam Pulang Bulan Ini -->
+            <div class="grid grid-cols-2 gap-2.5 mt-2">
+                <div class="rounded-2xl px-3.5 py-2.5 border border-emerald-200/80 flex items-center gap-2.5 shadow-sm" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xs shadow-sm shrink-0">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                        <p class="text-[8px] font-extrabold text-emerald-800 uppercase tracking-wider">Rata-Rata Masuk</p>
+                        <p id="avg-jam-masuk" class="text-sm font-black text-emerald-950 font-mono leading-tight">--:--</p>
+                    </div>
+                </div>
+                <div class="rounded-2xl px-3.5 py-2.5 border border-sky-200/80 flex items-center gap-2.5 shadow-sm" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);">
+                    <div class="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center text-xs shadow-sm shrink-0">
+                        <i class="fa-solid fa-Person-walking-arrow-right fa-person-walking-arrow-right"></i>
+                    </div>
+                    <div>
+                        <p class="text-[8px] font-extrabold text-sky-800 uppercase tracking-wider">Rata-Rata Pulang</p>
+                        <p id="avg-jam-pulang" class="text-sm font-black text-sky-950 font-mono leading-tight">--:--</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tabel Harian -->
             <div class="rounded-[1.5rem] shadow-[0_14px_35px_-10px_rgba(13,148,136,0.18)] border border-teal-200/70 mt-2 relative overflow-hidden bg-white">
                 <div id="daily-metrics-scroll" class="overflow-x-auto overflow-y-auto max-h-[55vh] relative scroll-smooth">
@@ -845,7 +884,25 @@
             </div>
         </div>
 
-        <div class="px-5 -mt-10 relative z-20 space-y-4" id="riwayat-container">
+        <!-- Kartu Ringkasan Kumulatif di Atas Riwayat -->
+        <div class="px-5 -mt-10 mb-4 relative z-20">
+            <div class="rounded-[1.5rem] p-3.5 shadow-[0_14px_32px_-8px_rgba(4,47,46,0.3)] border border-amber-300/40 grid grid-cols-3 gap-2 text-center text-white" style="background: linear-gradient(135deg, #042f2e 0%, #134e4a 55%, #0369a1 100%);">
+                <div class="bg-white/10 border border-white/15 rounded-xl p-2 backdrop-blur-sm">
+                    <p class="text-[8px] font-extrabold text-teal-200 uppercase tracking-wider">Total Periode</p>
+                    <p id="kumulatif-bulan" class="text-sm font-black text-white mt-0.5">0 Bulan</p>
+                </div>
+                <div class="bg-white/10 border border-white/15 rounded-xl p-2 backdrop-blur-sm">
+                    <p class="text-[8px] font-extrabold text-emerald-200 uppercase tracking-wider">Total Hadir</p>
+                    <p id="kumulatif-hadir" class="text-sm font-black text-amber-300 mt-0.5">0 Hari</p>
+                </div>
+                <div class="bg-white/10 border border-white/15 rounded-xl p-2 backdrop-blur-sm">
+                    <p class="text-[8px] font-extrabold text-amber-200 uppercase tracking-wider">Skor Disiplin</p>
+                    <p id="kumulatif-persen" class="text-sm font-black text-emerald-300 font-mono mt-0.5">100%</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-5 relative z-20 space-y-4" id="riwayat-container">
             <!-- Loader untuk riwayat -->
             <div class="text-center py-10">
                 <div class="spinner mx-auto mb-4 w-8 h-8 border-[3px]"></div>
@@ -888,8 +945,12 @@
                     <span class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center text-xs shadow-sm"><i class="fa-solid fa-chart-pie"></i></span>
                     Grafik Proporsi Kehadiran Bulan Ini
                 </h3>
-                <div class="relative z-10" style="height: 200px;">
+                <div class="relative z-10 flex items-center justify-center" style="height: 215px;">
                     <canvas id="riwayatChart"></canvas>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none -mt-5">
+                        <span id="riwayat-chart-pct" class="text-2xl font-black text-teal-900 font-mono leading-none">0%</span>
+                        <span class="text-[8px] font-extrabold text-teal-600 uppercase tracking-widest mt-0.5">Kehadiran</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1037,73 +1098,105 @@
                             <p class="text-xs font-black text-white uppercase tracking-wider leading-none dynamic-instansi-nama">Puskesmas</p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 flex items-center gap-1 shadow-inner">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Verified
-                        </span>
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="toggleEidFlip()" class="px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-wider bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-300/50 flex items-center gap-1 active:scale-95 transition-all shadow-sm">
+                            <i class="fa-solid fa-repeat text-[8px]"></i> <span id="eid-flip-label">Balik Kartu</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- E-ID Body (Photo + Details + Smart Chip) -->
-                <div class="flex items-center gap-4 relative z-10">
-                    <!-- Photo Column -->
-                    <div class="flex flex-col items-center shrink-0">
-                        <div class="w-24 h-28 rounded-2xl p-0.5 shadow-[0_10px_25px_rgba(0,0,0,0.45)] relative group" style="background: linear-gradient(135deg, #fde68a, #10b981, #38bdf8);">
-                            <div class="w-full h-full rounded-[14px] overflow-hidden flex items-center justify-center relative bg-slate-900">
-                                <img id="profil-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden transition-transform duration-500 group-hover:scale-110" alt="Foto Profil">
-                                <img id="profil-foto-icon" src="/anime.png" alt="Default Avatar" class="w-20 h-24 object-contain drop-shadow-md mt-1">
+                <!-- TAMPAK DEPAN E-ID CARD -->
+                <div id="eid-front" class="relative z-10 transition-all duration-300">
+                    <!-- E-ID Body (Photo + Details + Smart Chip) -->
+                    <div class="flex items-center gap-4">
+                        <!-- Photo Column -->
+                        <div class="flex flex-col items-center shrink-0">
+                            <div class="w-24 h-28 rounded-2xl p-0.5 shadow-[0_10px_25px_rgba(0,0,0,0.45)] relative group" style="background: linear-gradient(135deg, #fde68a, #10b981, #38bdf8);">
+                                <div class="w-full h-full rounded-[14px] overflow-hidden flex items-center justify-center relative bg-slate-900">
+                                    <img id="profil-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden transition-transform duration-500 group-hover:scale-110" alt="Foto Profil">
+                                    <img id="profil-foto-icon" src="/anime.png" alt="Default Avatar" class="w-20 h-24 object-contain drop-shadow-md mt-1">
+                                </div>
                             </div>
+                            <span class="mt-2 px-2.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest text-emerald-950 shadow-sm" style="background: linear-gradient(135deg, #6ee7b7, #10b981);">Pegawai Aktif</span>
                         </div>
-                        <span class="mt-2 px-2.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest text-emerald-950 shadow-sm" style="background: linear-gradient(135deg, #6ee7b7, #10b981);">Pegawai Aktif</span>
-                    </div>
 
-                    <!-- Identity Details Column -->
-                    <div class="flex-1 min-w-0 text-left">
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="text-[9px] font-bold text-teal-200/80 uppercase tracking-widest">Nama Lengkap</span>
-                            <!-- Realistic Gold Smart Chip -->
-                            <div class="w-8 h-6 rounded-md border border-amber-200/70 shadow-inner flex items-center justify-center opacity-90" style="background: linear-gradient(135deg, #fef08a 0%, #d97706 50%, #fde047 100%);">
-                                <div class="w-5 h-3.5 border border-amber-900/40 rounded-sm grid grid-cols-2 gap-px p-px">
-                                    <div class="bg-amber-900/20"></div><div class="bg-amber-900/20"></div>
-                                    <div class="bg-amber-900/20"></div><div class="bg-amber-900/20"></div>
+                        <!-- Identity Details Column -->
+                        <div class="flex-1 min-w-0 text-left">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[9px] font-bold text-teal-200/80 uppercase tracking-widest">Nama Lengkap</span>
+                                <!-- Realistic Gold Smart Chip -->
+                                <div class="w-8 h-6 rounded-md border border-amber-200/70 shadow-inner flex items-center justify-center opacity-90" style="background: linear-gradient(135deg, #fef08a 0%, #d97706 50%, #fde047 100%);">
+                                    <div class="w-5 h-3.5 border border-amber-900/40 rounded-sm grid grid-cols-2 gap-px p-px">
+                                        <div class="bg-amber-900/20"></div><div class="bg-amber-900/20"></div>
+                                        <div class="bg-amber-900/20"></div><div class="bg-amber-900/20"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <h2 id="profil-nama" class="font-black text-lg text-white tracking-wide leading-snug truncate drop-shadow-sm">Nama Pegawai</h2>
+                            <p id="profil-jabatan" class="inline-block text-amber-200 text-[9px] font-black mt-1 uppercase tracking-[0.16em] px-2.5 py-0.5 rounded-md border border-amber-300/35 bg-amber-400/10">Jabatan</p>
+
+                            <div class="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-white/10">
+                                <div class="bg-white/5 border border-white/10 rounded-xl px-2.5 py-1.5">
+                                    <p class="text-[8px] font-bold text-teal-200/70 uppercase tracking-wider">ID Biometrik</p>
+                                    <p id="profil-id" class="text-xs font-black text-amber-300 font-mono tracking-wider mt-0.5">ID</p>
+                                </div>
+                                <div class="bg-white/5 border border-white/10 rounded-xl px-2.5 py-1.5">
+                                    <p class="text-[8px] font-bold text-teal-200/70 uppercase tracking-wider">Otorisasi</p>
+                                    <p class="text-xs font-black text-emerald-300 tracking-wider mt-0.5 flex items-center gap-1"><i class="fa-solid fa-fingerprint text-[10px]"></i> Wajah/FP</p>
                                 </div>
                             </div>
                         </div>
-                        <h2 id="profil-nama" class="font-black text-lg text-white tracking-wide leading-snug truncate drop-shadow-sm">Nama Pegawai</h2>
-                        <p id="profil-jabatan" class="inline-block text-amber-200 text-[9px] font-black mt-1 uppercase tracking-[0.16em] px-2.5 py-0.5 rounded-md border border-amber-300/35 bg-amber-400/10">Jabatan</p>
+                    </div>
 
-                        <div class="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-white/10">
-                            <div class="bg-white/5 border border-white/10 rounded-xl px-2.5 py-1.5">
-                                <p class="text-[8px] font-bold text-teal-200/70 uppercase tracking-wider">ID Biometrik</p>
-                                <p id="profil-id" class="text-xs font-black text-amber-300 font-mono tracking-wider mt-0.5">ID</p>
+                    <!-- E-ID Bottom Barcode Verification Strip -->
+                    <div class="mt-4 pt-3 border-t border-white/15 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-amber-300">
+                                <i class="fa-solid fa-qrcode text-sm"></i>
                             </div>
-                            <div class="bg-white/5 border border-white/10 rounded-xl px-2.5 py-1.5">
-                                <p class="text-[8px] font-bold text-teal-200/70 uppercase tracking-wider">Otorisasi</p>
-                                <p class="text-xs font-black text-emerald-300 tracking-wider mt-0.5 flex items-center gap-1"><i class="fa-solid fa-fingerprint text-[10px]"></i> Wajah/FP</p>
+                            <div>
+                                <p class="text-[8px] font-extrabold text-teal-200 uppercase tracking-widest">Kartu Presensi Digital</p>
+                                <p class="text-[9px] font-mono text-white/80 tracking-wider">PORTAL-BIO-VERIFIED</p>
                             </div>
+                        </div>
+                        <div class="bg-white/95 px-2.5 py-1 rounded-lg shadow-inner flex flex-col items-center">
+                            <svg class="h-5 w-24 text-slate-900" viewBox="0 0 120 24" fill="currentColor">
+                                <rect x="2" y="2" width="3" height="20"/><rect x="7" y="2" width="1.5" height="20"/><rect x="11" y="2" width="4" height="20"/><rect x="17" y="2" width="2" height="20"/><rect x="22" y="2" width="1.5" height="20"/><rect x="26" y="2" width="5" height="20"/><rect x="33" y="2" width="2" height="20"/><rect x="37" y="2" width="3" height="20"/><rect x="43" y="2" width="1.5" height="20"/><rect x="47" y="2" width="4" height="20"/><rect x="53" y="2" width="2" height="20"/><rect x="58" y="2" width="4.5" height="20"/><rect x="65" y="2" width="1.5" height="20"/><rect x="69" y="2" width="3" height="20"/><rect x="75" y="2" width="2" height="20"/><rect x="79" y="2" width="4" height="20"/><rect x="85" y="2" width="1.5" height="20"/><rect x="89" y="2" width="3.5" height="20"/><rect x="95" y="2" width="2" height="20"/><rect x="100" y="2" width="4" height="20"/><rect x="106" y="2" width="1.5" height="20"/><rect x="110" y="2" width="3" height="20"/><rect x="115" y="2" width="2" height="20"/>
+                            </svg>
                         </div>
                     </div>
                 </div>
 
-                <!-- E-ID Bottom Barcode Verification Strip -->
-                <div class="mt-4 pt-3 border-t border-white/15 flex items-center justify-between gap-3 relative z-10">
-                    <div class="flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-amber-300">
-                            <i class="fa-solid fa-qrcode text-sm"></i>
-                        </div>
-                        <div>
-                            <p class="text-[8px] font-extrabold text-teal-200 uppercase tracking-widest">Kartu Presensi Digital</p>
-                            <p class="text-[9px] font-mono text-white/80 tracking-wider">PORTAL-BIO-VERIFIED</p>
-                        </div>
+                <!-- TAMPAK BELAKANG E-ID CARD (KETENTUAN & VERIFIKASI) -->
+                <div id="eid-back" class="hidden relative z-10 transition-all duration-300 text-left">
+                    <div class="w-full h-7 bg-slate-950/80 rounded-lg mb-3 flex items-center px-3 justify-between border border-white/10">
+                        <span class="text-[8px] font-mono text-amber-300/90 tracking-widest">MAGNETIC BIO-STRIP • AUTHORIZED PERSONNEL</span>
+                        <i class="fa-solid fa-lock text-[9px] text-emerald-400"></i>
                     </div>
-                    <!-- Crisp SVG Barcode Visual -->
-                    <div class="bg-white/95 px-2.5 py-1 rounded-lg shadow-inner flex flex-col items-center">
-                        <svg class="h-5 w-24 text-slate-900" viewBox="0 0 120 24" fill="currentColor">
-                            <rect x="2" y="2" width="3" height="20"/><rect x="7" y="2" width="1.5" height="20"/><rect x="11" y="2" width="4" height="20"/><rect x="17" y="2" width="2" height="20"/><rect x="22" y="2" width="1.5" height="20"/><rect x="26" y="2" width="5" height="20"/><rect x="33" y="2" width="2" height="20"/><rect x="37" y="2" width="3" height="20"/><rect x="43" y="2" width="1.5" height="20"/><rect x="47" y="2" width="4" height="20"/><rect x="53" y="2" width="2" height="20"/><rect x="58" y="2" width="4.5" height="20"/><rect x="65" y="2" width="1.5" height="20"/><rect x="69" y="2" width="3" height="20"/><rect x="75" y="2" width="2" height="20"/><rect x="79" y="2" width="4" height="20"/><rect x="85" y="2" width="1.5" height="20"/><rect x="89" y="2" width="3.5" height="20"/><rect x="95" y="2" width="2" height="20"/><rect x="100" y="2" width="4" height="20"/><rect x="106" y="2" width="1.5" height="20"/><rect x="110" y="2" width="3" height="20"/><rect x="115" y="2" width="2" height="20"/>
-                        </svg>
+                    <div class="space-y-1.5 text-[10px] text-teal-100/90 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/10">
+                        <p class="font-black text-amber-300 uppercase tracking-wider text-[9px] mb-1"><i class="fa-solid fa-circle-check mr-1"></i> Ketentuan Kartu Identitas Digital:</p>
+                        <p>1. Kartu ini merupakan identitas resmi pegawai pada sistem presensi biometrik <span class="font-bold text-white dynamic-instansi-nama">Puskesmas</span>.</p>
+                        <p>2. Terhubung langsung dengan basis data kehadiran wajah & sidik jari terpusat.</p>
+                        <p>3. Penyalahgunaan akun atau ID Biometrik tercatat secara otomatis oleh sistem keamanan server.</p>
+                    </div>
+                    <div class="mt-3 pt-2.5 border-t border-white/15 flex items-center justify-between">
+                        <div>
+                            <p class="text-[8px] text-teal-200/80 uppercase font-bold">Status Kepegawaian</p>
+                            <p class="text-[10px] font-black text-emerald-300 uppercase tracking-wider">Terdaftar & Terverifikasi Aktif</p>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-lg bg-white/10 border border-amber-300/40 text-amber-200 font-mono text-[9px] font-black">BIO-AUTH v3.8</span>
                     </div>
                 </div>
             </div>
+
+            <!-- TOMBOL CETAK / LIHAT SLIP REKAP KEHADIRAN BULANAN -->
+            <button type="button" onclick="openSlipModal()" class="w-full py-3.5 px-4 rounded-2xl font-black text-xs uppercase tracking-widest text-white shadow-[0_12px_25px_-6px_rgba(13,148,136,0.45)] border border-teal-300/50 flex items-center justify-between active:scale-98 transition-all" style="background: linear-gradient(135deg, #047857 0%, #0d9488 50%, #0284c7 100%);">
+                <span class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shadow-sm"><i class="fa-solid fa-file-invoice text-sm"></i></span>
+                    <span>Lihat / Cetak Slip Kehadiran Bulanan</span>
+                </span>
+                <i class="fa-solid fa-chevron-right text-amber-200"></i>
+            </button>
 
             <!-- GAMIFIKASI: Prestasi & Pangkat (Harmonized Emerald-Teal-Gold) -->
             <div class="rounded-[1.5rem] p-5 shadow-[0_14px_35px_-10px_rgba(13,148,136,0.16)] border border-teal-200/80 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #f0fdfa 55%, #ecfdf5 100%);">
@@ -1171,6 +1264,69 @@
         <div class="h-6"></div>
     </div>
 
+    <!-- MODAL SLIP REKAPITULASI KEHADIRAN RESMI -->
+    <div id="slip-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="slip-modal-content" class="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl border border-teal-200 transform scale-95 transition-transform duration-300 max-h-[90vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="p-4 text-white flex items-center justify-between" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 55%, #0284c7 100%);">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm border border-amber-300">
+                        <img src="/husada.png" alt="Logo" class="w-full h-full object-contain">
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-extrabold text-amber-300 uppercase tracking-widest leading-none">Dokumen Presensi Resmi</p>
+                        <h3 class="text-sm font-black uppercase tracking-wider mt-0.5 dynamic-instansi-nama">Puskesmas</h3>
+                    </div>
+                </div>
+                <button type="button" onclick="closeSlipModal()" class="w-8 h-8 rounded-full bg-white/15 hover:bg-rose-500 text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Printable Slip Body -->
+            <div class="p-5 overflow-y-auto space-y-4 text-xs text-slate-700" id="slip-printable-area">
+                <div class="text-center border-b border-dashed border-slate-300 pb-3">
+                    <p class="text-[10px] font-black text-teal-700 uppercase tracking-[0.2em]">Slip Rekapitulasi Kehadiran</p>
+                    <p id="slip-periode" class="text-[11px] font-bold text-slate-500 mt-0.5">Periode: Bulan Ini</p>
+                </div>
+
+                <div class="bg-teal-50/70 border border-teal-200/80 rounded-2xl p-3.5 space-y-1.5">
+                    <div class="flex justify-between"><span class="text-slate-500 font-semibold">Nama Pegawai</span><span id="slip-nama" class="font-black text-teal-950 text-right">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 font-semibold">ID Biometrik</span><span id="slip-id" class="font-black font-mono text-teal-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 font-semibold">Jabatan</span><span id="slip-jabatan" class="font-bold text-slate-800">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 font-semibold">Predikat Disiplin</span><span id="slip-pangkat" class="font-black text-emerald-700">-</span></div>
+                </div>
+
+                <div class="border border-slate-200 rounded-2xl overflow-hidden">
+                    <table class="w-full text-xs">
+                        <tbody class="divide-y divide-slate-100 font-semibold">
+                            <tr class="bg-emerald-50/50"><td class="p-2.5 text-slate-600">Total Kehadiran (Hadir)</td><td id="slip-hadir" class="p-2.5 text-right font-black text-emerald-700">0 Hari</td></tr>
+                            <tr><td class="p-2.5 text-slate-600">Dinas Luar (DL)</td><td id="slip-dl" class="p-2.5 text-right font-bold text-sky-700">0 Hari</td></tr>
+                            <tr><td class="p-2.5 text-slate-600">Izin / Sakit / Cuti</td><td id="slip-isc" class="p-2.5 text-right font-bold text-blue-700">0 Hari</td></tr>
+                            <tr class="bg-rose-50/40"><td class="p-2.5 text-slate-600">Tanpa Keterangan (Alpa)</td><td id="slip-alpa" class="p-2.5 text-right font-black text-rose-600">0 Hari</td></tr>
+                            <tr><td class="p-2.5 text-slate-600">Keterlambatan (Telat)</td><td id="slip-telat" class="p-2.5 text-right font-bold text-amber-700">0x (0 Menit)</td></tr>
+                            <tr><td class="p-2.5 text-slate-600">Pulang Cepat (PSW)</td><td id="slip-psw" class="p-2.5 text-right font-bold text-purple-700">0x (0 Menit)</td></tr>
+                            <tr><td class="p-2.5 text-slate-600">Tanpa Absen Pulang (TAP)</td><td id="slip-tap" class="p-2.5 text-right font-bold text-red-600">0 Kali</td></tr>
+                            <tr class="bg-teal-900 text-white"><td class="p-3 font-black uppercase tracking-wider text-[10px]">Total Akumulasi Jam Kerja</td><td id="slip-jam" class="p-3 text-right font-black font-mono text-amber-300 text-sm">00:00:00</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="text-center pt-1">
+                    <p class="text-[9px] text-slate-400 font-semibold">Dicetak secara otomatis melalui Portal Biometrik Resmi • Terverifikasi Sistem</p>
+                </div>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="p-4 bg-slate-50 border-t border-slate-200 grid grid-cols-2 gap-2.5">
+                <button type="button" onclick="closeSlipModal()" class="py-2.5 rounded-xl font-bold text-xs text-slate-600 bg-white border border-slate-300 hover:bg-slate-100">Tutup</button>
+                <button type="button" onclick="window.print()" class="py-2.5 rounded-xl font-black text-xs text-white shadow-md flex items-center justify-center gap-1.5" style="background: linear-gradient(135deg, #059669, #0284c7);">
+                    <i class="fa-solid fa-print"></i> Cetak / PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Bottom Navigation Bar (Modern Apple Floating Dock Style) -->
     <div id="bottom-nav" class="fixed bottom-0 left-0 right-0 py-2.5 px-4 flex justify-around items-center z-40 hidden opacity-0 translate-y-full transition-all duration-500" style="background: rgba(255,255,255,0.94); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-top: 1px solid rgba(153,246,228,0.8); box-shadow: 0 -10px 35px -5px rgba(13,148,136,0.14);">
         <button id="nav-beranda" onclick="switchTab('beranda')" class="flex flex-col items-center justify-center gap-1 p-2 text-teal-700 bg-teal-50/90 w-[76px] h-14 rounded-2xl active:scale-95 transition-all relative border border-teal-200/80 shadow-inner">
@@ -1200,7 +1356,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/portal.js?v=37"></script>
+    <script src="/portal.js?v=38"></script>
     <script src="instansi_config.js"></script>
 </body>
 </html>

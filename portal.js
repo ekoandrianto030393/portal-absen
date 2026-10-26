@@ -44,7 +44,7 @@ window.onload = () => {
     // Paksa Logout jika user punya sesi tapi tidak punya token (Migrasi JWT)
     if (session && !token) {
         localStorage.removeItem('pegawai_session');
-        localStorage.removeItem('pegawai_token');
+    localStorage.removeItem('pegawai_token');
         window.location.reload();
         return;
     }
@@ -59,31 +59,6 @@ window.onload = () => {
         
         if (session) {
             showDashboard(JSON.parse(session));
-        } else if (token) {
-            // Punya token tapi session hilang (misalnya clear storage sebagian)
-            // Coba restore session dari server menggunakan token
-            fetch(`${API_BASE}/pegawai/me`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
-            .then(r => {
-                if (!r.ok) throw new Error('Token tidak valid');
-                return r.json();
-            })
-            .then(data => {
-                if (data.success && data.data) {
-                    localStorage.setItem('pegawai_session', JSON.stringify(data.data));
-                    showDashboard(data.data);
-                } else {
-                    // Token invalid, bersihkan
-                    localStorage.removeItem('pegawai_token');
-                    showAuthPage();
-                }
-            })
-            .catch(() => {
-                // Gagal verifikasi token, bersihkan dan minta login ulang
-                localStorage.removeItem('pegawai_token');
-                showAuthPage();
-            });
         } else {
             // Cek apakah ada request ganti password yang pending di localStorage
             const pendingReqId = localStorage.getItem('pending_reset_id');
@@ -135,26 +110,90 @@ function showLockScreen() {
     document.getElementById('lock-screen').classList.remove('hidden');
 }
 
+let cachedKaryawanList = null;
+
+async function ensureKaryawanListLoaded() {
+    if (cachedKaryawanList) return cachedKaryawanList;
+    try {
+        const res = await fetch(`${API_BASE}/karyawan/descriptors?_t=${Date.now()}`);
+        const data = await res.json();
+        if (data && Array.isArray(data.descriptors)) {
+            cachedKaryawanList = data.descriptors;
+            return cachedKaryawanList;
+        }
+    } catch (e) {}
+    return [];
+}
+
+async function onRegIdInput(val) {
+    const statusBox = document.getElementById('reg-id-status');
+    const namaInput = document.getElementById('reg-nama');
+    const cleanId = String(val || '').trim().toUpperCase();
+    if (!statusBox) return;
+
+    if (!cleanId) {
+        statusBox.classList.add('hidden');
+        return;
+    }
+
+    const list = await ensureKaryawanListLoaded();
+    if (!list || list.length === 0) return;
+
+    const match = list.find(k => String(k.id_karyawan || '').trim().toUpperCase() === cleanId);
+    statusBox.classList.remove('hidden');
+
+    if (match) {
+        if (namaInput) namaInput.value = match.nama || '';
+        if (match.username) {
+            statusBox.className = 'text-[10px] font-extrabold px-3 py-2 rounded-xl border transition-all leading-snug bg-amber-50 text-amber-800 border-amber-300';
+            statusBox.innerHTML = `<i class="fa-solid fa-circle-info text-amber-600 mr-1"></i> Pegawai <b>${match.nama}</b> sudah memiliki akun (Username: <b>${match.username}</b>). Silakan Login atau gunakan Lupa Password.`;
+        } else {
+            statusBox.className = 'text-[10px] font-extrabold px-3 py-2 rounded-xl border transition-all leading-snug bg-emerald-50 text-emerald-800 border-emerald-300';
+            statusBox.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i> ID Terverifikasi: <b>${match.nama}</b> (${match.jabatan || 'Pegawai'}). Nama terisi otomatis!`;
+        }
+    } else {
+        statusBox.className = 'text-[10px] font-extrabold px-3 py-2 rounded-xl border transition-all leading-snug bg-rose-50 text-rose-700 border-rose-200';
+        statusBox.innerHTML = `<i class="fa-solid fa-circle-exclamation text-rose-500 mr-1"></i> ID <b>${cleanId}</b> belum ditemukan pada data biometrik Puskesmas.`;
+    }
+}
+
 function toggleAuth(type) {
     document.getElementById('login-form').classList.add('hidden');
     document.getElementById('register-form').classList.add('hidden');
     document.getElementById('forgot-password-form').classList.add('hidden');
+
+    const tabLogin = document.getElementById('tab-btn-login');
+    const tabReg = document.getElementById('tab-btn-register');
+    const activeTabCls = "py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all bg-white text-teal-800 shadow-sm border border-teal-200/80";
+    const inactiveTabCls = "py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all text-slate-500 hover:text-teal-700";
     
     if (type === 'register') {
         document.getElementById('register-form').classList.remove('hidden');
+        if (tabLogin) tabLogin.className = inactiveTabCls;
+        if (tabReg) tabReg.className = activeTabCls;
+        ensureKaryawanListLoaded();
     } else if (type === 'forgot-password') {
         document.getElementById('forgot-password-form').classList.remove('hidden');
+        if (tabLogin) tabLogin.className = inactiveTabCls;
+        if (tabReg) tabReg.className = inactiveTabCls;
     } else {
         document.getElementById('login-form').classList.remove('hidden');
+        if (tabLogin) tabLogin.className = activeTabCls;
+        if (tabReg) tabReg.className = inactiveTabCls;
     }
 }
 
 async function login() {
     const username = document.getElementById('login-username').value;
     const password = document.getElementById('login-password').value;
-    
+
     if(!username || !password) return alert('Isi username dan password');
-    
+
+    // Cegah double-submit
+    const btn = document.querySelector('#login-form button');
+    const origText = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Memeriksa...'; }
+
     try {
         const res = await fetch(`${API_BASE}/pegawai/login`, {
             method: 'POST',
@@ -162,7 +201,13 @@ async function login() {
             body: JSON.stringify({username, password})
         });
         const data = await res.json();
-        
+
+        if (res.status === 429) {
+            const menit = data.retry_after_minutes || 15;
+            alert(`Terlalu banyak percobaan login.\n\nCoba lagi dalam ${menit} menit.\n(Sistem membatasi percobaan login untuk keamanan)`);
+            return;
+        }
+
         if(data.success) {
             localStorage.setItem('pegawai_session', JSON.stringify(data.data));
             localStorage.setItem('pegawai_token', data.token);
@@ -171,7 +216,13 @@ async function login() {
             alert(data.message);
         }
     } catch (e) {
-        alert("Gagal koneksi ke server");
+        if (e instanceof TypeError) {
+            alert('Tidak dapat terhubung ke server.\n\nPastikan:\n- Server biometrik sedang berjalan\n- Koneksi jaringan Anda aktif\n\nHubungi Admin jika masalah berlanjut.');
+        } else {
+            alert('Gagal koneksi ke server: ' + e.message);
+        }
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = origText || 'Masuk'; }
     }
 }
 
@@ -287,7 +338,6 @@ async function hapusAkun() {
         
         if (data.success) {
             localStorage.removeItem('pegawai_session');
-            localStorage.removeItem('pegawai_token');
             window.location.reload();
         }
     } catch (e) {
@@ -519,6 +569,7 @@ async function loadRiwayatBulanan(idKaryawan) {
                     <h3 class="text-slate-800 font-bold mb-1">Belum Ada Riwayat</h3>
                     <p class="text-xs text-slate-500">Anda belum memiliki riwayat absensi bulanan.</p>
                 </div>`;
+            renderRiwayatChart([]);
             return;
         }
         
@@ -537,6 +588,24 @@ async function loadRiwayatBulanan(idKaryawan) {
             return date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
         };
         
+        // === HITUNG RINGKASAN KUMULATIF DI ATAS RIWAYAT ===
+        let kumHadir = 0;
+        let kumAlpa = 0;
+        let kumIsc = 0;
+        result.data.forEach(it => {
+            kumHadir += Number(it.total_masuk || 0) + Number(it.total_dl || 0);
+            kumAlpa += Number(it.alpa || 0);
+            kumIsc += Number(it.total_izin || 0) + Number(it.total_sakit || 0) + Number(it.total_cuti || 0);
+        });
+        const kumTotal = kumHadir + kumAlpa;
+        const kumPct = kumTotal > 0 ? Math.round((kumHadir / kumTotal) * 100) : 100;
+        const elKumBulan = document.getElementById('kumulatif-bulan');
+        const elKumHadir = document.getElementById('kumulatif-hadir');
+        const elKumPersen = document.getElementById('kumulatif-persen');
+        if (elKumBulan) elKumBulan.textContent = result.data.length + ' Bulan';
+        if (elKumHadir) elKumHadir.textContent = kumHadir + ' Hari';
+        if (elKumPersen) elKumPersen.textContent = kumPct + '%';
+
         // === RENDER SUMMARY CARDS (original cards style) ===
         let html = '';
         result.data.forEach(item => {
@@ -791,6 +860,20 @@ function renderRiwayatChart(data) {
         pangkatEl.className = 'px-3 py-1 text-[11px] font-bold rounded-full inline-block ' + rankInfo.color;
         if(notesEl) notesEl.textContent = rankInfo.notes;
     }
+
+    // Update Lencana Pangkat & XP langsung di Header Beranda
+    const berandaPangkatEl = document.getElementById('beranda-pangkat-text');
+    const berandaXpEl = document.getElementById('beranda-xp-text');
+    if (berandaPangkatEl) berandaPangkatEl.textContent = rankInfo.title;
+    if (berandaXpEl) berandaXpEl.textContent = userXP + ' XP';
+
+    // Update Persentase di Tengah Grafik Doughnut Riwayat
+    const chartPctEl = document.getElementById('riwayat-chart-pct');
+    const sumChart = totalHadir + totalAlpa + totalIzinDll;
+    if (chartPctEl) {
+        const pctVal = sumChart > 0 ? Math.round(((totalHadir + totalIzinDll) / sumChart) * 100) : 0;
+        chartPctEl.textContent = pctVal + '%';
+    }
     
     // Jika tidak ada data sama sekali, jangan render
     if(totalHadir === 0 && totalAlpa === 0 && totalIzinDll === 0) return;
@@ -998,10 +1081,8 @@ async function loadDashboardData(idKaryawan) {
                 if (elBar) setTimeout(() => { elBar.style.width = pctCapaian + '%'; }, 100);
                 document.getElementById('rekap-telat').textContent = myData.telat_kali || 0;
                 
-                const isc = (parseInt(myData.total_izin)||0) + (parseInt(myData.total_cuti)||0);
+                const isc = (parseInt(myData.total_izin)||0) + (parseInt(myData.total_sakit)||0) + (parseInt(myData.total_cuti)||0) + (parseInt(myData.total_dl)||0);
                 document.getElementById('rekap-isc').textContent = isc;
-                if(document.getElementById('rekap-sakit')) { document.getElementById('rekap-sakit').textContent = myData.total_sakit || 0; }
-                if(document.getElementById('rekap-dl')) { document.getElementById('rekap-dl').textContent = myData.total_dl || 0; }
                 document.getElementById('rekap-tap').textContent = myData.tanpa_absen_pulang || 0;
                 
                 if(document.getElementById('rekap-telat-menit')) {
@@ -1101,6 +1182,26 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     }
                 }
             }
+
+            // Hitung Rata-Rata Jam Masuk & Jam Pulang Bulan Ini
+            let sumMasukMin = 0, cntMasuk = 0;
+            let sumPulangMin = 0, cntPulang = 0;
+            Object.values(historyMap).forEach(rec => {
+                if (!rec) return;
+                const mMin = parseTimeToMinutes(rec.jam_masuk ? rec.jam_masuk.slice(0, 5) : null);
+                const pMin = parseTimeToMinutes(rec.jam_keluar ? rec.jam_keluar.slice(0, 5) : null);
+                if (mMin !== null) { sumMasukMin += mMin; cntMasuk++; }
+                if (pMin !== null && !(rec.keterangan && rec.keterangan.includes('Otomatis'))) { sumPulangMin += pMin; cntPulang++; }
+            });
+            const fmtMin = (totalM, count) => {
+                if (!count) return '--:--';
+                const avg = Math.round(totalM / count);
+                return String(Math.floor(avg / 60)).padStart(2, '0') + ':' + String(avg % 60).padStart(2, '0') + ' WIB';
+            };
+            const elAvgMasuk = document.getElementById('avg-jam-masuk');
+            const elAvgPulang = document.getElementById('avg-jam-pulang');
+            if (elAvgMasuk) elAvgMasuk.textContent = fmtMin(sumMasukMin, cntMasuk);
+            if (elAvgPulang) elAvgPulang.textContent = fmtMin(sumPulangMin, cntPulang);
 
             const namaHariList = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
             const isCurrentMonth = (parseInt(year) === now.getFullYear()) && (parseInt(month) === (now.getMonth() + 1));
@@ -1214,6 +1315,63 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
         console.error("Error daily metrics:", e);
         tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-rose-500 text-xs">Koneksi Error</td></tr>`;
     }
+}
+
+function toggleEidFlip() {
+    const front = document.getElementById('eid-front');
+    const back = document.getElementById('eid-back');
+    const lbl = document.getElementById('eid-flip-label');
+    if (!front || !back) return;
+    if (back.classList.contains('hidden')) {
+        front.classList.add('hidden');
+        back.classList.remove('hidden');
+        if (lbl) lbl.textContent = 'Tampak Depan';
+    } else {
+        back.classList.add('hidden');
+        front.classList.remove('hidden');
+        if (lbl) lbl.textContent = 'Balik Kartu';
+    }
+}
+
+function openSlipModal() {
+    const modal = document.getElementById('slip-modal');
+    const content = document.getElementById('slip-modal-content');
+    if (!modal || !content) return;
+
+    const session = localStorage.getItem('pegawai_session');
+    const user = session ? JSON.parse(session) : {};
+    const now = new Date();
+    const bulanStr = now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+    const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setTxt('slip-periode', 'Periode: ' + bulanStr);
+    setTxt('slip-nama', user.nama || document.getElementById('user-nama')?.textContent || '-');
+    setTxt('slip-id', user.id_karyawan || document.getElementById('user-id')?.textContent || '-');
+    setTxt('slip-jabatan', user.jabatan || document.getElementById('user-jabatan')?.textContent || 'Pegawai');
+    setTxt('slip-pangkat', document.getElementById('beranda-pangkat-text')?.textContent || 'Pegawai Aktif');
+
+    setTxt('slip-hadir', (document.getElementById('rekap-hadir')?.textContent || '0') + ' Hari');
+    setTxt('slip-dl', (document.getElementById('rekap-dl')?.textContent || '0') + ' Hari');
+    const isc = (parseInt(document.getElementById('rekap-isc')?.textContent) || 0) + (parseInt(document.getElementById('rekap-sakit')?.textContent) || 0);
+    setTxt('slip-isc', isc + ' Hari');
+    setTxt('slip-alpa', (document.getElementById('rekap-alpa')?.textContent || '0') + ' Hari');
+    setTxt('slip-telat', `${document.getElementById('rekap-telat')?.textContent || '0'}x (${document.getElementById('rekap-telat-menit')?.textContent || '0'} Menit)`);
+    setTxt('slip-psw', `${document.getElementById('rekap-psw-kali')?.textContent || '0'}x (${document.getElementById('rekap-psw-menit')?.textContent || '0'} Menit)`);
+    setTxt('slip-tap', (document.getElementById('rekap-tap')?.textContent || '0') + ' Kali');
+    setTxt('slip-jam', document.getElementById('rekap-jam-kerja')?.textContent || '00:00:00');
+
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+}
+
+function closeSlipModal() {
+    const modal = document.getElementById('slip-modal');
+    const content = document.getElementById('slip-modal-content');
+    if (!modal || !content) return;
+    modal.classList.add('opacity-0', 'pointer-events-none');
+    content.classList.remove('scale-100');
+    content.classList.add('scale-95');
 }
 
 function scrollToTodayMetric() {
@@ -1344,25 +1502,3 @@ function togglePasswordVisibility(inputId, buttonEl) {
         }
     }
 }
-
-
-// --- SISTEM PENGINGAT TAGIHAN ---
-function cekPengingatTagihan() {
-    const sudahDitutup = localStorage.getItem('pengingat_tagihan_ditutup');
-    if (!sudahDitutup) {
-        const banner = document.getElementById('payment-reminder');
-        if (banner) {
-            banner.style.display = 'block';
-        }
-    }
-}
-function tutupPengingat() {
-    const banner = document.getElementById('payment-reminder');
-    if (banner) {
-        banner.style.display = 'none';
-        localStorage.setItem('pengingat_tagihan_ditutup', 'true'); 
-    }
-}
-document.addEventListener('DOMContentLoaded', () => {
-    cekPengingatTagihan();
-});
