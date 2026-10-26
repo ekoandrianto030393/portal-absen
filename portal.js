@@ -541,15 +541,16 @@ async function loadRiwayatBulanan(idKaryawan) {
         let html = '';
         result.data.forEach(item => {
             html += `
-            <div class="glass-card rounded-[1.5rem] p-5 premium-shadow hover:-translate-y-1 transition-transform duration-300">
-                <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100/60">
+            <div class="rounded-[1.5rem] p-5 shadow-[0_14px_35px_-10px_rgba(13,148,136,0.16)] border border-teal-200/80 hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden" style="background: linear-gradient(155deg, #ffffff 0%, #f8fafc 55%, #f0fdfa 100%);">
+                <div class="absolute top-0 left-0 right-0 h-1" style="background: linear-gradient(90deg, #10b981, #0d9488, #0284c7);"></div>
+                <div class="flex justify-between items-center mb-4 pb-3 border-b border-teal-100/80">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center border border-teal-100/50 shadow-sm">
+                        <div class="w-10 h-10 text-white rounded-xl flex items-center justify-center border border-teal-300/60 shadow-[0_6px_14px_-3px_rgba(13,148,136,0.4)]" style="background: linear-gradient(135deg, #0d9488, #0284c7);">
                             <i class="fa-solid fa-calendar-check text-lg"></i>
                         </div>
                         <div>
-                            <h4 class="font-bold text-teal-700 text-sm uppercase tracking-widest drop-shadow-sm">${formatBulan(item.periode)}</h4>
-                            <p class="text-[10px] text-teal-600/80 font-bold tracking-wider">${item.total_hari_kerja || 0} Hari | ${item.total_jam_kerja || 0} Jam Kerja</p>
+                            <h4 class="font-black text-teal-950 text-sm uppercase tracking-widest">${formatBulan(item.periode)}</h4>
+                            <p class="text-[10px] text-teal-700 font-extrabold tracking-wider mt-0.5"><span class="bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">${item.total_hari_kerja || 0} Hari</span> <span class="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md font-mono ml-1">${item.total_jam_kerja || 0} Jam</span></p>
                         </div>
                     </div>
                 </div>
@@ -625,17 +626,17 @@ async function loadRiwayatBulanan(idKaryawan) {
                 const rowBg = isEven ? 'bg-white' : 'bg-slate-50/50';
 
                 tableHtml += `
-                <tr class="${rowBg} hover:bg-teal-50/30 transition-colors duration-200">
-                    <td class="p-3 text-center font-bold text-teal-700 whitespace-nowrap sticky left-0 z-10 border-r border-indigo-100/50 ${rowBg}">${formatBulanShort(item.periode)}</td>
-                    <td class="p-3 text-center font-black text-emerald-600 border-r border-indigo-100/50">${item.total_masuk || 0}</td>
-                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${alpa > 0 ? 'text-rose-600 bg-rose-50/50' : 'text-slate-400'}">${alpa}</td>
-                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${isc > 0 ? 'text-blue-600' : 'text-slate-400'}">${isc}</td>
-                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${telatK > 0 ? 'text-amber-600 bg-amber-50/50' : 'text-slate-400'}">${telatK}</td>
-                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${telatM > 0 ? 'text-orange-600 bg-orange-50/50' : 'text-slate-400'}">${telatM}</td>
-                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${pswK > 0 ? 'text-purple-600 bg-purple-50/50' : 'text-slate-400'}">${pswK}</td>
-                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${pswM > 0 ? 'text-fuchsia-600 bg-fuchsia-50/50' : 'text-slate-400'}">${pswM}</td>
-                    <td class="p-3 text-center font-black border-r border-indigo-100/50 ${tap > 0 ? 'text-red-600 bg-red-50/50' : 'text-slate-400'}">${tap}</td>
-                    <td class="p-3 text-center font-bold text-teal-600 whitespace-nowrap font-mono text-[10px]">${item.total_jam_kerja || '00:00:00'}</td>
+                <tr class="${rowBg} hover:bg-teal-50/50 transition-colors duration-200">
+                    <td class="p-3 text-center font-black text-teal-800 whitespace-nowrap sticky left-0 z-10 border-r border-teal-100/70 ${rowBg}">${formatBulanShort(item.periode)}</td>
+                    <td class="p-3 text-center font-black text-emerald-600 border-r border-teal-100/70">${item.total_masuk || 0}</td>
+                    <td class="p-3 text-center font-black border-r border-teal-100/70 ${alpa > 0 ? 'text-rose-600 bg-rose-50/60' : 'text-slate-400'}">${alpa}</td>
+                    <td class="p-3 text-center font-black border-r border-teal-100/70 ${isc > 0 ? 'text-sky-600 bg-sky-50/50' : 'text-slate-400'}">${isc}</td>
+                    <td class="p-3 text-center font-black border-r border-teal-100/70 ${telatK > 0 ? 'text-amber-600 bg-amber-50/60' : 'text-slate-400'}">${telatK}</td>
+                    <td class="p-3 text-center font-black border-r border-teal-100/70 ${telatM > 0 ? 'text-orange-600 bg-orange-50/60' : 'text-slate-400'}">${telatM}</td>
+                    <td class="p-3 text-center font-black border-r border-teal-100/70 ${pswK > 0 ? 'text-purple-600 bg-purple-50/60' : 'text-slate-400'}">${pswK}</td>
+                    <td class="p-3 text-center font-black border-r border-teal-100/70 ${pswM > 0 ? 'text-fuchsia-600 bg-fuchsia-50/60' : 'text-slate-400'}">${pswM}</td>
+                    <td class="p-3 text-center font-black border-r border-teal-100/70 ${tap > 0 ? 'text-red-600 bg-red-50/60' : 'text-slate-400'}">${tap}</td>
+                    <td class="p-3 text-center font-black text-teal-800 whitespace-nowrap font-mono text-[10px] bg-teal-50/30">${item.total_jam_kerja || '00:00:00'}</td>
                 </tr>`;
             });
             
@@ -856,30 +857,114 @@ function toggleSkeleton(enable) {
     });
 }
 
+let liveDurationTimer = null;
+let currentTodayMasuk = null;
+let currentTodayPulang = null;
+
+function parseTimeToMinutes(timeStr) {
+    if (!timeStr || timeStr === '-' || timeStr === '--:--') return null;
+    const parts = String(timeStr).trim().split(':');
+    if (parts.length < 2) return null;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+}
+
+function updateLiveWorkDuration() {
+    const dotEl = document.getElementById('today-duration-dot');
+    const labelEl = document.getElementById('today-duration-label');
+    const valEl = document.getElementById('today-duration-val');
+    const boxEl = document.getElementById('today-duration-box');
+    if (!dotEl || !labelEl || !valEl || !boxEl) return;
+
+    const masukMin = parseTimeToMinutes(currentTodayMasuk);
+    const pulangMin = parseTimeToMinutes(currentTodayPulang);
+
+    if (masukMin === null) {
+        dotEl.className = 'w-2 h-2 rounded-full bg-slate-400';
+        labelEl.textContent = 'Durasi Kerja Hari Ini';
+        valEl.textContent = 'Belum Mulai';
+        valEl.className = 'text-xs font-black text-slate-600 font-mono bg-white/90 px-2.5 py-0.5 rounded-lg border border-slate-200 shadow-inner';
+        boxEl.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+        return;
+    }
+
+    if (pulangMin !== null && pulangMin >= masukMin) {
+        const diff = pulangMin - masukMin;
+        const hrs = String(Math.floor(diff / 60)).padStart(2, '0');
+        const mins = String(diff % 60).padStart(2, '0');
+        dotEl.className = 'w-2 h-2 rounded-full bg-sky-500';
+        labelEl.textContent = 'Total Durasi Hari Ini';
+        valEl.textContent = `${hrs}j ${mins}m (Selesai)`;
+        valEl.className = 'text-xs font-black text-sky-900 font-mono bg-white/95 px-2.5 py-0.5 rounded-lg border border-sky-200 shadow-inner';
+        boxEl.style.background = 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)';
+        return;
+    }
+
+    // Sedang bertugas (live)
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const diff = Math.max(0, nowMin - masukMin);
+    const hrs = String(Math.floor(diff / 60)).padStart(2, '0');
+    const mins = String(diff % 60).padStart(2, '0');
+    dotEl.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
+    labelEl.textContent = 'Sedang Bertugas (Live)';
+    valEl.textContent = `⏱️ ${hrs}j ${mins}m`;
+    valEl.className = 'text-xs font-black text-emerald-900 font-mono bg-white/95 px-2.5 py-0.5 rounded-lg border border-emerald-300 shadow-inner';
+    boxEl.style.background = 'linear-gradient(135deg, #ecfdf5 0%, #ccfbf1 100%)';
+}
+
+async function refreshTodayData() {
+    const icon = document.getElementById('icon-refresh-today');
+    if (icon) icon.classList.add('fa-spin');
+    const session = localStorage.getItem('pegawai_session');
+    if (session) {
+        const user = JSON.parse(session);
+        await loadDashboardData(user.id_karyawan);
+    }
+    setTimeout(() => {
+        if (icon) icon.classList.remove('fa-spin');
+    }, 500);
+}
+
 async function loadDashboardData(idKaryawan) {
     toggleSkeleton(true);
     try {
         const res = await fetch(`${API_BASE}/pegawai/dashboard/today/${idKaryawan}?_t=${Date.now()}`, { headers: getAuthHeader() });
         const result = await res.json();
+        const syncEl = document.getElementById('today-sync-time');
+        if (syncEl) {
+            const nowT = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            syncEl.innerHTML = `<i class="fa-solid fa-circle-check text-teal-500 text-[8px]"></i> Sinkron: ${nowT} WIB`;
+        }
         if(result.success && result.data) {
             toggleSkeleton(false);
             const elMasuk = document.getElementById('today-masuk');
             const elStatus = document.getElementById('today-status');
-            elMasuk.textContent = result.data.jam_masuk || '--:--';
-            document.getElementById('today-pulang').textContent = result.data.jam_keluar || '--:--';
+            currentTodayMasuk = result.data.jam_masuk ? result.data.jam_masuk.slice(0, 5) : null;
+            currentTodayPulang = result.data.jam_keluar ? result.data.jam_keluar.slice(0, 5) : null;
+            elMasuk.textContent = currentTodayMasuk || '--:--';
+            document.getElementById('today-pulang').textContent = currentTodayPulang || '--:--';
             elStatus.textContent = result.data.status || 'Hadir';
             
             // Kalau telat, buat merah menyala; kalau tepat waktu, hijau zamrud
             if (result.data.status && result.data.status.toLowerCase().includes('telat')) {
                 elMasuk.classList.add('text-rose-600', 'font-black');
                 elStatus.style.background = 'linear-gradient(135deg, #ffe4e6, #fecdd3)';
-                elStatus.className = 'mt-4 text-center text-xs font-black text-rose-800 py-3 rounded-xl shadow-sm uppercase tracking-widest transition-all duration-300 border border-rose-300 relative z-10';
+                elStatus.className = 'mt-3 text-center text-xs font-black text-rose-800 py-3 rounded-xl shadow-sm uppercase tracking-widest transition-all duration-300 border border-rose-300 relative z-10';
             } else {
                 elMasuk.classList.remove('text-rose-600', 'font-black');
                 elStatus.style.background = 'linear-gradient(135deg, #d1fae5, #a7f3d0)';
-                elStatus.className = 'mt-4 text-center text-xs font-black text-emerald-900 py-3 rounded-xl shadow-sm uppercase tracking-widest transition-all duration-300 border border-emerald-300 relative z-10';
+                elStatus.className = 'mt-3 text-center text-xs font-black text-emerald-900 py-3 rounded-xl shadow-sm uppercase tracking-widest transition-all duration-300 border border-emerald-300 relative z-10';
             }
+        } else {
+            currentTodayMasuk = null;
+            currentTodayPulang = null;
         }
+        updateLiveWorkDuration();
+        if (liveDurationTimer) clearInterval(liveDurationTimer);
+        liveDurationTimer = setInterval(updateLiveWorkDuration, 30000);
     } catch(e) {}
 
     // Load Rekap Bulanan dari API yang sudah ada
