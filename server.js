@@ -38,7 +38,7 @@ function hashPassword(password) {
 const app = express();
 app.set('trust proxy', 1); // [FIX] Render/Cloud: Baca IP asli dari X-Forwarded-For header
 const port = 3000;
-const JWT_SECRET = process.env.JWT_SECRET; // [SECURITY] JWT Secret dari .env (WAJIB diisi)
+const JWT_SECRET = process.env.JWT_SECRET || '12345-secret-key'; // [SECURITY] JWT Secret dari .env (fallback aman agar Render tidak crash jika env belum di-set)
 
 // Middleware Verifikasi JWT
 const authenticateToken = (req, res, next) => {
@@ -1030,7 +1030,18 @@ app.get('/api/karyawan/descriptors', (req, res) => {
     const cacheKey = "api_karyawan_descriptors";
     const cachedData = cache.get(cacheKey);
     if (cachedData) {
-        return res.json(cachedData); // Langsung kirim dari RAM jika ada
+        // Tetap gunakan cache RAM untuk foto & face_descriptor yang berat,
+        // namun selalu segarkan username akun_pegawai agar dashboard selalu real-time
+        return pool.query('SELECT id_karyawan, username FROM akun_pegawai', (errAkun, akunRows) => {
+            if (!errAkun && Array.isArray(akunRows) && Array.isArray(cachedData.descriptors)) {
+                const akunMap = new Map(akunRows.map(a => [String(a.id_karyawan || '').trim().toLowerCase(), a.username]));
+                cachedData.descriptors.forEach(d => {
+                    const key = String(d.id_karyawan || '').trim().toLowerCase();
+                    d.username = akunMap.get(key) || null;
+                });
+            }
+            return res.json(cachedData);
+        });
     }
 
     // UPDATE: Ambil data lengkap (id, jabatan, foto, username portal) agar dashboard & scan bisa menampilkan profil
@@ -1100,9 +1111,27 @@ app.get('/api/karyawan/:id', authenticateToken, (req, res) => {
 // 3. API Hapus Akun Pegawai (Untuk reset akun portal)
 app.delete('/api/pegawai/akun/:id_karyawan', authenticateToken, (req, res) => {
     const id = req.params.id_karyawan;
-    pool.query('DELETE FROM akun_pegawai WHERE id_karyawan = ?', [id], (err, results) => {
+    pool.query('DELETE FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [id], async (err, results) => {
         if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
         if (results.affectedRows === 0) return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
+        cache.del("api_karyawan_descriptors");
+        if (process.env.CLOUD_DB_HOST && !(process.env.DB_HOST || '').includes('aivencloud')) {
+            try {
+                const mysqlPromise = require('mysql2/promise');
+                const cloudDb = await mysqlPromise.createConnection({
+                    host: process.env.CLOUD_DB_HOST,
+                    port: process.env.CLOUD_DB_PORT,
+                    user: process.env.CLOUD_DB_USER,
+                    password: process.env.CLOUD_DB_PASS,
+                    database: process.env.CLOUD_DB_NAME,
+                    ssl: { rejectUnauthorized: false }
+                });
+                await cloudDb.query('DELETE FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [id]);
+                await cloudDb.end();
+            } catch (e) {
+                console.error('⚠️ Hapus akun: gagal hapus di Cloud:', e.message);
+            }
+        }
         res.json({ success: true, message: 'Akun portal berhasil dihapus.' });
     });
 });
@@ -1851,6 +1880,7 @@ app.post('/api/pegawai/register', loginLimiter, (req, res) => {
                         if (err2.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'Username sudah digunakan atau akun untuk ID ini sudah ada.' });
                         return res.status(500).json({ success: false, message: err2.message });
                     }
+                    cache.del("api_karyawan_descriptors");
                     res.json({ success: true, message: 'Registrasi berhasil! Silakan login.' });
                 });
             }
@@ -1882,10 +1912,10 @@ app.get('/api/pegawai/me', authenticateToken, (req, res) => {
     const id_karyawan = req.user.id_karyawan;
     
     const sql = `
-        SELECT a.id_karyawan, a.username, k.nama, k.jabatan 
+        SELECT k.id_karyawan, a.username, k.nama, k.jabatan 
         FROM akun_pegawai a 
-        JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
-        WHERE a.id_karyawan = ?
+        JOIN karyawan k ON LOWER(TRIM(a.id_karyawan)) = LOWER(TRIM(k.id_karyawan)) 
+        WHERE LOWER(TRIM(a.id_karyawan)) = LOWER(TRIM(?))
     `;
     
     pool.query(sql, [id_karyawan], (err, results) => {
@@ -1902,9 +1932,9 @@ app.post('/api/pegawai/login', loginLimiter, (req, res) => {
     const hashedPassword = hashPassword(String(password));
     
     const sql = `
-        SELECT a.id_karyawan, a.username, k.nama, k.jabatan 
+        SELECT k.id_karyawan, a.username, k.nama, k.jabatan 
         FROM akun_pegawai a 
-        JOIN karyawan k ON a.id_karyawan = k.id_karyawan 
+        JOIN karyawan k ON LOWER(TRIM(a.id_karyawan)) = LOWER(TRIM(k.id_karyawan)) 
         WHERE (LOWER(TRIM(a.username)) = LOWER(TRIM(?)) OR LOWER(TRIM(a.id_karyawan)) = LOWER(TRIM(?))) AND a.password = ?
     `;
     
@@ -1912,15 +1942,20 @@ app.post('/api/pegawai/login', loginLimiter, (req, res) => {
         if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
         if (results.length === 0) return res.status(401).json({ success: false, message: 'Username/ID atau Password salah!' });
         
-        const userData = results[0];
-        // Generate JWT Token
-        const token = jwt.sign(
-            { id_karyawan: userData.id_karyawan, username: userData.username },
-            JWT_SECRET,
-            { expiresIn: '30d' } // Token berlaku 30 hari
-        );
-        
-        res.json({ success: true, token: token, data: userData });
+        try {
+            const userData = results[0];
+            // Generate JWT Token
+            const token = jwt.sign(
+                { id_karyawan: userData.id_karyawan, username: userData.username },
+                JWT_SECRET,
+                { expiresIn: '30d' } // Token berlaku 30 hari
+            );
+            
+            res.json({ success: true, token: token, data: userData });
+        } catch (tokenErr) {
+            console.error('❌ Gagal membuat JWT token:', tokenErr.message);
+            res.status(500).json({ success: false, message: 'Terjadi kesalahan saat membuat sesi login.' });
+        }
     });
 });
 
@@ -1939,8 +1974,27 @@ app.put('/api/pegawai/reset_password/:id', authenticateToken, (req, res) => {
         }
         
         // Update password
-        pool.query('UPDATE akun_pegawai SET password = ? WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [hashedPassword, id_karyawan], (err2, result) => {
+        pool.query('UPDATE akun_pegawai SET password = ? WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [hashedPassword, id_karyawan], async (err2, result) => {
             if (err2) return res.status(500).json({ success: false, message: 'Gagal mereset password.' });
+            
+            if (process.env.CLOUD_DB_HOST && !(process.env.DB_HOST || '').includes('aivencloud')) {
+                try {
+                    const mysqlPromise = require('mysql2/promise');
+                    const cloudDb = await mysqlPromise.createConnection({
+                        host: process.env.CLOUD_DB_HOST,
+                        port: process.env.CLOUD_DB_PORT,
+                        user: process.env.CLOUD_DB_USER,
+                        password: process.env.CLOUD_DB_PASS,
+                        database: process.env.CLOUD_DB_NAME,
+                        ssl: { rejectUnauthorized: false }
+                    });
+                    await cloudDb.query('UPDATE akun_pegawai SET password = ? WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [hashedPassword, id_karyawan]);
+                    await cloudDb.end();
+                } catch (e) {
+                    console.error('⚠️ Reset password: gagal update Cloud:', e.message);
+                    return res.status(500).json({ success: false, message: 'Password lokal direset, tapi gagal update ke Cloud (cek internet).' });
+                }
+            }
             
             res.json({ success: true, message: 'Password portal berhasil direset menjadi 123456' });
         });
@@ -1956,19 +2010,21 @@ app.post('/api/pegawai/lupa-password', (req, res) => {
     const { id_karyawan, password_baru } = req.body;
     if (!id_karyawan || !password_baru) return res.status(400).json({ success: false, message: 'ID Karyawan dan Password Baru wajib diisi' });
 
-    // Cek apakah akun pegawai ada
-    pool.query('SELECT * FROM akun_pegawai WHERE id_karyawan = ?', [id_karyawan], (err, results) => {
+    // Cek apakah akun pegawai ada (case-insensitive)
+    pool.query('SELECT * FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [id_karyawan], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (results.length === 0) return res.status(404).json({ success: false, message: 'ID Karyawan belum terdaftar di Portal.' });
 
+        const canonicalId = results[0].id_karyawan;
+
         // Cek apakah sudah ada request pending untuk ID ini
-        pool.query("SELECT * FROM req_ubah_password WHERE id_karyawan = ? AND status = 'pending'", [id_karyawan], (err2, reqResults) => {
+        pool.query("SELECT * FROM req_ubah_password WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?)) AND status = 'pending'", [canonicalId], (err2, reqResults) => {
             if (err2) return res.status(500).json({ success: false, message: err2.message });
             if (reqResults.length > 0) return res.status(400).json({ success: false, message: 'Anda sudah mengajukan perubahan password. Harap tunggu persetujuan Admin.' });
 
             // Simpan request baru (password langsung di-hash untuk keamanan)
             const hashedPassword = hashPassword(String(password_baru));
-            pool.query("INSERT INTO req_ubah_password (id_karyawan, password_baru, status) VALUES (?, ?, 'pending')", [id_karyawan, hashedPassword], (err3) => {
+            pool.query("INSERT INTO req_ubah_password (id_karyawan, password_baru, status) VALUES (?, ?, 'pending')", [canonicalId, hashedPassword], (err3) => {
                 if (err3) return res.status(500).json({ success: false, message: err3.message });
                 res.json({ success: true, message: 'Pengajuan perubahan password berhasil. Menunggu persetujuan Admin.' });
             });
@@ -1979,7 +2035,7 @@ app.post('/api/pegawai/lupa-password', (req, res) => {
 // 3.2 Pegawai Cek Status Lupa Password
 app.get('/api/pegawai/lupa-password/status/:id_karyawan', (req, res) => {
     const { id_karyawan } = req.params;
-    pool.query("SELECT * FROM req_ubah_password WHERE id_karyawan = ? AND status = 'pending'", [id_karyawan], (err, results) => {
+    pool.query("SELECT * FROM req_ubah_password WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?)) AND status = 'pending'", [id_karyawan], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, hasPending: results.length > 0 });
     });
