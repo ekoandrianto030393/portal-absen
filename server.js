@@ -1826,16 +1826,35 @@ app.post('/api/pegawai/register', loginLimiter, (req, res) => {
         }
         
         const hashedPassword = hashPassword(password);
+        const canonicalId = results[0].id_karyawan; // pakai ID persis dari master karyawan
+        const cleanUsername = String(username).trim();
         
-        // Buat Akun
-        pool.query('INSERT INTO akun_pegawai (id_karyawan, username, password) VALUES (?, ?, ?)', 
-        [id_karyawan, username, hashedPassword], (err2) => {
-            if (err2) {
-                if (err2.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'Username sudah digunakan atau akun untuk ID ini sudah ada.' });
-                return res.status(500).json({ success: false, message: err2.message });
+        // Cek duplikasi secara spesifik agar pesan error jelas
+        pool.query(
+            'SELECT id_karyawan, username FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?)) OR LOWER(TRIM(username)) = LOWER(TRIM(?))',
+            [canonicalId, cleanUsername],
+            (errCek, dup) => {
+                if (errCek) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
+                
+                const idSudahAda = dup.some(d => String(d.id_karyawan).trim().toLowerCase() === String(canonicalId).trim().toLowerCase());
+                if (idSudahAda) {
+                    return res.status(400).json({ success: false, message: 'Akun untuk ID ini sudah ada. Silakan login atau gunakan Lupa Password.' });
+                }
+                if (dup.length > 0) {
+                    return res.status(400).json({ success: false, message: `Username "${cleanUsername}" sudah dipakai pegawai lain. Silakan pilih username lain.` });
+                }
+                
+                // Buat Akun
+                pool.query('INSERT INTO akun_pegawai (id_karyawan, username, password) VALUES (?, ?, ?)', 
+                [canonicalId, cleanUsername, hashedPassword], (err2) => {
+                    if (err2) {
+                        if (err2.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'Username sudah digunakan atau akun untuk ID ini sudah ada.' });
+                        return res.status(500).json({ success: false, message: err2.message });
+                    }
+                    res.json({ success: true, message: 'Registrasi berhasil! Silakan login.' });
+                });
             }
-            res.json({ success: true, message: 'Registrasi berhasil! Silakan login.' });
-        });
+        );
     });
 });
 
