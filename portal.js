@@ -808,11 +808,24 @@ function renderRiwayatChart(data) {
         if(notesEl) notesEl.textContent = rankInfo.notes;
     }
 
-    // Update Lencana Pangkat & XP langsung di Header Beranda
+    // Update Lencana Pangkat, XP & Grade langsung di Header Beranda
     const berandaPangkatEl = document.getElementById('beranda-pangkat-text');
     const berandaXpEl = document.getElementById('beranda-xp-text');
+    const berandaGradeTxt = document.getElementById('beranda-grade-text');
+    const berandaGradeBadge = document.getElementById('beranda-grade-badge');
     if (berandaPangkatEl) berandaPangkatEl.textContent = rankInfo.title;
     if (berandaXpEl) berandaXpEl.textContent = userXP + ' XP';
+    if (berandaGradeTxt && berandaGradeBadge) {
+        let gradeLabel = 'Grade A';
+        let gradeBg = 'linear-gradient(135deg, #a7f3d0, #34d399)';
+        if (userXP > 180) { gradeLabel = 'Grade A+'; gradeBg = 'linear-gradient(135deg, #fde68a, #34d399)'; }
+        else if (userXP > 130) { gradeLabel = 'Grade A'; gradeBg = 'linear-gradient(135deg, #a7f3d0, #34d399)'; }
+        else if (userXP > 80) { gradeLabel = 'Grade B+'; gradeBg = 'linear-gradient(135deg, #bae6fd, #38bdf8)'; }
+        else if (userXP >= 10) { gradeLabel = 'Grade B'; gradeBg = 'linear-gradient(135deg, #e0f2fe, #7dd3fc)'; }
+        else { gradeLabel = 'Grade C'; gradeBg = 'linear-gradient(135deg, #fecdd3, #fb7185)'; }
+        berandaGradeTxt.textContent = gradeLabel;
+        berandaGradeBadge.style.background = gradeBg;
+    }
 
     // Update Progress Bar Level XP & 5-Tier Roadmap di halaman Profil
     const xpBarEl = document.getElementById('profil-xp-bar');
@@ -943,7 +956,22 @@ function updateLiveWorkDuration() {
     const labelEl = document.getElementById('today-duration-label');
     const valEl = document.getElementById('today-duration-val');
     const boxEl = document.getElementById('today-duration-box');
+    const shiftBarEl = document.getElementById('today-shift-bar');
+    const shiftSchedEl = document.getElementById('today-shift-schedule');
+    const shiftPctEl = document.getElementById('today-shift-pct');
     if (!dotEl || !labelEl || !valEl || !boxEl) return;
+
+    // Tentukan jadwal standar Puskesmas berdasarkan hari
+    const nowDay = new Date().getDay(); // 0=Min, 5=Jum, 6=Sab
+    let targetPulangStr = '14:00';
+    let targetShiftMinutes = 390; // 07:30 -> 14:00 (6.5 jam = 390 menit)
+    if (nowDay === 5) { targetPulangStr = '11:30'; targetShiftMinutes = 240; }
+    else if (nowDay === 6) { targetPulangStr = '13:00'; targetShiftMinutes = 330; }
+    if (shiftSchedEl) {
+        shiftSchedEl.innerHTML = nowDay === 0
+            ? '<i class="fa-regular fa-calendar-check mr-1"></i>Hari Minggu / Libur Reguler'
+            : `<i class="fa-regular fa-clock mr-1"></i>Standar Shift: 07:30 - ${targetPulangStr} WIB`;
+    }
 
     const masukMin = parseTimeToMinutes(currentTodayMasuk);
     const pulangMin = parseTimeToMinutes(currentTodayPulang);
@@ -954,6 +982,8 @@ function updateLiveWorkDuration() {
         valEl.textContent = 'Belum Mulai';
         valEl.className = 'text-xs font-black text-slate-600 font-mono bg-white/90 px-2.5 py-0.5 rounded-lg border border-slate-200 shadow-inner';
         boxEl.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+        if (shiftBarEl) shiftBarEl.style.width = '0%';
+        if (shiftPctEl) shiftPctEl.textContent = '0% Shift';
         return;
     }
 
@@ -966,6 +996,8 @@ function updateLiveWorkDuration() {
         valEl.textContent = `${hrs}j ${mins}m (Selesai)`;
         valEl.className = 'text-xs font-black text-sky-900 font-mono bg-white/95 px-2.5 py-0.5 rounded-lg border border-sky-200 shadow-inner';
         boxEl.style.background = 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)';
+        if (shiftBarEl) shiftBarEl.style.width = '100%';
+        if (shiftPctEl) shiftPctEl.textContent = '100% Selesai ✓';
         return;
     }
 
@@ -975,11 +1007,14 @@ function updateLiveWorkDuration() {
     const diff = Math.max(0, nowMin - masukMin);
     const hrs = String(Math.floor(diff / 60)).padStart(2, '0');
     const mins = String(diff % 60).padStart(2, '0');
+    const pctShift = Math.min(100, Math.round((diff / targetShiftMinutes) * 100));
     dotEl.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
     labelEl.textContent = 'Sedang Bertugas (Live)';
     valEl.textContent = `⏱️ ${hrs}j ${mins}m`;
     valEl.className = 'text-xs font-black text-emerald-900 font-mono bg-white/95 px-2.5 py-0.5 rounded-lg border border-emerald-300 shadow-inner';
     boxEl.style.background = 'linear-gradient(135deg, #ecfdf5 0%, #ccfbf1 100%)';
+    if (shiftBarEl) shiftBarEl.style.width = pctShift + '%';
+    if (shiftPctEl) shiftPctEl.textContent = pctShift + '% Shift';
 }
 
 async function refreshTodayData() {
@@ -1047,6 +1082,16 @@ async function loadDashboardData(idKaryawan) {
                 const iscCount = (parseInt(myData.total_izin)||0) + (parseInt(myData.total_sakit)||0) + (parseInt(myData.total_cuti)||0);
                 document.getElementById('rekap-hadir').textContent = hadirCount;
                 document.getElementById('rekap-alpa').textContent = alpaCount;
+                const badgeAlpaInfo = document.getElementById('badge-alpa-info');
+                if (badgeAlpaInfo) {
+                    if (alpaCount === 0) {
+                        badgeAlpaInfo.textContent = 'Bebas Alpa ✓';
+                        badgeAlpaInfo.className = 'text-[8px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider';
+                    } else {
+                        badgeAlpaInfo.textContent = alpaCount + ' Hari Alpa';
+                        badgeAlpaInfo.className = 'text-[8px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 uppercase tracking-wider';
+                    }
+                }
 
                 // Hitung total hari kerja (Senin-Sabtu) dalam bulan berjalan
                 const nowDate = new Date();
@@ -1175,16 +1220,25 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                 }
             }
 
-            // Hitung Rata-Rata Jam Masuk & Jam Pulang Bulan Ini
+            // Hitung Rata-Rata Jam Masuk & Jam Pulang serta Total Footer Bulan Ini
             let sumMasukMin = 0, cntMasuk = 0;
             let sumPulangMin = 0, cntPulang = 0;
+            let sumPswMenit = 0, sumTelatMenit = 0;
             Object.values(historyMap).forEach(rec => {
                 if (!rec) return;
                 const mMin = parseTimeToMinutes(rec.jam_masuk ? rec.jam_masuk.slice(0, 5) : null);
                 const pMin = parseTimeToMinutes(rec.jam_keluar ? rec.jam_keluar.slice(0, 5) : null);
                 if (mMin !== null) { sumMasukMin += mMin; cntMasuk++; }
                 if (pMin !== null && !(rec.keterangan && rec.keterangan.includes('Otomatis'))) { sumPulangMin += pMin; cntPulang++; }
+                sumPswMenit += Number(rec.psw_menit || 0);
+                sumTelatMenit += Number(rec.telat_menit || 0);
             });
+            const elTfootHadir = document.getElementById('tfoot-total-hadir');
+            const elTfootPsw = document.getElementById('tfoot-total-psw');
+            const elTfootTelat = document.getElementById('tfoot-total-telat');
+            if (elTfootHadir) elTfootHadir.textContent = cntMasuk + ' Hari Hadir';
+            if (elTfootPsw) elTfootPsw.textContent = sumPswMenit + 'm';
+            if (elTfootTelat) elTfootTelat.textContent = sumTelatMenit + 'm';
             const fmtMin = (totalM, count) => {
                 if (!count) return '--:--';
                 const avg = Math.round(totalM / count);
