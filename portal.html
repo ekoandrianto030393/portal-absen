@@ -380,9 +380,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 relative overflow-x-hidden min-h-screen antialiased selection:bg-teal-200 selection:text-teal-900">
 
-    <!-- Decorative Background Blobs -->
-    <div class="blob blob-1 bg-teal-200 w-96 h-96 -top-20 -left-20 mix-blend-multiply"></div>
-    <div class="blob blob-2 bg-emerald-200 w-96 h-96 top-40 -right-20 mix-blend-multiply"></div>
+    <!-- Clean Background (No mix-blend-multiply blur blobs that cause GPU tile tearing) -->
 
     <!-- Initial Loader -->
     <div id="loader">
@@ -568,67 +566,59 @@
     </div>
 
     <!-- HALAMAN DASHBOARD -->
-    <div id="dashboard-page" class="hidden min-h-screen pb-24" style="background: linear-gradient(180deg, #e0f2fe 0%, #f0fdfa 30%, #f8fafc 65%, #f1f5f9 100%);">
+    <div id="dashboard-page" class="hidden min-h-screen pb-28 bg-slate-50">
         
-        <!-- Premium Royal Emerald-Ocean Header -->
-        <div class="pt-11 pb-24 px-6 rounded-b-[2.75rem] shadow-[0_22px_55px_-12px_rgba(13,148,136,0.45)] relative overflow-hidden border-b border-teal-300/30" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 38%, #0284c7 75%, #1d4ed8 100%);">
-            <!-- Aurora Background Effects -->
+        <!-- Premium Royal Emerald-Ocean Header (Smooth & Calm, Zero Tile Clipping) -->
+        <div class="pt-10 pb-20 px-5 rounded-b-[2.5rem] shadow-[0_16px_40px_-10px_rgba(13,148,136,0.38)] relative overflow-hidden border-b border-teal-300/30" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 42%, #0284c7 82%, #1d4ed8 100%);">
+            <!-- Subtle Static Medical Watermarks (No blur/mix-blend/orb animations that cause choppy rendering) -->
             <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                <!-- Floating Medical Icons -->
-                <i class="fa-solid fa-heart-pulse absolute top-10 left-10 text-[6rem] opacity-[0.07] animate-orb-1 rotate-12 text-emerald-200 blur-[1px]"></i>
-                <i class="fa-solid fa-stethoscope absolute top-36 right-16 text-[8rem] opacity-[0.05] animate-orb-2 -rotate-12 text-cyan-200 blur-[2px]"></i>
-                <i class="fa-solid fa-notes-medical absolute -bottom-10 left-1/4 text-[7rem] opacity-[0.06] animate-orb-3 rotate-[25deg] text-sky-200 blur-[1px]"></i>
-                <i class="fa-solid fa-pills absolute top-1/3 -left-5 text-[5rem] opacity-[0.06] animate-orb-2 rotate-45 text-teal-200 blur-[2px]"></i>
-                <i class="fa-solid fa-user-doctor absolute -bottom-5 right-10 text-[6rem] opacity-[0.06] animate-orb-1 -rotate-6 text-amber-200"></i>
-                
-                <!-- Aurora Glow Blobs -->
-                <div class="absolute -right-16 -top-16 w-[420px] h-[420px] bg-gradient-to-br from-amber-300/25 via-cyan-400/20 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-1"></div>
-                <div class="absolute -left-20 top-8 w-[380px] h-[380px] bg-gradient-to-tr from-emerald-400/30 via-teal-300/15 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-2"></div>
-                <div class="absolute right-8 bottom-0 w-[300px] h-[300px] bg-gradient-to-tl from-sky-400/25 via-blue-400/15 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-3"></div>
+                <i class="fa-solid fa-heart-pulse absolute top-10 left-8 text-[5.5rem] opacity-[0.05] rotate-12 text-emerald-200"></i>
+                <i class="fa-solid fa-stethoscope absolute top-28 right-10 text-[7rem] opacity-[0.05] -rotate-12 text-cyan-200"></i>
+                <i class="fa-solid fa-user-doctor absolute -bottom-4 right-8 text-[5.5rem] opacity-[0.05] -rotate-6 text-amber-200"></i>
             </div>
             
             <div class="relative z-10">
                 <!-- Top Centered Badge -->
-                <div class="flex justify-center mb-5">
-                    <div class="flex items-center gap-2.5 pr-4 pl-1.5 py-1.5 rounded-full border border-white/25 shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur-xl" style="background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.07));">
-                        <div class="w-7 h-7 rounded-full bg-white flex items-center justify-center p-0.5 shadow-[0_2px_10px_rgba(251,191,36,0.55)] ring-2 ring-amber-300/80">
+                <div class="flex justify-center mb-4">
+                    <div class="flex items-center gap-2.5 pr-4 pl-1.5 py-1.5 rounded-full border border-white/25 shadow-md" style="background: rgba(15, 23, 42, 0.28);">
+                        <div class="w-7 h-7 rounded-full bg-white flex items-center justify-center p-0.5 shadow-sm ring-2 ring-amber-300/80">
                             <img src="/husada.png" alt="Logo Puskesmas" class="w-full h-full object-contain">
                         </div>
-                        <span class="text-white text-[11px] font-black uppercase tracking-[0.25em] pl-0.5 drop-shadow-sm"><span class="dynamic-instansi-nama">Puskesmas Wana</span></span>
+                        <span class="text-white text-[11px] font-black uppercase tracking-[0.22em] pl-0.5"><span class="dynamic-instansi-nama">Puskesmas Wana</span></span>
                     </div>
                 </div>
 
                 <!-- Real-time Clock & Mini Doctor Mascot -->
-                <div class="flex items-center justify-between mt-1 mb-3">
+                <div class="flex items-center justify-between mt-1 mb-3.5">
                     <div class="flex items-center gap-2">
-                        <div class="w-9 h-9 rounded-full bg-white/15 border border-amber-200/40 backdrop-blur-md flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.2)] overflow-visible relative">
-                            <img src="/anime.png" alt="Maskot Dokter" class="w-10 h-10 object-contain animate-mascot drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)] -mt-1">
+                        <div class="w-9 h-9 rounded-full bg-white/15 border border-amber-200/40 flex items-center justify-center shadow-sm overflow-visible relative">
+                            <img src="/anime.png" alt="Maskot Dokter" class="w-10 h-10 object-contain -mt-1">
                         </div>
                         <div>
-                            <span id="greeting-text" class="text-emerald-100 text-xs font-extrabold uppercase tracking-wider drop-shadow-sm block leading-none">Selamat Pagi,</span>
+                            <span id="greeting-text" class="text-emerald-100 text-xs font-extrabold uppercase tracking-wider block leading-none">Selamat Pagi,</span>
                             <span class="text-[9px] text-amber-200/90 font-bold tracking-widest uppercase">Salam Sehat & Semangat!</span>
                         </div>
                     </div>
-                    <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl border border-amber-300/35 shadow-inner backdrop-blur-md" style="background: rgba(15, 23, 42, 0.28);">
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping"></span>
+                    <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl border border-amber-300/35 shadow-inner" style="background: rgba(15, 23, 42, 0.32);">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span>
                         <span id="realtime-clock" class="text-amber-200 text-xs font-mono font-black tracking-widest">00:00:00</span>
                     </div>
                 </div>
 
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-4">
-                        <div onclick="openPhotoZoomModal()" title="Klik untuk memperbesar foto" class="cursor-pointer w-20 h-20 shrink-0 backdrop-blur-xl border-2 border-amber-200/65 rounded-[1.35rem] flex items-center justify-center text-3xl font-bold text-white shadow-[0_12px_32px_rgba(6,182,212,0.5)] overflow-hidden relative group active:scale-95 transition-transform" style="background: linear-gradient(135deg, rgba(20,184,166,0.45), rgba(14,165,233,0.45));">
-                            <img id="user-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-transform duration-500 group-hover:scale-110" alt="Foto Pegawai">
-                            <img id="user-foto-icon" src="/anime.png" alt="Default Avatar" class="w-[72px] h-[72px] object-contain relative z-0 drop-shadow-md mt-1">
-                            <span class="absolute bottom-1 right-1 z-20 w-5 h-5 rounded-full bg-slate-900/65 text-amber-300 flex items-center justify-center text-[9px] border border-amber-300/50"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
+                <div class="flex justify-between items-center gap-2.5">
+                    <div class="flex items-center gap-3.5 min-w-0 flex-1">
+                        <div onclick="openPhotoZoomModal()" title="Klik untuk memperbesar foto" class="cursor-pointer w-20 h-20 shrink-0 border-2 border-amber-200/70 rounded-[1.35rem] flex items-center justify-center text-3xl font-bold text-white shadow-lg overflow-hidden relative group active:scale-95 transition-transform" style="background: linear-gradient(135deg, #0d9488, #0284c7);">
+                            <img id="user-foto" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10" alt="Foto Pegawai">
+                            <img id="user-foto-icon" src="/anime.png" alt="Default Avatar" class="w-[72px] h-[72px] object-contain relative z-0 mt-1">
+                            <span class="absolute bottom-1 right-1 z-20 w-5 h-5 rounded-full bg-slate-900/70 text-amber-300 flex items-center justify-center text-[9px] border border-amber-300/50"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
                         </div>
-                        <div>
+                        <div class="min-w-0 flex-1">
                             <p class="text-teal-100/90 text-[10px] font-bold mb-0.5 uppercase tracking-[0.15em]">Selamat datang,</p>
-                            <h2 id="user-nama" class="font-black text-2xl leading-tight text-white tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]">Nama Pegawai</h2>
+                            <h2 id="user-nama" class="font-black text-xl sm:text-2xl leading-tight text-white tracking-wide truncate">Nama Pegawai</h2>
                             <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                                <span id="user-jabatan" class="text-[9px] bg-gradient-to-r from-emerald-400/30 to-cyan-400/30 text-white px-2.5 py-1 rounded-lg font-black border border-emerald-200/40 uppercase tracking-widest shadow-sm backdrop-blur-sm">Jabatan</span>
-                                <span id="user-id" class="text-[9px] text-amber-200 px-2.5 py-1 rounded-lg font-mono font-black border border-amber-300/35 tracking-widest shadow-sm backdrop-blur-sm" style="background: rgba(251,191,36,0.14);">ID</span>
-                                <span id="beranda-pangkat-badge" onclick="switchTab('profil')" title="Klik untuk melihat Profil & Prestasi" class="cursor-pointer text-[9px] text-slate-950 px-2.5 py-1 rounded-lg font-black border border-amber-200 tracking-wider shadow-[0_2px_10px_rgba(251,191,36,0.4)] flex items-center gap-1 active:scale-95 transition-transform" style="background: linear-gradient(135deg, #fef08a, #f59e0b);">
+                                <span id="user-jabatan" class="text-[9px] bg-white/15 text-white px-2.5 py-1 rounded-lg font-black border border-emerald-200/40 uppercase tracking-widest">Jabatan</span>
+                                <span id="user-id" class="text-[9px] text-amber-200 px-2.5 py-1 rounded-lg font-mono font-black border border-amber-300/40 tracking-widest" style="background: rgba(15,23,42,0.28);">ID</span>
+                                <span id="beranda-pangkat-badge" onclick="switchTab('profil')" title="Klik untuk melihat Profil & Prestasi" class="cursor-pointer text-[9px] text-slate-950 px-2.5 py-1 rounded-lg font-black border border-amber-200 tracking-wider shadow-sm flex items-center gap-1 active:scale-95 transition-transform" style="background: linear-gradient(135deg, #fef08a, #f59e0b);">
                                     <i class="fa-solid fa-crown text-[8px] text-amber-800"></i>
                                     <span id="beranda-pangkat-text">Pegawai Aktif</span>
                                     <span class="opacity-50">•</span>
@@ -637,7 +627,7 @@
                             </div>
                         </div>
                     </div>
-                    <button onclick="logout()" title="Keluar" class="w-10 h-10 hover:bg-rose-500/30 hover:text-rose-200 border border-white/25 hover:border-rose-300/50 backdrop-blur-xl rounded-xl flex items-center justify-center text-white/85 transition-all duration-300 shadow-lg active:scale-95" style="background: rgba(255,255,255,0.12);">
+                    <button onclick="logout()" title="Keluar" class="w-10 h-10 shrink-0 hover:bg-rose-500/30 hover:text-rose-200 border border-white/25 rounded-xl flex items-center justify-center text-white/90 transition-colors shadow-md active:scale-95" style="background: rgba(15,23,42,0.28);">
                         <i class="fa-solid fa-power-off"></i>
                     </button>
                 </div>
@@ -645,7 +635,7 @@
         </div>
 
         <!-- Dashboard Content -->
-        <div class="px-5 -mt-14 relative z-20 space-y-5">
+        <div class="px-4 sm:px-5 -mt-10 relative z-20 space-y-4">
             
             <!-- Running Text Announcement -->
             <div class="rounded-2xl overflow-hidden flex items-stretch p-1.5 shadow-[0_12px_32px_-8px_rgba(13,148,136,0.22)] relative border border-teal-200/80" style="background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 55%, #e0f2fe 100%);">
@@ -662,10 +652,8 @@
             </div>
 
             <!-- Card Hari Ini -->
-            <div class="rounded-[2rem] p-5 shadow-[0_18px_45px_-12px_rgba(15,118,110,0.16)] border border-teal-100/90 relative overflow-hidden" style="background: linear-gradient(155deg, #ffffff 0%, #f8fafc 55%, #f0fdfa 100%);">
-                <div class="absolute top-0 left-0 right-0 h-1.5" style="background: linear-gradient(90deg, #10b981 0%, #06b6d4 50%, #3b82f6 100%);"></div>
-                <div class="absolute -top-10 -right-10 w-36 h-36 bg-gradient-to-bl from-teal-200/35 to-transparent rounded-full blur-2xl pointer-events-none"></div>
-                <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-gradient-to-tr from-sky-200/30 to-transparent rounded-full blur-2xl pointer-events-none"></div>
+            <div class="rounded-[1.75rem] p-5 shadow-[0_12px_30px_-8px_rgba(15,118,110,0.14)] border border-teal-200/80 relative overflow-hidden bg-white">
+                <div class="absolute top-0 left-0 right-0 h-1.5" style="background: linear-gradient(90deg, #10b981 0%, #0d9488 50%, #0284c7 100%);"></div>
 
                 <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3.5 relative z-10 gap-2">
                     <div>
@@ -932,12 +920,12 @@
                 <div id="daily-metrics-scroll" class="overflow-x-auto overflow-y-auto max-h-[55vh] relative scroll-smooth">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead class="sticky top-0 z-20">
-                            <tr class="text-white shadow-md" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 50%, #0284c7 100%);">
-                                <th class="p-3 font-black uppercase tracking-wider text-center w-20" style="background: inherit;">Hari / Tgl</th>
-                                <th class="p-3.5 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;">Masuk</th>
-                                <th class="p-3.5 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;">Pulang</th>
-                                <th class="p-3.5 font-black uppercase tracking-wider text-center w-12" style="background: inherit;" title="PSW (Menit)">P</th>
-                                <th class="p-3.5 font-black uppercase tracking-wider text-center w-12" style="background: inherit;" title="Telat (Menit)">T</th>
+                            <tr class="text-white shadow-sm" style="background: #0f766e;">
+                                <th class="p-3 font-black uppercase tracking-wider text-center w-20 border-r border-teal-600/50" style="background: #042f2e;">Hari / Tgl</th>
+                                <th class="p-3.5 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-600/40" style="background: #0f766e;">Masuk</th>
+                                <th class="p-3.5 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-600/40" style="background: #0f766e;">Pulang</th>
+                                <th class="p-3.5 font-black uppercase tracking-wider text-center w-12 border-r border-teal-600/40" style="background: #0d9488;" title="PSW (Menit)">P</th>
+                                <th class="p-3.5 font-black uppercase tracking-wider text-center w-12" style="background: #0284c7;" title="Telat (Menit)">T</th>
                             </tr>
                         </thead>
                         <tbody id="daily-metrics-tbody" class="text-slate-700 font-semibold divide-y divide-teal-50">
@@ -953,16 +941,12 @@
     </div>
 
     <!-- HALAMAN RIWAYAT (HARMONIZED EMERALD-TEAL-GOLD THEME) -->
-    <div id="riwayat-page" class="hidden min-h-screen pb-24" style="background: linear-gradient(180deg, #e0f2fe 0%, #f0fdfa 30%, #f8fafc 65%, #f1f5f9 100%);">
+    <div id="riwayat-page" class="hidden min-h-screen pb-28 bg-slate-50">
         <!-- Royal Emerald-Teal-Ocean Header -->
-        <div class="pt-12 pb-16 px-6 rounded-b-[3rem] shadow-[0_22px_55px_-12px_rgba(13,148,136,0.42)] relative overflow-hidden border-b border-teal-300/30" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 38%, #0284c7 75%, #1d4ed8 100%);">
+        <div class="pt-11 pb-16 px-6 rounded-b-[2.5rem] shadow-[0_16px_40px_-10px_rgba(13,148,136,0.38)] relative overflow-hidden border-b border-teal-300/30" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 42%, #0284c7 82%, #1d4ed8 100%);">
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
-                <i class="fa-solid fa-clock-rotate-left absolute top-8 left-10 text-[5rem] opacity-[0.07] animate-orb-1 rotate-12 text-amber-200 blur-[1px]"></i>
-                <i class="fa-solid fa-chart-line absolute top-20 right-10 text-[6rem] opacity-[0.05] animate-orb-2 -rotate-12 text-cyan-200 blur-[2px]"></i>
-                <i class="fa-solid fa-calendar-check absolute -bottom-5 left-1/4 text-[5rem] opacity-[0.06] animate-orb-3 rotate-[20deg] text-emerald-200 blur-[1px]"></i>
-                <!-- Aurora Glow Blobs -->
-                <div class="absolute -right-20 -top-20 w-[400px] h-[400px] bg-gradient-to-br from-amber-300/20 via-cyan-400/15 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-1"></div>
-                <div class="absolute -left-10 top-10 w-[350px] h-[350px] bg-gradient-to-tr from-emerald-400/25 via-teal-300/15 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-2"></div>
+                <i class="fa-solid fa-clock-rotate-left absolute top-8 left-10 text-[5rem] opacity-[0.05] rotate-12 text-amber-200"></i>
+                <i class="fa-solid fa-chart-line absolute top-20 right-10 text-[6rem] opacity-[0.05] -rotate-12 text-cyan-200"></i>
             </div>
             <div class="relative z-10 text-center">
                 <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-300/35 shadow-lg backdrop-blur-xl mb-3" style="background: rgba(15, 23, 42, 0.28);">
@@ -1006,17 +990,17 @@
                 <div class="overflow-x-auto overflow-y-auto max-h-[65vh] relative">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead class="sticky top-0 z-20">
-                            <tr class="text-white shadow-lg" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 50%, #0284c7 100%);">
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap sticky left-0 z-30 border-r border-teal-400/30" style="background: #042f2e;">Bulan</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-400/30" style="background: inherit;" title="Kehadiran"><i class="fa-solid fa-check-double mr-1 text-emerald-300"></i>Hadir</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-400/30" style="background: inherit;" title="Alpa"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-300"></i>Alpa</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-400/30" style="background: inherit;" title="Izin/Sakit/Cuti/DL"><i class="fa-solid fa-suitcase-medical mr-1 text-sky-300"></i>I/S/C</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-400/30" style="background: inherit;" title="Telat (Kali)"><i class="fa-solid fa-clock-rotate-left mr-1 text-amber-300"></i>Telat</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-400/30" style="background: inherit;" title="Telat (Menit)">Mnt</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-400/30" style="background: inherit;" title="PSW (Kali)"><i class="fa-solid fa-person-running mr-1 text-purple-300"></i>PSW</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-400/30" style="background: inherit;" title="PSW (Menit)">Mnt</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-400/30" style="background: inherit;" title="Tanpa Absen Pulang"><i class="fa-solid fa-door-open mr-1 text-red-300"></i>TAP</th>
-                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: inherit;" title="Total Jam Kerja"><i class="fa-solid fa-business-time mr-1 text-amber-300"></i>Jam</th>
+                            <tr class="text-white shadow-sm" style="background: #0f766e;">
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap sticky left-0 z-30 border-r border-teal-500/40" style="background: #042f2e;">Bulan</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-500/40" style="background: #0f766e;" title="Kehadiran"><i class="fa-solid fa-check-double mr-1 text-emerald-300"></i>Hadir</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-500/40" style="background: #0f766e;" title="Alpa"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-300"></i>Alpa</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-500/40" style="background: #0f766e;" title="Izin/Sakit/Cuti/DL"><i class="fa-solid fa-suitcase-medical mr-1 text-sky-300"></i>I/S/C</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-500/40" style="background: #0f766e;" title="Telat (Kali)"><i class="fa-solid fa-clock-rotate-left mr-1 text-amber-300"></i>Telat</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-500/40" style="background: #0f766e;" title="Telat (Menit)">Mnt</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-500/40" style="background: #0f766e;" title="PSW (Kali)"><i class="fa-solid fa-person-running mr-1 text-purple-300"></i>PSW</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-500/40" style="background: #0f766e;" title="PSW (Menit)">Mnt</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap border-r border-teal-500/40" style="background: #0f766e;" title="Tanpa Absen Pulang"><i class="fa-solid fa-door-open mr-1 text-red-300"></i>TAP</th>
+                                <th class="p-3 font-black uppercase tracking-wider text-center whitespace-nowrap" style="background: #0284c7;" title="Total Jam Kerja"><i class="fa-solid fa-business-time mr-1 text-amber-300"></i>Jam</th>
                             </tr>
                         </thead>
                         <tbody id="riwayat-table-tbody" class="text-slate-700 font-semibold divide-y divide-teal-50">
@@ -1150,13 +1134,12 @@
         </div>
     </div>
     <!-- HALAMAN PROFIL (DENGAN KARTU PEGAWAI DIGITAL / E-ID CARD) -->
-    <div id="profil-page" class="hidden min-h-screen pb-24" style="background: linear-gradient(180deg, #e0f2fe 0%, #f0fdfa 30%, #f8fafc 65%, #f1f5f9 100%);">
+    <div id="profil-page" class="hidden min-h-screen pb-28 bg-slate-50">
         <!-- Royal Emerald-Teal Top Banner -->
-        <div class="pt-10 pb-24 px-6 rounded-b-[2.75rem] shadow-[0_20px_50px_-12px_rgba(13,148,136,0.35)] relative overflow-hidden border-b border-teal-300/30" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 40%, #0284c7 80%, #1d4ed8 100%);">
+        <div class="pt-10 pb-20 px-6 rounded-b-[2.5rem] shadow-[0_16px_40px_-10px_rgba(13,148,136,0.35)] relative overflow-hidden border-b border-teal-300/30" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 42%, #0284c7 82%, #1d4ed8 100%);">
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
-                <i class="fa-solid fa-id-card-clip absolute top-6 right-8 text-[5.5rem] opacity-[0.07] animate-orb-1 rotate-12 text-amber-200"></i>
-                <i class="fa-solid fa-shield-halved absolute top-20 left-8 text-[6rem] opacity-[0.05] animate-orb-2 -rotate-12 text-cyan-200"></i>
-                <div class="absolute -right-20 -top-20 w-[360px] h-[360px] bg-gradient-to-br from-amber-300/20 via-teal-400/15 to-transparent rounded-full blur-3xl mix-blend-screen animate-orb-1"></div>
+                <i class="fa-solid fa-id-card-clip absolute top-6 right-8 text-[5.5rem] opacity-[0.05] rotate-12 text-amber-200"></i>
+                <i class="fa-solid fa-shield-halved absolute top-20 left-8 text-[6rem] opacity-[0.05] -rotate-12 text-cyan-200"></i>
             </div>
             <div class="relative z-10 text-center">
                 <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-amber-300/35 shadow-lg backdrop-blur-xl mb-2" style="background: rgba(15, 23, 42, 0.28);">
@@ -1485,7 +1468,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/portal.js?v=39"></script>
+    <script src="/portal.js?v=40"></script>
     <script src="instansi_config.js"></script>
 </body>
 </html>

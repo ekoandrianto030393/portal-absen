@@ -442,114 +442,62 @@ function switchTab(tabName) {
     const newTabId = tabs.indexOf(tabName);
     const isForward = newTabId > currentTabId;
 
+    // Clean all leftover slide transform classes so pages never clip or tear
+    [dashPage, riwayatPage, profilPage].forEach(p => {
+        if (p) p.classList.remove('slide-in-center', 'slide-out-left', 'slide-out-right');
+    });
+
     if (tabName === 'beranda') {
-        // Set Active Nav
         navBeranda.className = activeClass;
-        
-        // Animasi Keluar
-        riwayatPage.classList.remove('slide-in-center');
-        riwayatPage.classList.add('slide-out-right');
-        if(profilPage) {
-            profilPage.classList.remove('slide-in-center');
-            profilPage.classList.add('slide-out-right');
+        riwayatPage.classList.add('hidden');
+        if (profilPage) profilPage.classList.add('hidden');
+        dashPage.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        const session = localStorage.getItem('pegawai_session');
+        if (session) {
+            const user = JSON.parse(session);
+            loadDashboardData(user.id_karyawan);
         }
-        
-        setTimeout(() => {
-            riwayatPage.classList.add('hidden');
-            if(profilPage) profilPage.classList.add('hidden');
-            dashPage.classList.remove('hidden');
-            dashPage.classList.remove('slide-out-left', 'slide-out-right');
-            // Sedikit delay agar browser render display:block sebelum animasi transform masuk
-            setTimeout(() => {
-                dashPage.classList.add('slide-in-center');
-                // Reload dashboard data every time user goes back to beranda
-                const session = localStorage.getItem('pegawai_session');
-                if (session) {
-                    const user = JSON.parse(session);
-                    loadDashboardData(user.id_karyawan);
-                }
-            }, 20);
-        }, 350);
-        
     } else if (tabName === 'riwayat') {
-        // Set Active Nav
         navRiwayat.className = activeClass;
-        
-        // Animasi Keluar
-        if (currentTabId === 0) { // Dari Beranda -> Riwayat (Maju)
-            dashPage.classList.remove('slide-in-center');
-            dashPage.classList.add('slide-out-left');
-        } else { // Dari Profil -> Riwayat (Mundur)
-            if(profilPage) {
-                profilPage.classList.remove('slide-in-center');
-                profilPage.classList.add('slide-out-right');
+        dashPage.classList.add('hidden');
+        if (profilPage) profilPage.classList.add('hidden');
+        riwayatPage.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        if (!isRiwayatLoaded) {
+            const session = localStorage.getItem('pegawai_session');
+            if (session) {
+                const user = JSON.parse(session);
+                loadRiwayatBulanan(user.id_karyawan);
             }
         }
-        
-        setTimeout(() => {
-            dashPage.classList.add('hidden');
-            if(profilPage) profilPage.classList.add('hidden');
-            riwayatPage.classList.remove('hidden');
-            riwayatPage.classList.remove('slide-out-left', 'slide-out-right');
-            
-            setTimeout(() => {
-                riwayatPage.classList.add('slide-in-center');
-                
-                // Lazy load riwayat data
-                if (!isRiwayatLoaded) {
-                    const session = localStorage.getItem('pegawai_session');
-                    if (session) {
-                        const user = JSON.parse(session);
-                        loadRiwayatBulanan(user.id_karyawan);
-                    }
-                }
-            }, 20);
-        }, 350);
     } else if (tabName === 'profil') {
-        // Set Active Nav
-        if(navProfil) navProfil.className = profilActiveClass;
-        
-        // Animasi Keluar
-        dashPage.classList.remove('slide-in-center');
-        dashPage.classList.add('slide-out-left');
-        riwayatPage.classList.remove('slide-in-center');
-        riwayatPage.classList.add('slide-out-left');
-        
-        setTimeout(() => {
-            dashPage.classList.add('hidden');
-            riwayatPage.classList.add('hidden');
-            if(profilPage) {
-                profilPage.classList.remove('hidden');
-                profilPage.classList.remove('slide-out-left', 'slide-out-right');
-                setTimeout(() => {
-                    profilPage.classList.add('slide-in-center');
-                    // Populate data if needed
-                    const session = localStorage.getItem('pegawai_session');
-                    if(session) {
-                        const user = JSON.parse(session);
-                        const pNama = document.getElementById('profil-nama');
-                        if(pNama) pNama.textContent = user.nama;
-                        const pJabatan = document.getElementById('profil-jabatan');
-                        if(pJabatan) pJabatan.textContent = user.jabatan || 'Pegawai';
-                        const pId = document.getElementById('profil-id');
-                        if(pId) pId.textContent = user.id_karyawan;
-                        
-                        // Ensure Gamification stats are loaded
-                        if (typeof isRiwayatLoaded !== 'undefined' && !isRiwayatLoaded) {
-                            loadRiwayatBulanan(user.id_karyawan);
-                        }
-                        
-                        // Load image to profil
-                        const imgNode = document.getElementById('user-foto');
-                        if(imgNode && !imgNode.classList.contains('hidden')) {
-                            document.getElementById('profil-foto').src = imgNode.src;
-                            document.getElementById('profil-foto').classList.remove('hidden');
-                            document.getElementById('profil-foto-icon').classList.add('hidden');
-                        }
-                    }
-                }, 50);
+        if (navProfil) navProfil.className = profilActiveClass;
+        dashPage.classList.add('hidden');
+        riwayatPage.classList.add('hidden');
+        if (profilPage) {
+            profilPage.classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'instant' });
+            const session = localStorage.getItem('pegawai_session');
+            if (session) {
+                const user = JSON.parse(session);
+                const pNama = document.getElementById('profil-nama');
+                if (pNama) pNama.textContent = user.nama;
+                const pJabatan = document.getElementById('profil-jabatan');
+                if (pJabatan) pJabatan.textContent = user.jabatan || 'Pegawai';
+                const pId = document.getElementById('profil-id');
+                if (pId) pId.textContent = user.id_karyawan;
+                if (typeof isRiwayatLoaded !== 'undefined' && !isRiwayatLoaded) {
+                    loadRiwayatBulanan(user.id_karyawan);
+                }
+                const imgNode = document.getElementById('user-foto');
+                if (imgNode && !imgNode.classList.contains('hidden')) {
+                    document.getElementById('profil-foto').src = imgNode.src;
+                    document.getElementById('profil-foto').classList.remove('hidden');
+                    document.getElementById('profil-foto-icon').classList.add('hidden');
+                }
             }
-        }, 300);
+        }
     }
 }
 
@@ -973,14 +921,7 @@ function renderRiwayatChart(data) {
 }
 
 function toggleSkeleton(enable) {
-    const ids = ['today-masuk', 'today-pulang', 'today-status', 'rekap-hadir', 'rekap-alpa', 'rekap-telat', 'rekap-isc', 'rekap-tap', 'rekap-telat-menit', 'rekap-psw-kali', 'rekap-psw-menit', 'rekap-jam-kerja'];
-    ids.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) {
-            if(enable) el.classList.add('skeleton', 'text-transparent', 'bg-slate-200');
-            else el.classList.remove('skeleton', 'text-transparent', 'bg-slate-200');
-        }
-    });
+    // Dinonaktifkan agar kartu gradien di Beranda tidak berkedip kotak abu-abu (patah-patah) saat memuat data
 }
 
 let liveDurationTimer = null;
