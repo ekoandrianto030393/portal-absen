@@ -566,7 +566,7 @@
     </div>
 
     <!-- HALAMAN DASHBOARD -->
-    <div id="dashboard-page" class="hidden min-h-screen pb-28" style="background: linear-gradient(180deg, #dff6f2 0%, #f0fdfa 38%, #f8fafc 100%);">
+    <div id="dashboard-page" class="hidden min-h-screen pb-28" style="background: linear-gradient(180deg, #d1fae5 0%, #e0f2fe 35%, #f0fdfa 70%, #f8fafc 100%);">
         
         <!-- Premium Royal Emerald-Ocean Header (Smooth & Calm, Zero Tile Clipping) -->
         <div class="pt-10 pb-20 px-5 rounded-b-[2.5rem] shadow-[0_16px_40px_-10px_rgba(13,148,136,0.38)] relative overflow-hidden border-b border-teal-300/30" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 42%, #0284c7 82%, #1d4ed8 100%);">
@@ -624,10 +624,6 @@
                                     <span class="opacity-50">•</span>
                                     <span id="beranda-xp-text" class="font-mono text-amber-950">0 XP</span>
                                 </span>
-                                <span id="beranda-grade-badge" onclick="switchTab('profil')" title="Indeks Kinerja Disiplin Bulan Ini" class="cursor-pointer text-[9px] text-emerald-950 px-2 py-1 rounded-lg font-black border border-emerald-200 tracking-wider shadow-sm flex items-center gap-1" style="background: linear-gradient(135deg, #a7f3d0, #34d399);">
-                                    <i class="fa-solid fa-medal text-[8px] text-emerald-800"></i>
-                                    <span id="beranda-grade-text">Grade A</span>
-                                </span>
                             </div>
                         </div>
                     </div>
@@ -679,41 +675,31 @@
                 
                 <div class="grid grid-cols-2 gap-3.5 relative z-10">
                     <!-- Box Jam Masuk -->
-                    <div class="rounded-2xl p-4 text-center border border-emerald-200/80 shadow-[0_6px_20px_-6px_rgba(16,185,129,0.2)] relative overflow-hidden" style="background: linear-gradient(145deg, #ecfdf5 0%, #d1fae5 100%);">
-                        <div class="w-12 h-12 text-white rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-[0_8px_18px_-3px_rgba(16,185,129,0.45)] border border-emerald-300/60" style="background: linear-gradient(135deg, #10b981, #047857);">
+                    <div class="rounded-2xl p-4 text-center border border-emerald-300 shadow-[0_8px_20px_-6px_rgba(16,185,129,0.25)] relative overflow-hidden" style="background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%);">
+                        <div class="w-12 h-12 text-white rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-[0_8px_18px_-3px_rgba(5,150,105,0.5)] border border-emerald-300/60" style="background: linear-gradient(135deg, #10b981, #047857);">
                             <i class="fa-solid fa-arrow-right-to-bracket text-lg drop-shadow-sm"></i>
                         </div>
-                        <p class="text-[10px] text-emerald-800 font-extrabold mb-1 uppercase tracking-widest">Jam Masuk</p>
+                        <p class="text-[10px] text-emerald-900 font-extrabold mb-1 uppercase tracking-widest">Jam Masuk</p>
                         <p id="today-masuk" class="text-2xl font-black text-emerald-950 tracking-tight font-mono">--:--</p>
                     </div>
                     
                     <!-- Box Jam Pulang -->
-                    <div class="rounded-2xl p-4 text-center border border-rose-200/80 shadow-[0_6px_20px_-6px_rgba(244,63,94,0.2)] relative overflow-hidden" style="background: linear-gradient(145deg, #fff1f2 0%, #ffe4e6 100%);">
-                        <div class="w-12 h-12 text-white rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-[0_8px_18px_-3px_rgba(225,29,72,0.45)] border border-rose-300/60" style="background: linear-gradient(135deg, #f43f5e, #be123c);">
+                    <div class="rounded-2xl p-4 text-center border border-rose-300 shadow-[0_8px_20px_-6px_rgba(244,63,94,0.25)] relative overflow-hidden" style="background: linear-gradient(145deg, #ffe4e6 0%, #fecdd3 100%);">
+                        <div class="w-12 h-12 text-white rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-[0_8px_18px_-3px_rgba(225,29,72,0.5)] border border-rose-300/60" style="background: linear-gradient(135deg, #f43f5e, #be123c);">
                             <i class="fa-solid fa-arrow-right-from-bracket text-lg drop-shadow-sm"></i>
                         </div>
-                        <p class="text-[10px] text-rose-800 font-extrabold mb-1 uppercase tracking-widest">Jam Pulang</p>
+                        <p class="text-[10px] text-rose-900 font-extrabold mb-1 uppercase tracking-widest">Jam Pulang</p>
                         <p id="today-pulang" class="text-2xl font-black text-rose-950 tracking-tight font-mono">--:--</p>
                     </div>
                 </div>
 
-                <!-- Jadwal Jam Kerja Standar & Live Work Duration Pill -->
-                <div id="today-duration-box" class="mt-3.5 p-3 rounded-2xl border border-teal-200/90 relative z-10 shadow-sm transition-all duration-300" style="background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%);">
-                    <div class="flex items-center justify-between mb-1.5">
-                        <div class="flex items-center gap-2">
-                            <span id="today-duration-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
-                            <span id="today-duration-label" class="text-[10px] font-extrabold text-teal-900 uppercase tracking-wider">Durasi Kerja Hari Ini</span>
-                        </div>
-                        <span id="today-duration-val" class="text-xs font-black text-teal-950 font-mono bg-white/95 px-2.5 py-0.5 rounded-lg border border-teal-200/80 shadow-inner">Belum Mulai</span>
+                <!-- Live Work Duration Pill -->
+                <div id="today-duration-box" class="mt-3.5 px-3.5 py-2.5 rounded-xl border border-teal-200/80 flex items-center justify-between relative z-10 shadow-sm transition-all duration-300" style="background: linear-gradient(135deg, #ccfbf1 0%, #e0f2fe 100%);">
+                    <div class="flex items-center gap-2">
+                        <span id="today-duration-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                        <span id="today-duration-label" class="text-[10px] font-extrabold text-teal-900 uppercase tracking-wider">Durasi Kerja Hari Ini</span>
                     </div>
-                    <!-- Shift Progress Bar -->
-                    <div class="w-full h-2 bg-teal-950/10 rounded-full overflow-hidden p-0.5 border border-teal-200/60">
-                        <div id="today-shift-bar" class="h-full rounded-full transition-all duration-500" style="width: 0%; background: linear-gradient(90deg, #10b981, #0ea5e9, #f59e0b);"></div>
-                    </div>
-                    <div class="flex items-center justify-between mt-1.5 text-[8px] font-extrabold text-teal-700 uppercase tracking-wider">
-                        <span id="today-shift-schedule"><i class="fa-regular fa-clock mr-1"></i>Standar Shift: 07:30 - 14:00 WIB</span>
-                        <span id="today-shift-pct" class="font-mono text-teal-900">0% Shift</span>
-                    </div>
+                    <span id="today-duration-val" class="text-xs font-black text-teal-950 font-mono bg-white/95 px-2.5 py-0.5 rounded-lg border border-teal-200/80 shadow-inner">Belum Mulai</span>
                 </div>
                 
                 <div id="today-status" class="mt-3 text-center text-xs font-black text-teal-900 py-3 rounded-xl shadow-sm uppercase tracking-widest transition-all duration-300 border border-teal-200/80 relative z-10" style="background: linear-gradient(135deg, #f0fdfa, #ccfbf1);">
@@ -790,87 +776,63 @@
                 </div>
 
                 <!-- Card Alpa -->
-                <div onclick="filterDailyTableByStatus('ALPA')" title="Klik untuk memfilter hari Alpa" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_10px_25px_-6px_rgba(244,63,94,0.22)] border border-rose-300/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #fff1f2 45%, #ffe4e6 100%);">
-                    <div class="absolute top-0 left-0 right-0 h-1" style="background: linear-gradient(90deg, #fb7185, #e11d48);"></div>
-                    <i class="fa-solid fa-triangle-exclamation absolute -right-2 -bottom-2 text-5xl text-rose-500/10 pointer-events-none"></i>
-                    <div class="flex items-center justify-between w-full mb-2">
-                        <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(225,29,72,0.45)] flex items-center justify-center border border-rose-300/60" style="background: linear-gradient(135deg, #f43f5e, #be123c);"><i class="fa-solid fa-triangle-exclamation text-sm"></i></div>
-                        <span id="badge-alpa-info" class="text-[8px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">0 Alpa ✓</span>
-                    </div>
-                    <p class="text-[10px] font-extrabold text-rose-800 uppercase tracking-widest leading-tight">Tanpa Ket. (Alpa)</p>
-                    <p class="text-2xl font-black text-rose-950 tracking-tight font-mono mt-0.5" id="rekap-alpa">0</p>
+                <div onclick="filterDailyTableByStatus('ALPA')" title="Klik untuk memfilter hari Alpa" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(244,63,94,0.25)] border border-rose-300/90 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 55%, #fda4af 100%);">
+                    <i class="fa-solid fa-triangle-exclamation absolute -right-2 -bottom-2 text-5xl text-rose-600/10 pointer-events-none"></i>
+                    <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(225,29,72,0.45)] flex items-center justify-center mb-2 border border-rose-300/60" style="background: linear-gradient(135deg, #f43f5e, #be123c);"><i class="fa-solid fa-triangle-exclamation text-sm"></i></div>
+                    <p class="text-[10px] font-extrabold text-rose-900 uppercase tracking-widest leading-tight">Alpa</p>
+                    <p class="text-2xl font-black text-rose-950 tracking-tight" id="rekap-alpa">0</p>
                 </div>
 
                 <!-- Card Izin/Cuti -->
-                <div onclick="filterDailyTableByStatus('IZIN_CUTI')" title="Klik untuk memfilter hari Izin / Cuti" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_10px_25px_-6px_rgba(37,99,235,0.22)] border border-blue-300/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #eff6ff 45%, #dbeafe 100%);">
-                    <div class="absolute top-0 left-0 right-0 h-1" style="background: linear-gradient(90deg, #60a5fa, #2563eb);"></div>
-                    <i class="fa-solid fa-suitcase-medical absolute -right-2 -bottom-2 text-5xl text-blue-500/10 pointer-events-none"></i>
-                    <div class="flex items-center justify-between w-full mb-2">
-                        <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(37,99,235,0.45)] flex items-center justify-center border border-blue-300/60" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);"><i class="fa-solid fa-file-signature text-sm"></i></div>
-                        <span class="text-[8px] font-black px-2 py-0.5 rounded-full bg-blue-100/90 text-blue-800 border border-blue-200 uppercase tracking-wider">Izin Resmi</span>
-                    </div>
-                    <p class="text-[10px] font-extrabold text-blue-800 uppercase tracking-widest leading-tight">Izin / Cuti</p>
-                    <p class="text-2xl font-black text-blue-950 tracking-tight font-mono mt-0.5" id="rekap-isc">0</p>
+                <div onclick="filterDailyTableByStatus('IZIN_CUTI')" title="Klik untuk memfilter hari Izin / Cuti" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(37,99,235,0.25)] border border-blue-300/90 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 55%, #93c5fd 100%);">
+                    <i class="fa-solid fa-suitcase-medical absolute -right-2 -bottom-2 text-5xl text-blue-600/10 pointer-events-none"></i>
+                    <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(37,99,235,0.45)] flex items-center justify-center mb-2 border border-blue-300/60" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);"><i class="fa-solid fa-suitcase-medical text-sm"></i></div>
+                    <p class="text-[10px] font-extrabold text-blue-900 uppercase tracking-widest leading-tight">Izin / Cuti</p>
+                    <p class="text-2xl font-black text-blue-950 tracking-tight" id="rekap-isc">0</p>
                 </div>
 
                 <!-- Card Sakit -->
-                <div onclick="filterDailyTableByStatus('SAKIT')" title="Klik untuk memfilter hari Sakit" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_10px_25px_-6px_rgba(13,148,136,0.22)] border border-teal-300/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #f0fdfa 45%, #ccfbf1 100%);">
-                    <div class="absolute top-0 left-0 right-0 h-1" style="background: linear-gradient(90deg, #2dd4bf, #0d9488);"></div>
-                    <i class="fa-solid fa-bed-pulse absolute -right-2 -bottom-2 text-5xl text-teal-600/10 pointer-events-none"></i>
-                    <div class="flex items-center justify-between w-full mb-2">
-                        <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(13,148,136,0.45)] flex items-center justify-center border border-teal-300/60" style="background: linear-gradient(135deg, #14b8a6, #0f766e);"><i class="fa-solid fa-bed-pulse text-sm"></i></div>
-                        <span class="text-[8px] font-black px-2 py-0.5 rounded-full bg-teal-100/90 text-teal-800 border border-teal-200 uppercase tracking-wider">Medis</span>
-                    </div>
-                    <p class="text-[10px] font-extrabold text-teal-800 uppercase tracking-widest leading-tight">Sakit</p>
-                    <p class="text-2xl font-black text-teal-950 tracking-tight font-mono mt-0.5" id="rekap-sakit">0</p>
+                <div onclick="filterDailyTableByStatus('SAKIT')" title="Klik untuk memfilter hari Sakit" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(13,148,136,0.25)] border border-teal-300/90 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 55%, #5eead4 100%);">
+                    <i class="fa-solid fa-bed-pulse absolute -right-2 -bottom-2 text-5xl text-teal-700/10 pointer-events-none"></i>
+                    <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(13,148,136,0.45)] flex items-center justify-center mb-2 border border-teal-300/60" style="background: linear-gradient(135deg, #14b8a6, #0f766e);"><i class="fa-solid fa-bed-pulse text-sm"></i></div>
+                    <p class="text-[10px] font-extrabold text-teal-900 uppercase tracking-widest leading-tight">Sakit</p>
+                    <p class="text-2xl font-black text-teal-950 tracking-tight" id="rekap-sakit">0</p>
                 </div>
 
                 <!-- Card DL -->
-                <div onclick="filterDailyTableByStatus('DL')" title="Klik untuk memfilter hari Dinas Luar (DL)" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_10px_25px_-6px_rgba(2,132,199,0.22)] border border-sky-300/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #f0f9ff 45%, #e0f2fe 100%);">
-                    <div class="absolute top-0 left-0 right-0 h-1" style="background: linear-gradient(90deg, #38bdf8, #0284c7);"></div>
-                    <i class="fa-solid fa-car-side absolute -right-2 -bottom-2 text-5xl text-sky-500/10 pointer-events-none"></i>
-                    <div class="flex items-center justify-between w-full mb-2">
-                        <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(2,132,199,0.45)] flex items-center justify-center border border-sky-300/60" style="background: linear-gradient(135deg, #0ea5e9, #0369a1);"><i class="fa-solid fa-car-side text-sm"></i></div>
-                        <span class="text-[8px] font-black px-2 py-0.5 rounded-full bg-sky-100/90 text-sky-800 border border-sky-200 uppercase tracking-wider">Tugas Luar</span>
-                    </div>
-                    <p class="text-[10px] font-extrabold text-sky-800 uppercase tracking-widest leading-tight">Dinas Luar</p>
-                    <p class="text-2xl font-black text-sky-950 tracking-tight font-mono mt-0.5" id="rekap-dl">0</p>
+                <div onclick="filterDailyTableByStatus('DL')" title="Klik untuk memfilter hari Dinas Luar (DL)" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(2,132,199,0.25)] border border-sky-300/90 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 55%, #7dd3fc 100%);">
+                    <i class="fa-solid fa-car-side absolute -right-2 -bottom-2 text-5xl text-sky-600/10 pointer-events-none"></i>
+                    <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(2,132,199,0.45)] flex items-center justify-center mb-2 border border-sky-300/60" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);"><i class="fa-solid fa-car-side text-sm"></i></div>
+                    <p class="text-[10px] font-extrabold text-sky-900 uppercase tracking-widest leading-tight">Dinas Luar</p>
+                    <p class="text-2xl font-black text-sky-950 tracking-tight" id="rekap-dl">0</p>
                 </div>
 
                 <!-- Card Telat (Kombinasi) -->
-                <div onclick="filterDailyTableByStatus('TELAT')" title="Klik untuk memfilter hari Terlambat" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_10px_25px_-6px_rgba(217,119,6,0.22)] border border-amber-300/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #fffbeb 45%, #fef3c7 100%);">
-                    <div class="absolute top-0 left-0 right-0 h-1" style="background: linear-gradient(90deg, #fbbf24, #d97706);"></div>
-                    <div class="flex items-center justify-between w-full mb-2">
-                        <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(217,119,6,0.45)] flex items-center justify-center border border-amber-300/60" style="background: linear-gradient(135deg, #f59e0b, #b45309);"><i class="fa-solid fa-clock-rotate-left text-sm"></i></div>
-                        <span class="text-[8px] font-black px-2 py-0.5 rounded-full bg-amber-100/90 text-amber-900 border border-amber-200 uppercase tracking-wider">Kedatangan</span>
-                    </div>
+                <div onclick="filterDailyTableByStatus('TELAT')" title="Klik untuk memfilter hari Terlambat" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(217,119,6,0.25)] border border-amber-300/90 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 55%, #fcd34d 100%);">
+                    <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(217,119,6,0.45)] flex items-center justify-center mb-2 border border-amber-300/60" style="background: linear-gradient(135deg, #f59e0b, #b45309);"><i class="fa-solid fa-clock-rotate-left text-sm"></i></div>
                     <div class="flex justify-between w-full">
                         <div>
-                            <p class="text-[9px] font-extrabold text-amber-800 uppercase tracking-widest leading-tight">Telat (x)</p>
-                            <p class="text-xl font-black text-amber-950 tracking-tight font-mono" id="rekap-telat">0</p>
+                            <p class="text-[9px] font-extrabold text-amber-900 uppercase tracking-widest leading-tight">Telat (x)</p>
+                            <p class="text-xl font-black text-amber-950 tracking-tight" id="rekap-telat">0</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-[9px] font-extrabold text-orange-800 uppercase tracking-widest leading-tight">Menit</p>
-                            <p class="text-xl font-black text-amber-950 tracking-tight font-mono" id="rekap-telat-menit">0</p>
+                            <p class="text-[9px] font-extrabold text-orange-900 uppercase tracking-widest leading-tight">Menit</p>
+                            <p class="text-xl font-black text-amber-950 tracking-tight" id="rekap-telat-menit">0</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Card PSW (Kombinasi) -->
-                <div onclick="filterDailyTableByStatus('PSW')" title="Klik untuk memfilter hari PSW" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_10px_25px_-6px_rgba(147,51,234,0.22)] border border-purple-300/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #faf5ff 45%, #f3e8ff 100%);">
-                    <div class="absolute top-0 left-0 right-0 h-1" style="background: linear-gradient(90deg, #c084fc, #7e22ce);"></div>
-                    <div class="flex items-center justify-between w-full mb-2">
-                        <div class="w-9 h-9 text-white rounded-xl flex items-center justify-center shadow-[0_6px_14px_-2px_rgba(147,51,234,0.45)] border border-purple-300/60" style="background: linear-gradient(135deg, #a855f7, #6b21a8);"><i class="fa-solid fa-person-running text-sm"></i></div>
-                        <span class="text-[8px] font-black px-2 py-0.5 rounded-full bg-purple-100/90 text-purple-900 border border-purple-200 uppercase tracking-wider">Kepulangan</span>
-                    </div>
+                <div onclick="filterDailyTableByStatus('PSW')" title="Klik untuk memfilter hari PSW" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(147,51,234,0.25)] border border-purple-300/90 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 55%, #d8b4fe 100%);">
+                    <div class="w-9 h-9 text-white rounded-xl flex items-center justify-center mb-2 shadow-[0_6px_14px_-2px_rgba(147,51,234,0.45)] border border-purple-300/60" style="background: linear-gradient(135deg, #a855f7, #6b21a8);"><i class="fa-solid fa-person-running text-sm"></i></div>
                     <div class="flex justify-between w-full">
                         <div>
-                            <p class="text-[9px] font-extrabold text-purple-800 uppercase tracking-widest leading-tight">PSW (x)</p>
-                            <p class="text-xl font-black text-purple-950 tracking-tight font-mono" id="rekap-psw-kali">0</p>
+                            <p class="text-[9px] font-extrabold text-purple-900 uppercase tracking-widest leading-tight">PSW (x)</p>
+                            <p class="text-xl font-black text-purple-950 tracking-tight" id="rekap-psw-kali">0</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-[9px] font-extrabold text-fuchsia-800 uppercase tracking-widest leading-tight">Menit</p>
-                            <p class="text-xl font-black text-purple-950 tracking-tight font-mono" id="rekap-psw-menit">0</p>
+                            <p class="text-[9px] font-extrabold text-fuchsia-900 uppercase tracking-widest leading-tight">Menit</p>
+                            <p class="text-xl font-black text-purple-950 tracking-tight" id="rekap-psw-menit">0</p>
                         </div>
                     </div>
                 </div>
@@ -969,14 +931,6 @@
                         <tbody id="daily-metrics-tbody" class="text-slate-700 font-semibold divide-y divide-teal-50">
                             <tr><td colspan="5" class="text-center p-8 text-slate-400">Memuat data...</td></tr>
                         </tbody>
-                        <tfoot class="sticky bottom-0 z-20 text-white text-[10px] font-black uppercase tracking-wider shadow-inner" style="background: linear-gradient(90deg, #042f2e 0%, #0f766e 55%, #0284c7 100%);">
-                            <tr>
-                                <td class="p-2.5 text-center border-r border-teal-500/40 text-amber-300">Total</td>
-                                <td id="tfoot-total-hadir" class="p-2.5 text-center border-r border-teal-500/40" colspan="2">0 Hari Hadir</td>
-                                <td id="tfoot-total-psw" class="p-2.5 text-center border-r border-teal-500/40 text-purple-200 font-mono">0m</td>
-                                <td id="tfoot-total-telat" class="p-2.5 text-center text-amber-200 font-mono">0m</td>
-                            </tr>
-                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -987,7 +941,7 @@
     </div>
 
     <!-- HALAMAN RIWAYAT (HARMONIZED EMERALD-TEAL-GOLD THEME) -->
-    <div id="riwayat-page" class="hidden min-h-screen pb-28" style="background: linear-gradient(180deg, #dff6f2 0%, #f0fdfa 38%, #f8fafc 100%);">
+    <div id="riwayat-page" class="hidden min-h-screen pb-28" style="background: linear-gradient(180deg, #d1fae5 0%, #e0f2fe 35%, #f0fdfa 70%, #f8fafc 100%);">
         <!-- Royal Emerald-Teal-Ocean Header -->
         <div class="pt-11 pb-16 px-6 rounded-b-[2.5rem] shadow-[0_16px_40px_-10px_rgba(13,148,136,0.38)] relative overflow-hidden border-b border-teal-300/30" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 42%, #0284c7 82%, #1d4ed8 100%);">
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1180,7 +1134,7 @@
         </div>
     </div>
     <!-- HALAMAN PROFIL (DENGAN KARTU PEGAWAI DIGITAL / E-ID CARD) -->
-    <div id="profil-page" class="hidden min-h-screen pb-28" style="background: linear-gradient(180deg, #dff6f2 0%, #f0fdfa 38%, #f8fafc 100%);">
+    <div id="profil-page" class="hidden min-h-screen pb-28" style="background: linear-gradient(180deg, #d1fae5 0%, #e0f2fe 35%, #f0fdfa 70%, #f8fafc 100%);">
         <!-- Royal Emerald-Teal Top Banner -->
         <div class="pt-10 pb-20 px-6 rounded-b-[2.5rem] shadow-[0_16px_40px_-10px_rgba(13,148,136,0.35)] relative overflow-hidden border-b border-teal-300/30" style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 42%, #0284c7 82%, #1d4ed8 100%);">
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1514,7 +1468,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/portal.js?v=42"></script>
+    <script src="/portal.js?v=43"></script>
     <script src="instansi_config.js"></script>
 </body>
 </html>
