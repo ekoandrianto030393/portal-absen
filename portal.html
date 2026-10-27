@@ -784,7 +784,7 @@
                 </div>
 
                 <!-- Card Izin/Cuti -->
-                <div onclick="filterDailyTableByStatus('ISC')" title="Klik untuk memfilter hari Izin/Sakit/Cuti/DL" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(37,99,235,0.2)] border border-blue-200/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #bfdbfe 100%);">
+                <div onclick="filterDailyTableByStatus('IZIN_CUTI')" title="Klik untuk memfilter hari Izin / Cuti" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(37,99,235,0.2)] border border-blue-200/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #bfdbfe 100%);">
                     <i class="fa-solid fa-suitcase-medical absolute -right-2 -bottom-2 text-5xl text-blue-500/10 pointer-events-none"></i>
                     <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(37,99,235,0.45)] flex items-center justify-center mb-2 border border-blue-300/60 relative overflow-hidden" style="background: linear-gradient(135deg, #60a5fa, #2563eb);"><i class="fa-solid fa-suitcase-medical text-sm relative z-10 drop-shadow-sm"></i></div>
                     <p class="text-[10px] font-extrabold text-blue-800 uppercase tracking-widest leading-tight">Izin / Cuti</p>
@@ -792,7 +792,7 @@
                 </div>
 
                 <!-- Card Sakit -->
-                <div onclick="filterDailyTableByStatus('ISC')" title="Klik untuk memfilter hari Izin/Sakit/Cuti/DL" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(13,148,136,0.2)] border border-teal-200/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 50%, #99f6e4 100%);">
+                <div onclick="filterDailyTableByStatus('SAKIT')" title="Klik untuk memfilter hari Sakit" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(13,148,136,0.2)] border border-teal-200/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 50%, #99f6e4 100%);">
                     <i class="fa-solid fa-bed-pulse absolute -right-2 -bottom-2 text-5xl text-teal-600/10 pointer-events-none"></i>
                     <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(13,148,136,0.45)] flex items-center justify-center mb-2 border border-teal-300/60 relative overflow-hidden" style="background: linear-gradient(135deg, #2dd4bf, #0f766e);"><i class="fa-solid fa-bed-pulse text-sm relative z-10 drop-shadow-sm"></i></div>
                     <p class="text-[10px] font-extrabold text-teal-800 uppercase tracking-widest leading-tight">Sakit</p>
@@ -800,7 +800,7 @@
                 </div>
 
                 <!-- Card DL -->
-                <div onclick="filterDailyTableByStatus('ISC')" title="Klik untuk memfilter hari Izin/Sakit/Cuti/DL" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(2,132,199,0.2)] border border-sky-200/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);">
+                <div onclick="filterDailyTableByStatus('DL')" title="Klik untuk memfilter hari Dinas Luar (DL)" class="cursor-pointer bento-item ripple p-3.5 flex flex-col items-start rounded-[1.5rem] shadow-[0_8px_24px_-6px_rgba(2,132,199,0.2)] border border-sky-200/80 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);">
                     <i class="fa-solid fa-car-side absolute -right-2 -bottom-2 text-5xl text-sky-500/10 pointer-events-none"></i>
                     <div class="w-9 h-9 text-white rounded-xl shadow-[0_6px_14px_-2px_rgba(2,132,199,0.45)] flex items-center justify-center mb-2 border border-sky-300/60 relative overflow-hidden" style="background: linear-gradient(135deg, #38bdf8, #0284c7);"><i class="fa-solid fa-car-side text-sm relative z-10 drop-shadow-sm"></i></div>
                     <p class="text-[10px] font-extrabold text-sky-800 uppercase tracking-widest leading-tight">Dinas Luar</p>
@@ -1468,7 +1468,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/portal.js?v=40"></script>
+    <script src="/portal.js?v=41"></script>
     <script src="instansi_config.js"></script>
 </body>
 </html>

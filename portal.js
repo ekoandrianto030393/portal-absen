@@ -1065,8 +1065,16 @@ async function loadDashboardData(idKaryawan) {
                 if (elBar) setTimeout(() => { elBar.style.width = pctCapaian + '%'; }, 100);
                 document.getElementById('rekap-telat').textContent = myData.telat_kali || 0;
                 
-                const isc = (parseInt(myData.total_izin)||0) + (parseInt(myData.total_sakit)||0) + (parseInt(myData.total_cuti)||0) + (parseInt(myData.total_dl)||0);
-                document.getElementById('rekap-isc').textContent = isc;
+                const izinCutiOnly = (parseInt(myData.total_izin) || 0) + (parseInt(myData.total_cuti) || 0);
+                const sakitOnly = parseInt(myData.total_sakit) || 0;
+                const dlOnly = parseInt(myData.total_dl) || 0;
+                document.getElementById('rekap-isc').textContent = izinCutiOnly;
+                if (document.getElementById('rekap-sakit')) {
+                    document.getElementById('rekap-sakit').textContent = sakitOnly;
+                }
+                if (document.getElementById('rekap-dl')) {
+                    document.getElementById('rekap-dl').textContent = dlOnly;
+                }
                 document.getElementById('rekap-tap').textContent = myData.tanpa_absen_pulang || 0;
                 
                 if(document.getElementById('rekap-telat-menit')) {
@@ -1282,8 +1290,12 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                             'DINAS_LUAR': 'bg-violet-50 text-violet-700 border-violet-200'
                         };
                         const badgeCls = badgeMap[d.status] || 'bg-teal-50 text-teal-700 border-teal-200';
+                        let specificTag = 'ISC';
+                        if (d.status === 'DL' || d.status === 'DINAS_LUAR') specificTag = 'DL ISC';
+                        else if (d.status === 'SAKIT') specificTag = 'SAKIT ISC';
+                        else if (d.status === 'IZIN' || d.status === 'CUTI') specificTag = 'IZIN_CUTI ISC';
                         html += `
-                            <tr ${rowIdAttr} data-row-tags="ISC" class="daily-metric-row border-b border-teal-100/60 ${todayRowCls}">
+                            <tr ${rowIdAttr} data-row-tags="${specificTag}" class="daily-metric-row border-b border-teal-100/60 ${todayRowCls}">
                                 <td class="p-2 border-r border-teal-100/60 text-center bg-teal-50/30">${tglCellHtml}</td>
                                 <td class="p-2 border-r border-teal-100/60 text-center" colspan="2"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider border ${badgeCls}">${d.status}</span></td>
                                 <td class="p-2 border-r border-teal-100/60 text-center text-slate-300">-</td>
@@ -1425,6 +1437,9 @@ function filterDailyTableByStatus(tag) {
     const labelMap = {
         'HADIR': 'Hari Kehadiran (Hadir)',
         'ALPA': 'Hari Tanpa Keterangan (Alpa)',
+        'IZIN_CUTI': 'Hari Izin / Cuti',
+        'SAKIT': 'Hari Sakit',
+        'DL': 'Hari Dinas Luar (DL)',
         'ISC': 'Izin / Sakit / Cuti / Dinas Luar',
         'TELAT': 'Hari Terlambat (Telat)',
         'PSW': 'Pulang Sebelum Waktu (PSW)',
