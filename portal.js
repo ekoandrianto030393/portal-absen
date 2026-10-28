@@ -1204,21 +1204,7 @@ function renderRiwayatChart(data) {
     // Update Lencana Pangkat, XP & Grade langsung di Header Beranda
     const berandaPangkatEl = document.getElementById('beranda-pangkat-text');
     const berandaXpEl = document.getElementById('beranda-xp-text');
-    const berandaGradeTxt = document.getElementById('beranda-grade-text');
-    const berandaGradeBadge = document.getElementById('beranda-grade-badge');
-    if (berandaPangkatEl) berandaPangkatEl.textContent = rankInfo.title;
-    if (berandaXpEl) berandaXpEl.textContent = userXP + ' XP';
-    if (berandaGradeTxt && berandaGradeBadge) {
-        let gradeLabel = 'Grade A';
-        let gradeBg = 'linear-gradient(135deg, #a7f3d0, #34d399)';
-        if (userXP > 180) { gradeLabel = 'Grade A+'; gradeBg = 'linear-gradient(135deg, #fde68a, #34d399)'; }
-        else if (userXP > 130) { gradeLabel = 'Grade A'; gradeBg = 'linear-gradient(135deg, #a7f3d0, #34d399)'; }
-        else if (userXP > 80) { gradeLabel = 'Grade B+'; gradeBg = 'linear-gradient(135deg, #bae6fd, #38bdf8)'; }
-        else if (userXP >= 10) { gradeLabel = 'Grade B'; gradeBg = 'linear-gradient(135deg, #e0f2fe, #7dd3fc)'; }
-        else { gradeLabel = 'Grade C'; gradeBg = 'linear-gradient(135deg, #fecdd3, #fb7185)'; }
-        berandaGradeTxt.textContent = gradeLabel;
-        berandaGradeBadge.style.background = gradeBg;
-    }
+
 
     // Update Progress Bar Level XP & 5-Tier Roadmap di halaman Profil
     const xpBarEl = document.getElementById('profil-xp-bar');
