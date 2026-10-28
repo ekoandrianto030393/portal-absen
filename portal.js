@@ -885,29 +885,6 @@ async function loadRiwayatBulanan(idKaryawan) {
 // Global variable untuk menyimpan instance chart & mode analitik
 let riwayatChartInstance = null;
 let cachedRiwayatData = [];
-let currentRiwayatChartMode = 'doughnut';
-
-function switchRiwayatChartMode(mode) {
-    currentRiwayatChartMode = mode;
-    const btnD = document.getElementById('btn-chart-doughnut');
-    const btnT = document.getElementById('btn-chart-trend');
-    const centerLbl = document.getElementById('riwayat-chart-center-label');
-    if (btnD && btnT) {
-        if (mode === 'trend') {
-            btnT.className = 'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-white text-teal-900 shadow-sm transition-all';
-            btnD.className = 'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider text-teal-700 hover:text-teal-950 transition-all';
-            if (centerLbl) centerLbl.classList.add('hidden');
-        } else {
-            btnD.className = 'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-white text-teal-900 shadow-sm transition-all';
-            btnT.className = 'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider text-teal-700 hover:text-teal-950 transition-all';
-            if (centerLbl) centerLbl.classList.remove('hidden');
-        }
-    }
-    if (cachedRiwayatData && cachedRiwayatData.length > 0) {
-        renderRiwayatChart(cachedRiwayatData);
-    }
-}
-
 function renderRiwayatChart(data) {
     cachedRiwayatData = Array.isArray(data) ? data : [];
     let totalHadir = 0;
@@ -1114,13 +1091,6 @@ function renderRiwayatChart(data) {
     setPillar('pillar-pulang-pct', 'pillar-pulang-bar', pulangScore);
     setPillar('pillar-integritas-pct', 'pillar-integritas-bar', integritasScore);
 
-    // Update Persentase di Tengah Grafik Doughnut Riwayat
-    const chartPctEl = document.getElementById('riwayat-chart-pct');
-    if (chartPctEl) {
-        const pctVal = sumChart > 0 ? Math.round(((totalHadir + totalIzinDll) / sumChart) * 100) : 0;
-        chartPctEl.textContent = pctVal + '%';
-    }
-    
     if(!window.Chart) return;
     const ctx = document.getElementById('riwayatChart');
     if(!ctx) return;
@@ -1129,7 +1099,7 @@ function renderRiwayatChart(data) {
         riwayatChartInstance.destroy();
     }
 
-    if (currentRiwayatChartMode === 'trend' && Array.isArray(data) && data.length > 0) {
+    if (Array.isArray(data) && data.length > 0) {
         const sorted = [...data].sort((a, b) => (a.periode || '').localeCompare(b.periode || '')).slice(-6);
         const labels = sorted.map(it => {
             if (!it.periode) return '-';
@@ -1183,49 +1153,6 @@ function renderRiwayatChart(data) {
         return;
     }
 
-    // Jika tidak ada data sama sekali pada mode doughnut, jangan render
-    if(totalHadir === 0 && totalAlpa === 0 && totalIzinDll === 0) return;
-    
-    riwayatChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Hadir', 'Alpa', 'Izin/Sakit/DL'],
-            datasets: [{
-                data: [totalHadir, totalAlpa, totalIzinDll],
-                backgroundColor: [
-                    '#10b981', // emerald-500
-                    '#f43f5e', // rose-500
-                    '#3b82f6', // blue-500
-                ],
-                borderWidth: 2,
-                borderColor: '#ffffff',
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '70%',
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        boxWidth: 10,
-                        usePointStyle: true,
-                        font: {
-                            family: "'Plus Jakarta Sans', sans-serif",
-                            size: 10,
-                            weight: 'bold'
-                        }
-                    }
-                }
-            },
-            animation: {
-                animateScale: true,
-                animateRotate: true
-            }
-        }
-    });
 }
 
 function toggleSkeleton(enable) {

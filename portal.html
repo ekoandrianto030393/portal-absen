@@ -1112,25 +1112,18 @@
             </div>
         </div>
 
-        <!-- Interactive Analytics Chart Card (Doughnut Proporsi vs Bar Tren Bulanan) -->
+        <!-- Analitik Kehadiran: Tren Bulanan -->
         <div id="riwayat-chart-card" class="px-5 mb-4 hidden opacity-0 transition-opacity duration-500 relative z-20">
             <div class="rounded-[1.75rem] p-5 shadow-[0_15px_45px_-12px_rgba(13,148,136,0.18)] border border-teal-200/80 relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #f0fdfa 55%, #ecfdf5 100%);">
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-3 relative z-10">
                     <h3 class="text-xs font-black text-teal-950 uppercase tracking-widest flex items-center gap-2">
-                        <span class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center text-xs shadow-sm"><i class="fa-solid fa-chart-pie"></i></span>
+                        <span class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center text-xs shadow-sm"><i class="fa-solid fa-chart-column"></i></span>
                         Analitik Kehadiran
                     </h3>
-                    <div class="p-0.5 rounded-xl bg-teal-100/80 border border-teal-200 flex items-center gap-1">
-                        <button type="button" id="btn-chart-doughnut" onclick="switchRiwayatChartMode('doughnut')" class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-white text-teal-900 shadow-sm transition-all">Proporsi</button>
-                        <button type="button" id="btn-chart-trend" onclick="switchRiwayatChartMode('trend')" class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider text-teal-700 hover:text-teal-950 transition-all">Tren Bulanan</button>
-                    </div>
+                    <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-white text-teal-900 border border-teal-200 shadow-sm">Tren Bulanan</span>
                 </div>
                 <div class="relative z-10 flex items-center justify-center" style="height: 210px;">
                     <canvas id="riwayatChart"></canvas>
-                    <div id="riwayat-chart-center-label" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none -mt-5">
-                        <span id="riwayat-chart-pct" class="text-2xl font-black text-teal-900 font-mono leading-none">0%</span>
-                        <span class="text-[8px] font-extrabold text-teal-600 uppercase tracking-widest mt-0.5">Kehadiran</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1664,7 +1657,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/portal.js?v=44"></script>
+    <script src="/portal.js?v=45"></script>
     <script src="instansi_config.js"></script>
 </body>
 </html>
