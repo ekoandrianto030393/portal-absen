@@ -1090,6 +1090,8 @@ function renderRiwayatChart(data) {
     setPillar('pillar-tepat-pct', 'pillar-tepat-bar', tepatScore);
     setPillar('pillar-pulang-pct', 'pillar-pulang-bar', pulangScore);
     setPillar('pillar-integritas-pct', 'pillar-integritas-bar', integritasScore);
+    renderAchievementBadges({ hadir: totalHadir, alpa: totalAlpa, telat: totalTelat, psw: totalPSW, tap: totalTAP, integritas: integritasScore, xp: userXP });
+    renderRiwayatInsights(cachedRiwayatData, currentPeriode);
 
     if(!window.Chart) return;
     const ctx = document.getElementById('riwayatChart');
@@ -1153,6 +1155,93 @@ function renderRiwayatChart(data) {
         return;
     }
 
+}
+
+// ========================
+// LENCANA PENCAPAIAN (PROFIL) & INSIGHT CERDAS (RIWAYAT)
+// ========================
+function renderAchievementBadges(s) {
+    const grid = document.getElementById('profil-badge-grid');
+    const countEl = document.getElementById('profil-badge-count');
+    if (!grid) return;
+    const defs = [
+        { icon: 'fa-bullseye', title: 'Nol Alpa', hint: 'Tanpa Alpa bulan ini', ok: s.hadir > 0 && s.alpa === 0, tone: 'emerald' },
+        { icon: 'fa-clock', title: 'Tepat Waktu', hint: 'Tanpa terlambat', ok: s.hadir > 0 && s.telat === 0, tone: 'amber' },
+        { icon: 'fa-door-open', title: 'Pulang Disiplin', hint: 'Tanpa PSW & TAP', ok: s.hadir > 0 && s.psw === 0 && s.tap === 0, tone: 'sky' },
+        { icon: 'fa-fire', title: 'Rajin 20 Hari', hint: s.hadir + ' / 20 hari hadir', ok: s.hadir >= 20, tone: 'rose' },
+        { icon: 'fa-shield-halved', title: 'Integritas Emas', hint: 'Skor integritas ' + s.integritas + '% (min 90%)', ok: s.hadir > 0 && s.integritas >= 90, tone: 'teal' },
+        { icon: 'fa-crown', title: 'Legend Teladan', hint: s.xp + ' / 181 XP', ok: s.xp > 180, tone: 'amber' }
+    ];
+    const toneMap = {
+        emerald: ['#d1fae5', '#10b981', '#065f46'],
+        amber: ['#fef3c7', '#f59e0b', '#92400e'],
+        sky: ['#e0f2fe', '#0ea5e9', '#075985'],
+        rose: ['#ffe4e6', '#f43f5e', '#9f1239'],
+        teal: ['#ccfbf1', '#14b8a6', '#115e59']
+    };
+    let unlocked = 0;
+    grid.innerHTML = defs.map(d => {
+        if (d.ok) unlocked++;
+        const t = toneMap[d.tone];
+        if (d.ok) {
+            return '<div class="rounded-2xl p-2.5 text-center border shadow-sm" style="background: linear-gradient(145deg, #ffffff, ' + t[0] + '); border-color: ' + t[1] + '66;">' +
+                '<div class="w-10 h-10 mx-auto rounded-xl flex items-center justify-center text-white text-base shadow-md" style="background: linear-gradient(135deg, ' + t[1] + ', ' + t[2] + ');"><i class="fa-solid ' + d.icon + '"></i></div>' +
+                '<p class="mt-1.5 text-[9px] font-black uppercase tracking-wider leading-tight" style="color: ' + t[2] + ';">' + d.title + '</p>' +
+                '<p class="text-[8px] font-bold text-emerald-700 mt-0.5"><i class="fa-solid fa-circle-check"></i> Diraih</p></div>';
+        }
+        return '<div class="rounded-2xl p-2.5 text-center border border-slate-200 bg-slate-50/80">' +
+            '<div class="w-10 h-10 mx-auto rounded-xl flex items-center justify-center text-slate-400 text-base bg-slate-200/80"><i class="fa-solid fa-lock"></i></div>' +
+            '<p class="mt-1.5 text-[9px] font-black uppercase tracking-wider leading-tight text-slate-500">' + d.title + '</p>' +
+            '<p class="text-[8px] font-semibold text-slate-400 mt-0.5 leading-tight">' + d.hint + '</p></div>';
+    }).join('');
+    if (countEl) countEl.textContent = unlocked + ' / ' + defs.length;
+}
+
+function renderRiwayatInsights(data, currentPeriode) {
+    const box = document.getElementById('riwayat-insight-box');
+    if (!box) return;
+    if (!Array.isArray(data) || data.length === 0) { box.innerHTML = ''; return; }
+    const n = v => Number(v || 0);
+    const bulanLabel = (periode) => {
+        if (!periode) return '-';
+        const p = periode.split('-');
+        return new Date(p[0], p[1] - 1).toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
+    };
+    const sorted = [...data].sort((a, b) => (a.periode || '').localeCompare(b.periode || ''));
+    let curIdx = sorted.findIndex(i => i.periode === currentPeriode);
+    if (curIdx < 0) curIdx = sorted.length - 1;
+    const cur = sorted[curIdx];
+    const prev = curIdx > 0 ? sorted[curIdx - 1] : null;
+
+    let best = sorted[0];
+    sorted.forEach(it => {
+        if (n(it.total_masuk) > n(best.total_masuk) || (n(it.total_masuk) === n(best.total_masuk) && n(it.telat_kali) < n(best.telat_kali))) best = it;
+    });
+    const avgHadir = (sorted.reduce((a, it) => a + n(it.total_masuk), 0) / sorted.length).toFixed(1).replace('.', ',');
+
+    const diffTile = (title, curVal, prevVal, goodWhenUp, unit) => {
+        if (prevVal === null) {
+            return '<div class="rounded-xl p-2.5 border border-slate-200 bg-slate-50"><p class="text-[8px] font-extrabold uppercase tracking-wider text-slate-500">' + title + '</p><p class="text-[11px] font-black text-slate-500 mt-1">Belum ada pembanding</p></div>';
+        }
+        const d = curVal - prevVal;
+        const same = d === 0;
+        const good = goodWhenUp ? d > 0 : d < 0;
+        const color = same ? '#475569' : (good ? '#047857' : '#be123c');
+        const bg = same ? '#f1f5f9' : (good ? '#ecfdf5' : '#fff1f2');
+        const bd = same ? '#cbd5e1' : (good ? '#a7f3d0' : '#fecdd3');
+        const icon = same ? 'fa-equals' : (d > 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down');
+        const txt = same ? 'Sama dgn bln lalu' : (d > 0 ? '+' + d : String(d)) + ' ' + unit + ' vs bln lalu';
+        return '<div class="rounded-xl p-2.5 border" style="background: ' + bg + '; border-color: ' + bd + ';"><p class="text-[8px] font-extrabold uppercase tracking-wider" style="color: ' + color + ';">' + title + '</p>' +
+            '<p class="text-[11px] font-black mt-1 leading-tight" style="color: ' + color + ';"><i class="fa-solid ' + icon + ' mr-1"></i>' + txt + '</p></div>';
+    };
+
+    box.innerHTML =
+        diffTile('Kehadiran', n(cur.total_masuk), prev ? n(prev.total_masuk) : null, true, 'hari') +
+        diffTile('Keterlambatan', n(cur.telat_kali), prev ? n(prev.telat_kali) : null, false, 'kali') +
+        '<div class="rounded-xl p-2.5 border border-amber-200" style="background: #fffbeb;"><p class="text-[8px] font-extrabold uppercase tracking-wider text-amber-800"><i class="fa-solid fa-trophy mr-1"></i>Bulan Terbaik</p>' +
+        '<p class="text-[11px] font-black text-amber-950 mt-1 leading-tight">' + bulanLabel(best.periode) + ' &bull; ' + n(best.total_masuk) + ' hari</p></div>' +
+        '<div class="rounded-xl p-2.5 border border-sky-200" style="background: #f0f9ff;"><p class="text-[8px] font-extrabold uppercase tracking-wider text-sky-800"><i class="fa-solid fa-chart-simple mr-1"></i>Rata-Rata Hadir</p>' +
+        '<p class="text-[11px] font-black text-sky-950 mt-1 leading-tight">' + avgHadir + ' hari / bulan</p></div>';
 }
 
 function toggleSkeleton(enable) {
