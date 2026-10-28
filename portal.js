@@ -1325,7 +1325,18 @@ function updateLiveWorkDuration() {
     valEl.className = 'text-xs font-black text-emerald-900 font-mono bg-white/95 px-2.5 py-0.5 rounded-lg border border-emerald-300 shadow-inner';
     boxEl.style.background = 'linear-gradient(135deg, #ecfdf5 0%, #ccfbf1 100%)';
     if (shiftBarEl) shiftBarEl.style.width = pctShift + '%';
-    if (shiftPctEl) shiftPctEl.textContent = pctShift + '% Shift';
+    if (shiftPctEl) {
+        const targetPulangMin = parseTimeToMinutes(targetPulangStr) || 840;
+        if (nowMin < targetPulangMin) {
+            const sisaM = targetPulangMin - nowMin;
+            const sJ = Math.floor(sisaM / 60);
+            const sM = sisaM % 60;
+            const cdTxt = (sJ > 0 ? sJ + 'j ' : '') + sM + 'm lagi pulang';
+            shiftPctEl.innerHTML = '<span class="text-amber-800 font-bold bg-amber-100/90 px-1.5 py-0.5 rounded-md"><i class="fa-solid fa-hourglass-half mr-1 text-amber-600"></i>' + cdTxt + '</span> <span class="ml-1 text-teal-950 font-mono">' + pctShift + '%</span>';
+        } else {
+            shiftPctEl.innerHTML = '<span class="text-emerald-800 font-bold bg-emerald-100 px-1.5 py-0.5 rounded-md"><i class="fa-solid fa-circle-check mr-1 text-emerald-600"></i>Waktunya Pulang!</span> <span class="ml-1 text-teal-950 font-mono">' + pctShift + '%</span>';
+        }
+    }
 }
 
 async function refreshTodayData() {
@@ -2185,4 +2196,50 @@ function togglePasswordVisibility(inputId, buttonEl) {
             icon.classList.add('fa-eye');
         }
     }
+}
+
+
+function shareSlipWhatsApp() {
+    const periode = document.getElementById('slip-periode')?.textContent || '';
+    const nama = document.getElementById('slip-nama')?.textContent || '';
+    const id = document.getElementById('slip-id')?.textContent || '';
+    const hadir = document.getElementById('slip-hadir')?.textContent || '0';
+    const dl = document.getElementById('slip-dl')?.textContent || '0';
+    const isc = document.getElementById('slip-isc')?.textContent || '0';
+    const sakit = document.getElementById('slip-sakit')?.textContent || '0';
+    const alpa = document.getElementById('slip-alpa')?.textContent || '0';
+    const telat = document.getElementById('slip-telat')?.textContent || '0';
+    const psw = document.getElementById('slip-psw')?.textContent || '0';
+    const tap = document.getElementById('slip-tap')?.textContent || '0';
+    const jam = document.getElementById('slip-jam')?.textContent || '00:00:00';
+    const instansi = document.querySelector('.dynamic-instansi-nama')?.textContent || 'Puskesmas Wana';
+
+    const text = '*SLIP REKAPITULASI PRESENSI RESMI*\n' +
+        '*' + instansi.toUpperCase() + '*\n' +
+        '----------------------------------------\n' +
+        '👤 *Nama:* ' + nama + '\n' +
+        '🆔 *ID Pegawai:* ' + id + '\n' +
+        '📅 *' + periode + '*\n' +
+        '----------------------------------------\n' +
+        '✅ *Hadir:* ' + hadir + '\n' +
+        '🚗 *Dinas Luar (DL):* ' + dl + '\n' +
+        '📋 *Izin / Cuti:* ' + isc + '\n' +
+        '🏥 *Sakit:* ' + sakit + '\n' +
+        '❌ *Alpa:* ' + alpa + '\n' +
+        '⏰ *Keterlambatan:* ' + telat + '\n' +
+        '🏃 *PSW:* ' + psw + '\n' +
+        '🚪 *TAP:* ' + tap + '\n' +
+        '⏳ *Total Jam Kerja:* ' + jam + '\n' +
+        '----------------------------------------\n' +
+        '_Dokumen Sah Terverifikasi Portal Biometrik_';
+
+    window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(text), '_blank');
+}
+
+function hubungiAdminWhatsApp() {
+    const nama = document.getElementById('user-nama')?.textContent || 'Pegawai';
+    const id = document.getElementById('user-id')?.textContent || '-';
+    const instansi = document.querySelector('.dynamic-instansi-nama')?.textContent || 'Puskesmas Wana';
+    const text = 'Halo Admin Kepegawaian ' + instansi + ',\n\nSaya ingin konfirmasi kendala presensi biometrik:\n👤 Nama: ' + nama + '\n🆔 ID Pegawai: ' + id + '\n\nKendala / Catatan:\n';
+    window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(text), '_blank');
 }
