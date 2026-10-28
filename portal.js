@@ -9,6 +9,93 @@ function getAuthHeader(extraHeaders = {}) {
     return extraHeaders;
 }
 
+// Global Luxury Toast Notification (Menggantikan alert browser yang kaku)
+function showPortalToast(message, type = 'info', title = '') {
+    const container = document.getElementById('portal-toast-container');
+    if (!container) {
+        alert(message);
+        return;
+    }
+    const styles = {
+        success: {
+            bg: 'linear-gradient(135deg, #065f46 0%, #0d9488 100%)',
+            border: 'border-emerald-300/70',
+            icon: 'fa-circle-check text-amber-300',
+            defaultTitle: 'Berhasil'
+        },
+        error: {
+            bg: 'linear-gradient(135deg, #9f1239 0%, #e11d48 100%)',
+            border: 'border-rose-300/70',
+            icon: 'fa-triangle-exclamation text-amber-200',
+            defaultTitle: 'Perhatian'
+        },
+        warning: {
+            bg: 'linear-gradient(135deg, #92400e 0%, #d97706 100%)',
+            border: 'border-amber-300/70',
+            icon: 'fa-circle-info text-amber-200',
+            defaultTitle: 'Informasi'
+        },
+        info: {
+            bg: 'linear-gradient(135deg, #042f2e 0%, #0f766e 55%, #0284c7 100%)',
+            border: 'border-teal-300/70',
+            icon: 'fa-bell text-amber-300',
+            defaultTitle: 'Info Portal'
+        }
+    };
+    const st = styles[type] || styles.info;
+    const toast = document.createElement('div');
+    toast.className = `pointer-events-auto rounded-2xl p-3.5 text-white border ${st.border} shadow-[0_16px_36px_rgba(4,47,46,0.45)] flex items-start gap-3 transition-all duration-300 opacity-0 -translate-y-2 cursor-pointer`;
+    toast.style.background = st.bg;
+    toast.innerHTML = `
+        <div class="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center shrink-0 mt-0.5">
+            <i class="fa-solid ${st.icon} text-sm"></i>
+        </div>
+        <div class="flex-1 min-w-0 text-left">
+            <p class="text-[10px] font-black uppercase tracking-widest text-amber-200 leading-none mb-1">${title || st.defaultTitle}</p>
+            <p class="text-xs font-bold text-white leading-snug break-words">${String(message || '').replace(/\n/g, '<br>')}</p>
+        </div>
+        <button type="button" class="text-white/70 hover:text-white text-xs px-1"><i class="fa-solid fa-xmark"></i></button>
+    `;
+    const dismiss = () => {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => toast.remove(), 250);
+    };
+    toast.onclick = dismiss;
+    container.appendChild(toast);
+    requestAnimationFrame(() => {
+        toast.classList.remove('opacity-0', '-translate-y-2');
+    });
+    setTimeout(dismiss, 4200);
+}
+
+// Generator SVG QR Matrix Deterministik untuk E-ID Card & Slip Resmi
+function generateDeterministicQrSvg(seedText) {
+    const str = String(seedText || 'PUSKESMAS-BIO-VERIFIED');
+    let hash = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+        hash ^= str.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    const size = 11;
+    let rects = '';
+    const isFinder = (r, c) => (r < 3 && c < 3) || (r < 3 && c >= size - 3) || (r >= size - 3 && c < 3);
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            if (isFinder(r, c)) continue;
+            hash ^= (r * 31 + c * 17) & 0xff;
+            hash = Math.imul(hash, 16777619);
+            if ((Math.abs(hash) % 10) < 5) {
+                rects += `<rect x="${c * 8 + 6}" y="${r * 8 + 6}" width="7" height="7" rx="1.2" fill="#042f2e"/>`;
+            }
+        }
+    }
+    const finderSvg = (x, y) => `
+        <rect x="${x}" y="${y}" width="22" height="22" rx="4" fill="none" stroke="#042f2e" stroke-width="3"/>
+        <rect x="${x + 6}" y="${y + 6}" width="10" height="10" rx="2" fill="#0d9488"/>
+    `;
+    return `<svg viewBox="0 0 100 100" class="w-full h-full">${finderSvg(6, 6)}${finderSvg(72, 6)}${finderSvg(6, 72)}${rects}</svg>`;
+}
+
 // Cek Sesi Login
 window.onload = () => {
     // Inisialisasi Dark Mode
@@ -26,6 +113,12 @@ window.onload = () => {
         
         if (clockEl) {
             clockEl.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+        }
+        const authClockEl = document.getElementById('auth-live-clock');
+        if (authClockEl) {
+            const dStr = now.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short' });
+            const tStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+            authClockEl.textContent = `${dStr} • ${tStr} WIB`;
         }
         
         if (greetEl) {
@@ -97,6 +190,67 @@ function showAuthPage() {
     if (authPage) {
         authPage.classList.remove('hidden');
         setTimeout(() => authPage.style.opacity = '1', 50);
+    }
+    const savedUser = localStorage.getItem('saved_pegawai_username');
+    const savedLabel = localStorage.getItem('saved_pegawai_label');
+    const chip = document.getElementById('saved-account-chip');
+    const chipName = document.getElementById('saved-account-name');
+    const loginInput = document.getElementById('login-username');
+    if (savedUser) {
+        if (loginInput && !loginInput.value) loginInput.value = savedUser;
+        if (chip && chipName) {
+            chipName.textContent = savedLabel ? `${savedLabel} (@${savedUser})` : `@${savedUser}`;
+            chip.classList.remove('hidden');
+        }
+    }
+}
+
+function useSavedAccount() {
+    const savedUser = localStorage.getItem('saved_pegawai_username');
+    const loginInput = document.getElementById('login-username');
+    const pwdInput = document.getElementById('login-password');
+    if (savedUser && loginInput) {
+        loginInput.value = savedUser;
+        if (pwdInput) pwdInput.focus();
+        showPortalToast('Username terakhir berhasil diisi. Silakan masukkan password Anda.', 'info', 'Login Cepat');
+    }
+}
+
+function toggleAuthGuide() {
+    const box = document.getElementById('auth-guide-box');
+    if (box) box.classList.toggle('hidden');
+}
+
+function updatePasswordStrength(val) {
+    const box = document.getElementById('reg-pwd-strength-box');
+    const lbl = document.getElementById('reg-pwd-strength-label');
+    const bar = document.getElementById('reg-pwd-strength-bar');
+    if (!box || !lbl || !bar) return;
+    const s = String(val || '');
+    if (!s) {
+        box.classList.add('hidden');
+        return;
+    }
+    box.classList.remove('hidden');
+    let score = 0;
+    if (s.length >= 4) score++;
+    if (s.length >= 6) score++;
+    if (/[0-9]/.test(s) && /[a-zA-Z]/.test(s)) score++;
+    if (score <= 1) {
+        lbl.textContent = 'Lemah';
+        lbl.className = 'text-rose-600';
+        bar.style.width = '33%';
+        bar.style.background = '#f43f5e';
+    } else if (score === 2) {
+        lbl.textContent = 'Cukup Baik';
+        lbl.className = 'text-amber-600';
+        bar.style.width = '68%';
+        bar.style.background = '#f59e0b';
+    } else {
+        lbl.textContent = 'Kuat & Aman ✓';
+        lbl.className = 'text-emerald-600';
+        bar.style.width = '100%';
+        bar.style.background = '#10b981';
     }
 }
 
@@ -187,7 +341,7 @@ async function login() {
     const username = document.getElementById('login-username').value;
     const password = document.getElementById('login-password').value;
 
-    if(!username || !password) return alert('Isi username dan password');
+    if(!username || !password) return showPortalToast('Mohon isi Username dan Password terlebih dahulu.', 'warning', 'Data Belum Lengkap');
 
     // Cegah double-submit
     const btn = document.querySelector('#login-form button');
@@ -211,9 +365,18 @@ async function login() {
         if(data.success) {
             localStorage.setItem('pegawai_session', JSON.stringify(data.data));
             localStorage.setItem('pegawai_token', data.token);
+            const remEl = document.getElementById('remember-username');
+            if (!remEl || remEl.checked) {
+                localStorage.setItem('saved_pegawai_username', username);
+                localStorage.setItem('saved_pegawai_label', data.data?.nama || username);
+            } else {
+                localStorage.removeItem('saved_pegawai_username');
+                localStorage.removeItem('saved_pegawai_label');
+            }
+            showPortalToast(`Selamat datang kembali, ${data.data?.nama || username}!`, 'success', 'Login Berhasil');
             showDashboard(data.data);
         } else {
-            alert(data.message);
+            showPortalToast(data.message || 'Username atau password tidak sesuai.', 'error', 'Gagal Masuk');
         }
     } catch (e) {
         if (e instanceof TypeError) {
@@ -232,7 +395,7 @@ async function register() {
     const username = document.getElementById('reg-username').value;
     const password = document.getElementById('reg-password').value;
     
-    if(!id_karyawan || !nama || !username || !password) return alert('Lengkapi semua data');
+    if(!id_karyawan || !nama || !username || !password) return showPortalToast('Mohon lengkapi seluruh kolom pendaftaran.', 'warning', 'Data Belum Lengkap');
     
     try {
         const res = await fetch(`${API_BASE}/pegawai/register`, {
@@ -241,10 +404,16 @@ async function register() {
             body: JSON.stringify({id_karyawan, nama, username, password})
         });
         const data = await res.json();
-        alert(data.message);
-        if(data.success) toggleAuth('login');
+        showPortalToast(data.message, data.success ? 'success' : 'error', data.success ? 'Registrasi Berhasil' : 'Registrasi Gagal');
+        if(data.success) {
+            localStorage.setItem('saved_pegawai_username', username);
+            localStorage.setItem('saved_pegawai_label', nama);
+            const loginInput = document.getElementById('login-username');
+            if (loginInput) loginInput.value = username;
+            toggleAuth('login');
+        }
     } catch (e) {
-        alert("Gagal koneksi ke server");
+        showPortalToast('Gagal terhubung ke server biometrik.', 'error', 'Koneksi Bermasalah');
     }
 }
 
@@ -569,6 +738,9 @@ async function loadRiwayatBulanan(idKaryawan) {
                             <p class="text-[10px] text-teal-700 font-extrabold tracking-wider mt-0.5"><span class="bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">${item.total_hari_kerja || 0} Hari</span> <span class="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md font-mono ml-1">${item.total_jam_kerja || 0} Jam</span></p>
                         </div>
                     </div>
+                    <button type="button" onclick="openSlipModalForMonth('${item.periode}')" class="px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider text-white shadow-sm flex items-center gap-1 active:scale-95 transition-all" style="background: linear-gradient(135deg, #0d9488, #0284c7);">
+                        <i class="fa-solid fa-file-invoice text-amber-200"></i> Slip
+                    </button>
                 </div>
                 
                 <div class="grid grid-cols-4 gap-3 text-center">
@@ -658,6 +830,36 @@ async function loadRiwayatBulanan(idKaryawan) {
             
             tableBody.innerHTML = tableHtml;
 
+            // Hitung Total Kumulatif pada Footer Tabel Riwayat
+            const tableFoot = document.getElementById('riwayat-table-tfoot');
+            if (tableFoot) {
+                let sumH = 0, sumA = 0, sumI = 0, sumTK = 0, sumTM = 0, sumPK = 0, sumPM = 0, sumTAP = 0;
+                sortedData.forEach(it => {
+                    sumH += Number(it.total_masuk || 0);
+                    sumA += Number(it.alpa || 0);
+                    sumI += Number(it.total_izin || 0) + Number(it.total_sakit || 0) + Number(it.total_cuti || 0) + Number(it.total_dl || 0);
+                    sumTK += Number(it.telat_kali || 0);
+                    sumTM += Number(it.telat_menit || 0);
+                    sumPK += Number(it.psw_kali || 0);
+                    sumPM += Number(it.psw_menit || 0);
+                    sumTAP += Number(it.tanpa_absen_pulang || 0);
+                });
+                tableFoot.innerHTML = `
+                    <tr>
+                        <td class="p-2.5 text-center font-black text-amber-300 sticky left-0 z-30 border-r border-teal-700/60" style="background: #042f2e;">Total</td>
+                        <td class="p-2.5 text-center text-emerald-300 border-r border-teal-700/60">${sumH}</td>
+                        <td class="p-2.5 text-center text-rose-300 border-r border-teal-700/60">${sumA}</td>
+                        <td class="p-2.5 text-center text-sky-300 border-r border-teal-700/60">${sumI}</td>
+                        <td class="p-2.5 text-center text-amber-300 border-r border-teal-700/60">${sumTK}</td>
+                        <td class="p-2.5 text-center text-orange-300 border-r border-teal-700/60 font-mono">${sumTM}m</td>
+                        <td class="p-2.5 text-center text-purple-300 border-r border-teal-700/60">${sumPK}</td>
+                        <td class="p-2.5 text-center text-fuchsia-300 border-r border-teal-700/60 font-mono">${sumPM}m</td>
+                        <td class="p-2.5 text-center text-red-300 border-r border-teal-700/60">${sumTAP}</td>
+                        <td class="p-2.5 text-center text-teal-200 font-mono text-[9px]">${sortedData.length} Bln</td>
+                    </tr>
+                `;
+            }
+
             // Show table card with animation
             const tableCard = document.getElementById('riwayat-table-card');
             if (tableCard) {
@@ -680,10 +882,34 @@ async function loadRiwayatBulanan(idKaryawan) {
     }
 }
 
-// Global variable untuk menyimpan instance chart agar bisa di-destroy (update)
+// Global variable untuk menyimpan instance chart & mode analitik
 let riwayatChartInstance = null;
+let cachedRiwayatData = [];
+let currentRiwayatChartMode = 'doughnut';
+
+function switchRiwayatChartMode(mode) {
+    currentRiwayatChartMode = mode;
+    const btnD = document.getElementById('btn-chart-doughnut');
+    const btnT = document.getElementById('btn-chart-trend');
+    const centerLbl = document.getElementById('riwayat-chart-center-label');
+    if (btnD && btnT) {
+        if (mode === 'trend') {
+            btnT.className = 'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-white text-teal-900 shadow-sm transition-all';
+            btnD.className = 'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider text-teal-700 hover:text-teal-950 transition-all';
+            if (centerLbl) centerLbl.classList.add('hidden');
+        } else {
+            btnD.className = 'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-white text-teal-900 shadow-sm transition-all';
+            btnT.className = 'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider text-teal-700 hover:text-teal-950 transition-all';
+            if (centerLbl) centerLbl.classList.remove('hidden');
+        }
+    }
+    if (cachedRiwayatData && cachedRiwayatData.length > 0) {
+        renderRiwayatChart(cachedRiwayatData);
+    }
+}
 
 function renderRiwayatChart(data) {
+    cachedRiwayatData = Array.isArray(data) ? data : [];
     let totalHadir = 0;
     let totalAlpa = 0;
     let totalIzinDll = 0;
@@ -871,25 +1097,94 @@ function renderRiwayatChart(data) {
         }
     }
 
+    // Update 4-Pillar Evaluasi Kedisiplinan 360° di halaman Profil
+    const sumChart = totalHadir + totalAlpa + totalIzinDll;
+    const hadirScore = sumChart > 0 ? Math.min(100, Math.round(((totalHadir + totalIzinDll) / sumChart) * 100)) : 100;
+    const tepatScore = totalHadir > 0 ? Math.max(0, Math.round(((totalHadir - totalTelat) / totalHadir) * 100)) : 100;
+    const pulangScore = totalHadir > 0 ? Math.max(0, Math.round(((totalHadir - totalPSW - totalTAP) / totalHadir) * 100)) : 100;
+    const integritasScore = Math.round((hadirScore + tepatScore + pulangScore) / 3);
+    const setPillar = (idPct, idBar, val) => {
+        const pEl = document.getElementById(idPct);
+        const bEl = document.getElementById(idBar);
+        if (pEl) pEl.textContent = val + '%';
+        if (bEl) bEl.style.width = val + '%';
+    };
+    setPillar('pillar-hadir-pct', 'pillar-hadir-bar', hadirScore);
+    setPillar('pillar-tepat-pct', 'pillar-tepat-bar', tepatScore);
+    setPillar('pillar-pulang-pct', 'pillar-pulang-bar', pulangScore);
+    setPillar('pillar-integritas-pct', 'pillar-integritas-bar', integritasScore);
+
     // Update Persentase di Tengah Grafik Doughnut Riwayat
     const chartPctEl = document.getElementById('riwayat-chart-pct');
-    const sumChart = totalHadir + totalAlpa + totalIzinDll;
     if (chartPctEl) {
         const pctVal = sumChart > 0 ? Math.round(((totalHadir + totalIzinDll) / sumChart) * 100) : 0;
         chartPctEl.textContent = pctVal + '%';
     }
     
-    // Jika tidak ada data sama sekali, jangan render
-    if(totalHadir === 0 && totalAlpa === 0 && totalIzinDll === 0) return;
-    
     if(!window.Chart) return;
-    
     const ctx = document.getElementById('riwayatChart');
     if(!ctx) return;
     
     if(riwayatChartInstance) {
         riwayatChartInstance.destroy();
     }
+
+    if (currentRiwayatChartMode === 'trend' && Array.isArray(data) && data.length > 0) {
+        const sorted = [...data].sort((a, b) => (a.periode || '').localeCompare(b.periode || '')).slice(-6);
+        const labels = sorted.map(it => {
+            if (!it.periode) return '-';
+            const [y, m] = it.periode.split('-');
+            return new Date(y, m - 1).toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
+        });
+        riwayatChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Hadir',
+                        data: sorted.map(it => Number(it.total_masuk || 0)),
+                        backgroundColor: '#10b981',
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'I/S/C/DL',
+                        data: sorted.map(it => Number(it.total_izin || 0) + Number(it.total_sakit || 0) + Number(it.total_cuti || 0) + Number(it.total_dl || 0)),
+                        backgroundColor: '#0ea5e9',
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Alpa',
+                        data: sorted.map(it => Number(it.alpa || 0)),
+                        backgroundColor: '#f43f5e',
+                        borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 10,
+                            usePointStyle: true,
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: 'bold' }
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0, font: { size: 9 } } },
+                    x: { ticks: { font: { size: 9, weight: 'bold' } } }
+                }
+            }
+        });
+        return;
+    }
+
+    // Jika tidak ada data sama sekali pada mode doughnut, jangan render
+    if(totalHadir === 0 && totalAlpa === 0 && totalIzinDll === 0) return;
     
     riwayatChartInstance = new Chart(ctx, {
         type: 'doughnut',
@@ -1413,6 +1708,76 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     `;
                 }
             }
+            // Render Kalender Visual Interaktif (Heatmap Bulanan)
+            const calGrid = document.getElementById('daily-calendar-grid');
+            if (calGrid) {
+                const firstDow = new Date(year, targetDate.getMonth(), 1).getDay(); // 0=Min, 1=Sen...
+                const leadEmpty = firstDow === 0 ? 6 : (firstDow - 1); // Senin sebagai kolom pertama
+                let calHtml = '';
+                for (let eIdx = 0; eIdx < leadEmpty; eIdx++) {
+                    calHtml += `<div class="cal-day-cell bg-slate-50/50 border border-dashed border-slate-200/70"></div>`;
+                }
+                for (let dIdx = 1; dIdx <= daysInMonth; dIdx++) {
+                    const dObj = new Date(year, targetDate.getMonth(), dIdx);
+                    const dow = dObj.getDay();
+                    const isSun = dow === 0;
+                    const isTod = isCurrentMonth && (dIdx === now.getDate());
+                    const isFut = dObj > now && !isTod;
+                    const recD = historyMap[dIdx];
+                    const namaH = namaHariList[dow];
+                    const tglLabel = `${namaH}, ${String(dIdx).padStart(2, '0')}-${month}-${year}`;
+
+                    let cellBg = 'bg-slate-50 border-slate-200 text-slate-500';
+                    let subTxt = '-';
+                    let detailMasuk = '--:--';
+                    let detailPulang = '--:--';
+                    let detailStatus = 'Belum Ada Data';
+
+                    if (recD) {
+                        detailMasuk = recD.jam_masuk && recD.jam_masuk !== '-' ? recD.jam_masuk.slice(0, 5) : '--:--';
+                        detailPulang = recD.jam_keluar && recD.jam_keluar !== '-' ? recD.jam_keluar.slice(0, 5) : '--:--';
+                        if (recD.status === 'IZIN' || recD.status === 'SAKIT' || recD.status === 'CUTI' || recD.status === 'DL' || recD.status === 'DINAS_LUAR') {
+                            cellBg = 'bg-sky-50 border-sky-300 text-sky-900';
+                            subTxt = recD.status === 'DINAS_LUAR' ? 'DL' : recD.status;
+                            detailStatus = `Status: ${recD.status}`;
+                        } else if (detailMasuk !== '--:--') {
+                            const isT = (recD.telat_menit && recD.telat_menit > 0) || (recD.status && recD.status.toLowerCase().includes('telat'));
+                            if (isT) {
+                                cellBg = 'bg-amber-50 border-amber-300 text-amber-900';
+                                subTxt = detailMasuk;
+                                detailStatus = `Hadir (Telat ${recD.telat_menit || 0}m)`;
+                            } else {
+                                cellBg = 'bg-emerald-50 border-emerald-300 text-emerald-900';
+                                subTxt = detailMasuk;
+                                detailStatus = 'Hadir Tepat Waktu ✓';
+                            }
+                        }
+                    } else if (isTod) {
+                        cellBg = 'bg-teal-50 border-teal-400 text-teal-900';
+                        subTxt = 'Hari Ini';
+                        detailStatus = 'Hari Ini (Belum Scan)';
+                    } else if (!isFut && isSun) {
+                        cellBg = 'bg-rose-50/70 border-rose-200 text-rose-600';
+                        subTxt = 'Libur';
+                        detailStatus = 'Minggu / Libur Reguler';
+                    } else if (!isFut && alpaDates.has(dIdx)) {
+                        cellBg = 'bg-rose-100 border-rose-300 text-rose-800';
+                        subTxt = 'ALPA';
+                        detailStatus = 'Tanpa Keterangan (Alpa)';
+                    }
+
+                    const todayRing = isTod ? 'ring-2 ring-teal-600 shadow-sm' : '';
+                    const safeTitle = tglLabel.replace(/'/g, '');
+                    const safeStat = detailStatus.replace(/'/g, '');
+                    calHtml += `
+                        <button type="button" onclick="showCalendarDayDetail('${safeTitle}', '${detailMasuk}', '${detailPulang}', '${safeStat}')" class="cal-day-cell p-1 border ${cellBg} ${todayRing} flex flex-col items-center justify-between text-center cursor-pointer">
+                            <span class="text-[10px] font-black ${isSun ? 'text-rose-600' : ''}">${String(dIdx).padStart(2, '0')}</span>
+                            <span class="text-[8px] font-mono font-extrabold tracking-tighter truncate w-full px-0.5 rounded bg-white/70">${subTxt}</span>
+                        </button>
+                    `;
+                }
+                calGrid.innerHTML = calHtml;
+            }
         } else {
             html = `<tr><td colspan="5" class="text-center p-4 text-slate-400">Gagal memuat data</td></tr>`;
         }
@@ -1424,11 +1789,68 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
     }
 }
 
+function switchDailyViewMode(mode) {
+    const tblCard = document.getElementById('daily-table-card');
+    const calCard = document.getElementById('daily-calendar-card');
+    const btnTbl = document.getElementById('btn-view-table');
+    const btnCal = document.getElementById('btn-view-calendar');
+    if (!tblCard || !calCard || !btnTbl || !btnCal) return;
+
+    const activeStyle = 'background: linear-gradient(135deg, #047857, #0d9488);';
+    const activeCls = 'py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all text-white shadow-sm flex items-center justify-center gap-1.5';
+    const inactiveCls = 'py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all text-teal-800 hover:bg-teal-50 flex items-center justify-center gap-1.5';
+
+    if (mode === 'calendar') {
+        tblCard.classList.add('hidden');
+        calCard.classList.remove('hidden');
+        btnCal.className = activeCls;
+        btnCal.setAttribute('style', activeStyle);
+        btnTbl.className = inactiveCls;
+        btnTbl.removeAttribute('style');
+    } else {
+        calCard.classList.add('hidden');
+        tblCard.classList.remove('hidden');
+        btnTbl.className = activeCls;
+        btnTbl.setAttribute('style', activeStyle);
+        btnCal.className = inactiveCls;
+        btnCal.removeAttribute('style');
+    }
+}
+
+function showCalendarDayDetail(title, masuk, pulang, statusText) {
+    const tEl = document.getElementById('cal-detail-title');
+    const sEl = document.getElementById('cal-detail-sub');
+    const bEl = document.getElementById('cal-detail-badge');
+    if (tEl) tEl.textContent = title;
+    if (sEl) sEl.textContent = `${statusText} • Masuk: ${masuk} | Pulang: ${pulang}`;
+    if (bEl) bEl.textContent = `${masuk} - ${pulang}`;
+}
+
+function copyBiometricId() {
+    const idVal = document.getElementById('profil-id')?.textContent || document.getElementById('user-id')?.textContent || '';
+    if (!idVal || idVal === 'ID') return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(idVal).then(() => {
+            showPortalToast(`ID Biometrik (${idVal}) berhasil disalin ke papan klip.`, 'success', 'ID Disalin');
+        }).catch(() => {
+            showPortalToast(`ID Biometrik Anda: ${idVal}`, 'info', 'ID Biometrik');
+        });
+    } else {
+        showPortalToast(`ID Biometrik Anda: ${idVal}`, 'info', 'ID Biometrik');
+    }
+}
+
 function toggleEidFlip() {
     const front = document.getElementById('eid-front');
     const back = document.getElementById('eid-back');
     const lbl = document.getElementById('eid-flip-label');
+    const qrBox = document.getElementById('eid-qr-svg');
     if (!front || !back) return;
+    if (qrBox && !qrBox.innerHTML) {
+        const uid = document.getElementById('profil-id')?.textContent || 'BIO';
+        const unama = document.getElementById('profil-nama')?.textContent || 'PEGAWAI';
+        qrBox.innerHTML = generateDeterministicQrSvg(`EID-${uid}-${unama}`);
+    }
     if (back.classList.contains('hidden')) {
         front.classList.add('hidden');
         back.classList.remove('hidden');
@@ -1438,6 +1860,46 @@ function toggleEidFlip() {
         front.classList.remove('hidden');
         if (lbl) lbl.textContent = 'Balik Kartu';
     }
+}
+
+function openSlipModalForMonth(periodeStr) {
+    if (!periodeStr) return openSlipModal();
+    const match = (cachedRiwayatData || []).find(it => it.periode === periodeStr);
+    if (!match) return openSlipModal();
+
+    const modal = document.getElementById('slip-modal');
+    const content = document.getElementById('slip-modal-content');
+    if (!modal || !content) return;
+
+    const session = localStorage.getItem('pegawai_session');
+    const user = session ? JSON.parse(session) : {};
+    const [y, m] = periodeStr.split('-');
+    const bulanStr = new Date(y, m - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+    const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setTxt('slip-periode', 'Periode: ' + bulanStr);
+    setTxt('slip-nama', user.nama || document.getElementById('user-nama')?.textContent || '-');
+    setTxt('slip-id', user.id_karyawan || document.getElementById('user-id')?.textContent || '-');
+    setTxt('slip-jabatan', user.jabatan || document.getElementById('user-jabatan')?.textContent || 'Pegawai');
+    setTxt('slip-pangkat', document.getElementById('beranda-pangkat-text')?.textContent || 'Pegawai Aktif');
+
+    setTxt('slip-hadir', (match.total_masuk || 0) + ' Hari');
+    setTxt('slip-dl', (match.total_dl || 0) + ' Hari');
+    const izinCuti = (parseInt(match.total_izin) || 0) + (parseInt(match.total_cuti) || 0);
+    setTxt('slip-isc', izinCuti + ' Hari');
+    setTxt('slip-sakit', (match.total_sakit || 0) + ' Hari');
+    setTxt('slip-alpa', (match.alpa || 0) + ' Hari');
+    setTxt('slip-telat', `${match.telat_kali || 0}x (${match.telat_menit || 0} Menit)`);
+    setTxt('slip-psw', `${match.psw_kali || 0}x (${match.psw_menit || 0} Menit)`);
+    setTxt('slip-tap', (match.tanpa_absen_pulang || 0) + ' Kali');
+    setTxt('slip-jam', match.total_jam_kerja || '00:00:00');
+
+    const qrSlip = document.getElementById('slip-qr-svg');
+    if (qrSlip) qrSlip.innerHTML = generateDeterministicQrSvg(`SLIP-${user.id_karyawan || 'ID'}-${periodeStr}`);
+
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
 }
 
 function openSlipModal() {
@@ -1459,13 +1921,18 @@ function openSlipModal() {
 
     setTxt('slip-hadir', (document.getElementById('rekap-hadir')?.textContent || '0') + ' Hari');
     setTxt('slip-dl', (document.getElementById('rekap-dl')?.textContent || '0') + ' Hari');
-    const isc = (parseInt(document.getElementById('rekap-isc')?.textContent) || 0) + (parseInt(document.getElementById('rekap-sakit')?.textContent) || 0);
-    setTxt('slip-isc', isc + ' Hari');
+    const izinCuti = parseInt(document.getElementById('rekap-isc')?.textContent) || 0;
+    const sakitOnly = parseInt(document.getElementById('rekap-sakit')?.textContent) || 0;
+    setTxt('slip-isc', izinCuti + ' Hari');
+    setTxt('slip-sakit', sakitOnly + ' Hari');
     setTxt('slip-alpa', (document.getElementById('rekap-alpa')?.textContent || '0') + ' Hari');
     setTxt('slip-telat', `${document.getElementById('rekap-telat')?.textContent || '0'}x (${document.getElementById('rekap-telat-menit')?.textContent || '0'} Menit)`);
     setTxt('slip-psw', `${document.getElementById('rekap-psw-kali')?.textContent || '0'}x (${document.getElementById('rekap-psw-menit')?.textContent || '0'} Menit)`);
     setTxt('slip-tap', (document.getElementById('rekap-tap')?.textContent || '0') + ' Kali');
     setTxt('slip-jam', document.getElementById('rekap-jam-kerja')?.textContent || '00:00:00');
+
+    const qrSlip = document.getElementById('slip-qr-svg');
+    if (qrSlip) qrSlip.innerHTML = generateDeterministicQrSvg(`SLIP-${user.id_karyawan || 'ID'}-${bulanStr}`);
 
     modal.classList.remove('opacity-0', 'pointer-events-none');
     content.classList.remove('scale-95');
@@ -1500,6 +1967,7 @@ function filterDailyTableByStatus(tag) {
         'TAP': 'Tanpa Absen Pulang (TAP)'
     };
 
+    switchDailyViewMode('table');
     if (!tag || tag === 'ALL') {
         rows.forEach(r => r.classList.remove('hidden'));
         if (banner) banner.classList.add('hidden');
