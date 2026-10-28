@@ -2233,7 +2233,8 @@ function shareSlipWhatsApp() {
         '----------------------------------------\n' +
         '_Dokumen Sah Terverifikasi Portal Biometrik_';
 
-    window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(text), '_blank');
+    const adminPhone = '6281991591834';
+    window.open('https://wa.me/' + adminPhone + '?text=' + encodeURIComponent(text), '_blank');
 }
 
 function hubungiAdminWhatsApp() {
