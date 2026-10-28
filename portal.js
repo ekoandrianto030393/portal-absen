@@ -1419,6 +1419,33 @@ async function loadDashboardData(idKaryawan) {
                 if (elPct) elPct.textContent = pctCapaian + '%';
                 if (elRasio) elRasio.textContent = efektifHadir + ' / ' + targetHariKerja + ' Hari Kerja';
                 if (elBar) setTimeout(() => { elBar.style.width = pctCapaian + '%'; }, 100);
+
+                // Proyeksi & Target Akhir Bulan (Sen-Sab)
+                try {
+                    const todayDow = nowDate.getDay();
+                    const todayNum = nowDate.getDate();
+                    let sisaKerja = 0;
+                    for (let dIdx = todayNum + 1; dIdx <= totalDaysMonth; dIdx++) {
+                        if (new Date(nowDate.getFullYear(), nowDate.getMonth(), dIdx).getDay() !== 0) sisaKerja++;
+                    }
+                    const belumMasukHariIni = (typeof currentTodayMasuk === 'undefined' || !currentTodayMasuk || currentTodayMasuk === '-' || currentTodayMasuk === '--:--');
+                    if (todayDow !== 0 && belumMasukHariIni) sisaKerja++;
+                    const lewatKerja = Math.max(0, targetHariKerja - sisaKerja);
+                    const rate = lewatKerja > 0 ? Math.min(1, efektifHadir / lewatKerja) : 1;
+                    const proyeksiHari = Math.min(targetHariKerja, Math.round(efektifHadir + rate * sisaKerja));
+                    const proyeksiPct = targetHariKerja > 0 ? Math.round((proyeksiHari / targetHariKerja) * 100) : 0;
+                    const butuh = Math.max(0, Math.ceil(targetHariKerja * 0.9) - efektifHadir);
+                    const elSisa = document.getElementById('proy-sisa');
+                    const elAkhir = document.getElementById('proy-akhir');
+                    const elTarget = document.getElementById('proy-target');
+                    if (elSisa) elSisa.textContent = sisaKerja + ' Hari';
+                    if (elAkhir) elAkhir.textContent = proyeksiPct + '%';
+                    if (elTarget) {
+                        if (butuh === 0) { elTarget.textContent = 'Tercapai ✓'; elTarget.style.color = '#6ee7b7'; }
+                        else if (butuh > sisaKerja) { elTarget.textContent = 'Terlewati'; elTarget.style.color = '#fda4af'; }
+                        else { elTarget.textContent = '+' + butuh + ' Hari'; elTarget.style.color = '#fde68a'; }
+                    }
+                } catch (e) { /* proyeksi bersifat tambahan, abaikan jika gagal */ }
                 document.getElementById('rekap-telat').textContent = myData.telat_kali || 0;
                 
                 const izinCutiOnly = (parseInt(myData.total_izin) || 0) + (parseInt(myData.total_cuti) || 0);
