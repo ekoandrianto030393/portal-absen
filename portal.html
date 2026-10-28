@@ -705,9 +705,15 @@
                             </div>
                         </div>
                     </div>
-                    <button onclick="logout()" title="Keluar" class="w-10 h-10 shrink-0 hover:bg-rose-500/30 hover:text-rose-200 border border-white/25 rounded-xl flex items-center justify-center text-white/90 transition-colors shadow-md active:scale-95" style="background: rgba(15,23,42,0.28);">
-                        <i class="fa-solid fa-power-off"></i>
-                    </button>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button type="button" onclick="openNotificationModal()" title="Pusat Notifikasi & Pengingat" class="relative w-10 h-10 hover:bg-white/20 border border-white/25 rounded-xl flex items-center justify-center text-amber-200 transition-colors shadow-md active:scale-95" style="background: rgba(15,23,42,0.28);">
+                            <i class="fa-solid fa-bell text-sm"></i>
+                            <span id="notif-badge-dot" class="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-teal-900 animate-pulse"></span>
+                        </button>
+                        <button onclick="logout()" title="Keluar" class="w-10 h-10 hover:bg-rose-500/30 hover:text-rose-200 border border-white/25 rounded-xl flex items-center justify-center text-white/90 transition-colors shadow-md active:scale-95" style="background: rgba(15,23,42,0.28);">
+                            <i class="fa-solid fa-power-off"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1061,7 +1067,7 @@
                     <span class="flex items-center gap-1 text-emerald-800"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>Tepat Waktu</span>
                     <span class="flex items-center gap-1 text-amber-800"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>Telat</span>
                     <span class="flex items-center gap-1 text-sky-800"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span>I/S/C/DL</span>
-                    <span class="flex items-center gap-1 text-rose-800"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>Alpa/Libur</span>
+                    <span class="flex items-center gap-1 text-rose-800"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>Libur Nasional / Alpa</span>
                 </div>
                 <!-- Header Hari (Sen - Min) -->
                 <div class="grid grid-cols-7 gap-1.5 text-center text-[9px] font-black uppercase tracking-wider text-teal-900 mb-1.5">
@@ -1185,6 +1191,40 @@
             </div>
         </div>
         <div class="h-6"></div>
+    </div>
+
+    <!-- MODAL PUSAT NOTIFIKASI & PENGINGAT CERDAS -->
+    <div id="notification-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex flex-col justify-end opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="notification-modal-content" class="bg-white rounded-t-[2.25rem] p-5 transform translate-y-full transition-transform duration-300 shadow-[0_-15px_45px_rgba(4,47,46,0.25)] max-h-[85vh] overflow-y-auto relative border-t border-teal-200">
+            <div class="absolute top-0 left-0 right-0 h-1.5" style="background: linear-gradient(90deg, #10b981 0%, #0d9488 45%, #0284c7 80%, #f59e0b 100%);"></div>
+            
+            <div class="flex justify-between items-center mb-4 sticky top-0 bg-white/95 backdrop-blur-md pb-3 pt-1 z-10 border-b border-teal-100">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center text-sm shadow-sm">
+                        <i class="fa-solid fa-bell"></i>
+                    </span>
+                    <div>
+                        <h3 class="text-base font-black text-teal-950 uppercase tracking-wider leading-none">Pusat Notifikasi</h3>
+                        <p class="text-[10px] font-bold text-teal-600 mt-0.5">Pengingat & Informasi Kedisiplinan</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="markAllNotificationsRead()" class="px-2.5 py-1 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-800 text-[10px] font-bold flex items-center gap-1 transition-colors">
+                        <i class="fa-solid fa-check-double text-[9px]"></i> Tandai Dibaca
+                    </button>
+                    <button type="button" onclick="closeNotificationModal()" class="w-8 h-8 bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-600 rounded-full flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="notification-list" class="space-y-2.5 relative z-0">
+                <!-- Notifikasi dinamis -->
+            </div>
+
+            <!-- Bottom safe padding -->
+            <div class="h-6"></div>
+        </div>
     </div>
 
     <!-- MODAL DETAIL REKAP (HARMONIZED EMERALD-TEAL-GOLD) -->
@@ -1707,7 +1747,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/portal.js?v=49"></script>
+    <script src="/portal.js?v=50"></script>
     <script src="instansi_config.js"></script>
 </body>
 </html>

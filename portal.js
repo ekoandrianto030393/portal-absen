@@ -1,3 +1,193 @@
+
+const INDONESIA_HOLIDAYS = {
+    // Daftar Hari Libur Nasional Resmi (SKB 3 Menteri)
+    '01-01': 'Tahun Baru Masehi',
+    '01-16': 'Isra Mikraj Nabi Muhammad SAW',
+    '01-27': 'Isra Mikraj 1446 H',
+    '01-29': 'Tahun Baru Imlek',
+    '02-17': 'Tahun Baru Imlek',
+    '03-20': 'Hari Raya Idul Fitri',
+    '03-21': 'Hari Raya Idul Fitri',
+    '03-22': 'Hari Suci Nyepi',
+    '03-29': 'Hari Suci Nyepi',
+    '03-31': 'Hari Raya Idul Fitri',
+    '04-01': 'Hari Raya Idul Fitri',
+    '04-03': 'Wafat Yesus Kristus',
+    '04-18': 'Wafat Yesus Kristus',
+    '04-20': 'Hari Paskah',
+    '05-01': 'Hari Buruh Internasional',
+    '05-12': 'Hari Raya Waisak',
+    '05-14': 'Kenaikan Yesus Kristus',
+    '05-29': 'Kenaikan Yesus Kristus',
+    '05-31': 'Hari Raya Waisak',
+    '06-01': 'Hari Lahir Pancasila',
+    '06-07': 'Hari Raya Idul Adha',
+    '06-16': 'Hari Raya Idul Adha',
+    '06-27': 'Tahun Baru Islam',
+    '07-07': 'Tahun Baru Islam',
+    '08-17': 'Hari Kemerdekaan RI',
+    '09-05': 'Maulid Nabi Muhammad SAW',
+    '09-15': 'Maulid Nabi Muhammad SAW',
+    '12-25': 'Hari Raya Natal'
+};
+
+
+// ========================
+// PUSAT NOTIFIKASI & PENGINGAT CERDAS
+// ========================
+function openNotificationModal() {
+    const modal = document.getElementById('notification-modal');
+    const content = document.getElementById('notification-modal-content');
+    const dot = document.getElementById('notif-badge-dot');
+    if (!modal || !content) return;
+
+    renderNotificationList();
+    if (dot) dot.classList.add('hidden');
+
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    content.classList.remove('translate-y-full');
+}
+
+function closeNotificationModal() {
+    const modal = document.getElementById('notification-modal');
+    const content = document.getElementById('notification-modal-content');
+    if (!modal || !content) return;
+
+    content.classList.add('translate-y-full');
+    modal.classList.add('opacity-0', 'pointer-events-none');
+}
+
+function markAllNotificationsRead() {
+    const dot = document.getElementById('notif-badge-dot');
+    if (dot) dot.classList.add('hidden');
+    if (typeof showPortalToast === 'function') {
+        showPortalToast('Semua notifikasi telah ditandai dibaca.', 'success', 'Pusat Notifikasi');
+    }
+}
+
+function renderNotificationList() {
+    const container = document.getElementById('notification-list');
+    if (!container) return;
+
+    const masuk = document.getElementById('today-masuk')?.textContent || '--:--';
+    const pulang = document.getElementById('today-pulang')?.textContent || '--:--';
+    const alpaVal = document.getElementById('rekap-alpa')?.textContent || '0';
+    const pangkat = document.getElementById('beranda-pangkat-text')?.textContent || 'Pegawai Aktif';
+
+    const now = new Date();
+    const day = now.getDay();
+    let shiftPulangStr = '14:00';
+    if (day === 5) shiftPulangStr = '11:30';
+    else if (day === 6) shiftPulangStr = '13:00';
+
+    let notifs = [];
+
+    // 1. Status presensi hari ini
+    if (masuk && masuk !== '--:--') {
+        const isTelat = document.getElementById('today-status')?.textContent?.toLowerCase().includes('telat');
+        if (isTelat) {
+            notifs.push({
+                type: 'warning',
+                icon: 'fa-triangle-exclamation',
+                title: 'Presensi Masuk (Terlambat)',
+                desc: 'Presensi masuk tercatat pukul ' + masuk + ' WIB. Harap perhatikan jam kehadiran agar akumulasi skor disiplin tetap optimal.',
+                time: 'Hari ini'
+            });
+        } else {
+            notifs.push({
+                type: 'success',
+                icon: 'fa-circle-check',
+                title: 'Presensi Masuk Tepat Waktu',
+                desc: 'Scan kehadiran berhasil tercatat pukul ' + masuk + ' WIB. Selamat bertugas dan berikan pelayanan terbaik!',
+                time: 'Hari ini'
+            });
+        }
+    } else {
+        notifs.push({
+            type: 'info',
+            icon: 'fa-clock',
+            title: 'Pengingat Presensi Hari Ini',
+            desc: 'Anda belum tercatat melakukan presensi masuk hari ini. Pastikan melakukan scan biometrik pada mesin Puskesmas.',
+            time: 'Hari ini'
+        });
+    }
+
+    // 2. Info Shift & Jam Pulang
+    if (day === 0) {
+        notifs.push({
+            type: 'neutral',
+            icon: 'fa-mug-hot',
+            title: 'Hari Libur Pelayanan Reguler',
+            desc: 'Hari ini hari Minggu. Selamat beristirahat bersama keluarga dan jaga selalu kesehatan.',
+            time: 'Info'
+        });
+    } else if (pulang && pulang !== '--:--') {
+        notifs.push({
+            type: 'success',
+            icon: 'fa-door-open',
+            title: 'Presensi Pulang Selesai',
+            desc: 'Presensi pulang telah tercatat pukul ' + pulang + ' WIB. Terima kasih atas dedikasi dan pelayanan Anda hari ini.',
+            time: 'Hari ini'
+        });
+    } else {
+        notifs.push({
+            type: 'warning',
+            icon: 'fa-hourglass-half',
+            title: 'Batas Kepulangan Shift: ' + shiftPulangStr + ' WIB',
+            desc: 'Jadwal resmi kepulangan shift hari ini adalah pukul ' + shiftPulangStr + ' WIB. Pastikan melakukan scan pulang sebelum meninggalkan faskes.',
+            time: 'Penting'
+        });
+    }
+
+    // 3. Status Rekap Alpa & Disiplin Bulan Ini
+    if (Number(alpaVal) === 0) {
+        notifs.push({
+            type: 'success',
+            icon: 'fa-award',
+            title: 'Prestasi Disiplin: Bebas Alpa',
+            desc: 'Rekam jejak kehadiran Anda bulan ini masih 0 Alpa. Pertahankan predikat ' + pangkat + '!',
+            time: 'Bulan Ini'
+        });
+    } else {
+        notifs.push({
+            type: 'danger',
+            icon: 'fa-circle-exclamation',
+            title: 'Perhatian: ' + alpaVal + ' Hari Alpa',
+            desc: 'Tercatat ' + alpaVal + ' hari ketidakhadiran tanpa keterangan. Segera konfirmasi ke Kasubag TU jika ada surat tugas/izin resmi.',
+            time: 'Perhatian'
+        });
+    }
+
+    // 4. Layanan Pengaduan & Bantuan WhatsApp
+    notifs.push({
+        type: 'info',
+        icon: 'fa-headset',
+        title: 'Layanan Admin Kepegawaian',
+        desc: 'Jika terdapat kendala mesin biometrik wajah/jari, hubungi Admin Kepegawaian di 0819-9159-1834.',
+        time: 'Pusat Bantuan'
+    });
+
+    const styleMap = {
+        success: { border: 'border-emerald-200', bg: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', iconBg: '#10b981', color: '#065f46' },
+        warning: { border: 'border-amber-200', bg: 'linear-gradient(135deg, #fffbeb, #fef3c7)', iconBg: '#f59e0b', color: '#92400e' },
+        danger: { border: 'border-rose-200', bg: 'linear-gradient(135deg, #fff1f2, #ffe4e6)', iconBg: '#f43f5e', color: '#9f1239' },
+        info: { border: 'border-sky-200', bg: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', iconBg: '#0284c7', color: '#075985' },
+        neutral: { border: 'border-slate-200', bg: 'linear-gradient(135deg, #f8fafc, #f1f5f9)', iconBg: '#64748b', color: '#334155' }
+    };
+
+    container.innerHTML = notifs.map(n => {
+        const s = styleMap[n.type] || styleMap.info;
+        return '<div class="rounded-2xl p-3 border ' + s.border + ' shadow-sm flex items-start gap-2.5" style="background: ' + s.bg + ';">' +
+            '<div class="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm" style="background: ' + s.iconBg + ';">' +
+            '<i class="fa-solid ' + n.icon + ' text-[11px]"></i></div>' +
+            '<div class="flex-1 min-w-0">' +
+            '<div class="flex items-center justify-between gap-1 mb-0.5">' +
+            '<h4 class="text-[11px] font-black uppercase tracking-wider" style="color: ' + s.color + ';">' + n.title + '</h4>' +
+            '<span class="text-[8px] font-bold text-slate-400 font-mono shrink-0">' + n.time + '</span></div>' +
+            '<p class="text-[10px] font-semibold text-slate-700 leading-relaxed">' + n.desc + '</p></div></div>';
+    }).join('');
+}
+
 const API_BASE = '/api';
 
 // Helper fungsi untuk JWT
@@ -1749,6 +1939,10 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     } else if (isSunday) {
                         bg = 'bg-rose-50/35';
                         info = '<span class="bg-rose-50 text-rose-500 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-widest border border-rose-200/70">MINGGU / LIBUR</span>';
+                    } else if (INDONESIA_HOLIDAYS[`${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`]) {
+                        const holName = INDONESIA_HOLIDAYS[`${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`];
+                        bg = 'bg-rose-50/40';
+                        info = `<span class="bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider border border-rose-200 shadow-sm"><i class="fa-solid fa-flag mr-1 text-rose-500"></i>${holName}</span>`;
                     } else if (alpaDates.has(i)) {
                         info = '<span class="bg-rose-100 text-rose-600 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-widest border border-rose-200 shadow-sm">ALPA</span>';
                     }
@@ -1810,6 +2004,11 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                         cellBg = 'bg-teal-50 border-teal-400 text-teal-900';
                         subTxt = 'Hari Ini';
                         detailStatus = 'Hari Ini (Belum Scan)';
+                    } else if (!isFut && INDONESIA_HOLIDAYS[`${String(month).padStart(2, '0')}-${String(dIdx).padStart(2, '0')}`] && (!recD || detailMasuk === '--:--')) {
+                        const hName = INDONESIA_HOLIDAYS[`${String(month).padStart(2, '0')}-${String(dIdx).padStart(2, '0')}`];
+                        cellBg = 'bg-rose-50 border-rose-300 text-rose-800';
+                        subTxt = 'Libur';
+                        detailStatus = 'Libur Nasional: ' + hName;
                     } else if (!isFut && isSun) {
                         cellBg = 'bg-rose-50/70 border-rose-200 text-rose-600';
                         subTxt = 'Libur';
