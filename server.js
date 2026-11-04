@@ -1255,7 +1255,28 @@ function isAksesScanAllowedToday(aksesRow, todayStr, dayName) {
     return tokens.includes(String(dayName || '').toLowerCase());
 }
 
+let isAksesScanTableInitialized = false;
+function ensureAksesScanTableExists(cb) {
+    if (isAksesScanTableInitialized) return cb && cb();
+    const createSql = `
+        CREATE TABLE IF NOT EXISTS akses_scan_portal (
+            id_karyawan VARCHAR(50) NOT NULL PRIMARY KEY,
+            aktif TINYINT(1) DEFAULT 0,
+            hari_diizinkan VARCHAR(100) DEFAULT '',
+            tanggal_khusus VARCHAR(20) DEFAULT NULL,
+            mode_kehadiran VARCHAR(30) DEFAULT 'SCAN_FULL_HADIR',
+            keterangan_default VARCHAR(255) DEFAULT 'Jadwal Libur Mingguan (Tetap Masuk via Portal)',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB
+    `;
+    pool.query(createSql, (err) => {
+        if (!err) isAksesScanTableInitialized = true;
+        if (cb) cb(err);
+    });
+}
+
 function ensureAutoHadirForScheduledEmployees(callback) {
+    ensureAksesScanTableExists(() => {
     const { today, dayName, jamPulangEfektif } = getLocalTodayInfo();
     pool.query('SELECT * FROM akses_scan_portal WHERE aktif = 1 AND mode_kehadiran = ?', ['AUTO_HADIR'], (err, rows) => {
         if (err || !rows || rows.length === 0) {
@@ -1286,6 +1307,7 @@ function ensureAutoHadirForScheduledEmployees(callback) {
                 });
             });
         });
+    });
     });
 }
 
