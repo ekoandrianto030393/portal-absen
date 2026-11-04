@@ -2488,5 +2488,14 @@ async function checkPortalScanAccess(idKaryawan) {
 }
 
 function openPortalScanPage() {
-    window.location.href = 'scan.html?from=portal';
+    let q = 'from=portal';
+    try {
+        const raw = localStorage.getItem('pegawai_session');
+        if (raw) {
+            const u = JSON.parse(raw);
+            if (u && u.id_karyawan) q += '&emp_id=' + encodeURIComponent(u.id_karyawan);
+            if (u && u.nama) q += '&emp_nama=' + encodeURIComponent(u.nama);
+        }
+    } catch (e) {}
+    window.location.href = 'scan.html?' + q;
 }

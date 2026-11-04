@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 
 <head>
@@ -17,8 +17,8 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
 
     <!-- Babylon.js Core & Loaders -->
-    <script src="libs/babylon.js"></script>
-    <script src="libs/babylonjs.loaders.min.js"></script>
+    <script>if (!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) { document.write('<script src="libs/babylon.js" defer><\/script><script src="libs/babylonjs.loaders.min.js" defer><\/script>'); }</script>
+
     
     <!-- Load full TensorFlow.js bundle to provide the loader components needed by BlazeFace -->
     <script src="libs/tf.min.js"></script>
@@ -1362,8 +1362,8 @@
                 <div class="camera-frame-outer relative w-full max-w-[900px] -mt-4 lg:-mt-8 overflow-hidden z-20">
                     <div class="glass-sweep-layer"></div>
                     <div class="absolute top-0 left-10 right-10 h-[2px] bg-gradient-to-r from-transparent via-[#FFD700] to-transparent opacity-80 shadow-[0_0_10px_rgba(255,215,0,0.4)]"></div>
-                    <div id="videoContainer" class="relative w-full pt-[56.25%] bg-white/5 backdrop-blur-[30px] rounded-[18px] overflow-hidden shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] border border-white/5">
-                        <video id="videoElement" class="absolute top-0 left-0 w-full h-full object-cover filter brightness-[1.05] contrast-[1.05]" autoplay muted playsinline></video>
+                    <div id="videoContainer" class="relative w-full pt-[110%] sm:pt-[56.25%] bg-white/5 backdrop-blur-[30px] rounded-[18px] overflow-hidden shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] border border-white/5">
+                        <video id="videoElement" class="absolute top-0 left-0 w-full h-full object-cover filter brightness-[1.05] contrast-[1.05]" autoplay muted playsinline webkit-playsinline></video>
                         <div class="absolute inset-0 pointer-events-none z-30">
                             <div class="absolute top-0 left-0 w-10 h-10 border-t-[2px] border-l-[2px] border-white/20 rounded-tl-[18px]"></div>
                             <div class="absolute top-0 right-0 w-10 h-10 border-t-[2px] border-r-[2px] border-white/20 rounded-tr-[18px]"></div>
@@ -1397,6 +1397,32 @@
                         </div>
                     </div>
                     <canvas id="overlay" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10"></canvas>
+                    <!-- Tombol Ganti Kamera Depan/Belakang (Khusus HP/Multi-Kamera) -->
+                    <button id="btnSwitchCameraFacing" type="button" onclick="if(window.toggleMobileCameraFacing) window.toggleMobileCameraFacing();" class="absolute top-3 right-3 z-40 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-cyan-400/50 text-cyan-300 text-[11px] font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-md transition-all active:scale-95">
+                        <i class="fa-solid fa-camera-rotate"></i> <span>Ganti Kamera</span>
+                    </button>
+                    <!-- Overlay Aktifkan / Izin Kamera HP & Solusi WebIntoApp APK -->
+                    <div id="mobileCameraOverlay" class="hidden absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">
+                        <div class="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 text-2xl mb-3 shadow-[0_0_20px_rgba(34,211,238,0.3)] animate-pulse">
+                            <i class="fa-solid fa-camera"></i>
+                        </div>
+                        <h3 id="camOverlayTitle" class="text-sm sm:text-base font-black text-white uppercase tracking-wide">Aktifkan Izin Kamera HP</h3>
+                        <p id="camOverlayDesc" class="text-[11px] sm:text-xs text-slate-300 max-w-md mt-1 leading-relaxed">
+                            Klik tombol di bawah untuk memunculkan izin kamera. Jika dibuka dari APK <b>WebIntoApp</b> yang belum diaktifkan izin kameranya, gunakan tombol <b>Buka di Chrome</b> atau <b>Kamera Selfie Langsung</b>.
+                        </p>
+                        <div class="mt-4 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2.5 w-full max-w-md">
+                            <button id="btnRequestCameraPerm" type="button" onclick="if(window.requestAndStartMobileCamera) window.requestAndStartMobileCamera();" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
+                                <i class="fa-solid fa-video"></i> Izinkan & Aktifkan Kamera Live
+                            </button>
+                            <button id="btnOpenInChrome" type="button" onclick="if(window.openScanInChromeBrowser) window.openScanInChromeBrowser();" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
+                                <i class="fa-brands fa-chrome"></i> Buka Kamera di Chrome HP (Otomatis Login)
+                            </button>
+                            <label for="nativeMobileCameraInput" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/60 text-emerald-300 font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all">
+                                <i class="fa-solid fa-camera-retro"></i> Scan via Kamera Selfie HP
+                            </label>
+                            <input type="file" id="nativeMobileCameraInput" accept="image/*" capture="user" class="hidden" onchange="if(window.handleNativeSelfieScan) window.handleNativeSelfieScan(this);">
+                        </div>
+                    </div>
                 </div>
                 </div>
                 <div class="dark-panel-card w-full p-4 text-center relative overflow-hidden">
@@ -1716,7 +1742,14 @@
             if (!isPortalFolder) return;
 
             window.IS_PORTAL_SCAN_MODE = true;
-            const rawSession = localStorage.getItem('pegawai_session');
+            let rawSession = localStorage.getItem('pegawai_session');
+            const urlEmpId = params.get('emp_id');
+            const urlEmpNama = params.get('emp_nama');
+            if (!rawSession && urlEmpId) {
+                const tempUser = { id_karyawan: urlEmpId, nama: urlEmpNama || urlEmpId };
+                localStorage.setItem('pegawai_session', JSON.stringify(tempUser));
+                rawSession = JSON.stringify(tempUser);
+            }
             if (!rawSession) {
                 const overlay = document.getElementById('portal-access-denied-overlay');
                 const titleEl = document.getElementById('portal-denied-title');

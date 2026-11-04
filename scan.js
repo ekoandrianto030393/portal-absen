@@ -2912,7 +2912,36 @@ async function startCamera(deviceId = null) {
             }
         };
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        window.currentCameraFacingMode = window.currentCameraFacingMode || 'user';
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('Browser/APK memblokir akses kamera (MediaDevices tidak tersedia).');
+        }
+        let stream = null;
+        const constraintList = deviceId
+            ? [
+                { video: { deviceId: { exact: deviceId }, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+                { video: { deviceId: { exact: deviceId } }, audio: false }
+              ]
+            : [
+                { video: { facingMode: { ideal: window.currentCameraFacingMode }, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+                { video: { facingMode: window.currentCameraFacingMode }, audio: false },
+                { video: true, audio: false }
+              ];
+        let lastCamErr = null;
+        for (const c of constraintList) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(c);
+                if (stream) break;
+            } catch (e) {
+                lastCamErr = e;
+            }
+        }
+        if (!stream) throw (lastCamErr || new Error('Kamera tidak dapat diakses'));
+        const camOverlay = document.getElementById('mobileCameraOverlay');
+        if (camOverlay) camOverlay.classList.add('hidden');
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+        video.muted = true;
         currentStream = stream;
         video.srcObject = stream;
         
@@ -2921,17 +2950,155 @@ async function startCamera(deviceId = null) {
         
         logSystem(`Camera Stream Established.`, 'text-green-500');
 
-        await new Promise(resolve => video.onloadedmetadata = resolve);
+        await Promise.race([new Promise(resolve => { if (video.readyState >= 1) resolve(); else video.onloadedmetadata = resolve; }), new Promise(resolve => setTimeout(resolve, 1500))]);
         video.play();
         resizeCanvas(); 
     } catch (err) {
-        setStatusVisual(`❌ Gagal Start Kamera: Pastikan Izin Diberikan.`, 'text-red-500');
+        setStatusVisual(`❌ Gagal Start Kamera: Klik tombol Aktifkan / Buka di Chrome.`, 'text-red-500');
+        const camOverlay = document.getElementById('mobileCameraOverlay');
+        const titleEl = document.getElementById('camOverlayTitle');
+        const descEl = document.getElementById('camOverlayDesc');
+        const isWebViewApk = /; wv\)|WebIntoApp|Version\/4\.0.*Chrome/i.test(navigator.userAgent || '');
+        if (camOverlay) camOverlay.classList.remove('hidden');
+        if (titleEl && descEl) {
+            if (isWebViewApk) {
+                titleEl.textContent = '⚠️ Izin Kamera APK (WebIntoApp) Belum Diaktifkan';
+                descEl.innerHTML = 'APK dari <b>WebIntoApp</b> belum dinyalakan fitur <b>Camera Permission</b>-nya sehingga tidak meminta izin kamera.<br>Klik <b>"Buka Kamera di Chrome HP"</b> (otomatis login) atau <b>"Scan via Kamera Selfie HP"</b> di bawah ini:';
+            } else {
+                titleEl.textContent = '📷 Izinkan Akses Kamera HP';
+                descEl.innerHTML = `Kamera belum diizinkan (${err.name || err.message}). Klik <b>"Izinkan & Aktifkan Kamera Live"</b>, atau klik ikon 🔒 di kiri atas alamat browser ➔ <b>Izin Kamera: Izinkan</b>, atau gunakan <b>Scan via Kamera Selfie HP</b>.`;
+            }
+        }
         logSystem(`FATAL: Camera failure. ${err.message}.`, 'text-red-500');
     }
 }
 
 async function switchCamera(deviceId) {
     return; // Fungsi ganti kamera dihapus.
+}
+
+window.requestAndStartMobileCamera = async function () {
+    await startCamera(null);
+};
+
+window.toggleMobileCameraFacing = async function () {
+    window.currentCameraFacingMode = (window.currentCameraFacingMode === 'environment') ? 'user' : 'environment';
+    await startCamera(null);
+};
+
+window.openScanInChromeBrowser = function () {
+    let empId = window.PORTAL_LOCKED_EMPLOYEE_ID || '';
+    let empNama = '';
+    try {
+        const raw = localStorage.getItem('pegawai_session');
+        if (raw) {
+            const u = JSON.parse(raw);
+            if (u && u.id_karyawan) empId = u.id_karyawan;
+            if (u && u.nama) empNama = u.nama;
+        }
+    } catch (e) {}
+    const q = new URLSearchParams(window.location.search);
+    q.set('from', 'portal');
+    if (empId) q.set('emp_id', empId);
+    if (empNama) q.set('emp_nama', empNama);
+    const pathWithQuery = window.location.pathname + '?' + q.toString();
+    const fullUrl = window.location.origin + pathWithQuery;
+    const isAndroid = /Android/i.test(navigator.userAgent || '');
+    if (isAndroid) {
+        const scheme = window.location.protocol.replace(':', '') || 'https';
+        const intentUrl = `intent://${window.location.host}${pathWithQuery}#Intent;scheme=${scheme};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(fullUrl)};end`;
+        window.location.href = intentUrl;
+    } else {
+        window.open(fullUrl, '_blank');
+    }
+};
+
+window.handleNativeSelfieScan = async function (inputEl) {
+    if (!inputEl || !inputEl.files || !inputEl.files[0]) return;
+    const file = inputEl.files[0];
+    const camOverlay = document.getElementById('mobileCameraOverlay');
+    if (camOverlay) camOverlay.classList.add('hidden');
+
+    setStatusVisual('MEMPROSES FOTO KAMERA HP...', 'text-sky-400', true);
+    try {
+        if (window.faceModelLoadPromise) {
+            await window.faceModelLoadPromise;
+        }
+        if (window.faceModelLoadPromise) { try { await window.faceModelLoadPromise; } catch (e) {} }
+    if (!labeledDescriptors) {
+            labeledDescriptors = await loadLabeledImages();
+        }
+        const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        const img = await new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => resolve(image);
+            image.onerror = reject;
+            image.src = dataUrl;
+        });
+
+        // Tampilkan hasil tangkapan kamera ke layar canvas
+        const ctx = canvas.getContext('2d');
+        canvas.width = videoContainer.clientWidth || 640;
+        canvas.height = videoContainer.clientHeight || 480;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const det = await faceapi
+            .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 }))
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+        if (!det) {
+            setStatusVisual('❌ Wajah Tidak Terdeteksi. Coba Foto Ulang Lebih Jelas.', 'text-red-500');
+            if (camOverlay) camOverlay.classList.remove('hidden');
+            inputEl.value = '';
+            return;
+        }
+
+        if (!labeledDescriptors || labeledDescriptors.length === 0) {
+            setStatusVisual('❌ Data Wajah Pegawai Belum Terdaftar.', 'text-red-500');
+            if (camOverlay) camOverlay.classList.remove('hidden');
+            inputEl.value = '';
+            return;
+        }
+
+        const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, Math.max(FACE_MATCHING_THRESHOLD || 0.42, 0.45));
+        const bestMatch = faceMatcher.findBestMatch(det.descriptor);
+
+        if (bestMatch.label === 'unknown') {
+            setStatusVisual('❌ Wajah Tidak Cocok dengan Akun Pegawai Ini.', 'text-red-500');
+            if (camOverlay) camOverlay.classList.remove('hidden');
+            inputEl.value = '';
+            return;
+        }
+
+        const recognizedId = bestMatch.label;
+        const employee = employeeMap[recognizedId] || { nama: recognizedId, jabatan: 'Pegawai' };
+        if (userIdDisplay) userIdDisplay.textContent = employee.nama;
+        if (userJabatanDisplay) userJabatanDisplay.textContent = employee.jabatan || 'Pegawai';
+        if (userPhotoDisplay && employee.foto) userPhotoDisplay.src = `data:image/jpeg;base64,${employee.foto}`;
+
+        // Downscale gambar untuk dikirim ke server
+        const captureCanvas = document.createElement('canvas');
+        const scale = Math.min(1, 640 / img.width);
+        captureCanvas.width = Math.round(img.width * scale);
+        captureCanvas.height = Math.round(img.height * scale);
+        captureCanvas.getContext('2d').drawImage(img, 0, 0, captureCanvas.width, captureCanvas.height);
+        const imageBase64 = captureCanvas.toDataURL('image/jpeg', 0.65);
+
+        setStatusVisual(`✅ WAJAH COCOK: ${employee.nama}. MENYIMPAN ABSENSI...`, 'text-emerald-400', true);
+        await processAttendance(recognizedId, imageBase64);
+    } catch (err) {
+        console.error('Error handleNativeSelfieScan:', err);
+        setStatusVisual(`❌ Gagal Memproses Foto: ${err.message}`, 'text-red-500');
+        if (camOverlay) camOverlay.classList.remove('hidden');
+    } finally {
+        inputEl.value = '';
+    }
 }
 
 async function loadTodayAttendance() {
@@ -2977,14 +3144,17 @@ async function initializeApp() {
         // Sebelumnya berurutan (model selesai → kamera → data).
         // Sekarang semua jalan paralel → boot time turun drastis.
         // =====================================================================
+        // Model sudah dimuat di bawah
+        const cameraStartPromise = startCamera(null);
         const modelLoad = Promise.all([
             faceapi.nets.tinyFaceDetector.loadFromUri('./models'),
             faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
             faceapi.nets.faceRecognitionNet.loadFromUri('./models')
         ]);
+        window.faceModelLoadPromise = modelLoad;
 
         // Muat BlazeFace PARALEL dengan model lain (tidak perlu tunggu)
-        const blazeLoad = blazeface.load({ modelUrl: './models/blazeface/model.json' })
+        const blazeLoad = (typeof blazeface !== 'undefined' && blazeface.load) ? blazeface.load({ modelUrl: './models/blazeface/model.json' }) : Promise.reject(new Error('BlazeFace unavailable'))
             .then(model => {
                 blazeModel = model;
                 logSystem('ENGINE: BLAZEFACE ACCELERATOR ONLINE', 'text-purple-400');
@@ -3013,7 +3183,7 @@ async function initializeApp() {
         setStatusVisual('Models Loaded. Starting Camera...', 'text-sky-400', true);
 
         // Kamera bisa start sekarang (tidak perlu tunggu blaze & config)
-        await startCamera(null);
+        await Promise.all([modelLoad, cameraStartPromise]);
 
         // Tunggu sisanya di background (tidak bloking UI)
         Promise.all([blazeLoad, configLoad, attendanceLoad]).catch(() => {});
@@ -3037,6 +3207,7 @@ async function initializeApp() {
 video.addEventListener('play', async () => {
     resizeCanvas();
 
+    if (window.faceModelLoadPromise) { try { await window.faceModelLoadPromise; } catch (e) {} }
     if (!labeledDescriptors) {
         // [OPTIMIZED] Load labeled images PARALEL — tidak bloking UI
         labeledDescriptors = await loadLabeledImages();
