@@ -733,6 +733,38 @@
                 </div>
             </div>
 
+            <!-- [NEW] Card Akses Khusus Scan.html (Hanya Muncul Bagi Pegawai & Hari yang Dipilih Admin di Dashboard) -->
+            <div id="portal-scan-access-card" class="hidden rounded-[1.75rem] p-5 shadow-[0_16px_38px_-8px_rgba(16,185,129,0.35)] border-2 border-amber-300/80 relative overflow-hidden text-white transition-all duration-300" style="background: linear-gradient(135deg, #064e3b 0%, #0f766e 55%, #022c22 100%);">
+                <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-amber-400/15 blur-xl pointer-events-none"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between gap-2 mb-2.5">
+                        <span id="portal-scan-day-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow-sm">
+                            <span class="w-2 h-2 rounded-full bg-emerald-900 animate-ping"></span>
+                            Jadwal Scan.html Aktif Hari Ini
+                        </span>
+                        <span id="portal-scan-status-pill" class="px-2.5 py-0.5 rounded-full bg-white/15 border border-white/25 text-[9px] font-extrabold text-amber-200 uppercase tracking-wider">
+                            Siap Scan
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-3.5 mt-2">
+                        <div class="w-13 h-13 p-3 rounded-2xl bg-amber-400/20 border border-amber-300/50 flex items-center justify-center text-2xl text-amber-300 shadow-inner shrink-0">
+                            <i class="fa-solid fa-camera-rotate"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-base font-black text-white tracking-wide leading-snug">Presensi Wajah Online (<code class="text-amber-300">scan.html</code>)</h3>
+                            <p id="portal-scan-desc" class="text-[11px] text-emerald-100/90 font-medium mt-0.5 leading-relaxed">
+                                Akun Anda dijadwalkan aktif hari ini. Silakan klik tombol di bawah untuk melakukan scan wajah agar tercatat Hadir otomatis.
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="openPortalScanPage()" class="mt-4 w-full py-3 px-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-950 shadow-[0_10px_25px_-5px_rgba(251,191,36,0.6)] hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 border border-yellow-200" style="background: linear-gradient(135deg, #fde047 0%, #f59e0b 100%);">
+                        <i class="fa-solid fa-camera text-sm"></i>
+                        <span id="portal-scan-btn-text">Buka Scan Wajah (scan.html) Sekarang</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
             <!-- Card Hari Ini -->
             <div class="rounded-[1.75rem] p-5 shadow-[0_12px_30px_-8px_rgba(15,118,110,0.14)] border border-teal-200/80 relative overflow-hidden bg-white">
                 <div class="absolute top-0 left-0 right-0 h-1.5" style="background: linear-gradient(90deg, #10b981 0%, #0d9488 50%, #0284c7 100%);"></div>
@@ -1730,6 +1762,11 @@
             <span class="nav-gold-dot absolute top-1 right-3 w-1.5 h-1.5 rounded-full bg-amber-300 shadow-[0_0_6px_#fde047]"></span>
             <i class="fa-solid fa-id-card-clip text-base"></i>
             <span class="text-[9px] font-black uppercase tracking-wider">Profil</span>
+        </button>
+        <button id="nav-scan-online" onclick="openPortalScanPage()" class="nav-dock-btn active:scale-95 hidden" title="Buka Scan Wajah Online (scan.html)">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute top-1 right-2"></span>
+            <i class="fa-solid fa-camera-rotate text-base text-amber-500"></i>
+            <span class="text-[9px] font-black uppercase tracking-wider text-emerald-800">Scan Wajah</span>
         </button>
     </div>
 

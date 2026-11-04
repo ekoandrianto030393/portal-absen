@@ -2753,7 +2753,8 @@ const api = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    id_karyawan: karyawanId
+                    id_karyawan: karyawanId,
+                    from_portal: Boolean(window.IS_PORTAL_SCAN_MODE || new URLSearchParams(window.location.search).get('from') === 'portal')
                 })
             });
             if (!response.ok) throw new Error(`Server Error (${response.status})`);
@@ -2823,7 +2824,8 @@ async function loadLabeledImages() {
                 hasFace: !!item.face_descriptor // Flag punya wajah atau tidak
             };
 
-            // 2. Hanya masukkan ke Engine Deteksi jika punya data wajah
+            // 2. Hanya masukkan ke Engine Deteksi jika punya data wajah (dan jika dari akun Portal, kunci hanya ke ID pemilik akun)
+            if (window.PORTAL_LOCKED_EMPLOYEE_ID && String(item.id_karyawan).trim().toLowerCase() !== String(window.PORTAL_LOCKED_EMPLOYEE_ID).trim().toLowerCase()) return;
             if (item.face_descriptor) {
                 const rawData = typeof item.face_descriptor === 'string' ? JSON.parse(item.face_descriptor) : item.face_descriptor;
                 let float32Arrays = [];

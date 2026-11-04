@@ -28,57 +28,7 @@ window.fetch = async function() {
     return response;
 };
 
-async function handleLogin() {
-    const user = document.getElementById('login-username').value;
-    const pass = document.getElementById('login-password').value;
-    const errDiv = document.getElementById('login-error');
-    if(errDiv) errDiv.classList.add('hidden');
-    
-    const btn = document.getElementById('btn-login-submit');
-    const originalText = btn ? btn.innerHTML : '';
-    if(btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
-    
-    try {
-        const response = await originalFetch('/api/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user, password: pass })
-        });
-        const result = await response.json();
-        
-        if(btn) btn.innerHTML = originalText;
-        
-        if (result.success && result.token) {
-            localStorage.setItem('admin_token', result.token);
-            const overlay = document.getElementById('login-overlay');
-            if(overlay) overlay.classList.add('hidden');
-            
-            // Coba panggil inisialisasi awal dashboard jika fungsi ada
-            if(typeof window.loadDashboard === 'function') window.loadDashboard();
-            if(typeof window.initKaryawanView === 'function') window.initKaryawanView();
-        } else {
-            if(errDiv) {
-                errDiv.textContent = result.message || 'Login gagal';
-                errDiv.classList.remove('hidden');
-            }
-        }
-    } catch(e) {
-        if(btn) btn.innerHTML = originalText;
-        if(errDiv) {
-            errDiv.textContent = 'Terjadi kesalahan jaringan';
-            errDiv.classList.remove('hidden');
-        }
-    }
-}
 
-document.addEventListener('DOMContentLoaded', () => {
-    const overlay = document.getElementById('login-overlay');
-    if (overlay && !localStorage.getItem('admin_token')) {
-        overlay.classList.remove('hidden');
-    } else if (overlay) {
-        overlay.classList.add('hidden');
-    }
-});
 
 /**
  * dashboard.js - Logika Dashboard <span class="dynamic-instansi-nama">Puskesmas Wana</span>
@@ -171,7 +121,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // [NEW] Init Daily Date Filter (Laporan Harian)
     const dailyDateInput = document.getElementById('filter-daily-date');
     if (dailyDateInput) {
-        dailyDateInput.valueAsDate = new Date(); // Default Hari Ini
+        // [FIX] Gunakan tanggal lokal YYYY-MM-DD agar tidak tergeser ke kemarin akibat timezone UTC pada valueAsDate
+        const now = new Date();
+        dailyDateInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         dailyDateInput.addEventListener('change', () => loadDailyData());
     }
 
@@ -193,9 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeTab === 'nav-daily') loadDailyData(true); // true = silent refresh
     }, 60000);
 
-    // --- DRAG-SCROLL untuk Tabel Akun Portal & Grid Pegawai ---
+    // --- DRAG-SCROLL untuk Tabel & Grid Data ---
     initDragScroll('akun-table-scroll');
+    initDragScroll('env-table-container');
     initDragScroll('employees-grid');
+    initDragScroll('performance-table-scroll');
+    initDragScroll('performance-cards-scroll');
 });
 
 // Fungsi Drag-Scroll Universal (Mouse + Touch)
@@ -243,10 +198,11 @@ function initDragScroll(elementId) {
 
 // --- [NEW] AUTHENTICATION LOGIC ---
 function checkAuth() {
+    const token = localStorage.getItem('admin_token');
     const session = localStorage.getItem('pkm_wana_session');
     const loginOverlay = document.getElementById('login-overlay');
 
-    if (session === 'active') {
+    if (token && session === 'active') {
         if (loginOverlay) loginOverlay.classList.add('hidden');
         return true;
     } else {
@@ -258,6 +214,12 @@ function checkAuth() {
 async function handleLogin() {
     const user = document.getElementById('login-username').value;
     const pass = document.getElementById('login-password').value;
+    const errDiv = document.getElementById('login-error');
+    if(errDiv) errDiv.classList.add('hidden');
+    
+    const btn = document.getElementById('btn-login-submit');
+    const originalText = btn ? btn.innerHTML : '';
+    if(btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
 
     try {
         const response = await fetch(`${API_BASE}/admin/login`, {
@@ -267,13 +229,17 @@ async function handleLogin() {
         });
         const result = await response.json();
 
-        if (result.success) {
+        if(btn) btn.innerHTML = originalText;
+
+        if (result.success && result.token) {
+            localStorage.setItem('admin_token', result.token);
             localStorage.setItem('pkm_wana_session', 'active');
             location.reload();
         } else {
             showLoginError("Username atau password salah!", "bg-rose-50 text-rose-500 border-rose-200");
         }
     } catch (e) {
+        if(btn) btn.innerHTML = originalText;
         showLoginError("Gagal terhubung ke server!", "bg-rose-50 text-rose-500 border-rose-200");
     }
 }
@@ -288,6 +254,7 @@ function showLoginError(msg, classes) {
 
 function logout() {
     if (confirm('Apakah Anda yakin ingin keluar?')) {
+        localStorage.removeItem('admin_token');
         localStorage.removeItem('pkm_wana_session');
         location.reload();
     }
@@ -319,7 +286,7 @@ async function loadSystemConfig() {
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
     // Hide all views
-    ['overview', 'daily', 'monthly', 'performance', 'employees', 'view-db', 'view-db-monthly', 'req-password', 'settings'].forEach(id => {
+    ['overview', 'daily', 'monthly', 'performance', 'employees', 'scan-portal', 'view-db', 'view-db-monthly', 'req-password', 'settings', 'environment'].forEach(id => {
         const viewEl = document.getElementById(`view-${id}`);
         if (viewEl) {
             viewEl.classList.add('hidden');
@@ -349,12 +316,34 @@ function switchTab(tabName) {
         'monthly': 'Rekapitulasi Bulanan',
         'performance': 'Monitoring Kinerja Pegawai',
         'employees': 'Direktori Data Pegawai',
+        'scan-portal': 'Tabel Kontrol Scan.html Portal Online (Jadwal Libur)',
         'view-db': 'Data View Absensi Harian',
         'view-db-monthly': 'DATA VIEW BULANAN',
         'req-password': 'Permintaan Ubah Password',
-        'settings': 'Pengaturan Sistem'
+        'settings': 'Pengaturan Sistem',
+        'environment': 'Tabel Konfigurasi Environment (.env)'
     };
     document.getElementById('page-title').textContent = titles[tabName];
+
+    // Jika sedang fullscreen dan sidebar sempat dibuka, tutup kembali agar layar tetap lega
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar && sidebar.classList.contains('fullscreen-show')) {
+        sidebar.classList.remove('fullscreen-show');
+        if (overlay) overlay.classList.remove('fullscreen-show');
+    }
+
+    // Pastikan layout tidak tergeser ke kanan/kiri secara tidak sengaja
+    window.scrollTo(0, 0);
+    document.body.scrollLeft = 0;
+    document.documentElement.scrollLeft = 0;
+    const mainEl = document.querySelector('main');
+    if (mainEl) mainEl.scrollLeft = 0;
+    const contentScroll = document.getElementById('content-views-scroll');
+    if (contentScroll) {
+        contentScroll.scrollLeft = 0;
+        contentScroll.scrollTop = 0;
+    }
 
     // Load Data specific to tab
     if (tabName === 'overview') loadOverviewData();
@@ -362,9 +351,11 @@ function switchTab(tabName) {
     if (tabName === 'monthly') loadMonthlyRecap();
     if (tabName === 'performance') loadPerformanceData();
     if (tabName === 'employees') loadEmployees();
+    if (tabName === 'scan-portal' && typeof loadScanPortalAccessTable === 'function') loadScanPortalAccessTable();
     if (tabName === 'view-db') loadViewDbData();
     if (tabName === 'view-db-monthly') loadViewDbMonthlyData();
     if (tabName === 'req-password') loadReqPassword();
+    if (tabName === 'environment' && typeof loadEnvData === 'function') loadEnvData();
 }
 
 // --- DATA LOADER: REQ UBAH PASSWORD ---
@@ -388,8 +379,8 @@ async function loadReqPassword() {
                         <td class="px-6 py-4 font-bold text-slate-800">${escapeHtml(req.nama)}</td>
                         <td class="px-6 py-4 text-sm text-slate-600">${dateStr}</td>
                         <td class="px-6 py-4">
-                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider inline-flex items-center gap-1.5">
-                                <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse inline-block"></span>Pending
+                            <span class="badge-pro-amber">
+                                <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse inline-block mr-1"></span>Pending
                             </span>
                         </td>
                         <td class="px-6 py-4 text-center">
@@ -465,6 +456,25 @@ function showSpinner() {
 }
 function hideSpinner() {
     document.getElementById('loading-spinner').classList.add('hidden');
+}
+
+// --- DYNAMIC OVERVIEW HERO & PALETTE HELPER ---
+function getAvatarGradient(name = '') {
+    const gradients = [
+        'from-emerald-500 to-teal-600',
+        'from-blue-500 to-indigo-600',
+        'from-violet-500 to-purple-600',
+        'from-amber-500 to-orange-600',
+        'from-rose-500 to-pink-600',
+        'from-cyan-500 to-blue-600',
+        'from-teal-500 to-emerald-600'
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash) % gradients.length;
+    return gradients[idx];
 }
 
 // --- DATA LOADER: OVERVIEW ---
@@ -543,21 +553,22 @@ function renderRecentActivity(data) {
     recent.forEach(item => {
         // [FIX] Gunakan data 'telat_menit' dari DB
         const isLate = item.telat_menit > 0;
-        const timeClass = isLate 
-            ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' 
-            : 'bg-emerald-100 text-emerald-800 border-emerald-200 font-bold';
+        const grad = getAvatarGradient(item.nama_karyawan);
+        const timeBadge = isLate 
+            ? `<span class="badge-pro-rose min-w-[74px] justify-center text-xs font-mono"><i class="fa-solid fa-clock-rotate-left mr-1"></i>${item.jam_masuk}</span>` 
+            : `<span class="badge-pro-emerald min-w-[74px] justify-center text-xs font-mono"><i class="fa-solid fa-clock mr-1"></i>${item.jam_masuk}</span>`;
         
         const html = `
-            <div class="flex items-center gap-4 p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200/80 hover:shadow-lg hover:shadow-emerald-500/10 hover:border-emerald-300 transition-all duration-300 group">
-                <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-sm font-bold text-white shadow-md shadow-emerald-500/20 group-hover:shadow-lg group-hover:shadow-emerald-500/30 transition-all">
+            <div class="flex items-center gap-3.5 p-3.5 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200/80 hover:shadow-lg hover:shadow-emerald-500/10 hover:border-emerald-300 transition-all duration-300 group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-xs font-black text-white shadow-md shadow-emerald-500/15 group-hover:scale-105 transition-all flex-shrink-0">
                     ${escapeHtml(item.nama_karyawan).substring(0, 1).toUpperCase()}
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-bold text-slate-800 truncate group-hover:text-emerald-600 transition-colors">${escapeHtml(item.nama_karyawan)}</p>
-                    <p class="text-xs text-slate-500 truncate mt-0.5 uppercase tracking-wide font-semibold">${escapeHtml(item.jabatan || 'Staff')}</p>
+                    <p class="text-[11px] text-slate-500 truncate mt-0.5 uppercase tracking-wide font-semibold">${escapeHtml(item.jabatan || 'Staff')}</p>
                 </div>
                 <div class="text-right">
-                    <span class="text-xs font-mono font-medium px-3 py-1 rounded border ${timeClass} block text-center min-w-[70px]">${item.jam_masuk}</span>
+                    ${timeBadge}
                 </div>
             </div>
         `;
@@ -605,60 +616,51 @@ async function loadDailyData(silent = false) {
                 let lateMinutes = 0;
                 let statusBadge = '';
                 let lateDisplay = '-';
-                let lateClass = 'text-slate-500';
 
                 // --- LOGIKA STATUS KHUSUS (DL/IZIN/SAKIT) ---
                 // Gunakan field 'status' dari view_absensi_harian
                 const status = row.status;
                 
                 if (status === 'DL' || status === 'DINAS_LUAR') {
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 shadow-sm flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-briefcase"></i> Dinas Luar</span>`;
+                    statusBadge = `<span class="badge-pro-blue"><i class="fa-solid fa-briefcase mr-1"></i>Dinas Luar</span>`;
                     // Tampilkan indikator DL di kolom jam agar jelas
                     row.jam_masuk = '<span class="text-blue-600 font-bold tracking-wider">DL</span>';
                     row.jam_keluar = '<span class="text-blue-600 font-bold tracking-wider">DL</span>';
                 } else if (status === 'SAKIT') {
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-sm flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-heart-pulse"></i> Sakit</span>`;
+                    statusBadge = `<span class="badge-pro-rose"><i class="fa-solid fa-heart-pulse mr-1"></i>Sakit</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
                 } else if (status === 'IZIN') {
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 shadow-sm flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-file-signature"></i> Izin</span>`;
+                    statusBadge = `<span class="badge-pro-purple"><i class="fa-solid fa-file-signature mr-1"></i>Izin</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
                 } else if (status === 'CUTI') {
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200 shadow-sm flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-calendar-check"></i> Cuti</span>`;
+                    statusBadge = `<span class="badge-pro-amber"><i class="fa-solid fa-calendar-check mr-1"></i>Cuti</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
                 } else if (status === 'HADIR_MANUAL' || row.jam_masuk) {
                     // --- LOGIKA HADIR NORMAL & MANUAL ---
                     
                     // [FIX] Gunakan data matang dari database (telat_menit)
-                    // [FIX] Gunakan data matang dari database, jangan hitung manual di JS
-                    // Agar sinkron dengan Rekap Bulanan
                     if (row.telat_menit > 0) {
                         isLate = true;
                         lateMinutes = row.telat_menit;
                     }
                     
-                    // UPDATE: Status "Hadir", Keterlambatan "Terlambat/Tepat Waktu"
-                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm flex items-center w-fit gap-1 uppercase tracking-wide"><i class="fa-solid fa-check"></i> Hadir</span>`;
+                    statusBadge = `<span class="badge-pro-emerald"><i class="fa-solid fa-circle-check mr-1"></i>Hadir</span>`;
 
-                    
                     if (isLate) {
-                        lateDisplay = `Terlambat (${lateMinutes} Menit)`;
-                        lateClass = 'text-rose-600 font-bold';
+                        lateDisplay = `<span class="badge-pro-rose"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Terlambat (${lateMinutes}m)</span>`;
                     } else {
-                        lateDisplay = 'Tepat Waktu';
-                        lateClass = 'text-emerald-600 font-bold';
+                        lateDisplay = `<span class="badge-pro-emerald"><i class="fa-solid fa-check-double mr-1"></i>Tepat Waktu</span>`;
                     }
 
                     // --- LOGIKA VISUAL PSW (PULANG SEBELUM WAKTUNYA) ---
-                    // Menambahkan indikator visual di kolom Jam Keluar jika pulang cepat
-                    // [FIX] Gunakan data psw_menit dari database
                     if (row.jam_keluar && row.jam_keluar !== '-' && row.psw_menit > 0) {
                         row.jam_keluar = `
                             <div class="flex flex-col">
                                 <span class="font-mono text-slate-800 font-bold">${row.jam_keluar}</span>
-                                <span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 w-fit mt-0.5">PSW: ${row.psw_menit}m</span>
+                                <span class="badge-pro-amber mt-1"><i class="fa-solid fa-person-walking-arrow-right mr-1"></i>PSW: ${row.psw_menit}m</span>
                             </div>
                         `;
                     }
@@ -668,29 +670,36 @@ async function loadDailyData(silent = false) {
                 }
 
                 // [NEW] Tampilkan Keterangan dari Database (Sesuai Request)
-                // Ini akan memunculkan teks seperti "PSW: 15 menit" atau "Otomatis: Lupa Absen Pulang"
                 let keteranganHtml = '';
                 if (row.keterangan) {
-                    keteranganHtml = `<div class="text-[10px] text-slate-500 italic mt-1.5 border-t border-slate-100 pt-1 leading-tight"><i class="fa-solid fa-circle-info text-[9px] mr-1"></i>${escapeHtml(row.keterangan)}</div>`;
+                    keteranganHtml = `<div class="text-[10px] text-slate-500 italic mt-1.5 border-t border-slate-100 pt-1 leading-tight"><i class="fa-solid fa-circle-info text-[9px] mr-1 text-slate-400"></i>${escapeHtml(row.keterangan)}</div>`;
                 }
 
                 let tglDisplay = '';
-
-                // [NEW] Highlight baris jika terlambat (Pink Background)
-                const rowBgClass = isLate ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-slate-50';
-                const rowBorderClass = isLate ? 'border-rose-200' : 'border-slate-200';
+                const grad = getAvatarGradient(row.nama_karyawan);
+                const initial = escapeHtml(row.nama_karyawan).substring(0, 1).toUpperCase();
 
                 const tr = `
-                    <tr onclick="openModal('${row.id_karyawan}')" class="${rowBgClass} transition cursor-pointer group border-b ${rowBorderClass} last:border-0">
-                        <td class="px-6 py-3 font-mono text-slate-800 font-bold">${tglDisplay}${row.jam_masuk}</td>
-                        <td class="px-6 py-3 font-bold text-slate-800 group-hover:text-blue-700 transition">${row.nama_karyawan}</td>
-                        <td class="px-6 py-3 text-slate-600 text-xs font-bold uppercase tracking-wider">${row.jabatan || '-'}</td>
-                        <td class="p-5">
+                    <tr onclick="openModal('${row.id_karyawan}')" class="hover:bg-emerald-50/40 transition cursor-pointer group border-b border-slate-200/80 last:border-0 ${isLate ? 'bg-rose-50/20' : ''}">
+                        <td class="px-6 py-3.5 font-mono text-slate-800 font-bold text-xs">${tglDisplay}${row.jam_masuk}</td>
+                        <td class="px-6 py-3.5 font-bold text-slate-800 group-hover:text-emerald-700 transition">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-tr ${grad} flex items-center justify-center text-white text-xs font-black shadow-sm flex-shrink-0">
+                                    ${initial}
+                                </div>
+                                <div class="truncate">
+                                    <div class="font-bold text-slate-900 group-hover:text-emerald-700 transition">${escapeHtml(row.nama_karyawan)}</div>
+                                    <div class="text-[10px] font-mono text-slate-400">${escapeHtml(row.id_karyawan || '')}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-3.5 text-slate-600 text-xs font-bold uppercase tracking-wider">${escapeHtml(row.jabatan || '-')}</td>
+                        <td class="px-6 py-3.5">
                             ${statusBadge}
                             ${keteranganHtml}
                         </td>
-                        <td class="px-6 py-4 ${lateClass} font-mono">${lateDisplay}</td>
-                        <td class="px-6 py-4 font-mono text-slate-800 font-bold">
+                        <td class="px-6 py-3.5">${lateDisplay}</td>
+                        <td class="px-6 py-3.5 font-mono text-slate-800 font-bold text-xs">
                             <div class="flex justify-between items-center gap-2">
                                 <div>${row.jam_keluar || '<span class="text-slate-400">-</span>'}</div>
                                 <button onclick="deleteAbsensi(event, ${row.id_absensi}, this.dataset.name)" data-name="${escapeHtml(row.nama_karyawan)}" class="opacity-0 group-hover:opacity-100 w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Hapus Absensi">
@@ -781,19 +790,35 @@ async function loadViewDbData() {
             let htmlContent = '';
             result.data.forEach(row => {
                 const dateOnly = row.tanggal ? row.tanggal.split('T')[0] : '-';
+                let statusBadge = `<span class="badge-pro-slate">${row.status || '-'}</span>`;
+                const s = (row.status || '').toUpperCase();
+                if (s === 'HADIR' || s === 'HADIR_MANUAL') {
+                    statusBadge = `<span class="badge-pro-emerald"><i class="fa-solid fa-circle-check mr-1"></i>${row.status}</span>`;
+                } else if (s === 'DL' || s === 'DINAS_LUAR') {
+                    statusBadge = `<span class="badge-pro-blue"><i class="fa-solid fa-briefcase mr-1"></i>DL</span>`;
+                } else if (s === 'SAKIT') {
+                    statusBadge = `<span class="badge-pro-rose"><i class="fa-solid fa-heart-pulse mr-1"></i>Sakit</span>`;
+                } else if (s === 'IZIN') {
+                    statusBadge = `<span class="badge-pro-purple"><i class="fa-solid fa-file-signature mr-1"></i>Izin</span>`;
+                } else if (s === 'CUTI') {
+                    statusBadge = `<span class="badge-pro-amber"><i class="fa-solid fa-calendar-check mr-1"></i>Cuti</span>`;
+                } else if (s === 'LIBUR') {
+                    statusBadge = `<span class="badge-pro-cyan"><i class="fa-solid fa-mug-hot mr-1"></i>Libur</span>`;
+                }
+
                 htmlContent += `
                     <tr class="hover:bg-emerald-50/30 transition-colors">
-                        <td class="px-4 py-2 font-mono">${row.id_absensi}</td>
-                        <td class="px-4 py-2 font-mono">${row.id_karyawan}</td>
-                        <td class="px-4 py-2 font-bold">${row.nama_karyawan}</td>
-                        <td class="px-4 py-2">${row.jabatan || '-'}</td>
-                        <td class="px-4 py-2 font-mono">${dateOnly}</td>
-                        <td class="px-4 py-2 font-mono text-emerald-600 font-bold">${row.jam_masuk || '-'}</td>
-                        <td class="px-4 py-2 font-mono text-blue-600 font-bold">${row.jam_keluar || '-'}</td>
-                        <td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 border border-gray-200">${row.status}</span></td>
-                        <td class="px-4 py-2 text-center ${row.telat_menit > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}">${formatPelanggaranToHHMMSS(row.telat_menit)}</td>
-                        <td class="px-4 py-2 text-center ${row.psw_menit > 0 ? 'text-amber-600 font-bold' : 'text-slate-400'}">${formatPelanggaranToHHMMSS(row.psw_menit)}</td>
-                        <td class="px-4 py-2 text-xs text-slate-500 italic">${row.keterangan || '-'}</td>
+                        <td class="px-4 py-2 font-mono text-slate-500">#${row.id_absensi}</td>
+                        <td class="px-4 py-2 font-mono font-bold text-slate-700">${row.id_karyawan}</td>
+                        <td class="px-4 py-2 font-bold text-slate-900">${escapeHtml(row.nama_karyawan)}</td>
+                        <td class="px-4 py-2 text-slate-600 text-xs font-semibold uppercase">${escapeHtml(row.jabatan || '-')}</td>
+                        <td class="px-4 py-2 font-mono text-xs text-slate-600">${dateOnly}</td>
+                        <td class="px-4 py-2 font-mono text-emerald-600 font-bold">${row.jam_masuk || '<span class="text-slate-300">-</span>'}</td>
+                        <td class="px-4 py-2 font-mono text-blue-600 font-bold">${row.jam_keluar || '<span class="text-slate-300">-</span>'}</td>
+                        <td class="px-4 py-2">${statusBadge}</td>
+                        <td class="px-4 py-2 text-center">${row.telat_menit > 0 ? `<span class="badge-pro-rose font-mono">${formatPelanggaranToHHMMSS(row.telat_menit)}</span>` : '<span class="text-slate-300 font-mono">-</span>'}</td>
+                        <td class="px-4 py-2 text-center">${row.psw_menit > 0 ? `<span class="badge-pro-amber font-mono">${formatPelanggaranToHHMMSS(row.psw_menit)}</span>` : '<span class="text-slate-300 font-mono">-</span>'}</td>
+                        <td class="px-4 py-2 text-xs text-slate-500 italic">${escapeHtml(row.keterangan || '-')}</td>
                         <td class="px-4 py-2 text-center">
                             <div class="flex items-center justify-center gap-1">
                                 <button onclick="openEditAbsensiModal('${row.id_absensi}', '${escapeHtml(row.nama_karyawan)}', '${dateOnly}', '${row.jam_masuk || ''}', '${row.jam_keluar || ''}', '${row.status}', '${escapeHtml(row.keterangan || '')}')" class="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit Data">
@@ -859,7 +884,7 @@ async function saveAbsensiChanges() {
     try {
         const response = await fetch(`${API_BASE}/absensi/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') },
             body: JSON.stringify(body)
         });
         const result = await response.json();
@@ -900,31 +925,31 @@ async function loadMonthlyRecap(silent = false) {
             <h2 class="text-2xl font-serif font-bold text-slate-900 uppercase tracking-widest print:text-lg print:tracking-normal print:font-bold">LAPORAN REKAPITULASI PRESENSI</h2>
             <p class="text-sm text-slate-600 font-serif italic mt-1 print:hidden">Periode Laporan: ${monthName}</p>
         </caption>
-        <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider bg-gradient-to-r from-emerald-800 via-emerald-900 to-slate-900 text-white print:bg-white print:text-black">
+        <thead class="sticky top-0 z-30 uppercase text-[11px] font-black tracking-wider table-head-pro text-white print:bg-white print:text-black shadow-md">
             <tr>
-                <th class="md:sticky md:left-0 md:z-40 bg-emerald-900 text-white print:bg-white print:text-black print:static px-6 py-3 text-center w-16 md:border-r border-slate-700 print:border-black">No.</th>
-                <th onclick="sortTable('table-rekap-body', 1)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-16 md:z-40 bg-emerald-900 text-white print:bg-white print:text-black print:static px-6 py-3 w-24 md:border-r border-slate-700 print:border-black text-center">ID <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th onclick="sortTable('table-rekap-body', 2)" class="cursor-pointer hover:bg-slate-700 transition-colors md:sticky md:left-40 md:z-40 bg-emerald-900 text-white print:bg-white print:text-black print:static px-6 py-3 w-64 md:border-r border-slate-700 print:border-black md:shadow-sm text-left">Nama Pegawai <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th onclick="sortTable('table-rekap-body', 3)" class="cursor-pointer hover:bg-slate-700 transition-colors pl-16 pr-6 py-3 text-left">Jabatan <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th onclick="sortTable('table-rekap-body', 4)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th class="px-6 py-3 text-center">DL</th>
-                <th class="px-6 py-3 text-center bg-rose-50 text-rose-800 border-l border-r border-slate-200">S</th>
-                <th class="px-6 py-3 text-center bg-purple-50 text-purple-800 border-r border-slate-200">I</th>
-                <th class="px-6 py-3 text-center bg-orange-50 text-orange-800 border-r border-slate-200">C</th>
-                <th onclick="sortTable('table-rekap-body', 9)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center">Alpa <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th onclick="sortTable('table-rekap-body', 10)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300">% Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th class="px-6 py-3 text-center">Telat (x)</th>
-                <th class="px-6 py-3 text-center">Telat Waktu</th>
-                <th class="px-6 py-3 text-center">PSW (x)</th>
-                <th class="px-6 py-3 text-center">PSW Waktu</th>
-                <th onclick="sortTable('table-rekap-body', 15)" class="cursor-pointer hover:bg-slate-700 transition-colors px-6 py-3 text-center font-bold text-yellow-300 border-l border-slate-700 print:text-black">Pelanggaran (Jam) <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
-                <th class="px-6 py-3 text-center">Tanpa Absen Pulang</th>
-                <th class="px-6 py-3 text-center">Potongan</th>
-                <th class="px-6 py-3 text-center">Total Jam Kerja</th>
-                <th class="px-6 py-3 text-center print:hidden">Aksi</th>
+                <th class="md:sticky md:left-0 md:z-40 bg-[#0f172a] text-white print:bg-white print:text-black print:static px-4 py-3.5 text-center w-14 md:border-r border-slate-700/80 print:border-black"><i class="fa-solid fa-hashtag text-slate-400"></i></th>
+                <th onclick="sortTable('table-rekap-body', 1)" class="cursor-pointer hover:bg-slate-800 transition-colors md:sticky md:left-14 md:z-40 bg-[#0f172a] text-white print:bg-white print:text-black print:static px-4 py-3.5 w-24 md:border-r border-slate-700/80 print:border-black text-center"><i class="fa-solid fa-id-badge text-emerald-400 mr-1"></i>ID <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 2)" class="cursor-pointer hover:bg-slate-800 transition-colors md:sticky md:left-38 md:z-40 bg-[#0f172a] text-white print:bg-white print:text-black print:static px-5 py-3.5 w-64 md:border-r border-slate-700/80 print:border-black md:shadow-sm text-left"><i class="fa-solid fa-user-tie text-indigo-400 mr-1.5"></i>Nama Pegawai <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 3)" class="cursor-pointer hover:bg-slate-800 transition-colors px-4 py-3.5 text-left"><i class="fa-solid fa-briefcase text-cyan-400 mr-1.5"></i>Jabatan <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 4)" class="cursor-pointer hover:bg-slate-800 transition-colors px-3 py-3.5 text-center"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="px-3 py-3.5 text-center"><i class="fa-solid fa-car-side text-blue-400 mr-1"></i>DL</th>
+                <th class="px-3 py-3.5 text-center bg-rose-950/40 text-rose-300 border-l border-r border-slate-700/60"><i class="fa-solid fa-heart-pulse mr-1 text-rose-400"></i>S</th>
+                <th class="px-3 py-3.5 text-center bg-purple-950/40 text-purple-300 border-r border-slate-700/60"><i class="fa-solid fa-envelope-open-text mr-1 text-purple-400"></i>I</th>
+                <th class="px-3 py-3.5 text-center bg-amber-950/40 text-amber-300 border-r border-slate-700/60"><i class="fa-solid fa-calendar-day mr-1 text-amber-400"></i>C</th>
+                <th onclick="sortTable('table-rekap-body', 9)" class="cursor-pointer hover:bg-slate-800 transition-colors px-3 py-3.5 text-center"><i class="fa-solid fa-circle-xmark text-red-400 mr-1"></i>Alpa <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th onclick="sortTable('table-rekap-body', 10)" class="cursor-pointer hover:bg-slate-800 transition-colors px-3 py-3.5 text-center font-black text-amber-300"><i class="fa-solid fa-chart-pie mr-1"></i>% Hadir <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="px-3 py-3.5 text-center"><i class="fa-solid fa-clock text-amber-400 mr-1"></i>Telat</th>
+                <th class="px-3 py-3.5 text-center"><i class="fa-solid fa-hourglass-half text-amber-300 mr-1"></i>Telat (Wkt)</th>
+                <th class="px-3 py-3.5 text-center"><i class="fa-solid fa-person-walking-arrow-right text-orange-400 mr-1"></i>PSW</th>
+                <th class="px-3 py-3.5 text-center"><i class="fa-solid fa-business-time text-orange-300 mr-1"></i>PSW (Wkt)</th>
+                <th onclick="sortTable('table-rekap-body', 15)" class="cursor-pointer hover:bg-slate-800 transition-colors px-3 py-3.5 text-center font-black text-rose-300 border-l border-slate-700/60"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-400"></i>Pelanggaran <i class="fa-solid fa-sort ml-1 text-slate-500 text-[10px]"></i></th>
+                <th class="px-3 py-3.5 text-center"><i class="fa-solid fa-right-from-bracket text-red-400 mr-1"></i>Tanpa Pulang</th>
+                <th class="px-3 py-3.5 text-center"><i class="fa-solid fa-scissors text-rose-300 mr-1"></i>Potongan</th>
+                <th class="px-4 py-3.5 text-center"><i class="fa-solid fa-clock text-teal-400 mr-1"></i>Total Jam</th>
+                <th class="px-3 py-3.5 text-center print:hidden"><i class="fa-solid fa-gear text-slate-400"></i></th>
             </tr>
         </thead>
-        <tbody id="table-rekap-body" class="text-slate-800 divide-y divide-slate-200 text-sm bg-white">
+        <tbody id="table-rekap-body" class="table-pro-body divide-y divide-slate-100 text-xs bg-white">
         </tbody>
     `;
 
@@ -1091,34 +1116,68 @@ async function loadMonthlyRecap(silent = false) {
                 const totalMasukDanDL = (parseInt(row.total_masuk) || 0) + (parseInt(row.total_dl) || 0);
                 const persentase = totalHariKerja > 0 ? Math.round((totalMasukDanDL / totalHariKerja) * 100) : 0;
 
+                const grad = getAvatarGradient(row.nama);
+                const initial = escapeHtml(row.nama || '').substring(0, 1).toUpperCase();
+
+                let percentBadge = `<span class="badge-pro-rose">${persentase}%</span>`;
+                if (persentase >= 95) percentBadge = `<span class="badge-pro-emerald">${persentase}%</span>`;
+                else if (persentase >= 80) percentBadge = `<span class="badge-pro-blue">${persentase}%</span>`;
+
                 htmlContent += `
-                    <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-emerald-50/30 border-b border-slate-200 last:border-0 group">
-                        <td class="md:sticky md:left-0 md:z-10 sticky-col group-hover:!bg-emerald-50/30 px-6 py-3 text-center font-mono text-slate-800 md:border-r border-slate-200 print:static print:bg-white print:border-b print:border-black">${index + 1}</td>
-                        <td class="md:sticky md:left-16 md:z-10 sticky-col group-hover:!bg-emerald-50/30 px-6 py-3 font-mono text-slate-800 md:border-r border-slate-200 print:static print:bg-white print:border-b print:border-black text-center">${row.id_karyawan}</td>
-                        <td class="md:sticky md:left-40 md:z-10 sticky-col group-hover:!bg-emerald-50/30 px-6 py-3 font-bold text-slate-800 md:border-r border-slate-200 md:shadow-sm print:static print:bg-white print:border-b print:border-black">${row.nama}</td>
-                        <td class="pl-16 pr-6 py-3 text-sm text-slate-600 uppercase tracking-wide font-semibold">${row.jabatan || '-'}</td>
-                        <td class="px-6 py-3 text-center">
-                            <span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-bold text-xs border border-emerald-200">${row.total_masuk}</span>
+                    <tr onclick="openModal('${row.id_karyawan}')" class="cursor-pointer hover:bg-emerald-50/40 border-b border-slate-100 last:border-0 group transition-colors">
+                        <td class="md:sticky md:left-0 md:z-10 sticky-col bg-white group-hover:!bg-emerald-50/60 px-4 py-3 text-center font-mono text-slate-700 md:border-r border-slate-200/80 print:static print:bg-white print:border-b print:border-black">${index + 1}</td>
+                        <td class="md:sticky md:left-14 md:z-10 sticky-col bg-white group-hover:!bg-emerald-50/60 px-4 py-3 font-mono font-bold text-slate-800 md:border-r border-slate-200/80 print:static print:bg-white print:border-b print:border-black text-center">${row.id_karyawan}</td>
+                        <td class="md:sticky md:left-38 md:z-10 sticky-col bg-white group-hover:!bg-emerald-50/60 px-5 py-3 font-bold text-slate-900 md:border-r border-slate-200/80 md:shadow-xs print:static print:bg-white print:border-b print:border-black">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-full bg-gradient-to-tr ${grad} flex items-center justify-center text-white text-[10px] font-black shadow-xs flex-shrink-0">
+                                    ${initial}
+                                </div>
+                                <span class="truncate group-hover:text-emerald-700 transition">${escapeHtml(row.nama)}</span>
+                            </div>
                         </td>
-                        <td class="px-6 py-3 text-center cursor-pointer hover:bg-slate-50" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'DL');" title="Klik untuk melihat di Data View Absensi Harian">
-                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold text-xs border border-blue-200">${row.total_dl || 0}</span>
+                        <td class="px-4 py-3 text-xs text-slate-600 uppercase tracking-wide font-semibold truncate max-w-[140px]">${escapeHtml(row.jabatan || '-')}</td>
+                        <td class="px-3 py-3 text-center">
+                            <span class="badge-pro-emerald">${row.total_masuk}</span>
                         </td>
-                        <td class="px-6 py-3 text-center bg-rose-50/50 text-rose-700 font-bold border-l border-r border-slate-200 cursor-pointer hover:bg-rose-100 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'SAKIT');" title="Klik untuk melihat di Data View Absensi Harian">${row.total_sakit || 0}</td>
-                        <td class="px-6 py-3 text-center bg-purple-50/50 text-purple-700 font-bold border-r border-slate-200 cursor-pointer hover:bg-purple-100 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'IZIN');" title="Klik untuk melihat di Data View Absensi Harian">${row.total_izin || 0}</td>
-                        <td class="px-6 py-3 text-center bg-orange-50/50 text-orange-700 font-bold border-r border-slate-200 cursor-pointer hover:bg-orange-100 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'CUTI');" title="Klik untuk melihat di Data View Absensi Harian">${row.total_cuti || 0}</td>
-                        <td class="px-6 py-3 text-center ${row.alpa > 0 ? 'text-red-600 font-black cursor-pointer hover:underline hover:bg-red-50' : 'text-slate-300 cursor-pointer hover:bg-slate-50'} transition-colors" onclick="event.stopPropagation(); showPelanggaranDates('${row.id_karyawan}', '${escapeHtml(row.nama)}', 'alpa');" title="Klik untuk melihat tanggal Alpa">${row.alpa}</td>
-                        <td class="px-6 py-3 text-center font-bold ${persentase >= 95 ? 'text-emerald-600' : (persentase >= 80 ? 'text-blue-600' : 'text-red-600')}">${persentase}%</td>
-                        <td class="px-6 py-3 text-center ${row.telat_kali > 0 ? 'text-amber-600 font-black cursor-pointer hover:underline hover:bg-amber-50' : 'text-slate-300 cursor-pointer hover:bg-slate-50'} transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');" title="Klik untuk melihat di Data View Absensi Harian">${row.telat_kali}</td>
-                        <td class="px-6 py-3 text-center text-slate-500">${formatPelanggaranToHHMMSS(row.telat_menit)}</td>
-                        <td class="px-6 py-3 text-center ${row.psw_kali > 0 ? 'text-amber-600 font-black cursor-pointer hover:underline hover:bg-amber-50' : 'text-slate-300'}" ${row.psw_kali > 0 ? `onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');"` : ''} title="Klik untuk melihat di Data View Absensi Harian">${row.psw_kali || 0}</td>
-                        <td class="px-6 py-3 text-center ${row.psw_menit > 0 ? 'text-amber-600' : 'text-slate-300'}">${formatPelanggaranToHHMMSS(row.psw_menit || 0)}</td>
-                        <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-200">${formatPelanggaranToHHMMSS(totalMenitPelanggaranBaru)}</td>
-                        <td class="px-6 py-3 text-center ${row.tanpa_absen_pulang > 0 ? 'text-red-600 font-black cursor-pointer hover:underline hover:bg-red-50' : 'text-slate-300'}" ${row.tanpa_absen_pulang > 0 ? `onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'Tanpa Absen Pulang');"` : ''} title="Klik untuk melihat di Data View Absensi Harian">${row.tanpa_absen_pulang}</td>
-                        <td class="px-6 py-3 text-center text-red-600">${row.potongan_jam} Jam</td>
-                        <td class="px-6 py-3 text-center font-mono text-emerald-600 font-bold">${row.total_jam_kerja || '00:00:00'}</td>
-                        <td class="px-6 py-3 text-center print:hidden">
-                            <button onclick="event.stopPropagation(); deleteEmployee('${row.id_karyawan}', '${escapeHtml(row.nama)}')" class="w-8 h-8 rounded flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Hapus Pegawai">
-                                <i class="fa-solid fa-trash"></i>
+                        <td class="px-3 py-3 text-center cursor-pointer hover:bg-blue-50/60 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'DL');" title="Klik untuk melihat di Data View Absensi Harian">
+                            <span class="badge-pro-blue">${row.total_dl || 0}</span>
+                        </td>
+                        <td class="px-3 py-3 text-center bg-rose-50/40 text-rose-700 font-bold border-l border-r border-slate-100 cursor-pointer hover:bg-rose-100/60 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'SAKIT');" title="Klik untuk melihat di Data View Absensi Harian">
+                            ${row.total_sakit > 0 ? `<span class="badge-pro-rose">${row.total_sakit}</span>` : '<span class="text-slate-300 font-mono">-</span>'}
+                        </td>
+                        <td class="px-3 py-3 text-center bg-purple-50/40 text-purple-700 font-bold border-r border-slate-100 cursor-pointer hover:bg-purple-100/60 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'IZIN');" title="Klik untuk melihat di Data View Absensi Harian">
+                            ${row.total_izin > 0 ? `<span class="badge-pro-purple">${row.total_izin}</span>` : '<span class="text-slate-300 font-mono">-</span>'}
+                        </td>
+                        <td class="px-3 py-3 text-center bg-amber-50/40 text-amber-700 font-bold border-r border-slate-100 cursor-pointer hover:bg-amber-100/60 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'CUTI');" title="Klik untuk melihat di Data View Absensi Harian">
+                            ${row.total_cuti > 0 ? `<span class="badge-pro-amber">${row.total_cuti}</span>` : '<span class="text-slate-300 font-mono">-</span>'}
+                        </td>
+                        <td class="px-3 py-3 text-center cursor-pointer hover:bg-red-50/60 transition-colors" onclick="event.stopPropagation(); showPelanggaranDates('${row.id_karyawan}', '${escapeHtml(row.nama)}', 'alpa');" title="Klik untuk melihat tanggal Alpa">
+                            ${row.alpa > 0 ? `<span class="badge-pro-rose">${row.alpa}</span>` : '<span class="text-slate-300 font-mono">-</span>'}
+                        </td>
+                        <td class="px-3 py-3 text-center">
+                            ${percentBadge}
+                        </td>
+                        <td class="px-3 py-3 text-center cursor-pointer hover:bg-amber-50/60 transition-colors" onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');" title="Klik untuk melihat di Data View Absensi Harian">
+                            ${row.telat_kali > 0 ? `<span class="badge-pro-amber">${row.telat_kali}x</span>` : '<span class="text-slate-300 font-mono">-</span>'}
+                        </td>
+                        <td class="px-3 py-3 text-center text-slate-500 font-mono text-[11px]">${formatPelanggaranToHHMMSS(row.telat_menit)}</td>
+                        <td class="px-3 py-3 text-center ${row.psw_kali > 0 ? 'cursor-pointer hover:bg-amber-50/60' : ''}" ${row.psw_kali > 0 ? `onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}');"` : ''} title="Klik untuk melihat di Data View Absensi Harian">
+                            ${row.psw_kali > 0 ? `<span class="badge-pro-amber">${row.psw_kali}x</span>` : '<span class="text-slate-300 font-mono">-</span>'}
+                        </td>
+                        <td class="px-3 py-3 text-center text-slate-500 font-mono text-[11px]">${formatPelanggaranToHHMMSS(row.psw_menit || 0)}</td>
+                        <td class="px-3 py-3 text-center border-l border-slate-100">
+                            ${totalMenitPelanggaranBaru > 0 ? `<span class="badge-pro-rose font-mono">${formatPelanggaranToHHMMSS(totalMenitPelanggaranBaru)}</span>` : '<span class="text-slate-300 font-mono">-</span>'}
+                        </td>
+                        <td class="px-3 py-3 text-center ${row.tanpa_absen_pulang > 0 ? 'cursor-pointer hover:bg-red-50/60' : ''}" ${row.tanpa_absen_pulang > 0 ? `onclick="event.stopPropagation(); jumpToViewDbForEmployee('${escapeHtml(row.nama)}', 'Tanpa Absen Pulang');"` : ''} title="Klik untuk melihat di Data View Absensi Harian">
+                            ${row.tanpa_absen_pulang > 0 ? `<span class="badge-pro-rose">${row.tanpa_absen_pulang}</span>` : '<span class="text-slate-300 font-mono">-</span>'}
+                        </td>
+                        <td class="px-3 py-3 text-center font-mono text-rose-600 font-semibold">${row.potongan_jam}j</td>
+                        <td class="px-4 py-3 text-center">
+                            <span class="badge-pro-emerald font-mono">${row.total_jam_kerja || '00:00:00'}</span>
+                        </td>
+                        <td class="px-3 py-3 text-center print:hidden">
+                            <button onclick="event.stopPropagation(); deleteEmployee('${row.id_karyawan}', '${escapeHtml(row.nama)}')" class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all mx-auto" title="Hapus Pegawai">
+                                <i class="fa-solid fa-trash text-xs"></i>
                             </button>
                         </td>
                     </tr>
@@ -1131,31 +1190,33 @@ async function loadMonthlyRecap(silent = false) {
             const formattedTotalJamKerjaSum = `${String(tHrsSum).padStart(2, '0')}:${String(tMinsSum).padStart(2, '0')}:${String(tSecsSum).padStart(2, '0')}`;
 
             htmlContent += `
-                <tr class="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-800 print:bg-gray-200 print:border-black break-inside-avoid group">
-                    <td colspan="4" class="px-6 py-3 text-right uppercase text-xs tracking-wider">Total Ringkasan:</td>
-                    <td class="px-6 py-3 text-center">${tHadir}</td>
-                    <td class="px-6 py-3 text-center">${tDL}</td>
-                    <td class="px-6 py-3 text-center text-rose-800 bg-rose-100">${tSakit}</td>
-                    <td class="px-6 py-3 text-center text-purple-800 bg-purple-100">${tIzin}</td>
-                    <td class="px-6 py-3 text-center text-orange-800 bg-orange-100">${tCuti}</td>
-                    <td class="px-6 py-3 text-center">${tAlpa}</td>
-                    <td class="px-6 py-3 text-center">-</td>
-                    <td class="px-6 py-3 text-center">${tTelat}</td>
-                    <td class="px-6 py-3 text-center text-slate-500 text-xs">${formatPelanggaranToHHMMSS(tTelatMin)}</td>
-                    <td class="px-6 py-3 text-center">${tPsw}</td>
-                    <td class="px-6 py-3 text-center text-slate-500 text-xs">${formatPelanggaranToHHMMSS(tPswMin)}</td>
-                    <td class="px-6 py-3 text-center font-bold text-red-600 bg-red-50 border-l border-slate-300">${formatPelanggaranToHHMMSS(tPelanggaranMin)}</td>
-                    <td class="px-6 py-3 text-center">${tNoOut}</td>
-                    <td class="px-6 py-3 text-center">${tPot}</td>
-                    <td class="px-6 py-3 text-center font-mono text-emerald-700 font-bold">${formattedTotalJamKerjaSum}</td>
-                    <td class="px-6 py-3 print:hidden"></td>
+                <tr class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white font-bold border-t-2 border-emerald-500 print:bg-gray-200 print:border-black break-inside-avoid group">
+                    <td colspan="4" class="px-5 py-3.5 text-right uppercase text-xs tracking-wider text-slate-300 font-black">
+                        <i class="fa-solid fa-calculator mr-1.5 text-emerald-400"></i>Total Ringkasan:
+                    </td>
+                    <td class="px-3 py-3.5 text-center"><span class="badge-pro-emerald">${tHadir}</span></td>
+                    <td class="px-3 py-3.5 text-center"><span class="badge-pro-blue">${tDL}</span></td>
+                    <td class="px-3 py-3.5 text-center"><span class="badge-pro-rose">${tSakit}</span></td>
+                    <td class="px-3 py-3.5 text-center"><span class="badge-pro-purple">${tIzin}</span></td>
+                    <td class="px-3 py-3.5 text-center"><span class="badge-pro-amber">${tCuti}</span></td>
+                    <td class="px-3 py-3.5 text-center"><span class="badge-pro-rose">${tAlpa}</span></td>
+                    <td class="px-3 py-3.5 text-center text-slate-400">-</td>
+                    <td class="px-3 py-3.5 text-center"><span class="badge-pro-amber">${tTelat}x</span></td>
+                    <td class="px-3 py-3.5 text-center font-mono text-[11px] text-amber-300">${formatPelanggaranToHHMMSS(tTelatMin)}</td>
+                    <td class="px-3 py-3.5 text-center"><span class="badge-pro-amber">${tPsw}x</span></td>
+                    <td class="px-3 py-3.5 text-center font-mono text-[11px] text-amber-300">${formatPelanggaranToHHMMSS(tPswMin)}</td>
+                    <td class="px-3 py-3.5 text-center border-l border-slate-700"><span class="badge-pro-rose font-mono">${formatPelanggaranToHHMMSS(tPelanggaranMin)}</span></td>
+                    <td class="px-3 py-3.5 text-center"><span class="badge-pro-rose">${tNoOut}</span></td>
+                    <td class="px-3 py-3.5 text-center text-rose-300 font-mono">${tPot}j</td>
+                    <td class="px-4 py-3.5 text-center"><span class="badge-pro-emerald font-mono">${formattedTotalJamKerjaSum}</span></td>
+                    <td class="px-3 py-3.5 print:hidden"></td>
                 </tr>
                 <!-- [NEW] Baris Total Pengeluaran Gaji -->
-                <tr class="bg-emerald-50 font-bold border-t border-emerald-200 text-emerald-900 print:bg-white print:border-black break-inside-avoid">
-                    <td colspan="15" class="px-6 py-4 text-right uppercase text-sm tracking-wider">
-                        Total Estimasi Pengeluaran Gaji (Bulan Ini):
+                <tr class="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 font-bold border-t border-emerald-500/50 text-white print:bg-white print:border-black break-inside-avoid">
+                    <td colspan="15" class="px-6 py-4 text-right uppercase text-xs tracking-wider text-emerald-300 font-black">
+                        <i class="fa-solid fa-money-bill-wave mr-1.5 text-emerald-400"></i>Total Estimasi Pengeluaran Gaji (Bulan Ini):
                     </td>
-                    <td colspan="4" class="px-6 py-4 text-right text-xl font-black text-emerald-800 border-l border-emerald-200">
+                    <td colspan="4" class="px-6 py-4 text-right text-lg font-black text-emerald-300 border-l border-emerald-500/30">
                         ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totalGaji)}
                     </td>
                     <td class="print:hidden"></td>
@@ -1286,7 +1347,7 @@ async function hapusAlpaDirect(id_karyawan, tanggal) {
     try {
         const response = await fetch(`${API_BASE}/absensi/manual`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') },
             body: JSON.stringify({ id_karyawan, status: 'LIBUR', keterangan: 'Penghapusan Alpa (Manual)', tanggal, jam_masuk: null, jam_keluar: null })
         });
         const result = await response.json();
@@ -1359,49 +1420,201 @@ function calculatePerformanceScore(emp) {
     return Math.max(0, score);
 }
 
+// --- DATA LOADER: PERFORMANCE MONITORING (SCORING SYSTEM & TABLE VIEW) ---
+let perfStatusFilter = 'ALL';
+let perfSearchQuery = '';
+
 async function loadPerformanceData(silent = false) {
-    const grid = document.getElementById('performance-grid');
-    
     if (!silent) showSpinner();
 
     try {
         // Gunakan data rekap bulan ini untuk analisis
-        const month = document.getElementById('filter-month').value;
+        const monthInput = document.getElementById('filter-month');
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const month = (monthInput && monthInput.value) ? monthInput.value : currentMonth;
+
         const response = await fetch(`${API_BASE}/rekap?periode=${month}&_t=${Date.now()}`);
         const result = await response.json();
         
-        globalPerformanceData = result.data || []; // Simpan ke global
-        grid.innerHTML = '';
+        const rawData = result.data || [];
+        globalPerformanceData = rawData.map(emp => {
+            // --- LOGIKA SCORING KINERJA ---
+            const score = calculatePerformanceScore(emp);
 
-        if (result.data && result.data.length > 0) {
-            result.data.forEach(emp => {
-                // --- LOGIKA SCORING KINERJA ---
-                const score = calculatePerformanceScore(emp);
+            // Tentukan Status & Warna
+            let status = 'SANGAT BAIK';
+            let colorClass = 'border-emerald-500 text-emerald-600 bg-emerald-50/30';
+            let icon = 'fa-medal';
 
-                // Tentukan Status & Warna
-                let status = 'SANGAT BAIK';
-                let colorClass = 'border-emerald-500 text-emerald-600 bg-emerald-50/30';
-                let icon = 'fa-medal';
+            if (score < 60) {
+                status = 'PERLU PEMBINAAN';
+                colorClass = 'border-rose-500 text-rose-700 bg-rose-50/30';
+                icon = 'fa-triangle-exclamation';
+            } else if (score < 80) {
+                status = 'CUKUP';
+                colorClass = 'border-amber-500 text-amber-600 bg-amber-50/30';
+                icon = 'fa-circle-exclamation';
+            } else if (score < 90) {
+                status = 'BAIK';
+                colorClass = 'border-blue-500 text-blue-600 bg-blue-50/30';
+                icon = 'fa-thumbs-up';
+            }
 
-                if (score < 60) {
-                    status = 'PERLU PEMBINAAN';
-                    colorClass = 'border-rose-500 text-rose-700 bg-rose-50/30';
-                    icon = 'fa-triangle-exclamation';
-                } else if (score < 80) {
-                    status = 'CUKUP';
-                    colorClass = 'border-amber-500 text-amber-600 bg-amber-50/30';
-                    icon = 'fa-circle-exclamation';
-                } else if (score < 90) {
-                    status = 'BAIK';
-                    colorClass = 'border-blue-500 text-blue-600 bg-blue-50/30';
-                    icon = 'fa-thumbs-up';
+            return {
+                ...emp,
+                perfScore: score,
+                perfStatus: status,
+                perfColorClass: colorClass,
+                perfIcon: icon
+            };
+        });
+
+        // Urutkan peringkat berdasarkan skor kinerja tertinggi
+        globalPerformanceData.sort((a, b) => b.perfScore - a.perfScore);
+
+        // Render data ke tampilan tabel & kartu
+        renderPerformanceViews();
+
+        // Inisialisasi Drag Scroll universal
+        setTimeout(() => {
+            initDragScroll('performance-table-scroll');
+            initDragScroll('performance-cards-scroll');
+        }, 80);
+
+    } catch (e) { 
+        console.error('Error loading performance data:', e);
+        if (typeof showToast === 'function') showToast(`Gagal memuat data kinerja: ${e.message}`, 'error');
+    } finally {
+        if (!silent) hideSpinner();
+    }
+}
+
+// Render data kinerja ke tabel dan mode kartu
+function renderPerformanceViews() {
+    const tableBody = document.getElementById('table-performance-body');
+    const grid = document.getElementById('performance-grid');
+    const countSpan = document.getElementById('perf-emp-count');
+
+    const query = (perfSearchQuery || '').toLowerCase().trim();
+    const filtered = (globalPerformanceData || []).filter(emp => {
+        if (perfStatusFilter !== 'ALL' && emp.perfStatus !== perfStatusFilter) {
+            return false;
+        }
+        if (query) {
+            const matchName = (emp.nama || '').toLowerCase().includes(query);
+            const matchId = String(emp.id_karyawan || '').toLowerCase().includes(query);
+            const matchJabatan = (emp.jabatan || '').toLowerCase().includes(query);
+            if (!matchName && !matchId && !matchJabatan) return false;
+        }
+        return true;
+    });
+
+    if (countSpan) countSpan.textContent = filtered.length;
+
+    // 1. Render Tabel Kinerja
+    if (tableBody) {
+        if (filtered.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="13" class="px-6 py-12 text-center text-slate-400">
+                        <i class="fa-solid fa-folder-open text-4xl mb-3 text-slate-300"></i>
+                        <p class="font-bold text-sm text-slate-600">Tidak ada data pegawai yang sesuai</p>
+                        <p class="text-xs text-slate-400 mt-1">Coba ubah kata kunci pencarian atau filter status</p>
+                    </td>
+                </tr>
+            `;
+        } else {
+            tableBody.innerHTML = filtered.map((emp, index) => {
+                let rankBadge = `<span class="font-bold text-slate-500 text-xs">${index + 1}</span>`;
+                if (index === 0) {
+                    rankBadge = `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 font-black text-xs border border-amber-300 shadow-xs" title="Peringkat 1"><i class="fa-solid fa-crown text-[11px] text-amber-500"></i></span>`;
+                } else if (index === 1) {
+                    rankBadge = `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-200 text-slate-700 font-black text-xs border border-slate-300 shadow-xs" title="Peringkat 2">2</span>`;
+                } else if (index === 2) {
+                    rankBadge = `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-700/20 text-amber-900 font-black text-xs border border-amber-600/30 shadow-xs" title="Peringkat 3">3</span>`;
                 }
 
-                // Render Card
-                const card = `
-                    <div onclick="openModal('${emp.id_karyawan}')" class="bg-white rounded-2xl p-6 border-t-4 ${colorClass} relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1.5 transition-all duration-300 cursor-pointer shadow-md border border-slate-200/80">
+                let statusBadge = '';
+                let scoreColor = 'text-emerald-700';
+                let barColor = 'bg-emerald-500';
+
+                if (emp.perfStatus === 'PERLU PEMBINAAN') {
+                    statusBadge = `<span class="badge-pro-rose"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Perlu Pembinaan</span>`;
+                    scoreColor = 'text-rose-700';
+                    barColor = 'bg-rose-500';
+                } else if (emp.perfStatus === 'CUKUP') {
+                    statusBadge = `<span class="badge-pro-amber"><i class="fa-solid fa-circle-exclamation mr-1"></i>Cukup</span>`;
+                    scoreColor = 'text-amber-700';
+                    barColor = 'bg-amber-500';
+                } else if (emp.perfStatus === 'BAIK') {
+                    statusBadge = `<span class="badge-pro-blue"><i class="fa-solid fa-thumbs-up mr-1"></i>Baik</span>`;
+                    scoreColor = 'text-blue-700';
+                    barColor = 'bg-blue-500';
+                } else {
+                    statusBadge = `<span class="badge-pro-emerald"><i class="fa-solid fa-medal mr-1"></i>Sangat Baik</span>`;
+                    scoreColor = 'text-emerald-700';
+                    barColor = 'bg-emerald-500';
+                }
+
+                const grad = getAvatarGradient(emp.nama);
+                const initial = escapeHtml(emp.nama || '').substring(0, 1).toUpperCase();
+
+                return `
+                    <tr class="hover:bg-slate-50/90 transition-colors cursor-pointer group" onclick="openModal('${emp.id_karyawan}')">
+                        <td class="px-3.5 py-3 text-center">${rankBadge}</td>
+                        <td class="px-4 py-3 font-mono font-bold text-slate-800 text-xs">${emp.id_karyawan}</td>
+                        <td class="px-4 py-3 font-bold text-slate-900 text-xs">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-full bg-gradient-to-tr ${grad} flex items-center justify-center text-white text-[10px] font-black shadow-xs flex-shrink-0">
+                                    ${initial}
+                                </div>
+                                <span class="truncate group-hover:text-emerald-700 transition">${escapeHtml(emp.nama)}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-slate-600 text-xs font-semibold uppercase tracking-wider">${escapeHtml(emp.jabatan || 'Staff')}</td>
+                        <td class="px-4 py-3 text-center">
+                            <div class="flex items-center gap-2 justify-center">
+                                <span class="font-black text-sm ${scoreColor}">${emp.perfScore}</span>
+                                <div class="w-14 bg-slate-200 h-2 rounded-full overflow-hidden">
+                                    <div class="h-full ${barColor}" style="width: ${emp.perfScore}%"></div>
+                                </div>
+                                <span class="text-[10px] text-slate-400">/100</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-center">${statusBadge}</td>
+                        <td class="px-3.5 py-3 text-center"><span class="badge-pro-emerald">${emp.total_masuk || 0}</span></td>
+                        <td class="px-3.5 py-3 text-center">${emp.total_dl > 0 ? `<span class="badge-pro-blue">${emp.total_dl}</span>` : '<span class="text-slate-300 font-mono">-</span>'}</td>
+                        <td class="px-3.5 py-3 text-center">${emp.telat_kali > 0 ? `<span class="badge-pro-amber">${emp.telat_kali}x</span>` : '<span class="text-slate-300 font-mono">-</span>'}</td>
+                        <td class="px-3.5 py-3 text-center">${emp.alpa > 0 ? `<span class="badge-pro-rose">${emp.alpa}</span>` : '<span class="text-slate-300 font-mono">-</span>'}</td>
+                        <td class="px-3.5 py-3 text-center">${emp.psw_kali > 0 ? `<span class="badge-pro-amber">${emp.psw_kali}x</span>` : '<span class="text-slate-300 font-mono">-</span>'}</td>
+                        <td class="px-3.5 py-3 text-center font-mono text-xs">${emp.potongan_jam > 0 ? `<span class="badge-pro-rose">${emp.potongan_jam}j</span>` : '<span class="text-slate-300 font-mono">-</span>'}</td>
+                        <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
+                            <button onclick="openModal('${emp.id_karyawan}')" class="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1.5" title="Detail Evaluasi & Profil Pegawai">
+                                <i class="fa-solid fa-chart-pie"></i> Detail
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    // 2. Render Kartu Kinerja
+    if (grid) {
+        if (filtered.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full py-12 text-center text-slate-400">
+                    <i class="fa-solid fa-folder-open text-4xl mb-3 text-slate-300"></i>
+                    <p class="font-bold text-sm text-slate-600">Tidak ada kartu pegawai yang sesuai</p>
+                </div>
+            `;
+        } else {
+            grid.innerHTML = filtered.map(emp => {
+                return `
+                    <div onclick="openModal('${emp.id_karyawan}')" class="bg-white rounded-2xl p-6 border-t-4 ${emp.perfColorClass} relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1.5 transition-all duration-300 cursor-pointer shadow-md border border-slate-200/80">
                         <div class="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition">
-                            <i class="fa-solid ${icon} text-6xl"></i>
+                            <i class="fa-solid ${emp.perfIcon} text-6xl"></i>
                         </div>
                         
                         <div class="relative z-10">
@@ -1409,12 +1622,12 @@ async function loadPerformanceData(silent = false) {
                             <p class="text-xs text-gray-500 mb-4 uppercase tracking-wide">${escapeHtml(emp.jabatan || 'Staff')} • ID: ${emp.id_karyawan}</p>
                             
                             <div class="flex items-end gap-2 mb-2">
-                                <span class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-emerald-500">${score}</span>
+                                <span class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-emerald-500">${emp.perfScore}</span>
                                 <span class="text-sm text-gray-400 mb-1">/ 100</span>
                             </div>
                             
                             <div class="w-full bg-slate-100 h-2.5 rounded-full mb-4 overflow-hidden">
-                                <div class="h-full ${colorClass.replace('text', 'bg').split(' ')[1]}" style="width: ${score}%"></div>
+                                <div class="h-full ${emp.perfColorClass.replace('text', 'bg').split(' ')[1]}" style="width: ${emp.perfScore}%"></div>
                             </div>
 
                             <div class="grid grid-cols-3 gap-2 text-center text-xs">
@@ -1433,19 +1646,87 @@ async function loadPerformanceData(silent = false) {
                                 </div>
                             </div>
 
-                            <div class="mt-4 text-center font-bold text-xs tracking-widest ${colorClass.split(' ')[1]} border border-dashed border-gray-300 p-2 rounded uppercase">
-                                ${status}
+                            <div class="mt-4 text-center font-bold text-xs tracking-widest ${emp.perfColorClass.split(' ')[1]} border border-dashed border-gray-300 p-2 rounded uppercase">
+                                ${emp.perfStatus}
                             </div>
                         </div>
                     </div>
                 `;
-                grid.innerHTML += card;
-            });
+            }).join('');
         }
-    } catch (e) { 
-        console.error(e);
-    } finally {
-        if (!silent) hideSpinner();
+    }
+}
+
+function filterPerformanceData() {
+    const input = document.getElementById('search-performance');
+    perfSearchQuery = input ? input.value : '';
+    renderPerformanceViews();
+}
+
+function filterPerformanceStatus(status) {
+    perfStatusFilter = status;
+
+    const btnAll = document.getElementById('perf-filter-all');
+    const btnSangat = document.getElementById('perf-filter-sangat-baik');
+    const btnBaik = document.getElementById('perf-filter-baik');
+    const btnCukup = document.getElementById('perf-filter-cukup');
+    const btnPembinaan = document.getElementById('perf-filter-pembinaan');
+
+    const inactiveClass = 'px-2.5 py-1 rounded text-slate-600 hover:text-emerald-700 text-[11px] transition-all';
+    const activeClass = 'px-2.5 py-1 rounded bg-white text-emerald-800 shadow-sm font-bold text-[11px] transition-all';
+
+    if (btnAll) btnAll.className = (status === 'ALL') ? activeClass : inactiveClass;
+    if (btnSangat) btnSangat.className = (status === 'SANGAT BAIK') ? activeClass : inactiveClass;
+    if (btnBaik) btnBaik.className = (status === 'BAIK') ? activeClass : inactiveClass;
+    if (btnCukup) btnCukup.className = (status === 'CUKUP') ? activeClass : inactiveClass;
+    if (btnPembinaan) btnPembinaan.className = (status === 'PERLU PEMBINAAN') ? activeClass : inactiveClass;
+
+    renderPerformanceViews();
+}
+
+function switchPerformanceView(mode) {
+    const tableContainer = document.getElementById('performance-table-container');
+    const cardsContainer = document.getElementById('performance-cards-container');
+    const btnTable = document.getElementById('btn-perf-table');
+    const btnCard = document.getElementById('btn-perf-card');
+
+    if (mode === 'card') {
+        if (tableContainer) tableContainer.classList.add('hidden');
+        if (cardsContainer) cardsContainer.classList.remove('hidden');
+
+        if (btnTable) btnTable.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-slate-600 hover:text-emerald-700 transition-all';
+        if (btnCard) btnCard.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-white text-emerald-700 shadow-sm transition-all';
+
+        initDragScroll('performance-cards-scroll');
+    } else {
+        // Default Table
+        if (cardsContainer) cardsContainer.classList.add('hidden');
+        if (tableContainer) tableContainer.classList.remove('hidden');
+
+        if (btnCard) btnCard.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-slate-600 hover:text-emerald-700 transition-all';
+        if (btnTable) btnTable.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-white text-emerald-700 shadow-sm transition-all';
+
+        initDragScroll('performance-table-scroll');
+    }
+}
+
+function scrollPerformance(direction) {
+    const cardsContainer = document.getElementById('performance-cards-container');
+    const isCard = cardsContainer && !cardsContainer.classList.contains('hidden');
+    const container = isCard 
+        ? document.getElementById('performance-cards-scroll') 
+        : document.getElementById('performance-table-scroll');
+
+    if (!container) return;
+
+    if (direction === 'left') {
+        container.scrollBy({ left: -320, behavior: 'smooth' });
+    } else if (direction === 'right') {
+        container.scrollBy({ left: 320, behavior: 'smooth' });
+    } else if (direction === 'up') {
+        container.scrollBy({ top: -260, behavior: 'smooth' });
+    } else if (direction === 'down') {
+        container.scrollBy({ top: 260, behavior: 'smooth' });
     }
 }
 
@@ -1460,7 +1741,16 @@ async function loadEmployees(silent = false) {
     try {
         const response = await fetch(`${API_BASE}/karyawan/descriptors?_t=${Date.now()}`);
         const result = await response.json();
-        const employees = result.descriptors || [];
+        const rawEmployees = result.descriptors || [];
+        const seenIds = new Set();
+        const employees = [];
+        rawEmployees.forEach(e => {
+            const idKey = String(e.id_karyawan || '').trim().toLowerCase();
+            if (idKey && !seenIds.has(idKey)) {
+                seenIds.add(idKey);
+                employees.push(e);
+            }
+        });
         globalEmployees = employees; // Simpan ke global agar bisa diedit
         
         countSpan.textContent = employees.length;
@@ -1520,8 +1810,8 @@ async function loadEmployees(silent = false) {
                     : `<span class="text-slate-400 italic text-[11px]">- Belum Mendaftar -</span>`;
 
                 const portalAccountBadge = hasAccount
-                    ? `<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wide"><i class="fa-solid fa-circle-check text-emerald-600"></i> Terdaftar</span>`
-                    : `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wide"><i class="fa-solid fa-circle-minus text-slate-400"></i> Belum Ada Akun</span>`;
+                    ? `<span class="badge-pro-emerald"><i class="fa-solid fa-circle-check mr-1"></i>Terdaftar</span>`
+                    : `<span class="badge-pro-slate"><i class="fa-solid fa-circle-minus mr-1"></i>Belum Ada Akun</span>`;
 
                 // Render Mode 1: Cards Grid
                 const card = `
@@ -1583,13 +1873,13 @@ async function loadEmployees(silent = false) {
 
                 // Render Mode 2: Table View (Akun Portal & Biometrik)
                 if (tableBody) {
-                    let tableSampleBadge = `<span class="bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full font-bold text-[10px]">0 Sampel</span>`;
+                    let tableSampleBadge = `<span class="badge-pro-rose"><i class="fa-solid fa-triangle-exclamation mr-1"></i>0 Sampel</span>`;
                     if (isCorrupt) {
-                        tableSampleBadge = `<span class="bg-red-600 text-white border border-red-700 px-2.5 py-1 rounded-full font-bold text-[10px] animate-pulse">DATA RUSAK</span>`;
+                        tableSampleBadge = `<span class="badge-pro-rose animate-pulse font-black"><i class="fa-solid fa-triangle-exclamation mr-1"></i>DATA RUSAK</span>`;
                     } else if (sampleCount >= 5) {
-                        tableSampleBadge = `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full font-black text-[10px]"><i class="fa-solid fa-fingerprint mr-1"></i>${sampleCount} Sampel (Baik)</span>`;
+                        tableSampleBadge = `<span class="badge-pro-emerald"><i class="fa-solid fa-fingerprint mr-1"></i>${sampleCount} Sampel (Baik)</span>`;
                     } else if (sampleCount >= 1) {
-                        tableSampleBadge = `<span class="bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-1 rounded-full font-bold text-[10px]"><i class="fa-solid fa-fingerprint mr-1"></i>${sampleCount} Sampel</span>`;
+                        tableSampleBadge = `<span class="badge-pro-blue"><i class="fa-solid fa-fingerprint mr-1"></i>${sampleCount} Sampel</span>`;
                     }
 
                     const tableActionButtons = `
@@ -1613,7 +1903,12 @@ async function loadEmployees(silent = false) {
                                 </div>
                             </td>
                             <td class="px-4 py-3 font-mono font-bold text-slate-800 text-xs">${emp.id_karyawan}</td>
-                            <td class="px-4 py-3 font-bold text-slate-900 text-xs">${escapeHtml(emp.nama)}</td>
+                            <td class="px-4 py-3 font-bold text-slate-900 text-xs">
+                                <button onclick="openScanPortalForEmployee('${emp.id_karyawan}')" class="group text-left flex items-center gap-1.5 hover:text-emerald-700 transition-colors" title="Klik nama untuk mengatur munculnya scan.html di Portal Online">
+                                    <span class="underline decoration-dotted decoration-emerald-400 underline-offset-2">${escapeHtml(emp.nama)}</span>
+                                    <span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-extrabold opacity-80 group-hover:opacity-100"><i class="fa-solid fa-camera-rotate mr-0.5"></i>Scan.html</span>
+                                </button>
+                            </td>
                             <td class="px-4 py-3 text-slate-600 text-xs font-medium">${escapeHtml(emp.jabatan || 'Staff')}</td>
                             <td class="px-4 py-3">${portalUsernameTag}</td>
                             <td class="px-4 py-3 text-center">${passwordPlainTag}</td>
@@ -1723,7 +2018,7 @@ async function deletePortalAccount(id, nama) {
     try {
         const response = await fetch(`${API_BASE}/pegawai/akun/${encodeURIComponent(id)}`, {
             method: 'DELETE',
-            headers: getAuthHeader()
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') }
         });
         const result = await response.json();
         hideSpinner();
@@ -1745,7 +2040,7 @@ async function deleteEmployee(id, nama) {
     if(!confirm(`PERINGATAN: Apakah Anda yakin ingin menghapus pegawai "${nama}"?\n\nData absensi terkait juga akan dihapus permanen.`)) return;
     
     try {
-        const response = await fetch(`${API_BASE}/karyawan/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/karyawan/${id}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') } });
         const result = await response.json();
         
         if(result.success) {
@@ -1770,7 +2065,7 @@ async function resetPasswordPortal(id, nama) {
     if(!confirm(`Apakah Anda yakin ingin me-reset password Portal Pegawai untuk "${nama}"?\n\nPassword akan di-reset menjadi default: 123456`)) return;
     
     try {
-        const response = await fetch(`${API_BASE}/pegawai/reset_password/${id}`, { method: 'PUT' });
+        const response = await fetch(`${API_BASE}/pegawai/reset_password/${id}`, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') } });
         const result = await response.json();
         
         if(result.success) {
@@ -1815,7 +2110,7 @@ async function deleteAllCorruptData() {
 
     for (const emp of corruptEmployees) {
         try {
-            const response = await fetch(`${API_BASE}/karyawan/${emp.id_karyawan}`, { method: 'DELETE' });
+            const response = await fetch(`${API_BASE}/karyawan/${emp.id_karyawan}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') } });
             const result = await response.json();
             if (result.success) successCount++;
         } catch (e) {
@@ -1880,7 +2175,7 @@ async function updateEmployee() {
         // 1. Update Data Teks (Nama & Jabatan)
         const response = await fetch(`${API_BASE}/karyawan/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') },
             body: JSON.stringify({ nama, jabatan, no_urut })
         });
         const result = await response.json();
@@ -1895,7 +2190,7 @@ async function updateEmployee() {
             const base64Foto = await toBase64(file);
             const resFoto = await fetch(`${API_BASE}/karyawan/${encodeURIComponent(id)}/photo`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') },
                 body: JSON.stringify({ foto: base64Foto })
             });
             
@@ -1930,7 +2225,7 @@ async function resetBiometricData() {
 
     try {
         // Encode ID untuk menangani karakter spesial dan cek status server
-        const response = await fetch(`${API_BASE}/karyawan/${encodeURIComponent(id)}/reset_biometric`, { method: 'PUT' });
+        const response = await fetch(`${API_BASE}/karyawan/${encodeURIComponent(id)}/reset_biometric`, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') } });
         
         if (!response.ok) throw new Error(`Gagal menghubungi server (${response.status}). Pastikan server.js sudah direstart.`);
         
@@ -1978,8 +2273,9 @@ async function openManualModal() {
         typeSelect.onchange();
     }
 
-    // Set tanggal hari ini sebagai default
-    document.getElementById('manual-date').valueAsDate = new Date();
+    // [FIX] Set tanggal lokal hari ini sebagai default (mencegah bug tanggal mundur ke kemarin akibat UTC valueAsDate)
+    const nowLocal = new Date();
+    document.getElementById('manual-date').value = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
 
     // Populate Select jika belum ada data atau kosong
     if (select.options.length <= 1) {
@@ -2044,7 +2340,7 @@ async function submitManualStatus() {
     try {
         const response = await fetch(`${API_BASE}/absensi/manual`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') },
             body: JSON.stringify({ id_karyawan, status, keterangan, tanggal, jam_masuk, jam_keluar })
         });
         
@@ -2070,7 +2366,10 @@ async function deleteAbsensiDb(id, nama) {
     if (!confirm(`PERINGATAN: Apakah Anda yakin ingin menghapus data absensi (ID: ${id}) untuk "${nama}"?\n\nData yang dihapus tidak dapat dikembalikan.`)) return;
 
     try {
-        const response = await fetch(`${API_BASE}/absensi/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/absensi/${id}`, { 
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') }
+        });
         const result = await response.json();
 
         if (result.success) {
@@ -2090,7 +2389,10 @@ async function deleteAbsensi(event, id, nama) {
     if (!confirm(`PERINGATAN: Apakah Anda yakin ingin menghapus data absensi harian untuk "${nama}"?\n\nData yang dihapus tidak dapat dikembalikan.`)) return;
 
     try {
-        const response = await fetch(`${API_BASE}/absensi/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/absensi/${id}`, { 
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') }
+        });
         const result = await response.json();
 
         if (result.success) {
@@ -2257,16 +2559,65 @@ function initLineChart() {
 
 // --- FITUR: FULLSCREEN TOGGLE ---
 function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-        document.getElementById('icon-fullscreen').classList.replace('fa-expand', 'fa-compress');
+    const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    if (!isFull) {
+        const el = document.documentElement;
+        if (el.requestFullscreen) {
+            el.requestFullscreen().catch(err => console.warn('Fullscreen request error:', err));
+        } else if (el.webkitRequestFullscreen) {
+            el.webkitRequestFullscreen();
+        } else if (el.mozRequestFullScreen) {
+            el.mozRequestFullScreen();
+        } else if (el.msRequestFullscreen) {
+            el.msRequestFullscreen();
+        }
     } else {
         if (document.exitFullscreen) {
-            document.exitFullscreen();
-            document.getElementById('icon-fullscreen').classList.replace('fa-compress', 'fa-expand');
+            document.exitFullscreen().catch(err => console.warn('Exit fullscreen error:', err));
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
         }
     }
 }
+
+function handleFullscreenChange() {
+    const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    const icon = document.getElementById('icon-fullscreen');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+
+    if (icon) {
+        if (isFull) {
+            icon.classList.replace('fa-expand', 'fa-compress');
+        } else {
+            icon.classList.replace('fa-compress', 'fa-expand');
+        }
+    }
+
+    if (isFull) {
+        document.documentElement.classList.add('is-fullscreen');
+        document.body.classList.add('is-fullscreen');
+        if (sidebar) sidebar.classList.remove('fullscreen-show');
+        if (overlay) overlay.classList.remove('fullscreen-show');
+    } else {
+        document.documentElement.classList.remove('is-fullscreen');
+        document.body.classList.remove('is-fullscreen');
+        if (sidebar) sidebar.classList.remove('fullscreen-show');
+        if (overlay) overlay.classList.remove('fullscreen-show');
+    }
+
+    // Trigger resize event agar grafik Chart.js & layout segera menyesuaikan ukuran layar penuh
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
+}
+
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 
 // --- [NEW] HELPER: AMBIL LOKASI GPS ADMIN ---
 function getCurrentLocation() {
@@ -2289,41 +2640,55 @@ function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
 
-    if (sidebar) {
-        const isMobile = window.innerWidth < 768;
+    if (!sidebar) return;
 
-        if (isMobile) {
-            // Logika Mobile: Slide In/Out dari samping
-            sidebar.classList.toggle('-translate-x-full');
-            if (overlay) {
-                if (overlay.classList.contains('hidden')) {
-                    overlay.classList.remove('hidden');
-                    setTimeout(() => overlay.classList.replace('opacity-0', 'opacity-100'), 10);
-                } else {
-                    overlay.classList.replace('opacity-100', 'opacity-0');
-                    setTimeout(() => overlay.classList.add('hidden'), 300);
-                }
-            }
-        } else {
-            // Logika Desktop: Mempersempit layout
-            sidebar.classList.toggle('md:-ml-64');
+    const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || document.body.classList.contains('is-fullscreen'));
+
+    if (isFullscreen) {
+        // Logika saat Fullscreen: Buka/Tutup sebagai floating drawer
+        sidebar.classList.toggle('fullscreen-show');
+        if (overlay) {
+            overlay.classList.toggle('fullscreen-show');
         }
-
-        // Trigger resize event untuk memperbaiki layout grafik Chart.js
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 350);
+        return;
     }
+
+    const isMobile = window.innerWidth < 768;
+
+    if (isMobile) {
+        // Logika Mobile: Slide In/Out dari samping
+        sidebar.classList.toggle('-translate-x-full');
+        if (overlay) {
+            if (overlay.classList.contains('hidden')) {
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.replace('opacity-0', 'opacity-100'), 10);
+            } else {
+                overlay.classList.replace('opacity-100', 'opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+    } else {
+        // Logika Desktop: Bergeser ke kiri (slide out) atau muncul kembali (slide in)
+        sidebar.classList.toggle('collapsed');
+        try {
+            localStorage.setItem('sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+        } catch (e) {}
+    }
+
+    // Trigger resize event agar grafik Chart.js & tabel langsung beradaptasi secara mulus
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 350);
 }
 
 function setupSidebarToggle() {
-    const title = document.getElementById('page-title');
-    if (title && title.parentNode && !document.getElementById('btn-sidebar-toggle')) {
-        const btn = document.createElement('button');
-        btn.id = 'btn-sidebar-toggle';
-        btn.className = 'mr-4 text-slate-500 hover:text-emerald-700 transition-colors p-1 rounded hover:bg-emerald-50';
-        btn.innerHTML = '<i class="fa-solid fa-bars text-xl"></i>';
-        btn.onclick = toggleSidebar;
-        btn.title = "Sembunyikan Menu (Full Width)";
-        title.parentNode.insertBefore(btn, title);
+    // Restore preferensi sidebar jika sebelumnya disembunyikan di desktop
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && window.innerWidth >= 768) {
+        try {
+            if (localStorage.getItem('sidebar_collapsed') === '1') {
+                sidebar.classList.add('collapsed');
+            }
+        } catch (e) {}
     }
 }
 
@@ -2756,7 +3121,7 @@ async function saveSignatureConfig() {
     try {
         const response = await fetch(`${API_BASE}/config`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') },
             body: JSON.stringify({ 
                 jam_pulang_jumat: config.jamPulangJumat, 
                 jam_pulang_sabtu: config.jamPulangSabtu,
@@ -3127,10 +3492,10 @@ function printSalarySlip(id) {
             <div class="kop-surat">
                 <img src="Lambang_kabupaten_lampung_timur.png" class="logo" alt="Logo Kab" onerror="this.style.display='none'">
                 <div class="kop-text">
-                    <h3>PEMERINTAH <span class="dynamic-instansi-lokasi">KABUPATEN LAMPUNG TIMUR</span></h3>
+                    <h3>PEMERINTAH <span class="dynamic-instansi-lokasi">${document.querySelector('.dynamic-instansi-lokasi')?.textContent || 'PEMERINTAH DAERAH'}</span></h3>
                     <h3>DINAS KESEHATAN</h3>
-                    <h1>UPTD <span class="dynamic-instansi-nama">PUSKESMAS WANA</span></h1>
-                    <p>Jl. Pengiran Iro Kusumo Wana Kecamatan Melinting</p>
+                    <h1>UPTD <span class="dynamic-instansi-nama">${document.querySelector('.dynamic-instansi-nama')?.textContent || 'INSTANSI'}</span></h1>
+                    <p>${document.querySelector('.dynamic-instansi-lokasi')?.textContent || 'Lokasi'}</p>
                 </div>
                 <div class="logo" style="display:flex; align-items:center; justify-content:center; font-size:40px; color:#10b981;"><i class="fa-solid fa-hospital"></i></div>
             </div>
@@ -3194,10 +3559,10 @@ function printSalarySlip(id) {
 
             <div class="signatures">
                 <div class="sign-box"><p>Penerima,</p><div class="sign-line"></div><p>${emp.nama}</p></div>
-                <div class="sign-box"><p>Kepala <span class="dynamic-instansi-nama">Puskesmas Wana</span>,</p><div class="sign-line"></div><p>( ${config.kepalaNama || '...........................'} )</p></div>
+                <div class="sign-box"><p>Kepala <span class="dynamic-instansi-nama">${document.querySelector('.dynamic-instansi-nama')?.textContent || 'Instansi'}</span>,</p><div class="sign-line"></div><p>( ${config.kepalaNama || '...........................'} )</p></div>
             </div>
 
-            <div class="footer">Dicetak otomatis oleh Sistem Biometrik <span class="dynamic-instansi-nama">Puskesmas Wana</span>.<br>ID: ${Date.now().toString(36).toUpperCase()}</div>
+            <div class="footer">Dicetak otomatis oleh Sistem Biometrik <span class="dynamic-instansi-nama">${document.querySelector('.dynamic-instansi-nama')?.textContent || 'Instansi'}</span>.<br>ID: ${Date.now().toString(36).toUpperCase()}</div>
             <script>window.onload = function() { window.print(); }</script>
         </body></html>`;
     
@@ -3312,16 +3677,16 @@ async function loadMonthlyMatrix(silent = false) {
                 <h2 class="text-2xl font-serif font-bold text-slate-900 uppercase tracking-widest">Detail Presensi Harian Menyamping</h2>
                 <p class="text-sm text-slate-600 font-serif italic mt-1">Periode Laporan: ${monthName}</p>
             </caption>
-            <thead class="sticky top-0 z-30 uppercase text-xs font-bold tracking-wider bg-slate-800 text-white">
+            <thead class="sticky top-0 z-30 uppercase text-[11px] font-black tracking-wider table-head-pro text-white shadow-md">
                 <tr>
-                    <th class="px-4 py-3 text-center border border-slate-700 w-12">No.</th>
-                    <th class="px-6 py-3 text-left border border-slate-700 w-56">Nama Pegawai</th>
-                    <th class="px-6 py-3 text-left border border-slate-700 w-36">Jabatan</th>
+                    <th class="px-3 py-2.5 text-center border border-slate-700/80 w-12"><i class="fa-solid fa-hashtag text-slate-400"></i></th>
+                    <th class="px-5 py-2.5 text-left border border-slate-700/80 w-56"><i class="fa-solid fa-user-tie text-indigo-400 mr-1.5"></i>Nama Pegawai</th>
+                    <th class="px-4 py-2.5 text-left border border-slate-700/80 w-36"><i class="fa-solid fa-briefcase text-cyan-400 mr-1.5"></i>Jabatan</th>
                     ${thDays}
-                    <th class="px-4 py-3 text-center border border-slate-700 min-w-[110px] bg-emerald-900 font-bold">Total Jam Kerja</th>
+                    <th class="px-4 py-2.5 text-center border border-slate-700/80 min-w-[120px] bg-emerald-950 text-emerald-300 font-black"><i class="fa-solid fa-clock text-emerald-400 mr-1"></i>Total Jam Kerja</th>
                 </tr>
             </thead>
-            <tbody id="table-rekap-body" class="text-slate-800 divide-y divide-slate-200 text-xs bg-white">
+            <tbody id="table-rekap-body" class="table-pro-body divide-y divide-slate-100 text-xs bg-white">
             </tbody>
         `;
 
@@ -3437,12 +3802,12 @@ async function loadViewDbMonthlyData() {
 
         const thead = table.querySelector('thead');
         thead.innerHTML = `
-            <tr class="bg-slate-800 text-white uppercase text-[10px] font-bold">
-                <th class="px-3 py-2 text-center border border-slate-700 w-10">No</th>
-                <th class="px-4 py-2 text-left border border-slate-700 w-44">Nama Pegawai</th>
-                <th class="px-4 py-2 text-left border border-slate-700 w-32">Jabatan</th>
+            <tr class="table-head-pro text-white uppercase text-[10px] font-black shadow-md">
+                <th class="px-3 py-2 text-center border border-slate-700/80 w-10"><i class="fa-solid fa-hashtag text-slate-400"></i></th>
+                <th class="px-4 py-2 text-left border border-slate-700/80 w-44"><i class="fa-solid fa-user-tie text-indigo-400 mr-1"></i>Nama Pegawai</th>
+                <th class="px-4 py-2 text-left border border-slate-700/80 w-32"><i class="fa-solid fa-briefcase text-cyan-400 mr-1"></i>Jabatan</th>
                 ${thDays}
-                <th class="px-3 py-2 text-center border border-slate-700 min-w-[110px] bg-emerald-900 font-bold">Total Jam Kerja</th>
+                <th class="px-3 py-2 text-center border border-slate-700/80 min-w-[120px] bg-emerald-950 text-emerald-300 font-black"><i class="fa-solid fa-clock text-emerald-400 mr-1"></i>Total Jam Kerja</th>
             </tr>
         `;
 
@@ -3519,4 +3884,449 @@ async function loadViewDbMonthlyData() {
         tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
     }
 }
+
+// =========================================================================
+// [NEW] MODUL TABEL KONTROL AKSES SCAN.HTML PORTAL ONLINE (JADWAL LIBUR)
+// =========================================================================
+let globalScanPortalRows = [];
+let currentScanPortalFilter = 'ALL';
+let currentScanPortalDayName = '';
+let currentScanPortalDateStr = '';
+let highlightedScanPortalEmpId = null;
+
+const HARI_PORTAL_SHORT = [
+    { full: 'Senin', short: 'Sen' },
+    { full: 'Selasa', short: 'Sel' },
+    { full: 'Rabu', short: 'Rab' },
+    { full: 'Kamis', short: 'Kam' },
+    { full: 'Jumat', short: 'Jum' },
+    { full: 'Sabtu', short: 'Sab' },
+    { full: 'Minggu', short: 'Min' }
+];
+
+async function openScanPortalForEmployee(idKaryawan) {
+    highlightedScanPortalEmpId = idKaryawan;
+    switchTab('scan-portal');
+    await loadScanPortalAccessTable(true);
+    // Toggle langsung atau scroll ke baris pegawai yang diklik namanya
+    const row = globalScanPortalRows.find(r => String(r.id_karyawan).toLowerCase() === String(idKaryawan).toLowerCase());
+    if (row && Number(row.aktif) === 0) {
+        await toggleEmployeeScanPortalByClick(idKaryawan);
+    }
+    setTimeout(() => {
+        const el = document.getElementById(`scan-portal-row-${idKaryawan}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('ring-2', 'ring-amber-400', 'bg-amber-50/70');
+            setTimeout(() => el.classList.remove('ring-2', 'ring-amber-400'), 3000);
+        }
+    }, 200);
+}
+
+async function loadScanPortalAccessTable(silent = false) {
+    const tbody = document.getElementById('table-scan-portal-body');
+    if (!tbody) return;
+    if (!silent) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-500"><i class="fa-solid fa-circle-notch fa-spin text-emerald-600 text-xl mr-2"></i>Memuat tabel jadwal akses scan.html Portal Online...</td></tr>`;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/akses-scan-portal?_t=${Date.now()}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'Gagal memuat data akses scan portal');
+
+        globalScanPortalRows = json.data || [];
+        currentScanPortalDayName = json.day_name || '';
+        currentScanPortalDateStr = json.today || '';
+
+        const badgeEl = document.getElementById('scan-portal-today-badge');
+        if (badgeEl) badgeEl.textContent = `Hari Ini: ${currentScanPortalDayName}, ${currentScanPortalDateStr}`;
+
+        const statDayEl = document.getElementById('scan-portal-stat-day');
+        if (statDayEl) statDayEl.textContent = `${currentScanPortalDayName} (${currentScanPortalDateStr})`;
+
+        const activeCount = globalScanPortalRows.filter(r => Number(r.aktif) === 1).length;
+        const todayAllowedCount = globalScanPortalRows.filter(r => r.allowed_today).length;
+        const doneTodayCount = globalScanPortalRows.filter(r => r.allowed_today && r.absen_hari_ini_masuk).length;
+
+        const statTodayEl = document.getElementById('scan-portal-stat-today');
+        if (statTodayEl) statTodayEl.textContent = `${todayAllowedCount} Pegawai`;
+
+        const statActiveEl = document.getElementById('scan-portal-stat-active');
+        if (statActiveEl) statActiveEl.textContent = `${activeCount} Pegawai`;
+
+        const statDoneEl = document.getElementById('scan-portal-stat-done');
+        if (statDoneEl) statDoneEl.textContent = `${doneTodayCount} Pegawai`;
+
+        renderScanPortalAccessTable();
+    } catch (e) {
+        console.error('Error loadScanPortalAccessTable:', e);
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-rose-600 font-bold">Gagal memuat tabel: ${escapeHtml(e.message)}</td></tr>`;
+    }
+}
+
+function setScanPortalFilter(filterVal) {
+    currentScanPortalFilter = filterVal;
+    document.querySelectorAll('#scan-portal-day-filters .scan-filter-btn').forEach(btn => {
+        const f = btn.getAttribute('data-filter');
+        if (f === filterVal) {
+            btn.className = 'scan-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-sm transition-all';
+        } else {
+            btn.className = 'scan-filter-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 transition-all';
+        }
+    });
+    renderScanPortalAccessTable();
+}
+
+function renderScanPortalAccessTable() {
+    const tbody = document.getElementById('table-scan-portal-body');
+    if (!tbody) return;
+
+    const searchInput = document.getElementById('search-scan-portal');
+    const term = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+    const filtered = globalScanPortalRows.filter(row => {
+        if (term) {
+            const hay = `${row.nama || ''} ${row.id_karyawan || ''} ${row.jabatan || ''} ${row.username_portal || ''} ${row.hari_diizinkan || ''}`.toLowerCase();
+            if (!hay.includes(term)) return false;
+        }
+        if (currentScanPortalFilter === 'TODAY') return Boolean(row.allowed_today);
+        if (currentScanPortalFilter === 'ACTIVE') return Number(row.aktif) === 1;
+        if (['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].includes(currentScanPortalFilter)) {
+            if (Number(row.aktif) !== 1) return false;
+            const days = String(row.hari_diizinkan || '').split(',').map(s => s.trim().toLowerCase());
+            return days.includes('semua') || days.includes(currentScanPortalFilter.toLowerCase());
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400 italic">Tidak ada pegawai yang cocok dengan filter ini.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map((row, idx) => {
+        const isAktif = Number(row.aktif) === 1;
+        const allowedToday = Boolean(row.allowed_today);
+        const daysArr = String(row.hari_diizinkan || '')
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+        const isAllDays = daysArr.some(d => d.toLowerCase() === 'semua');
+
+        // Day pill buttons
+        const dayButtonsHtml = HARI_PORTAL_SHORT.map(d => {
+            const selected = isAktif && (isAllDays || daysArr.some(x => x.toLowerCase() === d.full.toLowerCase()));
+            const isTodayDay = d.full.toLowerCase() === String(currentScanPortalDayName).toLowerCase();
+            const btnCls = selected
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700';
+            const todayRing = isTodayDay ? 'ring-2 ring-amber-400 ring-offset-1' : '';
+            return `<button onclick="toggleDayScanPortal('${row.id_karyawan}', '${d.full}')" 
+                        class="px-2 py-1 rounded-md text-[10px] font-extrabold border transition-all ${btnCls} ${todayRing}"
+                        title="Jadwalkan hari ${d.full}${isTodayDay ? ' (HARI INI)' : ''} untuk ${escapeHtml(row.nama)}">
+                        ${d.short}
+                    </button>`;
+        }).join('');
+
+        const semuaSelected = isAktif && isAllDays;
+        const semuaBtnHtml = `
+            <button onclick="toggleDayScanPortal('${row.id_karyawan}', 'Semua')"
+                class="px-2 py-1 rounded-md text-[10px] font-extrabold border transition-all ${semuaSelected ? 'bg-amber-500 text-white border-amber-600 shadow-sm' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-700'}"
+                title="Munculkan scan.html Setiap Hari untuk ${escapeHtml(row.nama)}">
+                Semua
+            </button>
+        `;
+
+        // Status Portal Hari Ini
+        let statusPortalBadge = '';
+        if (allowedToday) {
+            statusPortalBadge = `
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-[10px] shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    MUNCUL HARI INI
+                </div>
+            `;
+        } else if (isAktif) {
+            statusPortalBadge = `
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[10px]">
+                    <i class="fa-solid fa-clock"></i> Terjadwal (${escapeHtml(row.hari_diizinkan || row.tanggal_khusus || '-')})
+                </div>
+            `;
+        } else {
+            statusPortalBadge = `
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 font-bold text-[10px]">
+                    <i class="fa-solid fa-eye-slash"></i> Disembunyikan
+                </div>
+            `;
+        }
+
+        // Info Absensi Hari Ini
+        let absenInfoHtml = '';
+        if (row.absen_hari_ini_masuk) {
+            const jm = String(row.absen_hari_ini_masuk).substring(0, 5);
+            const jk = row.absen_hari_ini_keluar ? String(row.absen_hari_ini_keluar).substring(0, 5) : 'Belum Pulang';
+            absenInfoHtml = `<div class="mt-1 text-[10px] font-mono font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 inline-block"><i class="fa-solid fa-check-double mr-1"></i>Hadir: ${jm} - ${jk}</div>`;
+        } else if (allowedToday) {
+            absenInfoHtml = `<div class="mt-1 text-[10px] font-semibold text-amber-700">Menunggu pegawai scan di Portal</div>`;
+        }
+
+        const akunBadge = row.username_portal
+            ? `<span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-[10px]"><i class="fa-solid fa-at mr-0.5"></i>${escapeHtml(row.username_portal)}</span>`
+            : `<span class="px-2 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-200 font-bold text-[10px]">Belum Daftar Akun</span>`;
+
+        const bioBadge = row.has_biometric
+            ? `<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]"><i class="fa-solid fa-fingerprint mr-0.5"></i>Wajah Siap</span>`
+            : `<span class="px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px]">Belum Rekam Wajah</span>`;
+
+        const rowBg = allowedToday
+            ? 'bg-emerald-50/40 hover:bg-emerald-50/80'
+            : (isAktif ? 'bg-blue-50/20 hover:bg-blue-50/40' : 'hover:bg-slate-50');
+
+        return `
+            <tr id="scan-portal-row-${row.id_karyawan}" class="transition-all ${rowBg}">
+                <td class="px-3 py-3 text-center font-mono font-bold text-slate-400">${idx + 1}</td>
+                <td class="px-4 py-3">
+                    <button onclick="toggleEmployeeScanPortalByClick('${row.id_karyawan}')"
+                        class="w-full text-left group flex items-center gap-3 p-2 rounded-xl border transition-all ${
+                            isAktif
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-emerald-500 shadow-md'
+                                : 'bg-white hover:bg-emerald-50 text-slate-800 border-slate-200 hover:border-emerald-400 shadow-sm'
+                        }"
+                        title="Klik nama ${escapeHtml(row.nama)} untuk ${isAktif ? 'MENONAKTIFKAN' : 'MENGAKTIFKAN'} munculnya scan.html di Portal Online">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            isAktif ? 'bg-white/20 text-amber-300' : 'bg-slate-100 group-hover:bg-emerald-100 text-slate-400 group-hover:text-emerald-600'
+                        }">
+                            <i class="fa-solid ${isAktif ? 'fa-circle-check text-lg' : 'fa-hand-pointer text-sm'}"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="font-extrabold text-xs truncate flex items-center gap-1.5">
+                                <span>${escapeHtml(row.nama)}</span>
+                                <span class="text-[9px] px-1.5 py-0.5 rounded font-black uppercase ${
+                                    isAktif ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-600 group-hover:text-white'
+                                }">${isAktif ? 'AKTIF DIKLIK' : 'KLIK NAMA'}</span>
+                            </div>
+                            <div class="text-[10px] truncate mt-0.5 ${isAktif ? 'text-emerald-100' : 'text-slate-500'}">
+                                <span class="font-mono font-bold">${escapeHtml(row.id_karyawan)}</span> • ${escapeHtml(row.jabatan || 'Staff')}
+                            </div>
+                        </div>
+                    </button>
+                </td>
+                <td class="px-3 py-3">
+                    <div class="flex flex-col gap-1 items-start">
+                        ${akunBadge}
+                        ${bioBadge}
+                    </div>
+                </td>
+                <td class="px-4 py-3">
+                    <div class="flex flex-wrap items-center gap-1">
+                        ${dayButtonsHtml}
+                        ${semuaBtnHtml}
+                    </div>
+                    <div class="mt-1.5 flex items-center gap-2">
+                        <span class="text-[10px] text-slate-400 font-semibold"><i class="fa-regular fa-calendar mr-1"></i>Tgl Khusus:</span>
+                        <input type="date" value="${row.tanggal_khusus || ''}"
+                            onchange="changeDateKhususScanPortal('${row.id_karyawan}', this.value)"
+                            class="text-[10px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-slate-700 focus:border-emerald-500 focus:outline-none">
+                        ${row.tanggal_khusus ? `<button onclick="changeDateKhususScanPortal('${row.id_karyawan}', '')" class="text-[10px] text-rose-500 hover:underline font-bold">Reset</button>` : ''}
+                    </div>
+                </td>
+                <td class="px-3 py-3">
+                    <select onchange="changeModeScanPortal('${row.id_karyawan}', this.value)"
+                        class="w-full text-[11px] font-bold border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:border-emerald-500 focus:outline-none shadow-sm">
+                        <option value="SCAN_FULL_HADIR" ${row.mode_kehadiran === 'SCAN_FULL_HADIR' ? 'selected' : ''}>✅ 1x Scan di Portal = Dianggap Masuk Penuh (Masuk+Pulang)</option>
+                        <option value="AUTO_HADIR" ${row.mode_kehadiran === 'AUTO_HADIR' ? 'selected' : ''}>⚡ Otomatis Masuk Penuh Tanpa Scan di Hari Terjadwal</option>
+                        <option value="SCAN_NORMAL" ${row.mode_kehadiran === 'SCAN_NORMAL' ? 'selected' : ''}>📷 Scan Normal 2x (Masuk & Pulang via Portal)</option>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1 truncate">Tanpa input manual Admin • Bebas Telat/PSW</p>
+                </td>
+                <td class="px-3 py-3 text-center">
+                    ${statusPortalBadge}
+                    <br>
+                    ${absenInfoHtml}
+                </td>
+                <td class="px-3 py-3 text-center">
+                    <div class="flex flex-col gap-1.5 items-center justify-center">
+                        <button onclick="quickActivateTodayScanPortal('${row.id_karyawan}')"
+                            class="w-full px-2.5 py-1 rounded-lg text-[10px] font-extrabold border transition-all ${
+                                allowedToday
+                                    ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-600 hover:text-white'
+                            }"
+                            title="Jadwalkan muncul hari ini (${currentScanPortalDayName})">
+                            <i class="fa-solid fa-bolt mr-1"></i>${allowedToday ? `Aktif Hari ${currentScanPortalDayName}` : `Set Hari Ini (${currentScanPortalDayName})`}
+                        </button>
+                        ${isAktif ? `
+                        <button onclick="disableSingleScanPortal('${row.id_karyawan}')"
+                            class="w-full px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 transition-all">
+                            <i class="fa-solid fa-power-off mr-1"></i>Matikan Akses
+                        </button>` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function saveScanPortalRow(payload) {
+    try {
+        const res = await fetch(`${API_BASE}/akses-scan-portal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'Gagal menyimpan akses scan portal');
+        if (typeof showToast === 'function') {
+            showToast(json.message || 'Jadwal scan.html Portal diperbarui', 'success');
+        }
+        await loadScanPortalAccessTable(true);
+    } catch (e) {
+        alert('Gagal menyimpan jadwal Scan Portal: ' + e.message);
+    }
+}
+
+async function toggleEmployeeScanPortalByClick(idKaryawan) {
+    const row = globalScanPortalRows.find(r => String(r.id_karyawan).toLowerCase() === String(idKaryawan).toLowerCase());
+    if (!row) return;
+    const willBeActive = Number(row.aktif) === 1 ? 0 : 1;
+    let nextHari = String(row.hari_diizinkan || '').trim();
+    // Jika baru diaktifkan dengan klik nama dan belum ada hari yang dipilih, otomatis set ke hari yang sedang difilter atau hari ini!
+    if (willBeActive === 1 && !nextHari && !row.tanggal_khusus) {
+        if (['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].includes(currentScanPortalFilter)) {
+            nextHari = currentScanPortalFilter;
+        } else {
+            nextHari = currentScanPortalDayName || 'Senin';
+        }
+    }
+    await saveScanPortalRow({
+        id_karyawan: row.id_karyawan,
+        aktif: willBeActive,
+        hari_diizinkan: nextHari,
+        tanggal_khusus: row.tanggal_khusus || null,
+        mode_kehadiran: row.mode_kehadiran || 'SCAN_FULL_HADIR',
+        keterangan_default: row.keterangan_default
+    });
+}
+
+async function toggleDayScanPortal(idKaryawan, dayTarget) {
+    const row = globalScanPortalRows.find(r => String(r.id_karyawan).toLowerCase() === String(idKaryawan).toLowerCase());
+    if (!row) return;
+
+    let currentDays = String(row.hari_diizinkan || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+    if (dayTarget === 'Semua') {
+        if (currentDays.some(d => d.toLowerCase() === 'semua') && Number(row.aktif) === 1) {
+            currentDays = [];
+        } else {
+            currentDays = ['Semua'];
+        }
+    } else {
+        currentDays = currentDays.filter(d => d.toLowerCase() !== 'semua');
+        const exists = currentDays.some(d => d.toLowerCase() === dayTarget.toLowerCase());
+        if (exists && Number(row.aktif) === 1) {
+            currentDays = currentDays.filter(d => d.toLowerCase() !== dayTarget.toLowerCase());
+        } else {
+            currentDays.push(dayTarget);
+        }
+    }
+
+    const nextHari = currentDays.join(', ');
+    const nextAktif = (nextHari.length > 0 || row.tanggal_khusus) ? 1 : 0;
+
+    await saveScanPortalRow({
+        id_karyawan: row.id_karyawan,
+        aktif: nextAktif,
+        hari_diizinkan: nextHari,
+        tanggal_khusus: row.tanggal_khusus || null,
+        mode_kehadiran: row.mode_kehadiran || 'SCAN_FULL_HADIR',
+        keterangan_default: row.keterangan_default
+    });
+}
+
+async function quickActivateTodayScanPortal(idKaryawan) {
+    const row = globalScanPortalRows.find(r => String(r.id_karyawan).toLowerCase() === String(idKaryawan).toLowerCase());
+    if (!row) return;
+    const todayDay = currentScanPortalDayName || 'Senin';
+    let currentDays = String(row.hari_diizinkan || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    if (!currentDays.some(d => d.toLowerCase() === todayDay.toLowerCase() || d.toLowerCase() === 'semua')) {
+        currentDays.push(todayDay);
+    }
+    await saveScanPortalRow({
+        id_karyawan: row.id_karyawan,
+        aktif: 1,
+        hari_diizinkan: currentDays.join(', '),
+        tanggal_khusus: row.tanggal_khusus || null,
+        mode_kehadiran: row.mode_kehadiran || 'SCAN_FULL_HADIR',
+        keterangan_default: row.keterangan_default
+    });
+}
+
+async function disableSingleScanPortal(idKaryawan) {
+    const row = globalScanPortalRows.find(r => String(r.id_karyawan).toLowerCase() === String(idKaryawan).toLowerCase());
+    if (!row) return;
+    await saveScanPortalRow({
+        id_karyawan: row.id_karyawan,
+        aktif: 0,
+        hari_diizinkan: row.hari_diizinkan || '',
+        tanggal_khusus: row.tanggal_khusus || null,
+        mode_kehadiran: row.mode_kehadiran || 'SCAN_FULL_HADIR',
+        keterangan_default: row.keterangan_default
+    });
+}
+
+async function changeDateKhususScanPortal(idKaryawan, dateVal) {
+    const row = globalScanPortalRows.find(r => String(r.id_karyawan).toLowerCase() === String(idKaryawan).toLowerCase());
+    if (!row) return;
+    const nextAktif = (dateVal || row.hari_diizinkan) ? 1 : Number(row.aktif);
+    await saveScanPortalRow({
+        id_karyawan: row.id_karyawan,
+        aktif: nextAktif,
+        hari_diizinkan: row.hari_diizinkan || '',
+        tanggal_khusus: dateVal || null,
+        mode_kehadiran: row.mode_kehadiran || 'SCAN_FULL_HADIR',
+        keterangan_default: row.keterangan_default
+    });
+}
+
+async function changeModeScanPortal(idKaryawan, modeVal) {
+    const row = globalScanPortalRows.find(r => String(r.id_karyawan).toLowerCase() === String(idKaryawan).toLowerCase());
+    if (!row) return;
+    await saveScanPortalRow({
+        id_karyawan: row.id_karyawan,
+        aktif: row.aktif,
+        hari_diizinkan: row.hari_diizinkan || '',
+        tanggal_khusus: row.tanggal_khusus || null,
+        mode_kehadiran: modeVal,
+        keterangan_default: row.keterangan_default
+    });
+}
+
+async function disableAllScanPortalAccess() {
+    const activeRows = globalScanPortalRows.filter(r => Number(r.aktif) === 1);
+    if (activeRows.length === 0) return;
+    if (!confirm(`Nonaktifkan fitur scan.html Portal Online untuk ${activeRows.length} pegawai terjadwal?`)) return;
+    for (const r of activeRows) {
+        await fetch(`${API_BASE}/akses-scan-portal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_karyawan: r.id_karyawan,
+                aktif: 0,
+                hari_diizinkan: r.hari_diizinkan || '',
+                tanggal_khusus: r.tanggal_khusus || null,
+                mode_kehadiran: r.mode_kehadiran || 'SCAN_FULL_HADIR',
+                keterangan_default: r.keterangan_default
+            })
+        });
+    }
+    await loadScanPortalAccessTable(true);
+}
+
 

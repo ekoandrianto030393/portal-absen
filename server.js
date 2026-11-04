@@ -399,6 +399,20 @@ pool.getConnection((err, connection) => {
                         connection.query(createAbsensiSql, (err) => {
                             if (err) console.error('⚠️ Init Tabel Absensi:', err.message);
                             else {
+                                const createAksesScanPortalSql = `
+                                    CREATE TABLE IF NOT EXISTS akses_scan_portal (
+                                        id_karyawan VARCHAR(50) NOT NULL PRIMARY KEY,
+                                        aktif TINYINT(1) DEFAULT 0,
+                                        hari_diizinkan VARCHAR(100) DEFAULT '',
+                                        tanggal_khusus VARCHAR(20) DEFAULT NULL,
+                                        mode_kehadiran VARCHAR(30) DEFAULT 'SCAN_FULL_HADIR',
+                                        keterangan_default VARCHAR(255) DEFAULT 'Jadwal Libur Mingguan (Tetap Masuk via Portal)',
+                                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                                    ) ENGINE=InnoDB;
+                                `;
+                                connection.query(createAksesScanPortalSql, (errAkses) => {
+                                    if (errAkses) console.error('⚠️ Init Tabel Akses Scan Portal:', errAkses.message);
+                                });
                                 connection.query(createReqPasswordSql, (err) => {
                                     if (err) console.error('⚠️ Init Tabel Req Password:', err.message);
                                     
@@ -1206,6 +1220,369 @@ app.delete('/api/karyawan/:id', authenticateToken, (req, res) => {
         
         cache.del("api_karyawan_descriptors"); // [NEW] Invalidate cache
         res.json({ success: true, message: 'Data karyawan dan absensi berhasil dihapus.' });
+    });
+});
+
+// =========================================================================
+// [NEW] SISTEM AKSES SCAN PORTAL ONLINE & JADWAL LIBUR MINGGUAN (TETAP MASUK)
+// =========================================================================
+const HARI_INDONESIA_LIST = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+function getLocalTodayInfo() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
+    const currentTime = now.toTimeString().split(' ')[0];
+    const dayIndex = now.getDay();
+    const dayName = HARI_INDONESIA_LIST[dayIndex];
+    let jamPulangEfektif = JAM_PULANG_START;
+    if (dayIndex === 5) jamPulangEfektif = JAM_PULANG_JUMAT;
+    else if (dayIndex === 6) jamPulangEfektif = JAM_PULANG_SABTU;
+    return { now, today, currentTime, dayIndex, dayName, jamPulangEfektif };
+}
+
+function isAksesScanAllowedToday(aksesRow, todayStr, dayName) {
+    if (!aksesRow || Number(aksesRow.aktif) !== 1) return false;
+    const tanggalKhusus = String(aksesRow.tanggal_khusus || '').trim();
+    if (tanggalKhusus && tanggalKhusus === todayStr) return true;
+
+    const rawHari = String(aksesRow.hari_diizinkan || '').trim();
+    if (!rawHari) return false;
+    const tokens = rawHari.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (tokens.includes('semua') || tokens.includes('setiap hari') || tokens.includes('all')) return true;
+    return tokens.includes(String(dayName || '').toLowerCase());
+}
+
+function ensureAutoHadirForScheduledEmployees(callback) {
+    const { today, dayName, jamPulangEfektif } = getLocalTodayInfo();
+    pool.query('SELECT * FROM akses_scan_portal WHERE aktif = 1 AND mode_kehadiran = ?', ['AUTO_HADIR'], (err, rows) => {
+        if (err || !rows || rows.length === 0) {
+            if (callback) callback();
+            return;
+        }
+        const eligible = rows.filter(r => isAksesScanAllowedToday(r, today, dayName));
+        if (eligible.length === 0) {
+            if (callback) callback();
+            return;
+        }
+        let pending = eligible.length;
+        const doneOne = () => {
+            pending--;
+            if (pending <= 0 && callback) callback();
+        };
+        eligible.forEach(r => {
+            const ket = r.keterangan_default || `Hadir Otomatis (Jadwal Libur/Khusus Hari ${dayName})`;
+            pool.query('SELECT id_absensi FROM absensi WHERE id_karyawan = ? AND tanggal = ?', [r.id_karyawan, today], (errCheck, existRows) => {
+                if (errCheck || (existRows && existRows.length > 0)) {
+                    return doneOne();
+                }
+                const sqlIns = `INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit)
+                                VALUES (?, ?, ?, ?, 'HADIR', ?, 0, 0)`;
+                pool.query(sqlIns, [r.id_karyawan, today, JAM_KERJA_MULAI, jamPulangEfektif, ket], (errIns) => {
+                    if (!errIns) cache.del("api_absensi_today");
+                    doneOne();
+                });
+            });
+        });
+    });
+}
+
+// Endpoint: Ambil Daftar Pegawai beserta Konfigurasi Akses Scan Portal
+app.get('/api/akses-scan-portal', (req, res) => {
+    ensureAutoHadirForScheduledEmployees(() => {
+        const { today, dayName } = getLocalTodayInfo();
+        const sql = `
+            SELECT 
+                k.id_karyawan,
+                k.nama,
+                k.jabatan,
+                k.no_urut,
+                k.face_descriptor IS NOT NULL AS has_biometric,
+                ap.username AS username_portal,
+                COALESCE(asp.aktif, 0) AS aktif,
+                COALESCE(asp.hari_diizinkan, '') AS hari_diizinkan,
+                asp.tanggal_khusus,
+                COALESCE(asp.mode_kehadiran, 'SCAN_FULL_HADIR') AS mode_kehadiran,
+                COALESCE(asp.keterangan_default, 'Jadwal Libur Mingguan (Tetap Masuk via Portal)') AS keterangan_default,
+                asp.updated_at,
+                ab.jam_masuk AS absen_hari_ini_masuk,
+                ab.jam_keluar AS absen_hari_ini_keluar,
+                ab.status AS absen_hari_ini_status,
+                ab.keterangan AS absen_hari_ini_keterangan
+            FROM karyawan k
+            LEFT JOIN akun_pegawai ap ON LOWER(TRIM(k.id_karyawan)) = LOWER(TRIM(ap.id_karyawan))
+            LEFT JOIN akses_scan_portal asp ON LOWER(TRIM(k.id_karyawan)) = LOWER(TRIM(asp.id_karyawan))
+            LEFT JOIN absensi ab ON LOWER(TRIM(k.id_karyawan)) = LOWER(TRIM(ab.id_karyawan)) AND ab.tanggal = ?
+            ORDER BY COALESCE(k.no_urut, 9999) ASC, k.nama ASC
+        `;
+        pool.query(sql, [today], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            const seen = new Set();
+            const data = [];
+            (results || []).forEach(row => {
+                const key = String(row.id_karyawan || '').trim().toLowerCase();
+                if (!key || seen.has(key)) return;
+                seen.add(key);
+                const allowedToday = isAksesScanAllowedToday(row, today, dayName);
+                data.push({
+                    ...row,
+                    aktif: Number(row.aktif) === 1 ? 1 : 0,
+                    has_biometric: Boolean(row.has_biometric),
+                    allowed_today: allowedToday
+                });
+            });
+            res.json({
+                success: true,
+                today,
+                day_name: dayName,
+                data
+            });
+        });
+    });
+});
+
+// Endpoint: Simpan / Toggle Konfigurasi Akses Scan Portal
+app.post('/api/akses-scan-portal', (req, res) => {
+    const { id_karyawan, aktif, hari_diizinkan, tanggal_khusus, mode_kehadiran, keterangan_default } = req.body;
+    if (!id_karyawan) {
+        return res.status(400).json({ success: false, message: 'ID Karyawan wajib diisi.' });
+    }
+    const aktifVal = Number(aktif) ? 1 : 0;
+    const hariVal = String(hari_diizinkan || '').trim();
+    const tglVal = tanggal_khusus ? String(tanggal_khusus).trim() : null;
+    const modeVal = mode_kehadiran || 'SCAN_FULL_HADIR';
+    const ketVal = keterangan_default || 'Jadwal Libur Mingguan (Tetap Masuk via Portal)';
+
+    const sql = `
+        INSERT INTO akses_scan_portal (id_karyawan, aktif, hari_diizinkan, tanggal_khusus, mode_kehadiran, keterangan_default)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+        aktif = VALUES(aktif),
+        hari_diizinkan = VALUES(hari_diizinkan),
+        tanggal_khusus = VALUES(tanggal_khusus),
+        mode_kehadiran = VALUES(mode_kehadiran),
+        keterangan_default = VALUES(keterangan_default)
+    `;
+    pool.query(sql, [id_karyawan, aktifVal, hariVal, tglVal, modeVal, ketVal], (err) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+
+        const payload = {
+            id_karyawan,
+            aktif: aktifVal,
+            hari_diizinkan: hariVal,
+            tanggal_khusus: tglVal,
+            mode_kehadiran: modeVal,
+            keterangan_default: ketVal
+        };
+        ensureAutoHadirForScheduledEmployees(() => {
+            const { today, dayName } = getLocalTodayInfo();
+            const allowedToday = isAksesScanAllowedToday(payload, today, dayName);
+            res.json({
+                success: true,
+                message: aktifVal
+                    ? `Akses scan.html Portal Online diaktifkan (${hariVal || tglVal || 'Belum pilih hari'}).`
+                    : `Akses scan.html Portal Online dinonaktifkan.`,
+                data: { ...payload, allowed_today: allowedToday, today, day_name: dayName }
+            });
+        });
+    });
+});
+
+// Endpoint: Cek Status Akses Scan Portal untuk Pegawai yang Login di Portal Online
+app.get('/api/pegawai/akses-scan/:id_karyawan', (req, res) => {
+    const id = req.params.id_karyawan;
+    ensureAutoHadirForScheduledEmployees(() => {
+        const { today, dayName } = getLocalTodayInfo();
+        const sql = `
+            SELECT 
+                k.id_karyawan, k.nama, k.jabatan,
+                COALESCE(asp.aktif, 0) AS aktif,
+                COALESCE(asp.hari_diizinkan, '') AS hari_diizinkan,
+                asp.tanggal_khusus,
+                COALESCE(asp.mode_kehadiran, 'SCAN_FULL_HADIR') AS mode_kehadiran,
+                COALESCE(asp.keterangan_default, 'Jadwal Libur Mingguan (Tetap Masuk via Portal)') AS keterangan_default,
+                ab.jam_masuk, ab.jam_keluar, ab.status AS status_absen_hari_ini
+            FROM karyawan k
+            LEFT JOIN akses_scan_portal asp ON LOWER(TRIM(k.id_karyawan)) = LOWER(TRIM(asp.id_karyawan))
+            LEFT JOIN absensi ab ON LOWER(TRIM(k.id_karyawan)) = LOWER(TRIM(ab.id_karyawan)) AND ab.tanggal = ?
+            WHERE LOWER(TRIM(k.id_karyawan)) = LOWER(TRIM(?))
+            LIMIT 1
+        `;
+        pool.query(sql, [today, id], (err, results) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            if (!results || results.length === 0) {
+                return res.status(404).json({ success: false, message: 'Pegawai tidak ditemukan.' });
+            }
+            const row = results[0];
+            const allowedToday = isAksesScanAllowedToday(row, today, dayName);
+            res.json({
+                success: true,
+                today,
+                day_name: dayName,
+                allowed_today: allowedToday,
+                aktif: Number(row.aktif) === 1,
+                hari_diizinkan: row.hari_diizinkan || '',
+                tanggal_khusus: row.tanggal_khusus || null,
+                mode_kehadiran: row.mode_kehadiran || 'SCAN_FULL_HADIR',
+                keterangan_default: row.keterangan_default || 'Jadwal Libur Mingguan (Tetap Masuk via Portal)',
+                nama: row.nama,
+                jabatan: row.jabatan,
+                absensi_hari_ini: row.jam_masuk ? {
+                    jam_masuk: row.jam_masuk,
+                    jam_keluar: row.jam_keluar,
+                    status: row.status_absen_hari_ini
+                } : null
+            });
+        });
+    });
+});
+
+// Pre-Handler Khusus: Intercept Absensi dari Jadwal Akses Scan Portal Online
+app.post('/api/absensi', (req, res, next) => {
+    const { id_karyawan, from_portal } = req.body;
+    if (!id_karyawan) return next();
+
+    const { now, today, currentTime, dayName, jamPulangEfektif } = getLocalTodayInfo();
+
+    pool.query('SELECT * FROM akses_scan_portal WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?)) LIMIT 1', [id_karyawan], (errAkses, aksesRows) => {
+        if (errAkses) return next();
+        const aksesRow = (aksesRows && aksesRows.length > 0) ? aksesRows[0] : null;
+        const isAllowedPortalToday = isAksesScanAllowedToday(aksesRow, today, dayName);
+
+        if (!from_portal && !isAllowedPortalToday) {
+            return next();
+        }
+
+        pool.query('SELECT nama, jabatan FROM karyawan WHERE id_karyawan = ?', [id_karyawan], (errK, resultsK) => {
+            if (errK || !resultsK || resultsK.length === 0) return next();
+            const k = resultsK[0];
+
+            if (from_portal && !isAllowedPortalToday) {
+                return res.json({
+                    success: false,
+                    message: `Akses Scan Portal Online untuk ${k.nama} tidak dijadwalkan pada hari ${dayName}. Hubungi Admin.`,
+                    nama: k.nama,
+                    jabatan: k.jabatan,
+                    result_code: 'PORTAL_ACCESS_DENIED',
+                    statusColor: 'red'
+                });
+            }
+
+            pool.query('SELECT * FROM absensi WHERE id_karyawan = ? AND tanggal = ?', [id_karyawan, today], (errAbs, rows) => {
+                if (errAbs) return res.status(500).json({ success: false, message: errAbs.message });
+
+                const modeKehadiran = (aksesRow && aksesRow.mode_kehadiran) ? aksesRow.mode_kehadiran : 'SCAN_FULL_HADIR';
+                const ketJadwal = (aksesRow && aksesRow.keterangan_default) ? aksesRow.keterangan_default : `Hadir (Jadwal Scan Portal Hari ${dayName})`;
+
+                // MODE 1: SCAN_FULL_HADIR / AUTO_HADIR (1x Scan Wajah -> Langsung Tercatat Hadir Penuh Masuk & Pulang tanpa Telat/PSW)
+                if (modeKehadiran === 'SCAN_FULL_HADIR' || modeKehadiran === 'AUTO_HADIR') {
+                    const jamMasukJadwal = (currentTime < JAM_KERJA_MULAI) ? currentTime : JAM_KERJA_MULAI;
+                    if (rows.length === 0) {
+                        const sqlFull = `INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit)
+                                         VALUES (?, ?, ?, ?, 'HADIR', ?, 0, 0)`;
+                        return pool.query(sqlFull, [id_karyawan, today, jamMasukJadwal, jamPulangEfektif, ketJadwal], (errIns) => {
+                            if (errIns) return res.status(500).json({ success: false, message: errIns.message });
+                            cache.del("api_absensi_today");
+                            return res.json({
+                                success: true,
+                                message: `Absensi Jadwal Khusus Hari ${dayName} Berhasil Dicatat Penuh (Hadir).`,
+                                nama: k.nama,
+                                jabatan: k.jabatan,
+                                result_code: 'CHECK_IN_SUCCESS',
+                                statusColor: 'green',
+                                telat_menit: 0
+                            });
+                        });
+                    } else {
+                        const existing = rows[0];
+                        if (!existing.jam_keluar) {
+                            const sqlUpdFull = `UPDATE absensi SET jam_keluar = ?, status = 'HADIR', keterangan = ?, telat_menit = 0, psw_menit = 0 WHERE id_absensi = ?`;
+                            return pool.query(sqlUpdFull, [jamPulangEfektif, ketJadwal, existing.id_absensi], (errUpd) => {
+                                if (errUpd) return res.status(500).json({ success: false, message: errUpd.message });
+                                cache.del("api_absensi_today");
+                                return res.json({
+                                    success: true,
+                                    message: `Absensi Jadwal Khusus Hari ${dayName} Berhasil Dilengkapi (Hadir Penuh).`,
+                                    nama: k.nama,
+                                    jabatan: k.jabatan,
+                                    result_code: 'CHECK_OUT_SUCCESS',
+                                    statusColor: 'green',
+                                    psw_menit: 0
+                                });
+                            });
+                        } else {
+                            return res.json({
+                                success: false,
+                                message: `Kehadiran Jadwal Khusus Anda hari ini sudah tercatat penuh (${existing.jam_masuk} - ${existing.jam_keluar}).`,
+                                nama: k.nama,
+                                jabatan: k.jabatan,
+                                result_code: 'ALREADY_CHECKED_OUT',
+                                statusColor: 'yellow'
+                            });
+                        }
+                    }
+                }
+
+                // MODE 2: SCAN_NORMAL (2x Scan Masuk & Pulang via Portal Online tanpa blokir jam masuk & bebas telat)
+                if (rows.length === 0) {
+                    const insertSql = 'INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, status, keterangan, telat_menit) VALUES (?, ?, ?, ?, ?, 0)';
+                    return pool.query(insertSql, [id_karyawan, today, currentTime, 'HADIR', ketJadwal], (errIns) => {
+                        if (errIns) return res.status(500).json({ success: false, message: errIns.message });
+                        cache.del("api_absensi_today");
+                        return res.json({
+                            success: true,
+                            message: `Absensi Masuk Portal Online Berhasil.`,
+                            nama: k.nama,
+                            jabatan: k.jabatan,
+                            result_code: 'CHECK_IN_SUCCESS',
+                            statusColor: 'green',
+                            telat_menit: 0
+                        });
+                    });
+                } else {
+                    const dataAbsen = rows[0];
+                    if (dataAbsen.jam_keluar) {
+                        return res.json({
+                            success: false,
+                            message: `Anda sudah absen pulang hari ini pada jam ${dataAbsen.jam_keluar}.`,
+                            nama: k.nama,
+                            jabatan: k.jabatan,
+                            result_code: 'ALREADY_CHECKED_OUT',
+                            statusColor: 'yellow'
+                        });
+                    }
+                    const [h, m, s] = (dataAbsen.jam_masuk || '00:00:00').split(':');
+                    const waktuMasuk = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s);
+                    if ((now - waktuMasuk) / 1000 < 60) {
+                        return res.json({
+                            success: false,
+                            message: `Anda baru saja Check-In. Tunggu 1 menit untuk Check-Out.`,
+                            nama: k.nama,
+                            jabatan: k.jabatan,
+                            result_code: 'ALREADY_CHECKED_IN',
+                            statusColor: 'yellow',
+                            jam_masuk: dataAbsen.jam_masuk
+                        });
+                    }
+                    const sqlUpdate = 'UPDATE absensi SET jam_keluar = ?, psw_menit = 0 WHERE id_absensi = ?';
+                    return pool.query(sqlUpdate, [currentTime, dataAbsen.id_absensi], (errUpd) => {
+                        if (errUpd) return res.status(500).json({ success: false, message: errUpd.message });
+                        cache.del("api_absensi_today");
+                        return res.json({
+                            success: true,
+                            message: 'Absensi Pulang Portal Online Berhasil.',
+                            nama: k.nama,
+                            jabatan: k.jabatan,
+                            result_code: 'CHECK_OUT_SUCCESS',
+                            statusColor: 'green',
+                            psw_menit: 0
+                        });
+                    });
+                }
+            });
+        });
     });
 });
 

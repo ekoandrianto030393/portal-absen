@@ -144,6 +144,62 @@ async function startSync() {
                 // Ignore if table doesn't exist yet
             }
 
+            // --- SYNC AKSES SCAN PORTAL & ABSENSI DARI PORTAL ONLINE (AIVEN <-> XAMPP) ---
+            try {
+                const createAksesSql = `
+                    CREATE TABLE IF NOT EXISTS akses_scan_portal (
+                        id_karyawan VARCHAR(50) NOT NULL PRIMARY KEY,
+                        aktif TINYINT(1) DEFAULT 0,
+                        hari_diizinkan VARCHAR(100) DEFAULT '',
+                        tanggal_khusus VARCHAR(20) DEFAULT NULL,
+                        mode_kehadiran VARCHAR(30) DEFAULT 'SCAN_FULL_HADIR',
+                        keterangan_default VARCHAR(255) DEFAULT 'Jadwal Libur Mingguan (Tetap Masuk via Portal)',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB
+                `;
+                await localDb.query(createAksesSql);
+                await cloudDb.query(createAksesSql);
+
+                // 1. Dorong konfigurasi Akses Scan Portal dari Lokal (Dashboard Admin) -> Cloud (Portal Online)
+                const [aksesLocal] = await localDb.query("SELECT * FROM akses_scan_portal");
+                for (const asp of aksesLocal) {
+                    await cloudDb.query(
+                        `INSERT INTO akses_scan_portal (id_karyawan, aktif, hari_diizinkan, tanggal_khusus, mode_kehadiran, keterangan_default)
+                         VALUES (?, ?, ?, ?, ?, ?)
+                         ON DUPLICATE KEY UPDATE
+                         aktif = VALUES(aktif),
+                         hari_diizinkan = VALUES(hari_diizinkan),
+                         tanggal_khusus = VALUES(tanggal_khusus),
+                         mode_kehadiran = VALUES(mode_kehadiran),
+                         keterangan_default = VALUES(keterangan_default)`,
+                        [asp.id_karyawan, asp.aktif, asp.hari_diizinkan, asp.tanggal_khusus, asp.mode_kehadiran, asp.keterangan_default]
+                    );
+                }
+
+                // 2. Tarik data Absensi yang tercatat di Cloud (hasil scan.html di Portal Online) -> Lokal (XAMPP)
+                const [absensiCloud] = await cloudDb.query(
+                    "SELECT id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit FROM absensi WHERE tanggal >= CURDATE() - INTERVAL 14 DAY"
+                );
+                for (const ac of absensiCloud) {
+                    try {
+                        await localDb.query(
+                            `INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                             ON DUPLICATE KEY UPDATE
+                             jam_masuk = COALESCE(absensi.jam_masuk, VALUES(jam_masuk)),
+                             jam_keluar = COALESCE(absensi.jam_keluar, VALUES(jam_keluar)),
+                             status = COALESCE(absensi.status, VALUES(status)),
+                             keterangan = COALESCE(absensi.keterangan, VALUES(keterangan))`,
+                            [ac.id_karyawan, ac.tanggal, ac.jam_masuk, ac.jam_keluar, ac.status, ac.keterangan, ac.telat_menit || 0, ac.psw_menit || 0]
+                        );
+                    } catch (eAbs) {
+                        // Abaikan jika id_karyawan tidak ada di lokal
+                    }
+                }
+            } catch (eSyncPortal) {
+                console.error('⚠️ Sync akses_scan_portal / absensi cloud->lokal error:', eSyncPortal.message);
+            }
+
             console.log(`✅ Sinkronisasi sukses! (${absensiSynced} data absen ter-update ke Cloud)`);
 
             await localDb.end();

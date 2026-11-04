@@ -1687,6 +1687,9 @@ async function loadDashboardData(idKaryawan) {
     
     // Panggil tabel metrik harian
     loadDailyMetricsTable(idKaryawan);
+
+    // [NEW] Cek apakah pegawai ini dijadwalkan oleh Admin untuk memunculkan fitur scan.html hari ini
+    checkPortalScanAccess(idKaryawan);
     
     // Panggil gamifikasi riwayat (agar badge rank muncul di dashboard)
     if (!isRiwayatLoaded) {
@@ -2428,4 +2431,62 @@ function hubungiAdminWhatsApp() {
     const instansi = document.querySelector('.dynamic-instansi-nama')?.textContent || 'Puskesmas Wana';
     const text = 'Halo Admin Kepegawaian ' + instansi + ',\n\nSaya ingin konfirmasi kendala presensi biometrik:\n👤 Nama: ' + nama + '\n🆔 ID Pegawai: ' + id + '\n\nKendala / Catatan:\n';
     window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(text), '_blank');
+}
+
+// =========================================================================
+// [NEW] CEK JADWAL AKSES FITUR SCAN.HTML DI PORTAL ONLINE (PER PEGAWAI & HARI)
+// =========================================================================
+async function checkPortalScanAccess(idKaryawan) {
+    const cardEl = document.getElementById('portal-scan-access-card');
+    const navBtnEl = document.getElementById('nav-scan-online');
+    if (!idKaryawan) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/pegawai/akses-scan/${encodeURIComponent(idKaryawan)}?_t=${Date.now()}`);
+        const json = await res.json();
+        if (json.success && json.allowed_today) {
+            if (cardEl) cardEl.classList.remove('hidden');
+            if (navBtnEl) navBtnEl.classList.remove('hidden');
+
+            const dayBadge = document.getElementById('portal-scan-day-badge');
+            if (dayBadge) {
+                dayBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-900 animate-ping"></span> Jadwal Hari ${json.day_name || 'Ini'} Aktif`;
+            }
+
+            const statusPill = document.getElementById('portal-scan-status-pill');
+            const descEl = document.getElementById('portal-scan-desc');
+            const btnText = document.getElementById('portal-scan-btn-text');
+
+            if (json.absensi_hari_ini && json.absensi_hari_ini.jam_masuk && json.absensi_hari_ini.jam_keluar) {
+                if (statusPill) {
+                    statusPill.textContent = 'Sudah Tercatat Hadir ✓';
+                    statusPill.className = 'px-2.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 text-[9px] font-black uppercase tracking-wider';
+                }
+                if (descEl) {
+                    descEl.innerHTML = `Kehadiran jadwal khusus Anda hari ini telah tercatat penuh (<b>${String(json.absensi_hari_ini.jam_masuk).substring(0,5)} - ${String(json.absensi_hari_ini.jam_keluar).substring(0,5)}</b>) tanpa perlu input manual.`;
+                }
+                if (btnText) btnText.textContent = 'Buka Halaman Scan Wajah (scan.html)';
+            } else {
+                if (statusPill) {
+                    statusPill.textContent = 'Siap Scan Wajah';
+                    statusPill.className = 'px-2.5 py-0.5 rounded-full bg-white/15 border border-white/25 text-[9px] font-extrabold text-amber-200 uppercase tracking-wider';
+                }
+                if (descEl) {
+                    descEl.innerHTML = json.mode_kehadiran === 'SCAN_FULL_HADIR'
+                        ? `Akun Anda dijadwalkan khusus hari <b>${json.day_name}</b>. Cukup <b>1x Scan Wajah</b> di <code class="text-amber-300">scan.html</code> untuk langsung dianggap Masuk Penuh hari ini.`
+                        : `Fitur <code class="text-amber-300">scan.html</code> diaktifkan oleh Admin khusus untuk Anda pada hari <b>${json.day_name}</b>.`;
+                }
+                if (btnText) btnText.textContent = 'Buka Scan Wajah (scan.html) Sekarang';
+            }
+        } else {
+            if (cardEl) cardEl.classList.add('hidden');
+            if (navBtnEl) navBtnEl.classList.add('hidden');
+        }
+    } catch (e) {
+        console.error('Gagal memeriksa akses scan portal:', e);
+    }
+}
+
+function openPortalScanPage() {
+    window.location.href = 'scan.html?from=portal';
 }
