@@ -1359,10 +1359,21 @@
                 <!-- Baris Filter Hari & Pencarian -->
                 <div class="card-academic p-4 space-y-3">
                     <div class="flex flex-wrap items-center justify-between gap-3">
-                        <div class="relative w-full md:w-80">
-                            <i class="fa-solid fa-search absolute left-3.5 top-3 text-slate-400 text-xs"></i>
-                            <input type="text" id="search-scan-portal" oninput="renderScanPortalAccessTable()" placeholder="Cari nama pegawai, ID, jabatan, username..."
-                                class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                        <div class="relative w-full md:w-96" id="scan-portal-search-wrapper">
+                            <i class="fa-solid fa-search absolute left-3.5 top-3 text-emerald-600 text-xs"></i>
+                            <input type="text" id="search-scan-portal" autocomplete="off"
+                                onfocus="openScanPortalSearchDropdown()"
+                                onclick="openScanPortalSearchDropdown()"
+                                oninput="onScanPortalSearchInput()"
+                                placeholder="Klik di sini atau ketik nama pegawai untuk memilih..."
+                                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-emerald-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 shadow-sm">
+                            <button type="button" id="btn-clear-scan-search" onclick="clearScanPortalSearch()" class="hidden absolute right-2.5 top-2 text-slate-400 hover:text-rose-600 p-1" title="Hapus Pencarian & Tampilkan Semua">
+                                <i class="fa-solid fa-circle-xmark text-sm"></i>
+                            </button>
+                            <!-- Dropdown Daftar Nama Pegawai saat Kotak Pencarian Diklik -->
+                            <div id="scan-portal-search-dropdown" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-white border-2 border-emerald-500/80 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto divide-y divide-slate-100">
+                                <!-- Diisi otomatis oleh JS -->
+                            </div>
                         </div>
 
                         <!-- Filter Hari -->
@@ -1391,6 +1402,11 @@
                             </button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Kartu Detail Data Pegawai yang Diklik dari Pencarian -->
+                <div id="selected-scan-portal-emp-card" class="hidden card-academic p-5 border-2 border-emerald-500 bg-gradient-to-r from-emerald-50/90 via-white to-teal-50/70 shadow-lg">
+                    <!-- Diisi otomatis saat nama pegawai diklik di pencarian -->
                 </div>
 
                 <!-- Tabel Utama Kontrol Scan.html Portal Online -->

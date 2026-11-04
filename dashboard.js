@@ -3978,17 +3978,233 @@ function setScanPortalFilter(filterVal) {
     renderScanPortalAccessTable();
 }
 
+function normScanSearch(str) {
+    return String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function onScanPortalSearchInput() {
+    const searchInput = document.getElementById('search-scan-portal');
+    const clearBtn = document.getElementById('btn-clear-scan-search');
+    const val = searchInput ? searchInput.value.trim() : '';
+    if (clearBtn) {
+        if (val) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+    }
+    openScanPortalSearchDropdown();
+    renderScanPortalAccessTable();
+}
+
+function clearScanPortalSearch() {
+    const searchInput = document.getElementById('search-scan-portal');
+    const clearBtn = document.getElementById('btn-clear-scan-search');
+    const dropdown = document.getElementById('scan-portal-search-dropdown');
+    const selectedCard = document.getElementById('selected-scan-portal-emp-card');
+    if (searchInput) searchInput.value = '';
+    if (clearBtn) clearBtn.classList.add('hidden');
+    if (dropdown) dropdown.classList.add('hidden');
+    if (selectedCard) selectedCard.classList.add('hidden');
+    highlightedScanPortalEmpId = null;
+    renderScanPortalAccessTable();
+}
+
+function openScanPortalSearchDropdown() {
+    const dropdown = document.getElementById('scan-portal-search-dropdown');
+    const searchInput = document.getElementById('search-scan-portal');
+    if (!dropdown || !searchInput) return;
+
+    const rawTerm = searchInput.value.trim().toLowerCase();
+    const cleanTerm = normScanSearch(rawTerm);
+
+    const matches = globalScanPortalRows.filter(row => {
+        if (!rawTerm) return true;
+        const hayRaw = `${row.nama || ''} ${row.id_karyawan || ''} ${row.jabatan || ''} ${row.username_portal || ''}`.toLowerCase();
+        const hayClean = normScanSearch(hayRaw);
+        return hayRaw.includes(rawTerm) || (cleanTerm && hayClean.includes(cleanTerm));
+    });
+
+    if (matches.length === 0) {
+        dropdown.innerHTML = `<div class="p-3 text-center text-xs text-slate-400 italic">Nama pegawai tidak ditemukan.</div>`;
+    } else {
+        dropdown.innerHTML = `
+            <div class="px-3 py-2 bg-emerald-900 text-white text-[10px] font-extrabold uppercase tracking-wider flex justify-between items-center sticky top-0 z-10">
+                <span><i class="fa-solid fa-hand-pointer text-amber-300 mr-1"></i>Klik Nama Pegawai untuk Memunculkan Data & Mengaktifkan Scan.html</span>
+                <button type="button" onclick="document.getElementById('scan-portal-search-dropdown').classList.add('hidden')" class="text-emerald-200 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        ` + matches.map(r => {
+            const isAktif = Number(r.aktif) === 1;
+            return `
+                <button type="button" onclick="selectEmployeeFromScanSearch('${r.id_karyawan}')"
+                    class="w-full px-3.5 py-2.5 text-left hover:bg-emerald-50 flex items-center justify-between gap-2 transition-colors group">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-extrabold text-xs text-slate-800 group-hover:text-emerald-800 truncate flex items-center gap-1.5">
+                            <span>${escapeHtml(r.nama)}</span>
+                            <span class="font-mono text-[10px] text-slate-400">(${escapeHtml(r.id_karyawan)})</span>
+                        </div>
+                        <div class="text-[10px] text-slate-500 truncate mt-0.5">
+                            ${escapeHtml(r.jabatan || 'Staff')} • ${r.username_portal ? `<span class="text-indigo-600 font-bold">@${escapeHtml(r.username_portal)}</span>` : '<span class="text-rose-500">Belum ada akun portal</span>'}
+                        </div>
+                    </div>
+                    <span class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-extrabold ${
+                        isAktif
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-amber-100 text-amber-800 border border-amber-300 group-hover:bg-emerald-600 group-hover:text-white'
+                    }">
+                        ${isAktif ? `✓ Aktif (${escapeHtml(r.hari_diizinkan || 'Terjadwal')})` : '+ Klik Pilih'}
+                    </span>
+                </button>
+            `;
+        }).join('');
+    }
+    dropdown.classList.remove('hidden');
+}
+
+async function selectEmployeeFromScanSearch(idKaryawan) {
+    const dropdown = document.getElementById('scan-portal-search-dropdown');
+    const searchInput = document.getElementById('search-scan-portal');
+    const clearBtn = document.getElementById('btn-clear-scan-search');
+    if (dropdown) dropdown.classList.add('hidden');
+
+    const row = globalScanPortalRows.find(r => String(r.id_karyawan).toLowerCase() === String(idKaryawan).toLowerCase());
+    if (!row) return;
+
+    if (searchInput) searchInput.value = row.nama;
+    if (clearBtn) clearBtn.classList.remove('hidden');
+    highlightedScanPortalEmpId = row.id_karyawan;
+
+    // Jika pegawai yang diklik namanya belum aktif, otomatis aktifkan agar langsung terjadwal!
+    if (Number(row.aktif) === 0) {
+        let defaultDay = String(row.hari_diizinkan || '').trim();
+        if (!defaultDay) {
+            if (['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].includes(currentScanPortalFilter)) {
+                defaultDay = currentScanPortalFilter;
+            } else {
+                defaultDay = currentScanPortalDayName || 'Senin';
+            }
+        }
+        await saveScanPortalRow({
+            id_karyawan: row.id_karyawan,
+            aktif: 1,
+            hari_diizinkan: defaultDay,
+            tanggal_khusus: row.tanggal_khusus || null,
+            mode_kehadiran: row.mode_kehadiran || 'SCAN_FULL_HADIR',
+            keterangan_default: row.keterangan_default
+        });
+    } else {
+        renderScanPortalAccessTable();
+    }
+}
+
+function renderSelectedScanPortalEmpCard(row) {
+    const card = document.getElementById('selected-scan-portal-emp-card');
+    if (!card) return;
+    if (!row) {
+        card.classList.add('hidden');
+        return;
+    }
+    const isAktif = Number(row.aktif) === 1;
+    const allowedToday = Boolean(row.allowed_today);
+    const daysArr = String(row.hari_diizinkan || '').split(',').map(s => s.trim()).filter(Boolean);
+    const isAllDays = daysArr.some(d => d.toLowerCase() === 'semua');
+
+    const dayPills = HARI_PORTAL_SHORT.map(d => {
+        const selected = isAktif && (isAllDays || daysArr.some(x => x.toLowerCase() === d.full.toLowerCase()));
+        return `<button type="button" onclick="toggleDayScanPortal('${row.id_karyawan}', '${d.full}')"
+            class="px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all ${
+                selected ? 'bg-emerald-600 text-white border-emerald-700 shadow-md scale-105' : 'bg-white text-slate-700 border-slate-300 hover:bg-emerald-50'
+            }">
+            <i class="fa-solid ${selected ? 'fa-calendar-check mr-1' : 'fa-calendar mr-1 text-slate-400'}"></i>${d.full}
+        </button>`;
+    }).join('');
+
+    card.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-4 pb-3 mb-3 border-b border-emerald-200">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl ${isAktif ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'} flex items-center justify-center text-xl font-black shadow-md">
+                    <i class="fa-solid ${isAktif ? 'fa-user-check' : 'fa-user'}"></i>
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase">Data Pegawai Pilihan</span>
+                        <h4 class="text-base font-black text-slate-900">${escapeHtml(row.nama)}</h4>
+                        <span class="font-mono text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">ID: ${escapeHtml(row.id_karyawan)}</span>
+                    </div>
+                    <p class="text-xs text-slate-600 font-semibold mt-0.5">
+                        Jabatan: <b>${escapeHtml(row.jabatan || 'Staff')}</b> • 
+                        Username Portal: <b>${row.username_portal ? '@' + escapeHtml(row.username_portal) : 'Belum Daftar Akun Portal'}</b> • 
+                        Biometrik: <b>${row.has_biometric ? 'Wajah Siap ✓' : 'Belum Rekam Wajah'}</b>
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="toggleEmployeeScanPortalByClick('${row.id_karyawan}')"
+                    class="px-4 py-2 rounded-xl text-xs font-black shadow-md transition-all ${
+                        isAktif ? 'bg-emerald-600 hover:bg-rose-600 text-white' : 'bg-amber-500 hover:bg-emerald-600 text-slate-950 hover:text-white'
+                    }">
+                    <i class="fa-solid ${isAktif ? 'fa-circle-check mr-1' : 'fa-power-off mr-1'}"></i>
+                    ${isAktif ? 'Status Scan.html: AKTIF (Klik untuk Matikan)' : 'Status Scan.html: NONAKTIF (Klik untuk Aktifkan)'}
+                </button>
+                <button type="button" onclick="clearScanPortalSearch()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">
+                    <i class="fa-solid fa-xmark mr-1"></i>Tutup
+                </button>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <div class="md:col-span-2">
+                <p class="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-calendar-week text-emerald-600 mr-1"></i>Pilih Hari Munculnya <code class="text-emerald-700">scan.html</code> di Akun Portal ${escapeHtml(row.nama)}:
+                </p>
+                <div class="flex flex-wrap items-center gap-1.5">
+                    ${dayPills}
+                    <button type="button" onclick="toggleDayScanPortal('${row.id_karyawan}', 'Semua')"
+                        class="px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all ${
+                            isAktif && isAllDays ? 'bg-amber-500 text-white border-amber-600 shadow-md' : 'bg-white text-slate-700 border-slate-300 hover:bg-amber-50'
+                        }">
+                        Semua Hari
+                    </button>
+                </div>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-emerald-200 shadow-sm">
+                <p class="text-[10px] font-extrabold text-slate-500 uppercase">Status di Portal Hari Ini (${escapeHtml(currentScanPortalDayName)}):</p>
+                <div class="mt-1 font-black text-xs ${allowedToday ? 'text-emerald-700' : 'text-slate-600'}">
+                    ${allowedToday ? '🟢 MUNCUL DI PORTAL HARI INI' : (isAktif ? `🔵 Terjadwal Hari: ${escapeHtml(row.hari_diizinkan)}` : '⚪ Disembunyikan')}
+                </div>
+                <div class="mt-2">
+                    <select onchange="changeModeScanPortal('${row.id_karyawan}', this.value)"
+                        class="w-full text-[11px] font-bold border border-slate-300 rounded-lg px-2 py-1.5 bg-slate-50 text-slate-800">
+                        <option value="SCAN_FULL_HADIR" ${row.mode_kehadiran === 'SCAN_FULL_HADIR' ? 'selected' : ''}>✅ 1x Scan = Masuk Penuh</option>
+                        <option value="AUTO_HADIR" ${row.mode_kehadiran === 'AUTO_HADIR' ? 'selected' : ''}>⚡ Otomatis Masuk Tanpa Scan</option>
+                        <option value="SCAN_NORMAL" ${row.mode_kehadiran === 'SCAN_NORMAL' ? 'selected' : ''}>📷 Scan Normal 2x</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    `;
+    card.classList.remove('hidden');
+}
+
+// Tutup dropdown pencarian saat klik di luar
+document.addEventListener('click', (e) => {
+    const wrapper = document.getElementById('scan-portal-search-wrapper');
+    const dropdown = document.getElementById('scan-portal-search-dropdown');
+    if (wrapper && dropdown && !wrapper.contains(e.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
+
 function renderScanPortalAccessTable() {
     const tbody = document.getElementById('table-scan-portal-body');
     if (!tbody) return;
 
     const searchInput = document.getElementById('search-scan-portal');
-    const term = (searchInput ? searchInput.value : '').trim().toLowerCase();
+    const rawTerm = (searchInput ? searchInput.value : '').trim().toLowerCase();
+    const cleanTerm = normScanSearch(rawTerm);
 
     const filtered = globalScanPortalRows.filter(row => {
-        if (term) {
-            const hay = `${row.nama || ''} ${row.id_karyawan || ''} ${row.jabatan || ''} ${row.username_portal || ''} ${row.hari_diizinkan || ''}`.toLowerCase();
-            if (!hay.includes(term)) return false;
+        // Jika user sedang mengetik nama di kotak pencarian, cari di SEMUA pegawai (abaikan filter tab supaya pasti ketemu!)
+        if (rawTerm) {
+            const hayRaw = `${row.nama || ''} ${row.id_karyawan || ''} ${row.jabatan || ''} ${row.username_portal || ''} ${row.hari_diizinkan || ''}`.toLowerCase();
+            const hayClean = normScanSearch(hayRaw);
+            return hayRaw.includes(rawTerm) || (cleanTerm && hayClean.includes(cleanTerm));
         }
         if (currentScanPortalFilter === 'TODAY') return Boolean(row.allowed_today);
         if (currentScanPortalFilter === 'ACTIVE') return Number(row.aktif) === 1;
@@ -3999,6 +4215,16 @@ function renderScanPortalAccessTable() {
         }
         return true;
     });
+
+    // Tampilkan kartu detail pegawai jika ada 1 pegawai yang cocok atau sedang dipilih dari pencarian
+    if (highlightedScanPortalEmpId) {
+        const selRow = globalScanPortalRows.find(r => String(r.id_karyawan).toLowerCase() === String(highlightedScanPortalEmpId).toLowerCase());
+        renderSelectedScanPortalEmpCard(selRow || null);
+    } else if (rawTerm && filtered.length === 1) {
+        renderSelectedScanPortalEmpCard(filtered[0]);
+    } else if (!rawTerm) {
+        renderSelectedScanPortalEmpCard(null);
+    }
 
     if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400 italic">Tidak ada pegawai yang cocok dengan filter ini.</td></tr>`;
