@@ -1126,6 +1126,9 @@ app.get('/api/karyawan/:id', authenticateToken, (req, res) => {
 app.delete('/api/pegawai/akun/:id_karyawan', authenticateToken, (req, res) => {
     const id = req.params.id_karyawan;
     pool.query('DELETE FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [id], async (err, results) => {
+        if (!err && results && results.affectedRows > 0) {
+            recordEntityTombstone(pool, 'akun_pegawai_deleted', 'id_karyawan', id);
+        }
         if (err) return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
         if (results.affectedRows === 0) return res.status(404).json({ success: false, message: 'Akun tidak ditemukan.' });
         cache.del("api_karyawan_descriptors");
@@ -1214,6 +1217,7 @@ app.put('/api/karyawan/:id/reset_biometric', authenticateToken, (req, res) => {
 // Endpoint: Hapus Karyawan (Beserta data absensinya karena CASCADE)
 app.delete('/api/karyawan/:id', authenticateToken, (req, res) => {
     const id = req.params.id;
+    recordEntityTombstone(pool, 'karyawan_deleted', 'id_karyawan', id);
     pool.query('DELETE FROM karyawan WHERE id_karyawan = ?', [id], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'ID tidak ditemukan' });
@@ -1859,6 +1863,21 @@ app.post('/api/absensi/manual', authenticateToken, (req, res) => {
 });
 
 // [NEW] Catat "nisan" penghapusan absensi agar penghapusan/pindah tanggal ikut tersinkron (Lokal <-> Cloud)
+function recordEntityTombstone(db, tableName, idCol, idVal, done) {
+    if (!idVal) { if (done) done(); return; }
+    const createSql = `CREATE TABLE IF NOT EXISTS ${tableName} (
+        ${idCol} VARCHAR(50) NOT NULL PRIMARY KEY,
+        deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB`;
+    db.query(createSql, () => {
+        db.query(
+            `INSERT INTO ${tableName} (${idCol}, deleted_at) VALUES (?, NOW()) ON DUPLICATE KEY UPDATE deleted_at = NOW()`,
+            [idVal],
+            () => { if (done) done(); }
+        );
+    });
+}
+
 function recordAbsensiTombstone(db, id_karyawan, tanggalStr, done) {
     if (!id_karyawan || !tanggalStr) { if (done) done(); return; }
     const createSql = `CREATE TABLE IF NOT EXISTS absensi_deleted (

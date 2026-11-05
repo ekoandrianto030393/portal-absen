@@ -3,20 +3,17 @@ const mysql = require('mysql2/promise');
 
 let isSyncing = false;
 
-// Rentang hari absensi yang dibandingkan antara Lokal (XAMPP) <-> Cloud (Aiven/TiDB)
+// Rentang hari absensi yang disinkronkan dua arah
 const ABSENSI_SYNC_DAYS = 60;
 
 // =========================================================================
-// SINKRONISASI ABSENSI DUA ARAH (Last-Write-Wins)
-// - Kunci baris  : (id_karyawan, tanggal)  -> BUKAN id_absensi (id di Lokal & Cloud berbeda)
-// - Penentu menang: kolom updated_at (dibandingkan dalam detik epoch, aman beda timezone)
-// - Penghapusan   : dicatat di tabel absensi_deleted ("nisan") agar ikut terhapus di sisi lain
+// 1. ENSURE SCHEMAS (Auto-Migrasi Kolom updated_at & Tabel Deleted/Tombstone)
 // =========================================================================
-async function ensureAbsensiSyncSchema(db) {
-    const [cols] = await db.query("SHOW COLUMNS FROM absensi LIKE 'updated_at'");
-    if (cols.length === 0) {
+async function ensureAllSyncSchemas(db) {
+    // 1. Absensi
+    const [absCols] = await db.query("SHOW COLUMNS FROM absensi LIKE 'updated_at'");
+    if (absCols.length === 0) {
         await db.query("ALTER TABLE absensi ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-        // Data lama diberi waktu yang SAMA di kedua database agar tidak saling menimpa secara acak
         await db.query("UPDATE absensi SET updated_at = FROM_UNIXTIME(946684800)");
     }
     await db.query(`
@@ -27,12 +24,136 @@ async function ensureAbsensiSyncSchema(db) {
             PRIMARY KEY (id_karyawan, tanggal)
         ) ENGINE=InnoDB
     `);
+
+    // 2. Karyawan
+    const [kCols] = await db.query("SHOW COLUMNS FROM karyawan LIKE 'updated_at'");
+    if (kCols.length === 0) {
+        await db.query("ALTER TABLE karyawan ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        await db.query("UPDATE karyawan SET updated_at = FROM_UNIXTIME(946684800)");
+    }
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS karyawan_deleted (
+            id_karyawan VARCHAR(50) NOT NULL PRIMARY KEY,
+            deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB
+    `);
+
+    // 3. Akun Pegawai
+    const [apCols] = await db.query("SHOW COLUMNS FROM akun_pegawai LIKE 'updated_at'");
+    if (apCols.length === 0) {
+        await db.query("ALTER TABLE akun_pegawai ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        await db.query("UPDATE akun_pegawai SET updated_at = FROM_UNIXTIME(946684800)");
+    }
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS akun_pegawai_deleted (
+            id_karyawan VARCHAR(50) NOT NULL PRIMARY KEY,
+            deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB
+    `);
+
+    // 4. Req Ubah Password
+    const [reqCols] = await db.query("SHOW COLUMNS FROM req_ubah_password LIKE 'updated_at'");
+    if (reqCols.length === 0) {
+        await db.query("ALTER TABLE req_ubah_password ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        await db.query("UPDATE req_ubah_password SET updated_at = FROM_UNIXTIME(946684800)");
+    }
+
+    // 5. Akses Scan Portal
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS akses_scan_portal (
+            id_karyawan VARCHAR(50) NOT NULL PRIMARY KEY,
+            aktif TINYINT(1) DEFAULT 0,
+            hari_diizinkan VARCHAR(100) DEFAULT '',
+            tanggal_khusus VARCHAR(20) DEFAULT NULL,
+            mode_kehadiran VARCHAR(30) DEFAULT 'SCAN_FULL_HADIR',
+            keterangan_default VARCHAR(255) DEFAULT 'Jadwal Libur Mingguan (Tetap Masuk via Portal)',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB
+    `);
 }
 
-async function syncAbsensiTwoWay(localDb, cloudDb) {
-    await ensureAbsensiSyncSchema(localDb);
-    await ensureAbsensiSyncSchema(cloudDb);
+// =========================================================================
+// 2. SINKRONISASI KARYAWAN DUA ARAH (Lokal 🔁 Cloud, Last-Write-Wins)
+// =========================================================================
+async function syncKaryawanTwoWay(localDb, cloudDb) {
+    const selRows = `
+        SELECT id_karyawan, nama, jabatan, face_descriptor, foto,
+               DATE_FORMAT(tanggal_registrasi, '%Y-%m-%d %H:%i:%s') AS tanggal_registrasi,
+               no_urut, UNIX_TIMESTAMP(updated_at) AS ts
+        FROM karyawan`;
+    const selTomb = `SELECT id_karyawan, UNIX_TIMESTAMP(deleted_at) AS ts FROM karyawan_deleted`;
 
+    const [localRows] = await localDb.query(selRows);
+    const [cloudRows] = await cloudDb.query(selRows);
+    const [localTomb] = await localDb.query(selTomb);
+    const [cloudTomb] = await cloudDb.query(selTomb);
+
+    const norm = (s) => String(s || '').trim().toLowerCase();
+    const L = new Map(localRows.map(r => [norm(r.id_karyawan), { ...r, ts: Number(r.ts) }]));
+    const C = new Map(cloudRows.map(r => [norm(r.id_karyawan), { ...r, ts: Number(r.ts) }]));
+
+    const T = new Map();
+    for (const t of [...localTomb, ...cloudTomb]) {
+        const k = norm(t.id_karyawan);
+        const ts = Number(t.ts);
+        if (!T.has(k) || T.get(k).ts < ts) T.set(k, { ...t, ts });
+    }
+    for (const t of T.values()) {
+        for (const db of [localDb, cloudDb]) {
+            await db.query(
+                `INSERT INTO karyawan_deleted (id_karyawan, deleted_at) VALUES (?, FROM_UNIXTIME(?))
+                 ON DUPLICATE KEY UPDATE deleted_at = GREATEST(deleted_at, VALUES(deleted_at))`,
+                [t.id_karyawan, t.ts]
+            ).catch(() => {});
+        }
+    }
+
+    const writeRow = (db, r) => db.query(
+        `INSERT INTO karyawan (id_karyawan, nama, jabatan, face_descriptor, foto, tanggal_registrasi, no_urut, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, FROM_UNIXTIME(?))
+         ON DUPLICATE KEY UPDATE
+            nama = VALUES(nama),
+            jabatan = VALUES(jabatan),
+            face_descriptor = COALESCE(VALUES(face_descriptor), face_descriptor),
+            foto = COALESCE(VALUES(foto), foto),
+            no_urut = VALUES(no_urut),
+            updated_at = VALUES(updated_at)`,
+        [r.id_karyawan, r.nama, r.jabatan, r.face_descriptor, r.foto, r.tanggal_registrasi || null, r.no_urut || 9999, r.ts]
+    );
+    const deleteRow = (db, id) => db.query('DELETE FROM karyawan WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [id]);
+
+    let toCloud = 0, toLocal = 0, delLocal = 0, delCloud = 0;
+    const keys = new Set([...L.keys(), ...C.keys()]);
+    for (const k of keys) {
+        const l = L.get(k), c = C.get(k), t = T.get(k);
+        try {
+            const newest = Math.max(l ? l.ts : 0, c ? c.ts : 0);
+            if (t && t.ts >= newest) {
+                if (l) { await deleteRow(localDb, l.id_karyawan); delLocal++; }
+                if (c) { await deleteRow(cloudDb, c.id_karyawan); delCloud++; }
+                continue;
+            }
+
+            if (l && c) {
+                if (l.ts > c.ts) { await writeRow(cloudDb, l); toCloud++; }
+                else if (c.ts > l.ts) { await writeRow(localDb, c); toLocal++; }
+            } else if (l) {
+                await writeRow(cloudDb, l); toCloud++;
+            } else if (c) {
+                await writeRow(localDb, c); toLocal++;
+            }
+        } catch (e) {
+            console.error(`⚠️ Sync karyawan ${k} error:`, e.message);
+        }
+    }
+
+    return { toCloud, toLocal, delLocal, delCloud };
+}
+
+// =========================================================================
+// 3. SINKRONISASI ABSENSI DUA ARAH (Lokal 🔁 Cloud, Last-Write-Wins)
+// =========================================================================
+async function syncAbsensiTwoWay(localDb, cloudDb) {
     const selRows = `
         SELECT id_karyawan, DATE_FORMAT(tanggal, '%Y-%m-%d') AS tanggal,
                jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit,
@@ -51,7 +172,6 @@ async function syncAbsensiTwoWay(localDb, cloudDb) {
     const L = new Map(localRows.map(r => [keyOf(r), { ...r, ts: Number(r.ts) }]));
     const C = new Map(cloudRows.map(r => [keyOf(r), { ...r, ts: Number(r.ts) }]));
 
-    // Gabungkan "nisan" dari kedua sisi (ambil yang terbaru) lalu salin ke sisi yang belum punya
     const T = new Map();
     for (const t of [...localTomb, ...cloudTomb]) {
         const k = keyOf(t);
@@ -75,7 +195,6 @@ async function syncAbsensiTwoWay(localDb, cloudDb) {
                Number(a.psw_menit || 0) === Number(b.psw_menit || 0);
     };
 
-    // Tulis baris (src) ke database tujuan, updated_at ikut disalin agar tidak saling memantul
     const writeRow = (db, r) => db.query(
         `INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, FROM_UNIXTIME(?))
@@ -93,8 +212,6 @@ async function syncAbsensiTwoWay(localDb, cloudDb) {
         const l = L.get(k), c = C.get(k), t = T.get(k);
         try {
             const newest = Math.max(l ? l.ts : 0, c ? c.ts : 0);
-
-            // Dihapus di salah satu sisi dan penghapusan lebih baru dari data -> hapus di kedua sisi
             if (t && t.ts >= newest) {
                 if (l) { await deleteRow(localDb, l); delLocal++; }
                 if (c) { await deleteRow(cloudDb, c); delCloud++; }
@@ -104,26 +221,213 @@ async function syncAbsensiTwoWay(localDb, cloudDb) {
             if (l && c) {
                 if (l.ts > c.ts) { await writeRow(cloudDb, l); toCloud++; }
                 else if (c.ts > l.ts) { await writeRow(localDb, c); toLocal++; }
-                else if (!sameData(l, c)) { await writeRow(cloudDb, l); toCloud++; } // seri: Lokal menang
+                else if (!sameData(l, c)) { await writeRow(cloudDb, l); toCloud++; }
             } else if (l) {
                 await writeRow(cloudDb, l); toCloud++;
             } else if (c) {
                 await writeRow(localDb, c); toLocal++;
             }
         } catch (e) {
-            // Contoh: karyawan belum ada di salah satu database (FK) -> dicoba lagi di putaran berikutnya
+            // Ignored
         }
     }
 
-    // Bersihkan "nisan" lama
     await localDb.query(`DELETE FROM absensi_deleted WHERE tanggal < CURDATE() - INTERVAL ${ABSENSI_SYNC_DAYS + 30} DAY`).catch(() => {});
     await cloudDb.query(`DELETE FROM absensi_deleted WHERE tanggal < CURDATE() - INTERVAL ${ABSENSI_SYNC_DAYS + 30} DAY`).catch(() => {});
 
     return { toCloud, toLocal, delLocal, delCloud };
 }
 
+// =========================================================================
+// 4. SINKRONISASI AKUN PEGAWAI DUA ARAH (Lokal 🔁 Cloud, Last-Write-Wins)
+// =========================================================================
+async function syncAkunPegawaiTwoWay(localDb, cloudDb) {
+    const selRows = `
+        SELECT id_karyawan, username, password,
+               DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+               UNIX_TIMESTAMP(updated_at) AS ts
+        FROM akun_pegawai`;
+    const selTomb = `SELECT id_karyawan, UNIX_TIMESTAMP(deleted_at) AS ts FROM akun_pegawai_deleted`;
+
+    const [localRows] = await localDb.query(selRows);
+    const [cloudRows] = await cloudDb.query(selRows);
+    const [localTomb] = await localDb.query(selTomb);
+    const [cloudTomb] = await cloudDb.query(selTomb);
+
+    const norm = (s) => String(s || '').trim().toLowerCase();
+    const L = new Map(localRows.map(r => [norm(r.id_karyawan), { ...r, ts: Number(r.ts) }]));
+    const C = new Map(cloudRows.map(r => [norm(r.id_karyawan), { ...r, ts: Number(r.ts) }]));
+
+    const T = new Map();
+    for (const t of [...localTomb, ...cloudTomb]) {
+        const k = norm(t.id_karyawan);
+        const ts = Number(t.ts);
+        if (!T.has(k) || T.get(k).ts < ts) T.set(k, { ...t, ts });
+    }
+    for (const t of T.values()) {
+        for (const db of [localDb, cloudDb]) {
+            await db.query(
+                `INSERT INTO akun_pegawai_deleted (id_karyawan, deleted_at) VALUES (?, FROM_UNIXTIME(?))
+                 ON DUPLICATE KEY UPDATE deleted_at = GREATEST(deleted_at, VALUES(deleted_at))`,
+                [t.id_karyawan, t.ts]
+            ).catch(() => {});
+        }
+    }
+
+    const writeRow = (db, r) => db.query(
+        `INSERT INTO akun_pegawai (id_karyawan, username, password, created_at, updated_at)
+         VALUES (?, ?, ?, ?, FROM_UNIXTIME(?))
+         ON DUPLICATE KEY UPDATE
+            username = VALUES(username),
+            password = VALUES(password),
+            updated_at = VALUES(updated_at)`,
+        [r.id_karyawan, r.username, r.password, r.created_at || null, r.ts]
+    );
+    const deleteRow = (db, id) => db.query('DELETE FROM akun_pegawai WHERE LOWER(TRIM(id_karyawan)) = LOWER(TRIM(?))', [id]);
+
+    let toCloud = 0, toLocal = 0, delLocal = 0, delCloud = 0;
+    const keys = new Set([...L.keys(), ...C.keys()]);
+    for (const k of keys) {
+        const l = L.get(k), c = C.get(k), t = T.get(k);
+        try {
+            const newest = Math.max(l ? l.ts : 0, c ? c.ts : 0);
+            if (t && t.ts >= newest) {
+                if (l) { await deleteRow(localDb, l.id_karyawan); delLocal++; }
+                if (c) { await deleteRow(cloudDb, c.id_karyawan); delCloud++; }
+                continue;
+            }
+
+            if (l && c) {
+                if (l.ts > c.ts) { await writeRow(cloudDb, l); toCloud++; }
+                else if (c.ts > l.ts) { await writeRow(localDb, c); toLocal++; }
+            } else if (l) {
+                await writeRow(cloudDb, l); toCloud++;
+            } else if (c) {
+                await writeRow(localDb, c); toLocal++;
+            }
+        } catch (e) {
+            // Ignored
+        }
+    }
+
+    return { toCloud, toLocal, delLocal, delCloud };
+}
+
+// =========================================================================
+// 5. SINKRONISASI REQ UBAH PASSWORD DUA ARAH (Lokal 🔁 Cloud, Last-Write-Wins)
+// =========================================================================
+async function syncReqUbahPasswordTwoWay(localDb, cloudDb) {
+    const selRows = `
+        SELECT id_req, id_karyawan, password_baru, status,
+               DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+               UNIX_TIMESTAMP(updated_at) AS ts
+        FROM req_ubah_password`;
+
+    const [localRows] = await localDb.query(selRows);
+    const [cloudRows] = await cloudDb.query(selRows);
+
+    const norm = (s) => String(s || '').trim().toLowerCase();
+    const keyOf = (r) => `${norm(r.id_karyawan)}|${r.created_at}`;
+
+    const L = new Map(localRows.map(r => [keyOf(r), { ...r, ts: Number(r.ts) }]));
+    const C = new Map(cloudRows.map(r => [keyOf(r), { ...r, ts: Number(r.ts) }]));
+
+    let toCloud = 0, toLocal = 0;
+    const keys = new Set([...L.keys(), ...C.keys()]);
+    for (const k of keys) {
+        const l = L.get(k), c = C.get(k);
+        try {
+            if (l && c) {
+                if (l.ts > c.ts) {
+                    await cloudDb.query(
+                        `UPDATE req_ubah_password SET status = ?, password_baru = ?, updated_at = FROM_UNIXTIME(?) WHERE id_req = ?`,
+                        [l.status, l.password_baru, l.ts, c.id_req]
+                    );
+                    toCloud++;
+                } else if (c.ts > l.ts) {
+                    await localDb.query(
+                        `UPDATE req_ubah_password SET status = ?, password_baru = ?, updated_at = FROM_UNIXTIME(?) WHERE id_req = ?`,
+                        [c.status, c.password_baru, c.ts, l.id_req]
+                    );
+                    toLocal++;
+                }
+            } else if (l) {
+                await cloudDb.query(
+                    `INSERT INTO req_ubah_password (id_karyawan, password_baru, status, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, FROM_UNIXTIME(?))`,
+                    [l.id_karyawan, l.password_baru, l.status, l.created_at, l.ts]
+                );
+                toCloud++;
+            } else if (c) {
+                await localDb.query(
+                    `INSERT INTO req_ubah_password (id_karyawan, password_baru, status, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, FROM_UNIXTIME(?))`,
+                    [c.id_karyawan, c.password_baru, c.status, c.created_at, c.ts]
+                );
+                toLocal++;
+            }
+        } catch (e) {
+            // Ignored
+        }
+    }
+
+    return { toCloud, toLocal };
+}
+
+// =========================================================================
+// 6. SINKRONISASI AKSES SCAN PORTAL DUA ARAH (Lokal 🔁 Cloud, Last-Write-Wins)
+// =========================================================================
+async function syncAksesScanPortalTwoWay(localDb, cloudDb) {
+    const selRows = `
+        SELECT id_karyawan, aktif, hari_diizinkan, tanggal_khusus, mode_kehadiran, keterangan_default,
+               UNIX_TIMESTAMP(updated_at) AS ts
+        FROM akses_scan_portal`;
+
+    const [localRows] = await localDb.query(selRows);
+    const [cloudRows] = await cloudDb.query(selRows);
+
+    const norm = (s) => String(s || '').trim().toLowerCase();
+    const L = new Map(localRows.map(r => [norm(r.id_karyawan), { ...r, ts: Number(r.ts) }]));
+    const C = new Map(cloudRows.map(r => [norm(r.id_karyawan), { ...r, ts: Number(r.ts) }]));
+
+    const writeRow = (db, r) => db.query(
+        `INSERT INTO akses_scan_portal (id_karyawan, aktif, hari_diizinkan, tanggal_khusus, mode_kehadiran, keterangan_default, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, FROM_UNIXTIME(?))
+         ON DUPLICATE KEY UPDATE
+            aktif = VALUES(aktif),
+            hari_diizinkan = VALUES(hari_diizinkan),
+            tanggal_khusus = VALUES(tanggal_khusus),
+            mode_kehadiran = VALUES(mode_kehadiran),
+            keterangan_default = VALUES(keterangan_default),
+            updated_at = VALUES(updated_at)`,
+        [r.id_karyawan, r.aktif, r.hari_diizinkan, r.tanggal_khusus, r.mode_kehadiran, r.keterangan_default, r.ts]
+    );
+
+    let toCloud = 0, toLocal = 0;
+    const keys = new Set([...L.keys(), ...C.keys()]);
+    for (const k of keys) {
+        const l = L.get(k), c = C.get(k);
+        try {
+            if (l && c) {
+                if (l.ts > c.ts) { await writeRow(cloudDb, l); toCloud++; }
+                else if (c.ts > l.ts) { await writeRow(localDb, c); toLocal++; }
+            } else if (l) {
+                await writeRow(cloudDb, l); toCloud++;
+            } else if (c) {
+                await writeRow(localDb, c); toLocal++;
+            }
+        } catch (e) {
+            // Ignored
+        }
+    }
+
+    return { toCloud, toLocal };
+}
+
+// =========================================================================
+// 7. START ENGINE SINKRONISASI
+// =========================================================================
 async function startSync() {
-    // Di Server Cloud (Render) database-nya adalah Cloud itu sendiri -> tidak ada yang perlu disinkronkan
     const dbHost = process.env.DB_HOST || '';
     if (!process.env.CLOUD_DB_HOST || dbHost.includes('aivencloud') || dbHost.includes('tidbcloud')) {
         console.log("ℹ️ Sinkronisasi XAMPP <-> Cloud dilewati (server ini memakai database Cloud langsung).");
@@ -131,7 +435,7 @@ async function startSync() {
     }
 
     console.log("==================================================");
-    console.log("🚀 SINKRONISASI DUA ARAH AKTIF (XAMPP <-> CLOUD)");
+    console.log("🚀 SINKRONISASI DUA ARAH SEMUA TABEL AKTIF (LOKAL 🔁 CLOUD)");
     console.log("==================================================");
 
     const runSync = async () => {
@@ -168,156 +472,34 @@ async function startSync() {
                 timezone: '+07:00'
             });
 
+            // Auto-check schemas
+            await ensureAllSyncSchemas(localDb);
+            await ensureAllSyncSchemas(cloudDb);
+
             const now = new Date().toLocaleString();
-            console.log(`[${now}] Memulai sinkronisasi otomatis...`);
+            console.log(`[${now}] Memulai sinkronisasi otomatis semua tabel...`);
 
-            // --- SYNC KARYAWAN (Jika ada pegawai baru/update foto) ---
-            // (Dijalankan SEBELUM absensi agar pegawai baru sudah ada di Cloud saat absensinya dikirim)
-            const [karyawanList] = await localDb.query("SELECT * FROM karyawan");
-            if (karyawanList.length > 0) {
-                const kValues = karyawanList.map(k => [k.id_karyawan, k.nama, k.jabatan, k.face_descriptor, k.foto, k.tanggal_registrasi]);
-                await cloudDb.query(
-                    `INSERT INTO karyawan (id_karyawan, nama, jabatan, face_descriptor, foto, tanggal_registrasi) 
-                     VALUES ? 
-                     ON DUPLICATE KEY UPDATE 
-                     nama = VALUES(nama), jabatan = VALUES(jabatan), face_descriptor = VALUES(face_descriptor), foto = VALUES(foto)`,
-                    [kValues]
-                );
-            }
+            // Step 1: Karyawan (Dua Arah)
+            const kInfo = await syncKaryawanTwoWay(localDb, cloudDb);
 
-            // --- SYNC ABSENSI DUA ARAH (60 Hari Terakhir, Last-Write-Wins) ---
-            let absensiInfo = { toCloud: 0, toLocal: 0, delLocal: 0, delCloud: 0 };
-            try {
-                absensiInfo = await syncAbsensiTwoWay(localDb, cloudDb);
-            } catch (eAbs) {
-                console.error('⚠️ Sync absensi dua arah error:', eAbs.message);
-            }
+            // Step 2: Absensi (Dua Arah)
+            const aInfo = await syncAbsensiTwoWay(localDb, cloudDb);
 
-            // --- SYNC AKUN PORTAL (per baris, dicocokkan lewat id_karyawan) ---
-            // [FIX] Dulu memakai 1 INSERT massal yang membawa id_akun Cloud ke Lokal.
-            // id_akun di kedua DB berbeda, sehingga 1 bentrok saja membuat SELURUH statement gagal
-            // (dan error-nya disembunyikan) -> akun baru dari Portal tidak pernah muncul di dashboard lokal.
-            // Sekarang: Cloud (Portal) = sumber kebenaran akun & password.
-            try {
-                const norm = (v) => String(v || '').trim().toLowerCase();
-                const [akunCloud] = await cloudDb.query("SELECT id_karyawan, username, password, created_at FROM akun_pegawai");
-                const [akunLocal] = await localDb.query("SELECT id_akun, id_karyawan, username, password FROM akun_pegawai");
-                const [karyawanLokal] = await localDb.query("SELECT id_karyawan FROM karyawan");
+            // Step 3: Akun Pegawai (Dua Arah)
+            const apInfo = await syncAkunPegawaiTwoWay(localDb, cloudDb);
 
-                const localKaryawanMap = new Map(karyawanLokal.map(k => [norm(k.id_karyawan), k.id_karyawan]));
-                const localAkunMap = new Map(akunLocal.map(a => [norm(a.id_karyawan), a]));
-                const cloudAkunSet = new Set(akunCloud.map(a => norm(a.id_karyawan)));
+            // Step 4: Req Ubah Password (Dua Arah)
+            const rInfo = await syncReqUbahPasswordTwoWay(localDb, cloudDb);
 
-                let akunMasuk = 0, akunUpdate = 0, akunGagal = 0;
+            // Step 5: Akses Scan Portal (Dua Arah)
+            const aspInfo = await syncAksesScanPortalTwoWay(localDb, cloudDb);
 
-                // LANGKAH 1: Cloud -> Lokal
-                for (const ak of akunCloud) {
-                    const key = norm(ak.id_karyawan);
-                    const localId = localKaryawanMap.get(key);
-                    if (!localId) continue; // pegawai tidak ada di lokal
-                    const existing = localAkunMap.get(key);
-                    try {
-                        if (existing) {
-                            if (existing.username !== ak.username || existing.password !== ak.password) {
-                                await localDb.query('UPDATE akun_pegawai SET username = ?, password = ? WHERE id_akun = ?',
-                                    [ak.username, ak.password, existing.id_akun]);
-                                akunUpdate++;
-                            }
-                        } else {
-                            await localDb.query('INSERT INTO akun_pegawai (id_karyawan, username, password, created_at) VALUES (?, ?, ?, ?)',
-                                [localId, ak.username, ak.password, ak.created_at]);
-                            akunMasuk++;
-                        }
-                    } catch (e) {
-                        akunGagal++;
-                        console.error(`⚠️ Sync akun ${ak.id_karyawan} (${ak.username}) ke lokal gagal: ${e.message}`);
-                    }
-                }
-
-                // LANGKAH 2: Lokal -> Cloud (hanya akun yang BELUM ada di Cloud, tidak menimpa password Cloud)
-                for (const ak of akunLocal) {
-                    if (cloudAkunSet.has(norm(ak.id_karyawan))) continue;
-                    try {
-                        await cloudDb.query('INSERT INTO akun_pegawai (id_karyawan, username, password) VALUES (?, ?, ?)',
-                            [ak.id_karyawan, ak.username, ak.password]);
-                    } catch (e) {
-                        console.error(`⚠️ Sync akun ${ak.id_karyawan} (${ak.username}) ke cloud gagal: ${e.message}`);
-                    }
-                }
-
-                if (akunMasuk || akunUpdate || akunGagal) {
-                    console.log(`👤 Sync akun portal: ${akunMasuk} baru, ${akunUpdate} diperbarui, ${akunGagal} gagal`);
-                }
-            } catch (e) {
-                console.error('⚠️ Sync akun portal error:', e.message);
-            }
-
-            // --- SYNC REQ UBAH PASSWORD (AIVEN <-> XAMPP) ---
-            try {
-                // 1. Kirim status yang sudah 'approved'/'rejected' dari Lokal (XAMPP) ke Cloud (Aiven) TERLEBIH DAHULU
-                const [reqSelesaiLokal] = await localDb.query("SELECT * FROM req_ubah_password WHERE status IN ('approved', 'rejected')");
-                for (const r of reqSelesaiLokal) {
-                    await cloudDb.query(
-                        `UPDATE req_ubah_password SET status = ? WHERE id_req = ?`,
-                        [r.status, r.id_req]
-                    );
-                }
-
-                // 2. Baru Tarik permintaan 'pending' dari Cloud (Aiven) ke Lokal (XAMPP)
-                const [reqPendingCloud] = await cloudDb.query("SELECT * FROM req_ubah_password WHERE status = 'pending'");
-                if (reqPendingCloud.length > 0) {
-                    for (const req of reqPendingCloud) {
-                        try {
-                            await localDb.query(
-                                `INSERT INTO req_ubah_password (id_req, id_karyawan, password_baru, status, created_at) 
-                                 VALUES (?, ?, ?, ?, ?) 
-                                 ON DUPLICATE KEY UPDATE status = VALUES(status)`,
-                                [req.id_req, req.id_karyawan, req.password_baru, req.status, req.created_at]
-                            );
-                        } catch (e) {
-                            // console.error(`⚠️ Abaikan req_ubah_password ID ${req.id_req} (Karyawan ${req.id_karyawan} tidak ada di lokal)`);
-                        }
-                    }
-                }
-            } catch (e) {
-                // Ignore if table doesn't exist yet
-            }
-
-            // --- SYNC AKSES SCAN PORTAL (Dashboard Admin Lokal -> Portal Online Cloud) ---
-            try {
-                const createAksesSql = `
-                    CREATE TABLE IF NOT EXISTS akses_scan_portal (
-                        id_karyawan VARCHAR(50) NOT NULL PRIMARY KEY,
-                        aktif TINYINT(1) DEFAULT 0,
-                        hari_diizinkan VARCHAR(100) DEFAULT '',
-                        tanggal_khusus VARCHAR(20) DEFAULT NULL,
-                        mode_kehadiran VARCHAR(30) DEFAULT 'SCAN_FULL_HADIR',
-                        keterangan_default VARCHAR(255) DEFAULT 'Jadwal Libur Mingguan (Tetap Masuk via Portal)',
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB
-                `;
-                await localDb.query(createAksesSql);
-                await cloudDb.query(createAksesSql);
-
-                const [aksesLocal] = await localDb.query("SELECT * FROM akses_scan_portal");
-                for (const asp of aksesLocal) {
-                    await cloudDb.query(
-                        `INSERT INTO akses_scan_portal (id_karyawan, aktif, hari_diizinkan, tanggal_khusus, mode_kehadiran, keterangan_default)
-                         VALUES (?, ?, ?, ?, ?, ?)
-                         ON DUPLICATE KEY UPDATE
-                         aktif = VALUES(aktif),
-                         hari_diizinkan = VALUES(hari_diizinkan),
-                         tanggal_khusus = VALUES(tanggal_khusus),
-                         mode_kehadiran = VALUES(mode_kehadiran),
-                         keterangan_default = VALUES(keterangan_default)`,
-                        [asp.id_karyawan, asp.aktif, asp.hari_diizinkan, asp.tanggal_khusus, asp.mode_kehadiran, asp.keterangan_default]
-                    );
-                }
-            } catch (eSyncPortal) {
-                console.error('⚠️ Sync akses_scan_portal error:', eSyncPortal.message);
-            }
-
-            console.log(`✅ Sinkronisasi sukses! Absensi: ${absensiInfo.toCloud} ke Cloud, ${absensiInfo.toLocal} ke Lokal, hapus ${absensiInfo.delLocal} Lokal / ${absensiInfo.delCloud} Cloud`);
+            console.log(`✅ Sinkronisasi sukses!
+   * Karyawan: ${kInfo.toCloud} ➔ Cloud, ${kInfo.toLocal} ➔ Lokal (Hapus: ${kInfo.delCloud} Cloud / ${kInfo.delLocal} Lokal)
+   * Absensi: ${aInfo.toCloud} ➔ Cloud, ${aInfo.toLocal} ➔ Lokal (Hapus: ${aInfo.delCloud} Cloud / ${aInfo.delLocal} Lokal)
+   * Akun Pegawai: ${apInfo.toCloud} ➔ Cloud, ${apInfo.toLocal} ➔ Lokal
+   * Req Password: ${rInfo.toCloud} ➔ Cloud, ${rInfo.toLocal} ➔ Lokal
+   * Jadwal Scan: ${aspInfo.toCloud} ➔ Cloud, ${aspInfo.toLocal} ➔ Lokal`);
 
         } catch (error) {
             console.error(`❌ Gagal Sinkronisasi:`, error.message);
@@ -328,10 +510,10 @@ async function startSync() {
         }
     };
 
-    // Jalankan pertama kali saat server start
+    // Jalankan segera saat server start
     runSync();
 
-    // Looping terus menerus setiap 1 Menit (60.000 ms)
+    // Looping setiap 1 Menit (60.000 ms)
     setInterval(runSync, 60000);
 }
 
