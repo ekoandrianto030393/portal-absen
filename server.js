@@ -1858,15 +1858,38 @@ app.post('/api/absensi/manual', authenticateToken, (req, res) => {
     });
 });
 
+// [NEW] Catat "nisan" penghapusan absensi agar penghapusan/pindah tanggal ikut tersinkron (Lokal <-> Cloud)
+function recordAbsensiTombstone(db, id_karyawan, tanggalStr, done) {
+    if (!id_karyawan || !tanggalStr) { if (done) done(); return; }
+    const createSql = `CREATE TABLE IF NOT EXISTS absensi_deleted (
+        id_karyawan VARCHAR(50) NOT NULL,
+        tanggal DATE NOT NULL,
+        deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id_karyawan, tanggal)
+    ) ENGINE=InnoDB`;
+    db.query(createSql, () => {
+        db.query(
+            'INSERT INTO absensi_deleted (id_karyawan, tanggal, deleted_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE deleted_at = NOW()',
+            [id_karyawan, tanggalStr],
+            () => { if (done) done(); }
+        );
+    });
+}
+
 // Endpoint: Hapus Absensi Harian
 app.delete('/api/absensi/:id', authenticateToken, (req, res) => {
     const id = req.params.id;
+    pool.query("SELECT id_karyawan, DATE_FORMAT(tanggal, '%Y-%m-%d') AS tanggal_str FROM absensi WHERE id_absensi = ?", [id], (errSel, rowsSel) => {
+    const row = rowsSel && rowsSel[0];
     pool.query('DELETE FROM absensi WHERE id_absensi = ?', [id], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Data absensi tidak ditemukan' });
         
+        // [NEW] Catat nisan penghapusan agar ikut terhapus di database Lokal pada sinkronisasi berikutnya
+        if (row) recordAbsensiTombstone(pool, row.id_karyawan, row.tanggal_str);
         cache.del("api_absensi_today"); // [NEW] Invalidate cache absensi
         res.json({ success: true, message: 'Data absensi berhasil dihapus.' });
+    });
     });
 });
 
@@ -1921,6 +1944,8 @@ app.put('/api/absensi/:id', authenticateToken, (req, res) => {
     const finalMasuk = jam_masuk || null;
     const finalKeluar = jam_keluar || null;
 
+    pool.query('SELECT id_karyawan, DATE_FORMAT(tanggal, \'%Y-%m-%d\') AS tgl FROM absensi WHERE id_absensi = ?', [id], (errOld, rowsOld) => {
+    const oldKey = rowsOld && rowsOld[0];
     pool.query(sql, [tanggal, finalMasuk, finalKeluar, status, finalKeterangan, telatMenit, pswMenit, id], (err, result) => {
         if (err) {
             // [FIX] Handle Duplicate Entry Error specifically
@@ -1935,7 +1960,12 @@ app.put('/api/absensi/:id', authenticateToken, (req, res) => {
         pushToAiven(id);
         
         cache.del("api_absensi_today"); // [NEW] Invalidate cache absensi
+        // [NEW] Jika tanggal dipindah, catat nisan tanggal lama agar tidak muncul dobel di sisi sinkron lain
+        if (oldKey && oldKey.tgl && oldKey.tgl !== String(tanggal).substring(0, 10)) {
+            recordAbsensiTombstone(pool, oldKey.id_karyawan, oldKey.tgl);
+        }
         res.json({ success: true, message: 'Data absensi berhasil diperbarui.' });
+    });
     });
 });
 
