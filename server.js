@@ -37,7 +37,7 @@ function hashPassword(password) {
 
 const app = express();
 app.set('trust proxy', 1); // [FIX] Render/Cloud: Baca IP asli dari X-Forwarded-For header
-const port = 3000;
+const port = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || '12345-secret-key'; // [SECURITY] JWT Secret dari .env (fallback aman agar Render tidak crash jika env belum di-set)
 
 // Middleware Verifikasi JWT
