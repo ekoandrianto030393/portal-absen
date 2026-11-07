@@ -286,7 +286,7 @@ async function loadSystemConfig() {
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
     // Hide all views
-    ['overview', 'daily', 'monthly', 'performance', 'employees', 'scan-portal', 'view-db', 'view-db-monthly', 'req-password', 'settings', 'environment'].forEach(id => {
+    ['overview', 'daily', 'monthly', 'performance', 'employees', 'scan-portal', 'view-db', 'view-db-monthly', 'req-password', 'settings', 'environment', 'catatan'].forEach(id => {
         const viewEl = document.getElementById(`view-${id}`);
         if (viewEl) {
             viewEl.classList.add('hidden');
@@ -321,7 +321,8 @@ function switchTab(tabName) {
         'view-db-monthly': 'DATA VIEW BULANAN',
         'req-password': 'Permintaan Ubah Password',
         'settings': 'Pengaturan Sistem',
-        'environment': 'Tabel Konfigurasi Environment (.env)'
+        'environment': 'Tabel Konfigurasi Environment (.env)',
+        'catatan': 'Tabel Catatan Kehadiran Pegawai'
     };
     document.getElementById('page-title').textContent = titles[tabName];
 
@@ -356,6 +357,7 @@ function switchTab(tabName) {
     if (tabName === 'view-db-monthly') loadViewDbMonthlyData();
     if (tabName === 'req-password') loadReqPassword();
     if (tabName === 'environment' && typeof loadEnvData === 'function') loadEnvData();
+    if (tabName === 'catatan' && typeof loadCatatanData === 'function') loadCatatanData();
 }
 
 // --- DATA LOADER: REQ UBAH PASSWORD ---

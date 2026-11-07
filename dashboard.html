@@ -671,6 +671,9 @@
                 <li class="nav-line-item"><button id="nav-scan-portal" onclick="switchTab('scan-portal')"
                         class="nav-item w-full flex items-center justify-between px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><span class="flex items-center gap-3"><i
                             class="fa-solid fa-camera-rotate w-5 text-center text-amber-300 group-hover:text-white"></i> <span class="font-medium">Tabel Scan Portal</span></span><span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">SCAN</span></button></li>
+                <li class="nav-line-item"><button id="nav-catatan" onclick="switchTab('catatan')"
+                        class="nav-item w-full flex items-center justify-between px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><span class="flex items-center gap-3"><i
+                            class="fa-solid fa-clipboard-user w-5 text-center text-teal-300"></i> <span class="font-medium">Tabel Catatan</span></span><span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-teal-400/20 text-teal-300 border border-teal-400/30">LOG</span></button></li>
                 <li class="nav-line-item"><button id="nav-req-password" onclick="switchTab('req-password')"
                         class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><i
                             class="fa-solid fa-key w-5 text-center text-orange-400/80 group-hover:text-white"></i> <span class="font-medium">Req Ubah Password</span></button></li>
@@ -850,7 +853,8 @@
                         <a href="admin.html" target="_blank" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-xs font-bold shadow-md shadow-indigo-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-face-viewfinder"></i> Panel Registrasi Wajah</a>
                         <a href="display.html" target="_blank" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-xs font-bold shadow-md shadow-purple-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-tv"></i> Monitor Display</a>
                         <button onclick="openManualModal()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-user-plus"></i> Input Manual</button>
-                        <button onclick="switchTab('analytics')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold shadow-md shadow-amber-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-trophy"></i> Peringkat Disiplin</button>
+                        <button onclick="switchTab('catatan')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white text-xs font-bold shadow-md shadow-teal-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-clipboard-user"></i> Tabel Catatan</button>
+                <button onclick="switchTab('analytics')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold shadow-md shadow-amber-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-trophy"></i> Peringkat Disiplin</button>
                         <button onclick="switchTab('payroll')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-violet-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-money-check-dollar"></i> Simulasi Gaji & Tukin</button>
                         <button onclick="switchTab('shifts')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold shadow-md shadow-cyan-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-business-time"></i> Jadwal Shift</button>
                         <button onclick="switchTab('broadcast')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 text-white text-xs font-bold shadow-md shadow-rose-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-bullhorn"></i> Broadcast Info</button>
@@ -1841,6 +1845,173 @@
 
             
 
+            
+            <!-- VIEW: CATATAN KEHADIRAN & MOBILITAS PEGAWAI -->
+            <div id="view-catatan" class="hidden space-y-4">
+                <!-- Header Banner -->
+                <div class="stat-card-pattern rounded-2xl p-5 bg-gradient-to-r from-teal-900 via-emerald-900 to-slate-900 text-white shadow-lg border border-teal-500/30 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-teal-400/20 text-teal-300 border border-teal-400/30">
+                                <i class="fa-solid fa-clipboard-check mr-1"></i> MONITORING & CATATAN MOBILITAS
+                            </span>
+                            <span id="catatan-badge-hari" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                                -
+                            </span>
+                        </div>
+                        <h2 class="text-xl font-black tracking-tight text-white flex items-center gap-2">
+                            Tabel Catatan Kehadiran Pegawai
+                        </h2>
+                        <p class="text-xs text-teal-200/90 mt-1 max-w-2xl leading-relaxed">
+                            Mencatat dan memantau pegawai di hari tertentu: membedakan antara pegawai yang <strong>hadir presensi masuk lalu pulang</strong> dengan pegawai yang <strong>presensi masuk tapi di jam tertentu pulang/keluar lalu kembali lagi untuk presensi pulang</strong>.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                        <button onclick="bukaModalCatatan()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all hover:-translate-y-0.5">
+                            <i class="fa-solid fa-plus-circle text-sm"></i> Tambah Catatan Baru
+                        </button>
+                        <button onclick="cetakCatatanKehadiran()" class="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-print"></i> Cetak
+                        </button>
+                        <button onclick="exportCatatanCSV()" class="px-3.5 py-2.5 rounded-xl bg-emerald-600/80 hover:bg-emerald-600 text-white font-bold text-xs border border-emerald-400/30 flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-file-excel"></i> Export CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4 Kartu Statistik -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-lg font-black shrink-0">
+                            <i class="fa-solid fa-clipboard-list"></i>
+                        </div>
+                        <div>
+                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Catatan</div>
+                            <div id="catatan-stat-total" class="text-xl font-black text-slate-800">0</div>
+                            <div class="text-[9px] text-slate-400">Di tanggal terpilih</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg font-black shrink-0">
+                            <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        </div>
+                        <div>
+                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Masuk ➔ Pulang</div>
+                            <div id="catatan-stat-masuk-pulang" class="text-xl font-black text-emerald-700">0</div>
+                            <div class="text-[9px] text-emerald-600">Presensi Masuk lalu Pulang</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg font-black shrink-0">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </div>
+                        <div>
+                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pulang & Kembali</div>
+                            <div id="catatan-stat-keluar-kembali" class="text-xl font-black text-amber-700">0</div>
+                            <div class="text-[9px] text-amber-600">Pulang Tertentu & Balik</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-black shrink-0">
+                            <i class="fa-solid fa-note-sticky"></i>
+                        </div>
+                        <div>
+                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Catatan Khusus</div>
+                            <div id="catatan-stat-lainnya" class="text-xl font-black text-indigo-700">0</div>
+                            <div class="text-[9px] text-indigo-600">Izin / Dinas Luar</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card Utama Tabel & Filter -->
+                <div class="card-academic overflow-hidden shadow-md">
+                    <!-- Filter Toolbar -->
+                    <div class="p-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <!-- Filter Tanggal & Hari -->
+                            <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs">
+                                <i class="fa-solid fa-calendar-days text-teal-600 text-xs"></i>
+                                <span class="text-xs font-bold text-slate-600">Tanggal:</span>
+                                <input type="date" id="filter-catatan-tanggal" onchange="loadCatatanData()"
+                                    class="border-none bg-transparent text-xs font-black text-slate-800 focus:ring-0 cursor-pointer">
+                                <span id="catatan-hari-label" class="text-[11px] font-extrabold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                    -
+                                </span>
+                            </div>
+
+                            <!-- Tombol Cepat Hari -->
+                            <button onclick="setCatatanTanggalHariIni()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-700 hover:text-teal-700 hover:bg-teal-50 border border-slate-300 transition-all">
+                                Hari Ini
+                            </button>
+                            <button onclick="setCatatanTanggalKemarin()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-700 hover:text-teal-700 hover:bg-teal-50 border border-slate-300 transition-all">
+                                Kemarin
+                            </button>
+
+                            <!-- Filter Pegawai -->
+                            <div class="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs">
+                                <i class="fa-solid fa-user-tag text-slate-400 text-xs"></i>
+                                <select id="filter-catatan-pegawai" onchange="loadCatatanData()" class="border-none bg-transparent text-xs font-semibold text-slate-800 focus:ring-0 cursor-pointer max-w-[170px]">
+                                    <option value="">Semua Pegawai</option>
+                                </select>
+                            </div>
+
+                            <!-- Filter Pola -->
+                            <div class="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs">
+                                <i class="fa-solid fa-filter text-slate-400 text-xs"></i>
+                                <select id="filter-catatan-pola" onchange="loadCatatanData()" class="border-none bg-transparent text-xs font-semibold text-slate-800 focus:ring-0 cursor-pointer">
+                                    <option value="">Semua Pola Kehadiran</option>
+                                    <option value="masuk_pulang">Hanya Masuk lalu Pulang</option>
+                                    <option value="keluar_kembali">Pulang Jam Tertentu & Kembali</option>
+                                    <option value="lainnya">Lainnya / Khusus</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Live Search Input -->
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" id="search-catatan" oninput="cariCatatanLocal()" placeholder="Cari nama pegawai, jabatan, catatan..."
+                                class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 shadow-xs">
+                        </div>
+                    </div>
+
+                    <!-- Table Body Scroll -->
+                    <div class="overflow-x-auto overflow-y-auto max-h-[65vh] table-scroll-pro">
+                        <table class="w-full text-left border-collapse text-xs" style="min-width: 1050px !important;">
+                            <thead class="table-head-pro sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-4 py-3.5 text-center w-12">No</th>
+                                    <th class="px-4 py-3.5"><i class="fa-solid fa-calendar-day text-teal-400 mr-1.5"></i>Tanggal & Hari</th>
+                                    <th class="px-4 py-3.5"><i class="fa-solid fa-user text-amber-400 mr-1.5"></i>Nama Pegawai & Jabatan</th>
+                                    <th class="px-4 py-3.5 text-center"><i class="fa-solid fa-traffic-light text-cyan-400 mr-1.5"></i>Pola Kehadiran</th>
+                                    <th class="px-4 py-3.5 text-center"><i class="fa-regular fa-clock text-emerald-400 mr-1.5"></i>Jam Masuk</th>
+                                    <th class="px-4 py-3.5 text-center"><i class="fa-solid fa-door-open text-orange-400 mr-1.5"></i>Pulang Jam</th>
+                                    <th class="px-4 py-3.5 text-center"><i class="fa-solid fa-rotate-left text-blue-400 mr-1.5"></i>Kembali Jam</th>
+                                    <th class="px-4 py-3.5 text-center"><i class="fa-solid fa-flag-checkered text-rose-400 mr-1.5"></i>Presensi Pulang</th>
+                                    <th class="px-4 py-3.5"><i class="fa-solid fa-comment-dots text-purple-400 mr-1.5"></i>Catatan / Alasan</th>
+                                    <th class="px-4 py-3.5 text-center w-28"><i class="fa-solid fa-sliders text-indigo-400 mr-1.5"></i>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-catatan-body" class="table-pro-body divide-y divide-slate-100 bg-white">
+                                <!-- JS Injected Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Footer Info -->
+                    <div class="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-4 text-[11px]">
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> <strong>Masuk ➔ Pulang:</strong> Hadir normal</span>
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> <strong>Pulang & Kembali:</strong> Presensi masuk, pulang jam tertentu, balik lagi untuk presensi pulang</span>
+                        </div>
+                        <span id="catatan-info-count" class="font-bold text-slate-600 text-xs">Menampilkan 0 catatan</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- VIEW: ENVIRONMENT (.ENV) -->
             <div id="view-environment" class="hidden space-y-3 w-full max-w-full overflow-hidden">
                 <!-- Sleek Compact Executive Header Bar -->
@@ -2364,6 +2535,142 @@
                 class="bg-blue-600 text-white px-4 py-2 rounded">Simpan</button></div>
         </div>
     </div>
+    
+    <!-- MODAL TAMBAH / EDIT CATATAN KEHADIRAN -->
+    <div id="modal-catatan" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-fade-in-up">
+            <!-- Modal Header -->
+            <div class="p-4 bg-gradient-to-r from-teal-800 to-emerald-800 text-white flex items-center justify-between">
+                <h3 id="catatan-modal-title" class="font-bold text-sm tracking-wide flex items-center">
+                    <i class="fa-solid fa-clipboard-plus text-teal-300 mr-2"></i> Tambah Catatan Kehadiran Pegawai
+                </h3>
+                <button onclick="tutupModalCatatan()" class="text-white/80 hover:text-white text-lg transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="catatan-modal-id">
+
+                <!-- Pilih Pegawai -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+                        Nama Pegawai <span class="text-rose-500">*</span>
+                    </label>
+                    <select id="catatan-modal-karyawan" onchange="onModalPegawaiOrDateChange()"
+                        class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                        <option value="">-- Pilih Pegawai --</option>
+                    </select>
+                </div>
+
+                <!-- Tanggal -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+                        Tanggal Presensi <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="date" id="catatan-modal-tanggal" onchange="onModalPegawaiOrDateChange()"
+                        class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                </div>
+
+                <!-- Box Notifikasi Auto-Detect Absensi Riil -->
+                <div id="catatan-auto-info-box" class="hidden p-3 rounded-xl bg-teal-50 border border-teal-200"></div>
+
+                <!-- Pilihan Pola Kehadiran -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-2">
+                        Pola / Jenis Kehadiran <span class="text-rose-500">*</span>
+                    </label>
+                    <div class="space-y-2">
+                        <label class="flex items-start gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                            <input type="radio" name="pola_kehadiran" id="pola-masuk-pulang" value="masuk_pulang" checked onchange="togglePolaFields('masuk_pulang')" class="mt-0.5 text-teal-600 focus:ring-teal-500">
+                            <div>
+                                <div class="text-xs font-bold text-slate-800">1. Hadir Presensi Masuk lalu Pulang (Standar)</div>
+                                <div class="text-[11px] text-slate-500">Pegawai hadir pagi, mengikuti jam kerja, lalu presensi pulang seperti biasa.</div>
+                            </div>
+                        </label>
+
+                        <label class="flex items-start gap-3 p-2.5 rounded-xl border border-amber-200 bg-amber-50/40 hover:bg-amber-50 cursor-pointer transition-colors">
+                            <input type="radio" name="pola_kehadiran" id="pola-keluar-kembali" value="keluar_kembali" onchange="togglePolaFields('keluar_kembali')" class="mt-0.5 text-amber-600 focus:ring-amber-500">
+                            <div>
+                                <div class="text-xs font-bold text-amber-900">2. Masuk tapi Pulang di Jam Tertentu, lalu Kembali Lagi untuk Presensi Pulang</div>
+                                <div class="text-[11px] text-amber-700">Presensi masuk di pagi hari, di jam tertentu pulang/keluar kantor, lalu kembali lagi di siang/sore untuk absen pulang.</div>
+                            </div>
+                        </label>
+
+                        <label class="flex items-start gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                            <input type="radio" name="pola_kehadiran" id="pola-lainnya" value="lainnya" onchange="togglePolaFields('lainnya')" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                            <div>
+                                <div class="text-xs font-bold text-slate-800">3. Catatan Khusus / Keperluan Dinas / Izin Lainnya</div>
+                                <div class="text-[11px] text-slate-500">Keperluan dinas luar, tugas instansi, atau izin khusus lainnya.</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Rincian Jam Kerja & Jam Keluar/Kembali -->
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                            Jam Masuk
+                        </label>
+                        <input type="time" id="catatan-modal-jam-masuk" step="1"
+                            class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                            Jam Presensi Pulang
+                        </label>
+                        <input type="time" id="catatan-modal-jam-pulang" step="1"
+                            class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold">
+                    </div>
+                </div>
+
+                <!-- Khusus Keluar Tertentu & Kembali -->
+                <div id="catatan-field-keluar-kembali" class="hidden p-3 rounded-xl bg-amber-50/70 border border-amber-200 space-y-3">
+                    <div class="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Rincian Jam Pulang/Keluar Sementara & Jam Kembali:
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">
+                                Pulang / Keluar Jam
+                            </label>
+                            <input type="time" id="catatan-modal-jam-keluar-smt" step="1"
+                                class="w-full p-2 bg-white border border-amber-300 rounded-lg text-xs font-mono font-bold text-amber-900">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">
+                                Kembali ke Kantor Jam
+                            </label>
+                            <input type="time" id="catatan-modal-jam-kembali" step="1"
+                                class="w-full p-2 bg-white border border-amber-300 rounded-lg text-xs font-mono font-bold text-blue-900">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Catatan / Keterangan Alasan -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+                        Catatan / Alasan / Keterangan
+                    </label>
+                    <textarea id="catatan-modal-keterangan" rows="3" placeholder="Contoh: Izin pulang jam 10:30 karena keperluan keluarga, kembali jam 13:45 untuk presensi pulang..."
+                        class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"></textarea>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                <button onclick="tutupModalCatatan()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors">
+                    Batal
+                </button>
+                <button onclick="simpanCatatanKehadiran()" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 shadow-md shadow-teal-600/20 transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Simpan Catatan
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-edit-employee"
         class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center opacity-0 transition-opacity">
         <div id="modal-edit-content" class="bg-white p-6 rounded-2xl w-[420px] shadow-[0_25px_60px_rgba(0,0,0,0.3)]">
@@ -2473,6 +2780,7 @@
     </div>
 
     <!-- Load Logic -->
+        <script src="catatan_kehadiran.js?v=1.0"></script>
     <script src="dashboard.js?v=2.9"></script>
     <script src="enterprise_features.js?v=1.1"></script>
     <script src="environment_manager.js?v=1.5"></script>

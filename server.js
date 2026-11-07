@@ -2028,6 +2028,148 @@ async function pushToAiven(id_absensi) {
 
 // --- API ENDPOINTS KHUSUS MONITORING (monitor.html) ---
 
+// --- API ENDPOINTS CATATAN KEHADIRAN & MOBILITAS PEGAWAI ---
+
+// 1. Ambil Data Catatan Kehadiran
+app.get('/api/catatan-kehadiran', (req, res) => {
+    let sql = `
+        SELECT 
+            c.id_catatan,
+            c.id_karyawan,
+            DATE_FORMAT(c.tanggal, '%Y-%m-%d') AS tanggal,
+            c.tipe_pola,
+            TIME_FORMAT(c.jam_masuk, '%H:%i:%s') AS jam_masuk,
+            TIME_FORMAT(c.jam_keluar_sementara, '%H:%i:%s') AS jam_keluar_sementara,
+            TIME_FORMAT(c.jam_kembali, '%H:%i:%s') AS jam_kembali,
+            TIME_FORMAT(c.jam_pulang, '%H:%i:%s') AS jam_pulang,
+            c.keterangan,
+            c.dicatat_oleh,
+            DATE_FORMAT(c.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+            DATE_FORMAT(c.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
+            k.nama,
+            k.jabatan,
+            IF(k.foto IS NOT NULL, 1, 0) AS has_foto
+        FROM catatan_kehadiran c
+        LEFT JOIN karyawan k ON c.id_karyawan = k.id_karyawan
+        WHERE 1=1
+    `;
+    const params = [];
+    if (req.query.tanggal) {
+        sql += ` AND c.tanggal = ?`;
+        params.push(req.query.tanggal);
+    }
+    if (req.query.id_karyawan) {
+        sql += ` AND c.id_karyawan = ?`;
+        params.push(req.query.id_karyawan);
+    }
+    if (req.query.tipe_pola) {
+        sql += ` AND c.tipe_pola = ?`;
+        params.push(req.query.tipe_pola);
+    }
+    if (req.query.search) {
+        sql += ` AND (k.nama LIKE ? OR c.id_karyawan LIKE ? OR c.keterangan LIKE ? OR k.jabatan LIKE ?)`;
+        const s = `%${req.query.search}%`;
+        params.push(s, s, s, s);
+    }
+    sql += ` ORDER BY c.tanggal DESC, c.id_catatan DESC`;
+
+    pool.query(sql, params, (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, data: results });
+    });
+});
+
+// 2. Info Kehadiran Pegawai di Tanggal Tertentu (untuk auto-fill jam_masuk & jam_pulang)
+app.get('/api/catatan-kehadiran/info-presensi', (req, res) => {
+    const { id_karyawan, tanggal } = req.query;
+    if (!id_karyawan || !tanggal) {
+        return res.status(400).json({ success: false, message: 'id_karyawan dan tanggal diperlukan.' });
+    }
+    const sql = `
+        SELECT a.jam_masuk, a.jam_keluar, a.status, a.keterangan
+        FROM absensi a
+        WHERE a.id_karyawan = ? AND a.tanggal = ?
+        LIMIT 1
+    `;
+    pool.query(sql, [id_karyawan, tanggal], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, data: results.length ? results[0] : null });
+    });
+});
+
+// 3. Tambah Catatan Kehadiran Baru
+app.post('/api/catatan-kehadiran', (req, res) => {
+    const { id_karyawan, tanggal, tipe_pola, jam_masuk, jam_keluar_sementara, jam_kembali, jam_pulang, keterangan, dicatat_oleh } = req.body;
+    if (!id_karyawan || !tanggal) {
+        return res.status(400).json({ success: false, message: 'ID Karyawan dan Tanggal wajib diisi.' });
+    }
+
+    const sql = `
+        INSERT INTO catatan_kehadiran (id_karyawan, tanggal, tipe_pola, jam_masuk, jam_keluar_sementara, jam_kembali, jam_pulang, keterangan, dicatat_oleh)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    pool.query(sql, [
+        id_karyawan,
+        tanggal,
+        tipe_pola || 'masuk_pulang',
+        jam_masuk || null,
+        jam_keluar_sementara || null,
+        jam_kembali || null,
+        jam_pulang || null,
+        keterangan || '',
+        dicatat_oleh || 'Admin'
+    ], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, message: 'Catatan kehadiran berhasil disimpan.', id_catatan: result.insertId });
+    });
+});
+
+// 4. Update Catatan Kehadiran
+app.put('/api/catatan-kehadiran/:id', (req, res) => {
+    const id = req.params.id;
+    const { id_karyawan, tanggal, tipe_pola, jam_masuk, jam_keluar_sementara, jam_kembali, jam_pulang, keterangan, dicatat_oleh } = req.body;
+    const sql = `
+        UPDATE catatan_kehadiran
+        SET id_karyawan = COALESCE(?, id_karyawan),
+            tanggal = COALESCE(?, tanggal),
+            tipe_pola = ?,
+            jam_masuk = ?,
+            jam_keluar_sementara = ?,
+            jam_kembali = ?,
+            jam_pulang = ?,
+            keterangan = ?,
+            dicatat_oleh = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id_catatan = ?
+    `;
+    pool.query(sql, [
+        id_karyawan || null,
+        tanggal || null,
+        tipe_pola,
+        jam_masuk || null,
+        jam_keluar_sementara || null,
+        jam_kembali || null,
+        jam_pulang || null,
+        keterangan || '',
+        dicatat_oleh || 'Admin',
+        id
+    ], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, message: 'Catatan kehadiran berhasil diperbarui.' });
+    });
+});
+
+// 5. Hapus Catatan Kehadiran
+app.delete('/api/catatan-kehadiran/:id', (req, res) => {
+    const id = req.params.id;
+    pool.query('DELETE FROM catatan_kehadiran WHERE id_catatan = ?', [id], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        pool.query('INSERT IGNORE INTO catatan_kehadiran_deleted (id_catatan) VALUES (?)', [id], () => {});
+        res.json({ success: true, message: 'Catatan kehadiran berhasil dihapus.' });
+    });
+});
+
+
 // 1. Get All Periodes (Untuk Filter Dropdown)
 app.get('/api/rekap_all_periodes', (req, res) => {
     const sql = "SELECT DISTINCT DATE_FORMAT(tanggal, '%Y-%m') as periode_bulan FROM absensi ORDER BY periode_bulan DESC";

@@ -427,6 +427,84 @@ async function syncAksesScanPortalTwoWay(localDb, cloudDb) {
 // =========================================================================
 // 7. START ENGINE SINKRONISASI
 // =========================================================================
+
+// 6. Sinkronisasi Dua Arah Catatan Kehadiran (Mobilitas Pegawai)
+async function syncCatatanKehadiranTwoWay(localDb, cloudDb) {
+    // A. Sinkronisasi Penghapusan (Tombstones)
+    try {
+        const [localDels] = await localDb.query("SELECT id_catatan FROM catatan_kehadiran_deleted");
+        for (const d of localDels) {
+            await cloudDb.query("DELETE FROM catatan_kehadiran WHERE id_catatan = ?", [d.id_catatan]);
+            await cloudDb.query("INSERT IGNORE INTO catatan_kehadiran_deleted (id_catatan) VALUES (?)", [d.id_catatan]);
+        }
+        const [cloudDels] = await cloudDb.query("SELECT id_catatan FROM catatan_kehadiran_deleted");
+        for (const d of cloudDels) {
+            await localDb.query("DELETE FROM catatan_kehadiran WHERE id_catatan = ?", [d.id_catatan]);
+            await localDb.query("INSERT IGNORE INTO catatan_kehadiran_deleted (id_catatan) VALUES (?)", [d.id_catatan]);
+        }
+    } catch (e) {
+        // Abaikan jika tabel tombstone belum siap
+    }
+
+    // B. Dua Arah berdasarkan updated_at
+    const selRows = `
+        SELECT id_catatan, id_karyawan,
+               DATE_FORMAT(tanggal, '%Y-%m-%d') AS tanggal,
+               tipe_pola, jam_masuk, jam_keluar_sementara, jam_kembali, jam_pulang, keterangan, dicatat_oleh,
+               UNIX_TIMESTAMP(updated_at) AS ts
+        FROM catatan_kehadiran`;
+    const [localRows] = await localDb.query(selRows);
+    const [cloudRows] = await cloudDb.query(selRows);
+
+    const norm = (s) => String(s || '').trim().toLowerCase();
+    const keyOf = (r) => `${norm(r.id_karyawan)}|${r.tanggal}|${r.id_catatan}`;
+
+    const L = new Map(localRows.map(r => [keyOf(r), { ...r, ts: Number(r.ts) }]));
+    const C = new Map(cloudRows.map(r => [keyOf(r), { ...r, ts: Number(r.ts) }]));
+
+    let toCloud = 0, toLocal = 0;
+    const keys = new Set([...L.keys(), ...C.keys()]);
+    for (const k of keys) {
+        const l = L.get(k), c = C.get(k);
+        try {
+            if (l && c) {
+                if (l.ts > c.ts) {
+                    await cloudDb.query(
+                        `UPDATE catatan_kehadiran SET tipe_pola=?, jam_masuk=?, jam_keluar_sementara=?, jam_kembali=?, jam_pulang=?, keterangan=?, dicatat_oleh=?, updated_at=FROM_UNIXTIME(?) WHERE id_catatan=?`,
+                        [l.tipe_pola, l.jam_masuk, l.jam_keluar_sementara, l.jam_kembali, l.jam_pulang, l.keterangan, l.dicatat_oleh, l.ts, c.id_catatan]
+                    );
+                    toCloud++;
+                } else if (c.ts > l.ts) {
+                    await localDb.query(
+                        `UPDATE catatan_kehadiran SET tipe_pola=?, jam_masuk=?, jam_keluar_sementara=?, jam_kembali=?, jam_pulang=?, keterangan=?, dicatat_oleh=?, updated_at=FROM_UNIXTIME(?) WHERE id_catatan=?`,
+                        [c.tipe_pola, c.jam_masuk, c.jam_keluar_sementara, c.jam_kembali, c.jam_pulang, c.keterangan, c.dicatat_oleh, c.ts, l.id_catatan]
+                    );
+                    toLocal++;
+                }
+            } else if (l) {
+                await cloudDb.query(
+                    `INSERT INTO catatan_kehadiran (id_catatan, id_karyawan, tanggal, tipe_pola, jam_masuk, jam_keluar_sementara, jam_kembali, jam_pulang, keterangan, dicatat_oleh, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FROM_UNIXTIME(?))
+                     ON DUPLICATE KEY UPDATE tipe_pola=VALUES(tipe_pola), jam_masuk=VALUES(jam_masuk), jam_keluar_sementara=VALUES(jam_keluar_sementara), jam_kembali=VALUES(jam_kembali), jam_pulang=VALUES(jam_pulang), keterangan=VALUES(keterangan), dicatat_oleh=VALUES(dicatat_oleh), updated_at=VALUES(updated_at)`,
+                    [l.id_catatan, l.id_karyawan, l.tanggal, l.tipe_pola, l.jam_masuk, l.jam_keluar_sementara, l.jam_kembali, l.jam_pulang, l.keterangan, l.dicatat_oleh, l.ts]
+                );
+                toCloud++;
+            } else if (c) {
+                await localDb.query(
+                    `INSERT INTO catatan_kehadiran (id_catatan, id_karyawan, tanggal, tipe_pola, jam_masuk, jam_keluar_sementara, jam_kembali, jam_pulang, keterangan, dicatat_oleh, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FROM_UNIXTIME(?))
+                     ON DUPLICATE KEY UPDATE tipe_pola=VALUES(tipe_pola), jam_masuk=VALUES(jam_masuk), jam_keluar_sementara=VALUES(jam_keluar_sementara), jam_kembali=VALUES(jam_kembali), jam_pulang=VALUES(jam_pulang), keterangan=VALUES(keterangan), dicatat_oleh=VALUES(dicatat_oleh), updated_at=VALUES(updated_at)`,
+                    [c.id_catatan, c.id_karyawan, c.tanggal, c.tipe_pola, c.jam_masuk, c.jam_keluar_sementara, c.jam_kembali, c.jam_pulang, c.keterangan, c.dicatat_oleh, c.ts]
+                );
+                toLocal++;
+            }
+        } catch (e) {
+            // Ignored
+        }
+    }
+    return { toCloud, toLocal };
+}
+
 async function startSync() {
     const dbHost = process.env.DB_HOST || '';
     if (!process.env.CLOUD_DB_HOST || dbHost.includes('aivencloud') || dbHost.includes('tidbcloud')) {
@@ -494,12 +572,16 @@ async function startSync() {
             // Step 5: Akses Scan Portal (Dua Arah)
             const aspInfo = await syncAksesScanPortalTwoWay(localDb, cloudDb);
 
+            // Step 6: Catatan Kehadiran (Dua Arah)
+            const cInfo = await syncCatatanKehadiranTwoWay(localDb, cloudDb);
+
             console.log(`✅ Sinkronisasi sukses!
    * Karyawan: ${kInfo.toCloud} ➔ Cloud, ${kInfo.toLocal} ➔ Lokal (Hapus: ${kInfo.delCloud} Cloud / ${kInfo.delLocal} Lokal)
    * Absensi: ${aInfo.toCloud} ➔ Cloud, ${aInfo.toLocal} ➔ Lokal (Hapus: ${aInfo.delCloud} Cloud / ${aInfo.delLocal} Lokal)
    * Akun Pegawai: ${apInfo.toCloud} ➔ Cloud, ${apInfo.toLocal} ➔ Lokal
    * Req Password: ${rInfo.toCloud} ➔ Cloud, ${rInfo.toLocal} ➔ Lokal
-   * Jadwal Scan: ${aspInfo.toCloud} ➔ Cloud, ${aspInfo.toLocal} ➔ Lokal`);
+   * Jadwal Scan: ${aspInfo.toCloud} ➔ Cloud, ${aspInfo.toLocal} ➔ Lokal
+   * Catatan Kehadiran: ${cInfo.toCloud} ➔ Cloud, ${cInfo.toLocal} ➔ Lokal`);
 
         } catch (error) {
             console.error(`❌ Gagal Sinkronisasi:`, error.message);
