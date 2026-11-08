@@ -640,6 +640,10 @@ async function loadDailyData(silent = false) {
                     statusBadge = `<span class="badge-pro-amber"><i class="fa-solid fa-calendar-check mr-1"></i>Cuti</span>`;
                     row.jam_masuk = '-';
                     row.jam_keluar = '-';
+                } else if (status === 'LIBUR') {
+                    statusBadge = `<span class="badge-pro-cyan"><i class="fa-solid fa-mug-hot mr-1"></i>Libur</span>`;
+                    row.jam_masuk = '-';
+                    row.jam_keluar = '-';
                 } else if (status === 'HADIR_MANUAL' || row.jam_masuk) {
                     // --- LOGIKA HADIR NORMAL & MANUAL ---
                     
@@ -713,6 +717,71 @@ async function loadDailyData(silent = false) {
                 `;
                 tbody.innerHTML += tr;
             });
+
+            // [FIX] Sinkronisasi Harian & Rekap Bulanan: Tampilkan juga pegawai yang ALPA (Tidak Hadir) pada hari kerja aktif
+            const nowLocal = new Date();
+            const todayLocal = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
+            const targetDate = dateVal || todayLocal;
+            const targetDateObj = new Date(targetDate + 'T00:00:00');
+            const isSunday = targetDateObj.getDay() === 0;
+
+            if (!isSunday && targetDate <= todayLocal) {
+                if (!Array.isArray(globalEmployees) || globalEmployees.length === 0) {
+                    try {
+                        const resEmp = await fetch(`${API_BASE}/karyawan/descriptors?_t=${Date.now()}`);
+                        const jsonEmp = await resEmp.json();
+                        globalEmployees = jsonEmp.descriptors || [];
+                    } catch (errEmp) {
+                        console.warn('Gagal memuat daftar pegawai untuk cek Alpa harian:', errEmp);
+                    }
+                }
+
+                const presentIds = new Set(
+                    result.data.map(r => String(r.id_karyawan || '').trim().toLowerCase()).filter(Boolean)
+                );
+                const seenEmpIds = new Set();
+
+                globalEmployees.forEach(emp => {
+                    const empKey = String(emp.id_karyawan || '').trim().toLowerCase();
+                    if (!empKey || seenEmpIds.has(empKey) || presentIds.has(empKey)) return;
+                    seenEmpIds.add(empKey);
+
+                    const grad = getAvatarGradient(emp.nama || '');
+                    const initial = escapeHtml(emp.nama || '?').substring(0, 1).toUpperCase();
+
+                    const trAlpa = `
+                        <tr onclick="openModal('${emp.id_karyawan}')" class="bg-rose-50/25 hover:bg-rose-50/60 transition cursor-pointer group border-b border-slate-200/80 last:border-0">
+                            <td class="px-6 py-3.5 font-mono text-rose-400 font-bold text-xs">-</td>
+                            <td class="px-6 py-3.5 font-bold text-slate-800 group-hover:text-rose-700 transition">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr ${grad} flex items-center justify-center text-white text-xs font-black shadow-sm flex-shrink-0">
+                                        ${initial}
+                                    </div>
+                                    <div class="truncate">
+                                        <div class="font-bold text-slate-900 group-hover:text-rose-700 transition">${escapeHtml(emp.nama)}</div>
+                                        <div class="text-[10px] font-mono text-slate-400">${escapeHtml(emp.id_karyawan || '')}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-3.5 text-slate-600 text-xs font-bold uppercase tracking-wider">${escapeHtml(emp.jabatan || '-')}</td>
+                            <td class="px-6 py-3.5">
+                                <span class="badge-pro-rose"><i class="fa-solid fa-user-xmark mr-1"></i>Alpa (Tidak Hadir)</span>
+                                <div class="text-[10px] text-rose-500 italic mt-1.5 border-t border-rose-100 pt-1 leading-tight"><i class="fa-solid fa-circle-info text-[9px] mr-1 text-rose-400"></i>Tidak Hadir Tanpa Keterangan (Alpa)</div>
+                            </td>
+                            <td class="px-6 py-3.5"><span class="text-slate-300">-</span></td>
+                            <td class="px-6 py-3.5 font-mono text-slate-800 font-bold text-xs">
+                                <div class="flex justify-between items-center gap-2">
+                                    <div><span class="text-slate-400">-</span></div>
+                                    <button onclick="event.stopPropagation(); hapusAlpaDirect('${emp.id_karyawan}', '${targetDate}')" class="px-2 py-1 rounded bg-rose-100 hover:bg-rose-600 text-rose-600 hover:text-white text-[10px] font-bold transition-all shadow-xs" title="Hapus Alpa (Set Libur)">
+                                        Hapus Alpa
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += trAlpa;
+                });
+            }
         } else {
             tbody.innerHTML = `<tr><td colspan="6" class="p-16 text-center text-slate-400 bg-slate-50/30"><div class="flex flex-col items-center justify-center"><i class="fa-solid fa-inbox text-5xl mb-4 text-emerald-200"></i><p class="text-lg font-bold text-slate-500">Belum Ada Data</p><p class="text-sm mt-1">Data absensi hari ini masih kosong atau tidak ditemukan.</p></div></td></tr>`;
         }
@@ -834,6 +903,52 @@ async function loadViewDbData() {
                     </tr>
                 `;
             });
+
+            // [FIX] Tampilkan juga pegawai yang ALPA pada mode Harian di Data View Absensi Harian
+            if (type === 'daily') {
+                const todayLocal = getLocalDate();
+                const targetDate = dateInput.value || todayLocal;
+                const isSunday = new Date(targetDate + 'T00:00:00').getDay() === 0;
+                if (!isSunday && targetDate <= todayLocal) {
+                    if (!Array.isArray(globalEmployees) || globalEmployees.length === 0) {
+                        try {
+                            const resEmp = await fetch(`${API_BASE}/karyawan/descriptors?_t=${Date.now()}`);
+                            const jsonEmp = await resEmp.json();
+                            globalEmployees = jsonEmp.descriptors || [];
+                        } catch (e) {}
+                    }
+                    const presentIds = new Set(
+                        result.data.map(r => String(r.id_karyawan || '').trim().toLowerCase()).filter(Boolean)
+                    );
+                    const seenIds = new Set();
+                    globalEmployees.forEach(emp => {
+                        const empKey = String(emp.id_karyawan || '').trim().toLowerCase();
+                        if (!empKey || seenIds.has(empKey) || presentIds.has(empKey)) return;
+                        seenIds.add(empKey);
+                        htmlContent += `
+                            <tr class="bg-rose-50/25 hover:bg-rose-50/50 transition-colors">
+                                <td class="px-4 py-2 font-mono text-rose-400 text-xs">ALPA</td>
+                                <td class="px-4 py-2 font-mono font-bold text-slate-700">${escapeHtml(emp.id_karyawan)}</td>
+                                <td class="px-4 py-2 font-bold text-slate-900">${escapeHtml(emp.nama)}</td>
+                                <td class="px-4 py-2 text-slate-600 text-xs font-semibold uppercase">${escapeHtml(emp.jabatan || '-')}</td>
+                                <td class="px-4 py-2 font-mono text-xs text-slate-600">${targetDate}</td>
+                                <td class="px-4 py-2 font-mono text-slate-300">-</td>
+                                <td class="px-4 py-2 font-mono text-slate-300">-</td>
+                                <td class="px-4 py-2"><span class="badge-pro-rose"><i class="fa-solid fa-user-xmark mr-1"></i>ALPA</span></td>
+                                <td class="px-4 py-2 text-center"><span class="text-slate-300 font-mono">-</span></td>
+                                <td class="px-4 py-2 text-center"><span class="text-slate-300 font-mono">-</span></td>
+                                <td class="px-4 py-2 text-xs text-rose-500 italic">Tidak Hadir Tanpa Keterangan (Alpa)</td>
+                                <td class="px-4 py-2 text-center">
+                                    <button onclick="hapusAlpaDirect('${emp.id_karyawan}', '${targetDate}')" class="px-2 py-1 rounded bg-rose-100 hover:bg-rose-600 text-rose-600 hover:text-white text-[10px] font-bold transition-all" title="Hapus Alpa (Set Libur)">
+                                        Hapus Alpa
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            }
+
             tbody.innerHTML = htmlContent;
         } else {
             tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500">Tidak ada data untuk ${type === 'daily' ? 'tanggal' : 'bulan'} ini.</td></tr>`;
@@ -1356,6 +1471,11 @@ async function hapusAlpaDirect(id_karyawan, tanggal) {
         if (response.ok && result.success) {
             showToast("Alpa berhasil dihapus!", 'success');
             if(window._closePelanggaranModal) window._closePelanggaranModal();
+            loadDailyData(true);
+            loadMonthlyRecap(true);
+            if (document.getElementById('view-view-db') && !document.getElementById('view-view-db').classList.contains('hidden')) {
+                loadViewDbData();
+            }
         } else {
             showToast("Gagal menghapus Alpa: " + result.message, 'error');
         }
@@ -3715,6 +3835,9 @@ async function loadMonthlyMatrix(silent = false) {
                     } else if (status === 'CUTI') {
                         cellContent = '<span class="text-orange-600 font-bold">C</span>';
                         cellClass = 'bg-orange-50';
+                    } else if (status === 'LIBUR') {
+                        cellContent = '<span class="text-cyan-600 font-bold" title="Libur">L</span>';
+                        cellClass = 'bg-cyan-50/50';
                     } else if (status === 'ALPA') {
                         cellContent = '<span class="text-red-600 font-extrabold">A</span>';
                         cellClass = 'bg-red-50';
@@ -3839,6 +3962,9 @@ async function loadViewDbMonthlyData() {
                     } else if (status === 'CUTI') {
                         cellContent = '<span class="text-orange-600 font-bold">C</span>';
                         cellClass = 'bg-orange-50';
+                    } else if (status === 'LIBUR') {
+                        cellContent = '<span class="text-cyan-600 font-bold" title="Libur">L</span>';
+                        cellClass = 'bg-cyan-50/50';
                     } else if (status === 'ALPA') {
                         cellContent = '<span class="text-red-600 font-extrabold">A</span>';
                         cellClass = 'bg-red-50';
