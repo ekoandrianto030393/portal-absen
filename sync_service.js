@@ -101,6 +101,87 @@ async function ensureAllSyncSchemas(db) {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB
     `);
+
+    // 6. Broadcast Pengumuman Resmi Instansi (+ Tombstone)
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS broadcast_pengumuman (
+            kode_broadcast VARCHAR(80) PRIMARY KEY,
+            kategori VARCHAR(50) NOT NULL DEFAULT 'INFO PENTING',
+            judul VARCHAR(160) DEFAULT '',
+            pesan TEXT NOT NULL,
+            target_jabatan VARCHAR(100) DEFAULT 'ALL',
+            tampil_portal TINYINT(1) NOT NULL DEFAULT 1,
+            aktif TINYINT(1) NOT NULL DEFAULT 1,
+            dibuat_oleh VARCHAR(80) DEFAULT 'Admin Kepegawaian',
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS broadcast_pengumuman_deleted (
+            kode_broadcast VARCHAR(80) PRIMARY KEY,
+            deleted_at DATETIME NOT NULL
+        )
+    `);
+
+    // 7. Jadwal Shift Pegawai (Berbasis Database)
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS jadwal_shift_pegawai (
+            id_karyawan VARCHAR(50) PRIMARY KEY,
+            shift_code VARCHAR(20) NOT NULL DEFAULT 'PAGI',
+            unit_kerja VARCHAR(100) DEFAULT '',
+            catatan VARCHAR(255) DEFAULT '',
+            updated_by VARCHAR(80) DEFAULT 'Admin',
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // 8. Audit Trail Sistem Permanen
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            kode_log VARCHAR(80) PRIMARY KEY,
+            aksi VARCHAR(100) NOT NULL,
+            detail TEXT,
+            kategori VARCHAR(30) DEFAULT 'emerald',
+            pelaku VARCHAR(80) DEFAULT 'Admin',
+            sumber VARCHAR(30) DEFAULT 'DASHBOARD',
+            created_at DATETIME NOT NULL,
+            INDEX idx_audit_created (created_at)
+        )
+    `);
+
+    // 9. Permintaan Koreksi Lupa Scan Masuk / Pulang (+ Tombstone)
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS permintaan_koreksi_scan (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            kode_koreksi VARCHAR(80) NOT NULL UNIQUE,
+            id_karyawan VARCHAR(50) NOT NULL,
+            nama VARCHAR(150) DEFAULT '',
+            jabatan VARCHAR(150) DEFAULT '',
+            jenis_lupa VARCHAR(30) NOT NULL DEFAULT 'LUPA_PULANG',
+            tanggal_absen DATE NOT NULL,
+            hari_absen VARCHAR(20) NOT NULL DEFAULT '',
+            tahun_absen INT NOT NULL,
+            jam_masuk_ajuan VARCHAR(10) DEFAULT NULL,
+            jam_pulang_ajuan VARCHAR(10) DEFAULT NULL,
+            jam_masuk_lama VARCHAR(10) DEFAULT NULL,
+            jam_pulang_lama VARCHAR(10) DEFAULT NULL,
+            alasan TEXT NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            catatan_admin VARCHAR(255) DEFAULT NULL,
+            tanggal_kirim DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_ks_emp (id_karyawan),
+            INDEX idx_ks_tgl (tanggal_absen),
+            INDEX idx_ks_status (status)
+        )
+    `);
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS permintaan_koreksi_scan_deleted (
+            kode_koreksi VARCHAR(80) PRIMARY KEY,
+            deleted_at DATETIME NOT NULL
+        )
+    `);
 }
 
 // =========================================================================
@@ -657,6 +738,178 @@ async function syncPermintaanJadwalLiburTwoWay(localDb, cloudDb) {
     return { toCloud, toLocal };
 }
 
+async function syncKeyedTableTwoWay(localDb, cloudDb, cfg) {
+    let toCloud = 0;
+    let toLocal = 0;
+    const deletedSet = new Set();
+
+    if (cfg.deletedTable) {
+        const [localDel] = await localDb.query(
+            `SELECT \`${cfg.keyCol}\` AS k, DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s') AS deleted_at FROM \`${cfg.deletedTable}\``
+        );
+        const [cloudDel] = await cloudDb.query(
+            `SELECT \`${cfg.keyCol}\` AS k, DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s') AS deleted_at FROM \`${cfg.deletedTable}\``
+        );
+        const localDelMap = new Map(localDel.map(r => [r.k, r.deleted_at]));
+        const cloudDelMap = new Map(cloudDel.map(r => [r.k, r.deleted_at]));
+        for (const k of new Set([...localDelMap.keys(), ...cloudDelMap.keys()])) deletedSet.add(k);
+
+        for (const [k, delAt] of cloudDelMap.entries()) {
+            if (!localDelMap.has(k)) {
+                await localDb.query(`INSERT IGNORE INTO \`${cfg.deletedTable}\` (\`${cfg.keyCol}\`, deleted_at) VALUES (?, ?)`, [k, delAt]);
+            }
+            await localDb.query(`DELETE FROM \`${cfg.table}\` WHERE \`${cfg.keyCol}\` = ?`, [k]);
+        }
+        for (const [k, delAt] of localDelMap.entries()) {
+            if (!cloudDelMap.has(k)) {
+                await cloudDb.query(`INSERT IGNORE INTO \`${cfg.deletedTable}\` (\`${cfg.keyCol}\`, deleted_at) VALUES (?, ?)`, [k, delAt]);
+            }
+            await cloudDb.query(`DELETE FROM \`${cfg.table}\` WHERE \`${cfg.keyCol}\` = ?`, [k]);
+        }
+    }
+
+    const [localRows] = await localDb.query(cfg.selectSql);
+    const [cloudRows] = await cloudDb.query(cfg.selectSql);
+    const localMap = new Map(localRows.map(r => [r[cfg.keyCol], r]));
+    const cloudMap = new Map(cloudRows.map(r => [r[cfg.keyCol], r]));
+    const allKeys = new Set([...localMap.keys(), ...cloudMap.keys()]);
+
+    const toEpoch = (dtStr) => {
+        if (!dtStr) return 0;
+        const ms = new Date(String(dtStr).replace(' ', 'T') + '+07:00').getTime();
+        return isNaN(ms) ? 0 : ms;
+    };
+
+    for (const key of allKeys) {
+        if (deletedSet.has(key)) {
+            await localDb.query(`DELETE FROM \`${cfg.table}\` WHERE \`${cfg.keyCol}\` = ?`, [key]);
+            await cloudDb.query(`DELETE FROM \`${cfg.table}\` WHERE \`${cfg.keyCol}\` = ?`, [key]);
+            continue;
+        }
+        const l = localMap.get(key);
+        const c = cloudMap.get(key);
+        if (c && !l) {
+            await localDb.query(cfg.upsertSql, cfg.toParams(c));
+            toLocal++;
+        } else if (l && !c) {
+            await cloudDb.query(cfg.upsertSql, cfg.toParams(l));
+            toCloud++;
+        } else if (l && c && cfg.tsCol) {
+            const lMs = toEpoch(l[cfg.tsCol]);
+            const cMs = toEpoch(c[cfg.tsCol]);
+            if (cMs > lMs) {
+                await localDb.query(cfg.upsertSql, cfg.toParams(c));
+                toLocal++;
+            } else if (lMs > cMs) {
+                await cloudDb.query(cfg.upsertSql, cfg.toParams(l));
+                toCloud++;
+            } else if (cfg.preferNonPendingStatus && l.status !== c.status) {
+                if (c.status !== 'pending' && l.status === 'pending') {
+                    await localDb.query(cfg.upsertSql, cfg.toParams(c));
+                    toLocal++;
+                } else if (l.status !== 'pending' && c.status === 'pending') {
+                    await cloudDb.query(cfg.upsertSql, cfg.toParams(l));
+                    toCloud++;
+                }
+            }
+        }
+    }
+    return { toCloud, toLocal };
+}
+
+async function syncEnterpriseBundleTwoWay(localDb, cloudDb) {
+    const configs = [
+        {
+            table: 'broadcast_pengumuman',
+            deletedTable: 'broadcast_pengumuman_deleted',
+            keyCol: 'kode_broadcast',
+            tsCol: 'updated_at',
+            selectSql: `SELECT kode_broadcast, kategori, judul, pesan, target_jabatan, tampil_portal, aktif, dibuat_oleh,
+                               DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+                               DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+                        FROM broadcast_pengumuman`,
+            upsertSql: `INSERT INTO broadcast_pengumuman
+                            (kode_broadcast, kategori, judul, pesan, target_jabatan, tampil_portal, aktif, dibuat_oleh, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE
+                            kategori=VALUES(kategori), judul=VALUES(judul), pesan=VALUES(pesan),
+                            target_jabatan=VALUES(target_jabatan), tampil_portal=VALUES(tampil_portal),
+                            aktif=VALUES(aktif), dibuat_oleh=VALUES(dibuat_oleh), updated_at=VALUES(updated_at)`,
+            toParams: r => [r.kode_broadcast, r.kategori, r.judul || '', r.pesan, r.target_jabatan || 'ALL', Number(r.tampil_portal ?? 1), Number(r.aktif ?? 1), r.dibuat_oleh || 'Admin', r.created_at, r.updated_at || r.created_at]
+        },
+        {
+            table: 'jadwal_shift_pegawai',
+            keyCol: 'id_karyawan',
+            tsCol: 'updated_at',
+            selectSql: `SELECT id_karyawan, shift_code, unit_kerja, catatan, updated_by,
+                               DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+                        FROM jadwal_shift_pegawai`,
+            upsertSql: `INSERT INTO jadwal_shift_pegawai (id_karyawan, shift_code, unit_kerja, catatan, updated_by, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE
+                            shift_code=VALUES(shift_code), unit_kerja=VALUES(unit_kerja),
+                            catatan=VALUES(catatan), updated_by=VALUES(updated_by), updated_at=VALUES(updated_at)`,
+            toParams: r => [r.id_karyawan, r.shift_code || 'PAGI', r.unit_kerja || '', r.catatan || '', r.updated_by || 'Admin', r.updated_at]
+        },
+        {
+            table: 'audit_logs',
+            keyCol: 'kode_log',
+            tsCol: null,
+            selectSql: `SELECT kode_log, aksi, detail, kategori, pelaku, sumber,
+                               DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at
+                        FROM audit_logs ORDER BY created_at DESC LIMIT 200`,
+            upsertSql: `INSERT IGNORE INTO audit_logs (kode_log, aksi, detail, kategori, pelaku, sumber, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            toParams: r => [r.kode_log, r.aksi, r.detail || '', r.kategori || 'emerald', r.pelaku || 'Admin', r.sumber || 'DASHBOARD', r.created_at]
+        },
+        {
+            table: 'permintaan_koreksi_scan',
+            deletedTable: 'permintaan_koreksi_scan_deleted',
+            keyCol: 'kode_koreksi',
+            tsCol: 'updated_at',
+            preferNonPendingStatus: true,
+            selectSql: `SELECT kode_koreksi, id_karyawan, nama, jabatan, jenis_lupa,
+                               DATE_FORMAT(tanggal_absen, '%Y-%m-%d') AS tanggal_absen,
+                               hari_absen, tahun_absen, jam_masuk_ajuan, jam_pulang_ajuan,
+                               jam_masuk_lama, jam_pulang_lama, alasan, status, catatan_admin,
+                               DATE_FORMAT(tanggal_kirim, '%Y-%m-%d %H:%i:%s') AS tanggal_kirim,
+                               DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+                        FROM permintaan_koreksi_scan`,
+            upsertSql: `INSERT INTO permintaan_koreksi_scan
+                            (kode_koreksi, id_karyawan, nama, jabatan, jenis_lupa, tanggal_absen,
+                             hari_absen, tahun_absen, jam_masuk_ajuan, jam_pulang_ajuan,
+                             jam_masuk_lama, jam_pulang_lama, alasan, status, catatan_admin, tanggal_kirim, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE
+                            nama=VALUES(nama), jabatan=VALUES(jabatan), jenis_lupa=VALUES(jenis_lupa),
+                            tanggal_absen=VALUES(tanggal_absen), hari_absen=VALUES(hari_absen),
+                            tahun_absen=VALUES(tahun_absen), jam_masuk_ajuan=VALUES(jam_masuk_ajuan),
+                            jam_pulang_ajuan=VALUES(jam_pulang_ajuan), jam_masuk_lama=VALUES(jam_masuk_lama),
+                            jam_pulang_lama=VALUES(jam_pulang_lama), alasan=VALUES(alasan),
+                            status=VALUES(status), catatan_admin=VALUES(catatan_admin),
+                            tanggal_kirim=VALUES(tanggal_kirim), updated_at=VALUES(updated_at)`,
+            toParams: r => [
+                r.kode_koreksi, r.id_karyawan, r.nama || '', r.jabatan || '',
+                r.jenis_lupa || 'LUPA_PULANG', r.tanggal_absen, r.hari_absen || '',
+                Number(r.tahun_absen || String(r.tanggal_absen || '').slice(0, 4) || 2026),
+                r.jam_masuk_ajuan || null, r.jam_pulang_ajuan || null,
+                r.jam_masuk_lama || null, r.jam_pulang_lama || null,
+                r.alasan || '', r.status || 'pending', r.catatan_admin || null,
+                r.tanggal_kirim, r.updated_at || r.tanggal_kirim
+            ]
+        }
+    ];
+
+    let toCloud = 0;
+    let toLocal = 0;
+    for (const cfg of configs) {
+        const res = await syncKeyedTableTwoWay(localDb, cloudDb, cfg);
+        toCloud += res.toCloud;
+        toLocal += res.toLocal;
+    }
+    return { toCloud, toLocal, totalChanges: toCloud + toLocal };
+}
+
 async function startSync() {
     const dbHost = process.env.DB_HOST || '';
     if (!process.env.CLOUD_DB_HOST || dbHost.includes('aivencloud') || dbHost.includes('tidbcloud')) {
@@ -731,6 +984,12 @@ async function startSync() {
             const jlInfo = await syncPermintaanJadwalLiburTwoWay(localDb, cloudDb);
             if (jlInfo.toCloud > 0 || jlInfo.toLocal > 0) {
                 console.log(`   📅 Jadwal Libur/DL Sync: Cloud+${jlInfo.toCloud} / Local+${jlInfo.toLocal}`);
+            }
+
+            // Step 8: Broadcast, Shift Roster, Audit Logs & Koreksi Lupa Scan (Dua Arah)
+            const entInfo = await syncEnterpriseBundleTwoWay(localDb, cloudDb);
+            if (entInfo.totalChanges > 0) {
+                console.log(`   🏢 Enterprise & Koreksi Scan Sync: Cloud+${entInfo.toCloud} / Local+${entInfo.toLocal}`);
             }
 
             console.log(`✅ Sinkronisasi sukses!

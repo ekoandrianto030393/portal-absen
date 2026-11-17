@@ -677,6 +677,9 @@
                 <li class="nav-line-item"><button id="nav-jadwal-libur" onclick="switchTab('jadwal-libur')"
                         class="nav-item w-full flex items-center justify-between px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><span class="flex items-center gap-3"><i
                             class="fa-solid fa-calendar-check w-5 text-center text-cyan-300"></i> <span class="font-medium">Jadwal Libur</span></span><span id="sidebar-jadwal-libur-badge" class="hidden text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-900 shadow-xs">0</span></button></li>
+                <li class="nav-line-item"><button id="nav-koreksi-scan" onclick="switchTab('koreksi-scan')"
+                        class="nav-item w-full flex items-center justify-between px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><span class="flex items-center gap-3"><i
+                            class="fa-solid fa-fingerprint w-5 text-center text-amber-300"></i> <span class="font-medium">Koreksi Lupa Scan</span></span><span id="sidebar-koreksi-scan-badge" class="hidden text-[10px] font-black px-1.5 py-0.5 rounded-full bg-rose-400 text-slate-950 shadow-xs">0</span></button></li>
                 <li class="nav-line-item"><button id="nav-req-password" onclick="switchTab('req-password')"
                         class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm text-emerald-50 rounded-lg hover:bg-white/10 hover:text-white transition-all"><i
                             class="fa-solid fa-key w-5 text-center text-orange-400/80 group-hover:text-white"></i> <span class="font-medium">Req Ubah Password</span></button></li>
@@ -858,6 +861,7 @@
                         <button onclick="openManualModal()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-user-plus"></i> Input Manual</button>
                         <button onclick="switchTab('catatan')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white text-xs font-bold shadow-md shadow-teal-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-clipboard-user"></i> Tabel Catatan</button>
                         <button onclick="switchTab('jadwal-libur')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-700 hover:from-cyan-500 hover:to-teal-600 text-white text-xs font-bold shadow-md shadow-cyan-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-calendar-check"></i> Jadwal Libur <span id="overview-jl-badge" class="hidden px-1.5 py-0.5 rounded-full bg-amber-300 text-slate-900 text-[10px] font-black leading-none">0</span></button>
+                        <button onclick="switchTab('koreksi-scan')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-bold shadow-md shadow-amber-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-fingerprint"></i> Koreksi Scan <span id="overview-ks-badge" class="hidden px-1.5 py-0.5 rounded-full bg-white text-rose-700 text-[10px] font-black leading-none">0</span></button>
                 <button onclick="switchTab('analytics')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold shadow-md shadow-amber-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-trophy"></i> Peringkat Disiplin</button>
                         <button onclick="switchTab('payroll')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-violet-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-money-check-dollar"></i> Simulasi Gaji & Tukin</button>
                         <button onclick="switchTab('shifts')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold shadow-md shadow-cyan-500/20 flex items-center gap-1.5 transition-all hover:-translate-y-0.5"><i class="fa-solid fa-business-time"></i> Jadwal Shift</button>
@@ -1961,6 +1965,118 @@
                 </div>
             </div>
 
+            <!-- VIEW: PERMINTAAN KOREKSI LUPA SCAN MASUK / PULANG -->
+            <div id="view-koreksi-scan" class="hidden space-y-3">
+                <div class="rounded-2xl bg-gradient-to-r from-amber-800 via-orange-700 to-emerald-900 text-white px-5 py-3 shadow-lg border border-amber-700/40 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+                    <div>
+                        <h3 class="text-lg font-black tracking-tight flex flex-wrap items-center gap-2.5" style="color:#fff">
+                            <i class="fa-solid fa-fingerprint text-amber-300"></i>
+                            <span>KOREKSI LUPA SCAN MASUK / PULANG</span>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-[10px] font-bold uppercase tracking-wider text-amber-200">
+                                <i class="fa-solid fa-cloud-arrow-down"></i> Real-Time Portal &harr; Biometrik
+                            </span>
+                        </h3>
+                        <p class="text-[11px] text-amber-100/90 mt-0.5 max-w-3xl leading-snug">
+                            Daftar pengajuan pegawai yang lupa melakukan scan masuk atau scan pulang. Klik <b>Setujui</b> untuk langsung memperbarui data absensi, atau klik baris / <b>Manual</b> untuk menyesuaikan jam sebelum simpan.
+                        </p>
+                    </div>
+                    <div class="flex flex-row lg:flex-col items-center lg:items-end gap-2">
+                        <button type="button" onclick="loadKoreksiScanRequests()"
+                            class="px-3 py-2 rounded-xl bg-white text-amber-900 hover:bg-amber-50 font-extrabold text-xs shadow-md transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Sinkronkan &amp; Refresh</span>
+                        </button>
+                        <span id="ks-last-sync" class="text-[11px] font-mono text-amber-200">Siap menyinkronkan...</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="rounded-2xl bg-white border border-amber-200 px-3 py-2 shadow-sm flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] font-extrabold uppercase tracking-wider text-amber-600">Menunggu Persetujuan</div>
+                            <div id="ks-stat-pending" class="text-base font-black text-slate-900 leading-tight">0 Permintaan</div>
+                        </div>
+                        <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-sm"><i class="fa-solid fa-hourglass-half"></i></div>
+                    </div>
+                    <div class="rounded-2xl bg-white border border-orange-200 px-3 py-2 shadow-sm flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] font-extrabold uppercase tracking-wider text-orange-700">Lupa Scan Pulang</div>
+                            <div id="ks-stat-pulang" class="text-base font-black text-slate-900 leading-tight">0 Pengajuan</div>
+                        </div>
+                        <div class="w-8 h-8 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center text-sm"><i class="fa-solid fa-right-from-bracket"></i></div>
+                    </div>
+                    <div class="rounded-2xl bg-white border border-violet-200 px-3 py-2 shadow-sm flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] font-extrabold uppercase tracking-wider text-violet-700">Lupa Masuk / Keduanya</div>
+                            <div id="ks-stat-masuk" class="text-base font-black text-slate-900 leading-tight">0 Pengajuan</div>
+                        </div>
+                        <div class="w-8 h-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center text-sm"><i class="fa-solid fa-right-to-bracket"></i></div>
+                    </div>
+                    <div class="rounded-2xl bg-white border border-emerald-200 px-3 py-2 shadow-sm flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">Disetujui &amp; Terupdate</div>
+                            <div id="ks-stat-approved" class="text-base font-black text-slate-900 leading-tight">0 Disetujui</div>
+                        </div>
+                        <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm"><i class="fa-solid fa-circle-check"></i></div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-lg border border-slate-200/80 overflow-hidden">
+                    <div class="p-3.5 border-b border-slate-200 bg-slate-50/70 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" data-status="ALL" onclick="setKoreksiScanStatusFilter('ALL')"
+                                class="ks-status-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-sm transition-all">Semua Status</button>
+                            <button type="button" data-status="pending" onclick="setKoreksiScanStatusFilter('pending')"
+                                class="ks-status-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 transition-all">Menunggu Admin</button>
+                            <button type="button" data-status="approved" onclick="setKoreksiScanStatusFilter('approved')"
+                                class="ks-status-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 transition-all">Disetujui</button>
+                            <button type="button" data-status="rejected" onclick="setKoreksiScanStatusFilter('rejected')"
+                                class="ks-status-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 transition-all">Ditolak</button>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select onchange="setKoreksiScanJenisFilter(this.value)"
+                                class="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 focus:ring-2 focus:ring-amber-500">
+                                <option value="ALL">Semua Jenis Lupa Scan</option>
+                                <option value="LUPA_PULANG">Hanya Lupa Scan Pulang</option>
+                                <option value="LUPA_MASUK">Hanya Lupa Scan Masuk</option>
+                                <option value="LUPA_KEDUANYA">Lupa Masuk &amp; Pulang</option>
+                            </select>
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" id="search-koreksi-scan" onkeyup="renderKoreksiScanTable()"
+                                    placeholder="Cari nama, ID, alasan..."
+                                    class="pl-8 pr-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-800 w-56 focus:ring-2 focus:ring-amber-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-800 text-white text-[11px] font-extrabold uppercase tracking-wider">
+                                    <th class="px-3 py-3 text-center w-12">No</th>
+                                    <th class="px-3 py-3">ID Pegawai</th>
+                                    <th class="px-4 py-3">Nama Pegawai</th>
+                                    <th class="px-3 py-3">Jabatan</th>
+                                    <th class="px-3 py-3">Jenis Koreksi</th>
+                                    <th class="px-4 py-3">Tanggal &amp; Hari</th>
+                                    <th class="px-3 py-3">Jam Mesin vs Ajuan</th>
+                                    <th class="px-3 py-3">Alasan Pegawai</th>
+                                    <th class="px-3 py-3">Tgl Kirim</th>
+                                    <th class="px-3 py-3 text-center">Status &amp; Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-koreksi-scan-body" class="divide-y divide-slate-100">
+                                <tr>
+                                    <td colspan="10" class="p-10 text-center text-slate-400">Pilih menu Koreksi Lupa Scan untuk memuat data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- VIEW: CATATAN KEHADIRAN & MOBILITAS PEGAWAI -->
             <div id="view-catatan" class="hidden space-y-4">
                 <!-- Header Banner -->
@@ -2898,8 +3014,9 @@
     <!-- Load Logic -->
         <script src="catatan_kehadiran.js?v=1.0"></script>
     <script src="jadwal_libur.js?v=1.0"></script>
-    <script src="dashboard.js?v=3.1"></script>
-    <script src="enterprise_features.js?v=1.2"></script>
+    <script src="koreksi_scan.js?v=1.0"></script>
+    <script src="dashboard.js?v=3.2"></script>
+    <script src="enterprise_features.js?v=1.3"></script>
     <script src="environment_manager.js?v=1.5"></script>
     <script src="pwa.js?v=2.0"></script>
     <script src="instansi_config.js"></script>

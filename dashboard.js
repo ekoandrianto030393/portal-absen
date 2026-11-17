@@ -136,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadSignatureConfig(); // Load setting tanda tangan saat start
         setupSidebarToggle(); // [NEW] Init Sidebar Toggle
         if (typeof refreshJadwalLiburBadge === 'function') refreshJadwalLiburBadge();
+        if (typeof refreshKoreksiScanBadge === 'function') refreshKoreksiScanBadge();
     });
 
     // AUTO REFRESH (Setiap 60 Detik) - Fitur Canggih
@@ -145,7 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeTab === 'nav-overview') loadOverviewData(true); // true = silent refresh
         if (activeTab === 'nav-daily') loadDailyData(true); // true = silent refresh
         if (activeTab === 'nav-jadwal-libur' && typeof loadJadwalLiburRequests === 'function') loadJadwalLiburRequests(true);
+        if (activeTab === 'nav-koreksi-scan' && typeof loadKoreksiScanRequests === 'function') loadKoreksiScanRequests(true);
         if (typeof refreshJadwalLiburBadge === 'function') refreshJadwalLiburBadge();
+        if (typeof refreshKoreksiScanBadge === 'function') refreshKoreksiScanBadge();
     }, 60000);
 
     // --- DRAG-SCROLL untuk Tabel & Grid Data ---
@@ -289,7 +292,7 @@ async function loadSystemConfig() {
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
     // Hide all views
-    ['overview', 'daily', 'monthly', 'performance', 'employees', 'scan-portal', 'view-db', 'view-db-monthly', 'req-password', 'settings', 'environment', 'catatan', 'jadwal-libur'].forEach(id => {
+    ['overview', 'daily', 'monthly', 'performance', 'employees', 'scan-portal', 'view-db', 'view-db-monthly', 'req-password', 'settings', 'environment', 'catatan', 'jadwal-libur', 'koreksi-scan'].forEach(id => {
         const viewEl = document.getElementById(`view-${id}`);
         if (viewEl) {
             viewEl.classList.add('hidden');
@@ -326,7 +329,8 @@ function switchTab(tabName) {
         'settings': 'Pengaturan Sistem',
         'environment': 'Tabel Konfigurasi Environment (.env)',
         'catatan': 'Tabel Catatan Kehadiran Pegawai',
-        'jadwal-libur': 'Permintaan Jadwal Libur & DL'
+        'jadwal-libur': 'Permintaan Jadwal Libur & DL',
+        'koreksi-scan': 'Permintaan Koreksi Lupa Scan'
     };
     document.getElementById('page-title').textContent = titles[tabName];
 
@@ -363,6 +367,7 @@ function switchTab(tabName) {
     if (tabName === 'environment' && typeof loadEnvData === 'function') loadEnvData();
     if (tabName === 'catatan' && typeof loadCatatanData === 'function') loadCatatanData();
     if (tabName === 'jadwal-libur' && typeof loadJadwalLiburRequests === 'function') loadJadwalLiburRequests();
+    if (tabName === 'koreksi-scan' && typeof loadKoreksiScanRequests === 'function') loadKoreksiScanRequests();
 }
 
 // --- DATA LOADER: REQ UBAH PASSWORD ---
@@ -2376,8 +2381,9 @@ async function openManualModal() {
     const content = document.getElementById('modal-manual-content');
     const select = document.getElementById('manual-emp-select');
     
-    // Reset konteks pengajuan jadwal libur & keterangan
+    // Reset konteks pengajuan jadwal libur, koreksi scan & keterangan
     window.activeJadwalLiburKode = null;
+    window.activeKoreksiScanKode = null;
     const jlCtx = document.getElementById('manual-jadwal-context');
     if (jlCtx) { jlCtx.classList.add('hidden'); jlCtx.innerHTML = ''; }
     const descReset = document.getElementById('manual-desc');
@@ -2442,6 +2448,7 @@ async function openManualModal() {
 
 function closeManualModal() {
     window.activeJadwalLiburKode = null;
+    window.activeKoreksiScanKode = null;
     const jlCtx = document.getElementById('manual-jadwal-context');
     if (jlCtx) { jlCtx.classList.add('hidden'); jlCtx.innerHTML = ''; }
     const modal = document.getElementById('modal-manual-status');
@@ -2486,8 +2493,12 @@ async function submitManualStatus() {
 
         if (response.ok && result.success) {
             const linkedJlKode = window.activeJadwalLiburKode;
+            const linkedKsKode = window.activeKoreksiScanKode;
             if (linkedJlKode && typeof window.markJadwalLiburProcessed === 'function') {
                 await window.markJadwalLiburProcessed(linkedJlKode);
+            }
+            if (linkedKsKode && typeof window.markKoreksiScanProcessed === 'function') {
+                await window.markKoreksiScanProcessed(linkedKsKode);
             }
             showToast("Status berhasil disimpan!", 'success');
             closeManualModal();
@@ -2497,6 +2508,11 @@ async function submitManualStatus() {
                 loadJadwalLiburRequests(true);
             } else if (typeof refreshJadwalLiburBadge === 'function') {
                 refreshJadwalLiburBadge();
+            }
+            if (typeof loadKoreksiScanRequests === 'function') {
+                loadKoreksiScanRequests(true);
+            } else if (typeof refreshKoreksiScanBadge === 'function') {
+                refreshKoreksiScanBadge();
             }
         } else {
             // Tampilkan pesan error asli dari server

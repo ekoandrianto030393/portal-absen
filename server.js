@@ -1850,7 +1850,7 @@ app.post('/api/absensi', (req, res) => {
 });
 
 // Endpoint: Input Manual Absensi (Dinas Luar / Izin / Sakit)
-app.post('/api/absensi/manual', authenticateToken, (req, res) => {
+app.post('/api/absensi/manual', authenticateToken, async (req, res) => {
     const { id_karyawan, status, keterangan, tanggal, jam_masuk, jam_keluar } = req.body;
 
     if (!id_karyawan || !status || !tanggal) {
@@ -1882,19 +1882,10 @@ app.post('/api/absensi/manual', authenticateToken, (req, res) => {
         // [FIX] Simpan sebagai HADIR agar otomatis masuk ke rekap bulanan seperti absen normal
         finalStatus = 'HADIR'; 
 
-        // [FIX] Hitung Keterlambatan Manual
-        if (finalJamMasuk && finalJamMasuk > BATAS_TELAT) {
-            const masukSec = timeToSeconds(finalJamMasuk);
-            const startSec = timeToSeconds(BATAS_TELAT);
-            telatMenit = Math.floor((masukSec - startSec) / 60);
-        }
-
-        // [FIX] Hitung PSW Manual
-        if (finalJamKeluar && finalJamKeluar < JAM_PULANG_START) {
-            const pulangSec = timeToSeconds(finalJamKeluar);
-            const batasPulangSec = timeToSeconds(JAM_PULANG_START);
-            pswMenit = Math.floor((batasPulangSec - pulangSec) / 60);
-        }
+        // [UPGRADE] Hitung Telat & PSW mengikuti Shift Pegawai & aturan Jumat/Sabtu
+        const shiftCalc = await computeTelatPswByShift(pool.promise(), id_karyawan, tanggal, finalJamMasuk, finalJamKeluar);
+        telatMenit = shiftCalc.telatMenit;
+        pswMenit = shiftCalc.pswMenit;
     }
 
     // [NEW] Auto-append keterangan PSW
@@ -1915,6 +1906,7 @@ app.post('/api/absensi/manual', authenticateToken, (req, res) => {
     pool.query(sql, [id_karyawan, tanggal, finalJamMasuk, finalJamKeluar, finalStatus, finalKeterangan, telatMenit, pswMenit], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         cache.del("api_absensi_today"); // [NEW] Invalidate cache absensi
+        recordAuditLog({ aksi: 'Input Manual Absensi', detail: `ID ${id_karyawan} | ${tanggal} -> ${finalStatus}`, kategori: 'emerald', sumber: 'DASHBOARD' });
         res.json({ success: true, message: 'Data manual berhasil disimpan (Telat/PSW terhitung).' });
     });
 });
@@ -3275,6 +3267,7 @@ app.put('/api/jadwal-libur/permintaan/:kode/status', authenticateToken, async (r
             return res.status(404).json({ success: false, message: 'Permintaan tidak ditemukan.' });
         }
 
+        recordAuditLog({ aksi: `Status Jadwal Libur/DL -> ${status}`, detail: `Kode ${kode}`, kategori: status === 'rejected' ? 'rose' : 'emerald', sumber: 'DASHBOARD' });
         syncPermintaanJadwalNow().catch(() => {});
         res.json({ success: true, message: `Status permintaan diperbarui menjadi ${status}.` });
     } catch (e) {
@@ -3303,6 +3296,878 @@ app.delete('/api/jadwal-libur/permintaan/:kode', authenticateToken, async (req, 
     }
 });
 
+
+// =========================================================================
+// MODUL ENTERPRISE (BROADCAST, SHIFT ROSTER, AUDIT LOG) & KOREKSI LUPA SCAN
+// =========================================================================
+let entSchemaVerified = false;
+let activeEntSyncPromise = null;
+
+const SHIFT_PRESETS = {
+    PAGI: { code: 'PAGI', label: 'Shift Pagi (Reguler)', jamMasuk: '07:30:00', toleransi: BATAS_TELAT, jamPulang: JAM_PULANG_START },
+    SORE: { code: 'SORE', label: 'Shift Sore (UGD/PONED)', jamMasuk: '14:00:00', toleransi: '14:15:00', jamPulang: '20:00:00' },
+    MALAM: { code: 'MALAM', label: 'Shift Malam (Jaga)', jamMasuk: '20:00:00', toleransi: '20:15:00', jamPulang: '07:30:00' }
+};
+
+function secFromHms(t) {
+    if (!t) return 0;
+    const p = String(t).split(':').map(Number);
+    return (p[0] || 0) * 3600 + (p[1] || 0) * 60 + (p[2] || 0);
+}
+
+function normHms(t) {
+    if (!t) return null;
+    const s = String(t).trim();
+    if (!s) return null;
+    if (/^\d{1,2}:\d{2}$/.test(s)) return s.padStart(5, '0') + ':00';
+    if (/^\d{1,2}:\d{2}:\d{2}$/.test(s)) return s.split(':').map(x => x.padStart(2, '0')).join(':');
+    return s;
+}
+
+async function ensureEnterpriseTables(dbConn) {
+    await dbConn.query(`
+        CREATE TABLE IF NOT EXISTS broadcast_pengumuman (
+            kode_broadcast VARCHAR(80) PRIMARY KEY,
+            kategori VARCHAR(50) NOT NULL DEFAULT 'INFO PENTING',
+            judul VARCHAR(160) DEFAULT '',
+            pesan TEXT NOT NULL,
+            target_jabatan VARCHAR(100) DEFAULT 'ALL',
+            tampil_portal TINYINT(1) NOT NULL DEFAULT 1,
+            aktif TINYINT(1) NOT NULL DEFAULT 1,
+            dibuat_oleh VARCHAR(80) DEFAULT 'Admin Kepegawaian',
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+    await dbConn.query(`
+        CREATE TABLE IF NOT EXISTS broadcast_pengumuman_deleted (
+            kode_broadcast VARCHAR(80) PRIMARY KEY,
+            deleted_at DATETIME NOT NULL
+        )
+    `);
+    await dbConn.query(`
+        CREATE TABLE IF NOT EXISTS jadwal_shift_pegawai (
+            id_karyawan VARCHAR(50) PRIMARY KEY,
+            shift_code VARCHAR(20) NOT NULL DEFAULT 'PAGI',
+            unit_kerja VARCHAR(100) DEFAULT '',
+            catatan VARCHAR(255) DEFAULT '',
+            updated_by VARCHAR(80) DEFAULT 'Admin',
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+    await dbConn.query(`
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            kode_log VARCHAR(80) PRIMARY KEY,
+            aksi VARCHAR(100) NOT NULL,
+            detail TEXT,
+            kategori VARCHAR(30) DEFAULT 'emerald',
+            pelaku VARCHAR(80) DEFAULT 'Admin',
+            sumber VARCHAR(30) DEFAULT 'DASHBOARD',
+            created_at DATETIME NOT NULL,
+            INDEX idx_audit_created (created_at)
+        )
+    `);
+    await dbConn.query(`
+        CREATE TABLE IF NOT EXISTS permintaan_koreksi_scan (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            kode_koreksi VARCHAR(80) NOT NULL UNIQUE,
+            id_karyawan VARCHAR(50) NOT NULL,
+            nama VARCHAR(150) DEFAULT '',
+            jabatan VARCHAR(150) DEFAULT '',
+            jenis_lupa VARCHAR(30) NOT NULL DEFAULT 'LUPA_PULANG',
+            tanggal_absen DATE NOT NULL,
+            hari_absen VARCHAR(20) NOT NULL DEFAULT '',
+            tahun_absen INT NOT NULL,
+            jam_masuk_ajuan VARCHAR(10) DEFAULT NULL,
+            jam_pulang_ajuan VARCHAR(10) DEFAULT NULL,
+            jam_masuk_lama VARCHAR(10) DEFAULT NULL,
+            jam_pulang_lama VARCHAR(10) DEFAULT NULL,
+            alasan TEXT NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            catatan_admin VARCHAR(255) DEFAULT NULL,
+            tanggal_kirim DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_ks_emp (id_karyawan),
+            INDEX idx_ks_tgl (tanggal_absen),
+            INDEX idx_ks_status (status)
+        )
+    `);
+    await dbConn.query(`
+        CREATE TABLE IF NOT EXISTS permintaan_koreksi_scan_deleted (
+            kode_koreksi VARCHAR(80) PRIMARY KEY,
+            deleted_at DATETIME NOT NULL
+        )
+    `);
+}
+
+async function ensureLocalEnterpriseReady() {
+    if (entSchemaVerified) return;
+    await ensureEnterpriseTables(pool.promise());
+    entSchemaVerified = true;
+}
+
+async function recordAuditLog({ aksi, detail = '', kategori = 'emerald', pelaku = 'Admin', sumber = 'SERVER' }) {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const nowWib = getWibNowSql();
+        const kodeLog = `AUD-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+        await db.query(
+            'INSERT INTO audit_logs (kode_log, aksi, detail, kategori, pelaku, sumber, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [kodeLog, String(aksi || 'Aktivitas').slice(0, 100), String(detail || ''), String(kategori || 'emerald').slice(0, 30), String(pelaku || 'Admin').slice(0, 80), String(sumber || 'SERVER').slice(0, 30), nowWib]
+        );
+        syncEnterpriseTablesNow().catch(() => {});
+    } catch (e) {
+        console.warn('⚠️ Gagal mencatat audit log:', e.message);
+    }
+}
+
+async function computeTelatPswByShift(db, idKaryawan, tanggalStr, jamMasukRaw, jamKeluarRaw) {
+    let shiftCode = 'PAGI';
+    try {
+        const [shRows] = await db.query('SELECT shift_code FROM jadwal_shift_pegawai WHERE id_karyawan = ? LIMIT 1', [idKaryawan]);
+        if (shRows && shRows.length > 0 && shRows[0].shift_code) {
+            shiftCode = String(shRows[0].shift_code).toUpperCase();
+        }
+    } catch (e) {}
+
+    const preset = SHIFT_PRESETS[shiftCode] || SHIFT_PRESETS.PAGI;
+    let batasTelat = preset.toleransi;
+    let batasPulang = preset.jamPulang;
+
+    if (shiftCode === 'PAGI' && tanggalStr) {
+        const parts = String(tanggalStr).slice(0, 10).split('-').map(Number);
+        if (parts.length === 3 && !parts.some(isNaN)) {
+            const dow = new Date(parts[0], parts[1] - 1, parts[2]).getDay();
+            if (dow === 5) batasPulang = JAM_PULANG_JUMAT;
+            else if (dow === 6) batasPulang = JAM_PULANG_SABTU;
+        }
+    }
+
+    const jm = normHms(jamMasukRaw);
+    const jk = normHms(jamKeluarRaw);
+    let telatMenit = 0;
+    let pswMenit = 0;
+
+    if (jm && jm > batasTelat) {
+        telatMenit = Math.max(0, Math.floor((secFromHms(jm) - secFromHms(batasTelat)) / 60));
+    }
+
+    if (jk) {
+        if (shiftCode === 'MALAM') {
+            // Shift Malam pulang pagi hari berikutnya (< 12:00)
+            if (jk < '12:00:00' && jk < batasPulang) {
+                pswMenit = Math.max(0, Math.floor((secFromHms(batasPulang) - secFromHms(jk)) / 60));
+            }
+        } else if (jk < batasPulang) {
+            pswMenit = Math.max(0, Math.floor((secFromHms(batasPulang) - secFromHms(jk)) / 60));
+        }
+    }
+
+    return { shiftCode, batasTelat, batasPulang, jamMasuk: jm, jamKeluar: jk, telatMenit, pswMenit };
+}
+
+async function syncOneEnterpriseTable(localDb, cloudDb, cfg) {
+    const deletedSet = new Set();
+    if (cfg.deletedTable) {
+        const [localDel] = await localDb.query(`SELECT \`${cfg.keyCol}\` AS k, DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s') AS deleted_at FROM \`${cfg.deletedTable}\``);
+        const [cloudDel] = await cloudDb.query(`SELECT \`${cfg.keyCol}\` AS k, DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s') AS deleted_at FROM \`${cfg.deletedTable}\``);
+        const localDelMap = new Map(localDel.map(r => [r.k, r.deleted_at]));
+        const cloudDelMap = new Map(cloudDel.map(r => [r.k, r.deleted_at]));
+        for (const k of new Set([...localDelMap.keys(), ...cloudDelMap.keys()])) deletedSet.add(k);
+
+        for (const [k, delAt] of cloudDelMap.entries()) {
+            if (!localDelMap.has(k)) await localDb.query(`INSERT IGNORE INTO \`${cfg.deletedTable}\` (\`${cfg.keyCol}\`, deleted_at) VALUES (?, ?)`, [k, delAt]);
+            await localDb.query(`DELETE FROM \`${cfg.table}\` WHERE \`${cfg.keyCol}\` = ?`, [k]);
+        }
+        for (const [k, delAt] of localDelMap.entries()) {
+            if (!cloudDelMap.has(k)) await cloudDb.query(`INSERT IGNORE INTO \`${cfg.deletedTable}\` (\`${cfg.keyCol}\`, deleted_at) VALUES (?, ?)`, [k, delAt]);
+            await cloudDb.query(`DELETE FROM \`${cfg.table}\` WHERE \`${cfg.keyCol}\` = ?`, [k]);
+        }
+    }
+
+    const [localRows] = await localDb.query(cfg.selectSql);
+    const [cloudRows] = await cloudDb.query(cfg.selectSql);
+    const localMap = new Map(localRows.map(r => [r[cfg.keyCol], r]));
+    const cloudMap = new Map(cloudRows.map(r => [r[cfg.keyCol], r]));
+    const allKeys = new Set([...localMap.keys(), ...cloudMap.keys()]);
+
+    const toEpoch = (s) => {
+        if (!s) return 0;
+        const ms = new Date(String(s).replace(' ', 'T') + '+07:00').getTime();
+        return isNaN(ms) ? 0 : ms;
+    };
+
+    for (const key of allKeys) {
+        if (deletedSet.has(key)) {
+            await localDb.query(`DELETE FROM \`${cfg.table}\` WHERE \`${cfg.keyCol}\` = ?`, [key]);
+            await cloudDb.query(`DELETE FROM \`${cfg.table}\` WHERE \`${cfg.keyCol}\` = ?`, [key]);
+            continue;
+        }
+        const l = localMap.get(key);
+        const c = cloudMap.get(key);
+        if (c && !l) await localDb.query(cfg.upsertSql, cfg.toParams(c));
+        else if (l && !c) await cloudDb.query(cfg.upsertSql, cfg.toParams(l));
+        else if (l && c && cfg.tsCol) {
+            const lMs = toEpoch(l[cfg.tsCol]);
+            const cMs = toEpoch(c[cfg.tsCol]);
+            if (cMs > lMs) await localDb.query(cfg.upsertSql, cfg.toParams(c));
+            else if (lMs > cMs) await cloudDb.query(cfg.upsertSql, cfg.toParams(l));
+            else if (cfg.preferNonPendingStatus && l.status !== c.status) {
+                if (c.status !== 'pending' && l.status === 'pending') await localDb.query(cfg.upsertSql, cfg.toParams(c));
+                else if (l.status !== 'pending' && c.status === 'pending') await cloudDb.query(cfg.upsertSql, cfg.toParams(l));
+            }
+        }
+    }
+}
+
+async function syncEnterpriseTablesNow() {
+    const cloudCfg = getLocalCloudSyncConfig();
+    if (!cloudCfg) return;
+    if (activeEntSyncPromise) return activeEntSyncPromise;
+
+    activeEntSyncPromise = (async () => {
+        const localDb = pool.promise();
+        await ensureLocalEnterpriseReady();
+        let cloudDb = null;
+        try {
+            cloudDb = await mysqlPromiseJl.createConnection(cloudCfg);
+            await cloudDb.query("SET time_zone = '+07:00'");
+            await ensureEnterpriseTables(cloudDb);
+
+            const configs = [
+                {
+                    table: 'broadcast_pengumuman',
+                    deletedTable: 'broadcast_pengumuman_deleted',
+                    keyCol: 'kode_broadcast',
+                    tsCol: 'updated_at',
+                    selectSql: `SELECT kode_broadcast, kategori, judul, pesan, target_jabatan, tampil_portal, aktif, dibuat_oleh, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at FROM broadcast_pengumuman`,
+                    upsertSql: `INSERT INTO broadcast_pengumuman (kode_broadcast, kategori, judul, pesan, target_jabatan, tampil_portal, aktif, dibuat_oleh, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE kategori=VALUES(kategori), judul=VALUES(judul), pesan=VALUES(pesan), target_jabatan=VALUES(target_jabatan), tampil_portal=VALUES(tampil_portal), aktif=VALUES(aktif), dibuat_oleh=VALUES(dibuat_oleh), updated_at=VALUES(updated_at)`,
+                    toParams: r => [r.kode_broadcast, r.kategori, r.judul || '', r.pesan, r.target_jabatan || 'ALL', Number(r.tampil_portal ?? 1), Number(r.aktif ?? 1), r.dibuat_oleh || 'Admin', r.created_at, r.updated_at || r.created_at]
+                },
+                {
+                    table: 'jadwal_shift_pegawai',
+                    keyCol: 'id_karyawan',
+                    tsCol: 'updated_at',
+                    selectSql: `SELECT id_karyawan, shift_code, unit_kerja, catatan, updated_by, DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at FROM jadwal_shift_pegawai`,
+                    upsertSql: `INSERT INTO jadwal_shift_pegawai (id_karyawan, shift_code, unit_kerja, catatan, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE shift_code=VALUES(shift_code), unit_kerja=VALUES(unit_kerja), catatan=VALUES(catatan), updated_by=VALUES(updated_by), updated_at=VALUES(updated_at)`,
+                    toParams: r => [r.id_karyawan, r.shift_code || 'PAGI', r.unit_kerja || '', r.catatan || '', r.updated_by || 'Admin', r.updated_at]
+                },
+                {
+                    table: 'audit_logs',
+                    keyCol: 'kode_log',
+                    tsCol: null,
+                    selectSql: `SELECT kode_log, aksi, detail, kategori, pelaku, sumber, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at FROM audit_logs ORDER BY created_at DESC LIMIT 120`,
+                    upsertSql: `INSERT IGNORE INTO audit_logs (kode_log, aksi, detail, kategori, pelaku, sumber, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    toParams: r => [r.kode_log, r.aksi, r.detail || '', r.kategori || 'emerald', r.pelaku || 'Admin', r.sumber || 'DASHBOARD', r.created_at]
+                },
+                {
+                    table: 'permintaan_koreksi_scan',
+                    deletedTable: 'permintaan_koreksi_scan_deleted',
+                    keyCol: 'kode_koreksi',
+                    tsCol: 'updated_at',
+                    preferNonPendingStatus: true,
+                    selectSql: `SELECT kode_koreksi, id_karyawan, nama, jabatan, jenis_lupa, DATE_FORMAT(tanggal_absen, '%Y-%m-%d') AS tanggal_absen, hari_absen, tahun_absen, jam_masuk_ajuan, jam_pulang_ajuan, jam_masuk_lama, jam_pulang_lama, alasan, status, catatan_admin, DATE_FORMAT(tanggal_kirim, '%Y-%m-%d %H:%i:%s') AS tanggal_kirim, DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at FROM permintaan_koreksi_scan`,
+                    upsertSql: `INSERT INTO permintaan_koreksi_scan (kode_koreksi, id_karyawan, nama, jabatan, jenis_lupa, tanggal_absen, hari_absen, tahun_absen, jam_masuk_ajuan, jam_pulang_ajuan, jam_masuk_lama, jam_pulang_lama, alasan, status, catatan_admin, tanggal_kirim, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nama=VALUES(nama), jabatan=VALUES(jabatan), jenis_lupa=VALUES(jenis_lupa), tanggal_absen=VALUES(tanggal_absen), hari_absen=VALUES(hari_absen), tahun_absen=VALUES(tahun_absen), jam_masuk_ajuan=VALUES(jam_masuk_ajuan), jam_pulang_ajuan=VALUES(jam_pulang_ajuan), jam_masuk_lama=VALUES(jam_masuk_lama), jam_pulang_lama=VALUES(jam_pulang_lama), alasan=VALUES(alasan), status=VALUES(status), catatan_admin=VALUES(catatan_admin), tanggal_kirim=VALUES(tanggal_kirim), updated_at=VALUES(updated_at)`,
+                    toParams: r => [r.kode_koreksi, r.id_karyawan, r.nama || '', r.jabatan || '', r.jenis_lupa || 'LUPA_PULANG', r.tanggal_absen, r.hari_absen || '', Number(r.tahun_absen || String(r.tanggal_absen || '').slice(0, 4) || 2026), r.jam_masuk_ajuan || null, r.jam_pulang_ajuan || null, r.jam_masuk_lama || null, r.jam_pulang_lama || null, r.alasan || '', r.status || 'pending', r.catatan_admin || null, r.tanggal_kirim, r.updated_at || r.tanggal_kirim]
+                }
+            ];
+            for (const c of configs) {
+                await syncOneEnterpriseTable(localDb, cloudDb, c);
+            }
+        } catch (errSync) {
+            console.warn('⚠️ On-demand sync Enterprise/Koreksi gagal (fallback lokal):', errSync.message);
+        } finally {
+            if (cloudDb) await cloudDb.end().catch(() => {});
+            activeEntSyncPromise = null;
+        }
+    })();
+    return activeEntSyncPromise;
+}
+
+// --- A. ENDPOINTS BROADCAST PENGUMUMAN ---
+app.get('/api/broadcast', async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        await syncEnterpriseTablesNow().catch(() => {});
+        const db = pool.promise();
+        const [rows] = await db.query(
+            `SELECT kode_broadcast, kategori, judul, pesan, target_jabatan, tampil_portal, aktif, dibuat_oleh,
+                    DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+                    DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+             FROM broadcast_pengumuman
+             WHERE aktif = 1
+             ORDER BY created_at DESC LIMIT 30`
+        );
+        res.json({ success: true, data: rows });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/broadcast', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const { kategori, judul, pesan, target_jabatan, tampil_portal, dibuat_oleh } = req.body || {};
+        if (!pesan || !String(pesan).trim()) {
+            return res.status(400).json({ success: false, message: 'Isi pengumuman wajib diisi.' });
+        }
+        const nowWib = getWibNowSql();
+        const kode = `BC-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+        const kat = String(kategori || 'INFO PENTING').trim().slice(0, 50);
+        const jdl = String(judul || kat).trim().slice(0, 160);
+        const target = String(target_jabatan || 'ALL').trim().slice(0, 100);
+        const showPortal = tampil_portal === 0 || tampil_portal === false ? 0 : 1;
+
+        await db.query(
+            `INSERT INTO broadcast_pengumuman
+                (kode_broadcast, kategori, judul, pesan, target_jabatan, tampil_portal, aktif, dibuat_oleh, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+            [kode, kat, jdl, String(pesan).trim(), target, showPortal, String(dibuat_oleh || 'Admin Kepegawaian').slice(0, 80), nowWib, nowWib]
+        );
+
+        await recordAuditLog({
+            aksi: 'Broadcast Pengumuman',
+            detail: `[${kat}] ${String(pesan).trim().slice(0, 90)}`,
+            kategori: 'rose',
+            sumber: 'DASHBOARD'
+        });
+        syncEnterpriseTablesNow().catch(() => {});
+
+        res.json({ success: true, message: 'Pengumuman berhasil disimpan & disiarkan ke Portal Online.', data: { kode_broadcast: kode, created_at: nowWib } });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.delete('/api/broadcast/:kode', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const kode = req.params.kode;
+        const nowWib = getWibNowSql();
+        await db.query('INSERT INTO broadcast_pengumuman_deleted (kode_broadcast, deleted_at) VALUES (?, ?) ON DUPLICATE KEY UPDATE deleted_at = VALUES(deleted_at)', [kode, nowWib]);
+        await db.query('DELETE FROM broadcast_pengumuman WHERE kode_broadcast = ?', [kode]);
+        await recordAuditLog({ aksi: 'Hapus Broadcast', detail: `Menghapus pengumuman ${kode}`, kategori: 'rose', sumber: 'DASHBOARD' });
+        syncEnterpriseTablesNow().catch(() => {});
+        res.json({ success: true, message: 'Pengumuman dihapus.' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.get('/api/pegawai/broadcast/:id_karyawan', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        await syncEnterpriseTablesNow().catch(() => {});
+        const db = pool.promise();
+        const empId = req.params.id_karyawan;
+        const [empRows] = await db.query('SELECT jabatan FROM karyawan WHERE id_karyawan = ? LIMIT 1', [empId]);
+        const jabatanEmp = ((empRows && empRows[0] && empRows[0].jabatan) || '').toLowerCase();
+
+        const [rows] = await db.query(
+            `SELECT kode_broadcast, kategori, judul, pesan, target_jabatan, dibuat_oleh,
+                    DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at
+             FROM broadcast_pengumuman
+             WHERE aktif = 1 AND tampil_portal = 1
+             ORDER BY created_at DESC LIMIT 20`
+        );
+        const filtered = rows.filter(r => {
+            const t = String(r.target_jabatan || 'ALL').trim().toLowerCase();
+            return t === 'all' || !t || (jabatanEmp && jabatanEmp.includes(t));
+        });
+        res.json({ success: true, data: filtered });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// --- B. ENDPOINTS AUDIT TRAIL PERMANEN ---
+app.get('/api/audit-logs', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        await syncEnterpriseTablesNow().catch(() => {});
+        const db = pool.promise();
+        const limit = Math.min(200, Math.max(10, Number(req.query.limit || 60)));
+        const [rows] = await db.query(
+            `SELECT kode_log, aksi, detail, kategori, pelaku, sumber,
+                    DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at
+             FROM audit_logs ORDER BY created_at DESC LIMIT ?`,
+            [limit]
+        );
+        res.json({ success: true, data: rows });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/audit-logs', authenticateToken, async (req, res) => {
+    try {
+        const { aksi, detail, kategori, pelaku, sumber } = req.body || {};
+        if (!aksi) return res.status(400).json({ success: false, message: 'Aksi wajib diisi.' });
+        await recordAuditLog({ aksi, detail, kategori: kategori || 'blue', pelaku: pelaku || 'Admin', sumber: sumber || 'DASHBOARD' });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// --- C. ENDPOINTS MANAJEMEN SHIFT BERBASIS DATABASE ---
+app.get('/api/shifts', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        await syncEnterpriseTablesNow().catch(() => {});
+        const db = pool.promise();
+        const [rows] = await db.query(
+            `SELECT id_karyawan, shift_code, unit_kerja, catatan, updated_by,
+                    DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+             FROM jadwal_shift_pegawai`
+        );
+        const shiftMap = {};
+        rows.forEach(r => { shiftMap[r.id_karyawan] = r.shift_code; });
+        res.json({ success: true, data: rows, map: shiftMap, presets: SHIFT_PRESETS });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.put('/api/shifts/:id_karyawan', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const idKaryawan = req.params.id_karyawan;
+        const shiftCode = String((req.body && req.body.shift_code) || 'PAGI').toUpperCase();
+        if (!['PAGI', 'SORE', 'MALAM'].includes(shiftCode)) {
+            return res.status(400).json({ success: false, message: 'Kode shift tidak valid.' });
+        }
+        const nowWib = getWibNowSql();
+        const unitKerja = String((req.body && req.body.unit_kerja) || '').slice(0, 100);
+        const catatan = String((req.body && req.body.catatan) || '').slice(0, 255);
+
+        await db.query(
+            `INSERT INTO jadwal_shift_pegawai (id_karyawan, shift_code, unit_kerja, catatan, updated_by, updated_at)
+             VALUES (?, ?, ?, ?, 'Admin', ?)
+             ON DUPLICATE KEY UPDATE shift_code=VALUES(shift_code), unit_kerja=VALUES(unit_kerja), catatan=VALUES(catatan), updated_by='Admin', updated_at=VALUES(updated_at)`,
+            [idKaryawan, shiftCode, unitKerja, catatan, nowWib]
+        );
+        await recordAuditLog({ aksi: 'Ubah Shift Kerja', detail: `Pegawai ${idKaryawan} ditetapkan ke Shift ${shiftCode}`, kategori: 'purple', sumber: 'DASHBOARD' });
+        syncEnterpriseTablesNow().catch(() => {});
+        res.json({ success: true, message: `Shift pegawai ${idKaryawan} disimpan ke ${shiftCode}.` });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/shifts/bulk', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const shiftsObj = (req.body && req.body.shifts) || {};
+        const nowWib = getWibNowSql();
+        let imported = 0;
+        for (const [empId, code] of Object.entries(shiftsObj)) {
+            const sc = String(code || 'PAGI').toUpperCase();
+            if (!['PAGI', 'SORE', 'MALAM'].includes(sc)) continue;
+            await db.query(
+                `INSERT IGNORE INTO jadwal_shift_pegawai (id_karyawan, shift_code, updated_by, updated_at) VALUES (?, ?, 'Migrasi', ?)`,
+                [empId, sc, nowWib]
+            );
+            imported++;
+        }
+        syncEnterpriseTablesNow().catch(() => {});
+        res.json({ success: true, imported });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.get('/api/pegawai/shift/:id_karyawan', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        await syncEnterpriseTablesNow().catch(() => {});
+        const db = pool.promise();
+        const empId = req.params.id_karyawan;
+        const [rows] = await db.query(
+            `SELECT id_karyawan, shift_code, unit_kerja, catatan, DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+             FROM jadwal_shift_pegawai WHERE id_karyawan = ? LIMIT 1`,
+            [empId]
+        );
+        const shiftCode = (rows && rows[0] && String(rows[0].shift_code).toUpperCase()) || 'PAGI';
+        const preset = SHIFT_PRESETS[shiftCode] || SHIFT_PRESETS.PAGI;
+        res.json({
+            success: true,
+            data: {
+                id_karyawan: empId,
+                shift_code: shiftCode,
+                label: preset.label,
+                jam_masuk: preset.jamMasuk.slice(0, 5),
+                toleransi_telat: preset.toleransi.slice(0, 5),
+                jam_pulang: preset.jamPulang.slice(0, 5),
+                jam_pulang_jumat: JAM_PULANG_JUMAT.slice(0, 5),
+                jam_pulang_sabtu: JAM_PULANG_SABTU.slice(0, 5),
+                unit_kerja: (rows && rows[0] && rows[0].unit_kerja) || ''
+            }
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// --- D. ENDPOINTS PENGAJUAN KOREKSI LUPA SCAN (PORTAL <-> DASHBOARD) ---
+app.get('/api/pegawai/koreksi-candidates/:id_karyawan', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const empId = req.params.id_karyawan;
+        if (req.user && req.user.role === 'pegawai' && req.user.id_karyawan &&
+            String(req.user.id_karyawan).toLowerCase() !== String(empId).toLowerCase()) {
+            return res.status(403).json({ success: false, message: 'Akses ditolak.' });
+        }
+
+        const [rows] = await db.query(
+            `SELECT id_absensi, DATE_FORMAT(tanggal, '%Y-%m-%d') AS tanggal,
+                    jam_masuk, jam_keluar, status, keterangan
+             FROM absensi
+             WHERE id_karyawan = ?
+               AND tanggal >= DATE_SUB(CURDATE(), INTERVAL 45 DAY)
+               AND tanggal <= CURDATE()
+               AND (
+                   (jam_masuk IS NOT NULL AND jam_keluar IS NULL AND tanggal < CURDATE())
+                   OR (jam_masuk IS NULL AND jam_keluar IS NOT NULL)
+                   OR keterangan LIKE '%Tanpa Absen Pulang%'
+                   OR keterangan LIKE '%Lupa Absen%'
+               )
+             ORDER BY tanggal DESC LIMIT 20`,
+            [empId]
+        );
+        const [reqRows] = await db.query(
+            `SELECT DATE_FORMAT(tanggal_absen, '%Y-%m-%d') AS tgl, status
+             FROM permintaan_koreksi_scan WHERE id_karyawan = ?`,
+            [empId]
+        );
+        const reqMap = new Map(reqRows.map(r => [r.tgl, r.status]));
+        const candidates = rows
+            .filter(r => !['pending', 'approved'].includes(reqMap.get(r.tanggal)))
+            .map(r => {
+                let jenisSuggest = 'LUPA_PULANG';
+                if (!r.jam_masuk && r.jam_keluar) jenisSuggest = 'LUPA_MASUK';
+                else if (!r.jam_masuk && !r.jam_keluar) jenisSuggest = 'LUPA_KEDUANYA';
+                return { ...r, jenis_suggest: jenisSuggest };
+            });
+
+        res.json({ success: true, data: candidates });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/pegawai/koreksi-scan', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const {
+            id_karyawan, nama, jabatan, jenis_lupa, tanggal_absen,
+            jam_masuk_ajuan, jam_pulang_ajuan, alasan
+        } = req.body || {};
+
+        if (!id_karyawan || !tanggal_absen || !alasan || !String(alasan).trim()) {
+            return res.status(400).json({ success: false, message: 'ID Pegawai, Tanggal, dan Alasan wajib diisi.' });
+        }
+        if (req.user && req.user.role === 'pegawai' && req.user.id_karyawan &&
+            String(req.user.id_karyawan).toLowerCase() !== String(id_karyawan).toLowerCase()) {
+            return res.status(403).json({ success: false, message: 'Akses ditolak untuk ID Pegawai lain.' });
+        }
+
+        const dateInfo = parseHariTahunIndo(tanggal_absen);
+        if (!dateInfo) {
+            return res.status(400).json({ success: false, message: 'Format tanggal tidak valid.' });
+        }
+
+        const jenis = ['LUPA_PULANG', 'LUPA_MASUK', 'LUPA_KEDUANYA'].includes(String(jenis_lupa).toUpperCase())
+            ? String(jenis_lupa).toUpperCase()
+            : 'LUPA_PULANG';
+
+        const jmAjuan = (jenis === 'LUPA_MASUK' || jenis === 'LUPA_KEDUANYA') && jam_masuk_ajuan
+            ? String(jam_masuk_ajuan).slice(0, 5) : null;
+        const jpAjuan = (jenis === 'LUPA_PULANG' || jenis === 'LUPA_KEDUANYA') && jam_pulang_ajuan
+            ? String(jam_pulang_ajuan).slice(0, 5) : null;
+
+        if ((jenis === 'LUPA_MASUK' || jenis === 'LUPA_KEDUANYA') && !jmAjuan) {
+            return res.status(400).json({ success: false, message: 'Jam Masuk koreksi wajib diisi.' });
+        }
+        if ((jenis === 'LUPA_PULANG' || jenis === 'LUPA_KEDUANYA') && !jpAjuan) {
+            return res.status(400).json({ success: false, message: 'Jam Pulang koreksi wajib diisi.' });
+        }
+
+        const [empRows] = await db.query('SELECT id_karyawan, nama, jabatan FROM karyawan WHERE id_karyawan = ? LIMIT 1', [id_karyawan]);
+        const namaFinal = (empRows[0] && empRows[0].nama) || nama || id_karyawan;
+        const jabatanFinal = (empRows[0] && empRows[0].jabatan) || jabatan || 'Staf';
+
+        const [dupRows] = await db.query(
+            `SELECT kode_koreksi FROM permintaan_koreksi_scan
+             WHERE id_karyawan = ? AND tanggal_absen = ? AND status = 'pending' LIMIT 1`,
+            [id_karyawan, dateInfo.tanggal]
+        );
+        if (dupRows && dupRows.length > 0) {
+            return res.status(400).json({ success: false, message: `Pengajuan koreksi lupa scan untuk tanggal ${dateInfo.tanggal} masih menunggu persetujuan Admin.` });
+        }
+
+        const [absRows] = await db.query('SELECT jam_masuk, jam_keluar FROM absensi WHERE id_karyawan = ? AND tanggal = ? LIMIT 1', [id_karyawan, dateInfo.tanggal]);
+        const jamMasukLama = absRows[0] && absRows[0].jam_masuk ? String(absRows[0].jam_masuk).slice(0, 5) : null;
+        const jamPulangLama = absRows[0] && absRows[0].jam_keluar ? String(absRows[0].jam_keluar).slice(0, 5) : null;
+
+        const safeEmp = String(id_karyawan).replace(/[^a-zA-Z0-9_-]/g, '');
+        const kode = `KS-${safeEmp}-${dateInfo.tanggal.replace(/-/g, '')}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+        const nowWib = getWibNowSql();
+
+        await db.query(
+            `INSERT INTO permintaan_koreksi_scan
+                (kode_koreksi, id_karyawan, nama, jabatan, jenis_lupa, tanggal_absen, hari_absen, tahun_absen,
+                 jam_masuk_ajuan, jam_pulang_ajuan, jam_masuk_lama, jam_pulang_lama, alasan, status, tanggal_kirim, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+            [kode, id_karyawan, namaFinal, jabatanFinal, jenis, dateInfo.tanggal, dateInfo.hari, dateInfo.tahun, jmAjuan, jpAjuan, jamMasukLama, jamPulangLama, String(alasan).trim(), nowWib, nowWib]
+        );
+
+        await recordAuditLog({
+            aksi: 'Pengajuan Koreksi Lupa Scan',
+            detail: `${namaFinal} (${id_karyawan}) - ${jenis} tgl ${dateInfo.tanggal}`,
+            kategori: 'amber',
+            pelaku: namaFinal,
+            sumber: 'PORTAL'
+        });
+        syncEnterpriseTablesNow().catch(() => {});
+
+        res.json({
+            success: true,
+            message: 'Pengajuan koreksi lupa scan berhasil dikirim ke Admin Kepegawaian.',
+            data: { kode_koreksi: kode, tanggal_kirim: nowWib, status: 'pending' }
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.get('/api/pegawai/koreksi-scan/:id_karyawan', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        await syncEnterpriseTablesNow().catch(() => {});
+        const db = pool.promise();
+        const empId = req.params.id_karyawan;
+        if (req.user && req.user.role === 'pegawai' && req.user.id_karyawan &&
+            String(req.user.id_karyawan).toLowerCase() !== String(empId).toLowerCase()) {
+            return res.status(403).json({ success: false, message: 'Akses ditolak.' });
+        }
+
+        const [rows] = await db.query(
+            `SELECT kode_koreksi, id_karyawan, nama, jabatan, jenis_lupa,
+                    DATE_FORMAT(tanggal_absen, '%Y-%m-%d') AS tanggal_absen,
+                    hari_absen, tahun_absen, jam_masuk_ajuan, jam_pulang_ajuan,
+                    jam_masuk_lama, jam_pulang_lama, alasan, status, catatan_admin,
+                    DATE_FORMAT(tanggal_kirim, '%Y-%m-%d %H:%i:%s') AS tanggal_kirim
+             FROM permintaan_koreksi_scan WHERE id_karyawan = ?
+             ORDER BY tanggal_kirim DESC, id DESC LIMIT 100`,
+            [empId]
+        );
+        res.json({ success: true, data: rows });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.delete('/api/pegawai/koreksi-scan/:kode', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const kode = req.params.kode;
+        const [rows] = await db.query('SELECT id_karyawan, status FROM permintaan_koreksi_scan WHERE kode_koreksi = ? LIMIT 1', [kode]);
+        if (!rows || rows.length === 0) return res.status(404).json({ success: false, message: 'Pengajuan tidak ditemukan.' });
+        if (req.user && req.user.role === 'pegawai' && req.user.id_karyawan &&
+            String(req.user.id_karyawan).toLowerCase() !== String(rows[0].id_karyawan).toLowerCase()) {
+            return res.status(403).json({ success: false, message: 'Akses ditolak.' });
+        }
+        if (rows[0].status !== 'pending') {
+            return res.status(400).json({ success: false, message: 'Pengajuan yang sudah diproses admin tidak dapat dibatalkan.' });
+        }
+        const nowWib = getWibNowSql();
+        await db.query('INSERT INTO permintaan_koreksi_scan_deleted (kode_koreksi, deleted_at) VALUES (?, ?) ON DUPLICATE KEY UPDATE deleted_at = VALUES(deleted_at)', [kode, nowWib]);
+        await db.query('DELETE FROM permintaan_koreksi_scan WHERE kode_koreksi = ?', [kode]);
+        syncEnterpriseTablesNow().catch(() => {});
+        res.json({ success: true, message: 'Pengajuan koreksi lupa scan dibatalkan.' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.get('/api/koreksi-scan/permintaan', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        await syncEnterpriseTablesNow().catch(() => {});
+        const db = pool.promise();
+        const [rows] = await db.query(
+            `SELECT kode_koreksi, id_karyawan, nama, jabatan, jenis_lupa,
+                    DATE_FORMAT(tanggal_absen, '%Y-%m-%d') AS tanggal_absen,
+                    hari_absen, tahun_absen, jam_masuk_ajuan, jam_pulang_ajuan,
+                    jam_masuk_lama, jam_pulang_lama, alasan, status, catatan_admin,
+                    DATE_FORMAT(tanggal_kirim, '%Y-%m-%d %H:%i:%s') AS tanggal_kirim,
+                    DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+             FROM permintaan_koreksi_scan
+             ORDER BY tanggal_kirim DESC, id DESC`
+        );
+        const [empRows] = await db.query('SELECT id_karyawan, nama, jabatan FROM karyawan');
+        const empMap = new Map(empRows.map(e => [String(e.id_karyawan).trim().toLowerCase(), e]));
+
+        const absMap = new Map();
+        if (rows.length > 0) {
+            const tgls = [...new Set(rows.map(r => r.tanggal_absen).filter(Boolean))];
+            if (tgls.length > 0) {
+                const ph = tgls.map(() => '?').join(',');
+                const [absRows] = await db.query(
+                    `SELECT id_karyawan, DATE_FORMAT(tanggal, '%Y-%m-%d') AS tgl, jam_masuk, jam_keluar, status FROM absensi WHERE tanggal IN (${ph})`,
+                    tgls
+                );
+                absRows.forEach(a => absMap.set(`${String(a.id_karyawan).trim().toLowerCase()}__${a.tgl}`, a));
+            }
+        }
+
+        const enriched = rows.map(r => {
+            const key = String(r.id_karyawan).trim().toLowerCase();
+            const k = empMap.get(key);
+            const ab = absMap.get(`${key}__${r.tanggal_absen}`);
+            return {
+                ...r,
+                nama: (k && k.nama) || r.nama || r.id_karyawan,
+                jabatan: (k && k.jabatan) || r.jabatan || 'Staf',
+                absen_jam_masuk: ab ? ab.jam_masuk : null,
+                absen_jam_keluar: ab ? ab.jam_keluar : null,
+                absen_status: ab ? ab.status : null
+            };
+        });
+        res.json({ success: true, data: enriched });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/koreksi-scan/permintaan/:kode/approve', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const kode = req.params.kode;
+        const [reqRows] = await db.query(
+            `SELECT kode_koreksi, id_karyawan, nama, jenis_lupa, DATE_FORMAT(tanggal_absen, '%Y-%m-%d') AS tanggal_absen,
+                    jam_masuk_ajuan, jam_pulang_ajuan, alasan
+             FROM permintaan_koreksi_scan WHERE kode_koreksi = ? LIMIT 1`,
+            [kode]
+        );
+        if (!reqRows || reqRows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Permintaan koreksi tidak ditemukan.' });
+        }
+        const r = reqRows[0];
+        const [absRows] = await db.query(
+            'SELECT id_absensi, jam_masuk, jam_keluar, keterangan FROM absensi WHERE id_karyawan = ? AND tanggal = ? LIMIT 1',
+            [r.id_karyawan, r.tanggal_absen]
+        );
+        const existing = absRows[0] || {};
+        const body = req.body || {};
+
+        const finalMasuk = normHms(body.jam_masuk || r.jam_masuk_ajuan || existing.jam_masuk || null);
+        const finalKeluar = normHms(body.jam_keluar || r.jam_pulang_ajuan || existing.jam_keluar || null);
+
+        const metrics = await computeTelatPswByShift(db, r.id_karyawan, r.tanggal_absen, finalMasuk, finalKeluar);
+        let ketClean = String(existing.keterangan || '')
+            .replace(/\[Tanpa Absen Pulang\]/gi, '')
+            .replace(/\[Lupa Absen Pulang\]/gi, '')
+            .replace(/\s*\[PSW:\s*\d+\s*menit\]/gi, '')
+            .trim();
+        const koreksiNote = `Koreksi Lupa Scan (${r.alasan})`;
+        if (!ketClean.includes('Koreksi Lupa Scan')) {
+            ketClean = ketClean ? `${ketClean} | ${koreksiNote}` : koreksiNote;
+        }
+        if (metrics.pswMenit > 0) {
+            ketClean += ` [PSW: ${metrics.pswMenit} menit]`;
+        }
+        ketClean = ketClean.slice(0, 250);
+
+        await db.query(
+            `INSERT INTO absensi (id_karyawan, tanggal, jam_masuk, jam_keluar, status, keterangan, telat_menit, psw_menit)
+             VALUES (?, ?, ?, ?, 'HADIR', ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                jam_masuk = VALUES(jam_masuk),
+                jam_keluar = VALUES(jam_keluar),
+                status = 'HADIR',
+                keterangan = VALUES(keterangan),
+                telat_menit = VALUES(telat_menit),
+                psw_menit = VALUES(psw_menit)`,
+            [r.id_karyawan, r.tanggal_absen, metrics.jamMasuk, metrics.jamKeluar, ketClean, metrics.telatMenit, metrics.pswMenit]
+        );
+
+        const nowWib = getWibNowSql();
+        await db.query(
+            'UPDATE permintaan_koreksi_scan SET status = ?, updated_at = ? WHERE kode_koreksi = ?',
+            ['approved', nowWib, kode]
+        );
+
+        cache.del('api_absensi_today');
+        
+
+        await recordAuditLog({
+            aksi: 'Approve Koreksi Lupa Scan',
+            detail: `${r.nama || r.id_karyawan} tgl ${r.tanggal_absen} (${metrics.jamMasuk || '--'} - ${metrics.jamKeluar || '--'})`,
+            kategori: 'emerald',
+            sumber: 'DASHBOARD'
+        });
+        syncEnterpriseTablesNow().catch(() => {});
+
+        res.json({
+            success: true,
+            message: `Koreksi lupa scan untuk ${r.nama || r.id_karyawan} disetujui & absensi diperbarui.`
+        });
+    } catch (e) {
+        console.error('Error approve koreksi scan:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.put('/api/koreksi-scan/permintaan/:kode/status', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const kode = req.params.kode;
+        const { status, catatan_admin } = req.body || {};
+        if (!['pending', 'approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ success: false, message: 'Status tidak valid.' });
+        }
+        const nowWib = getWibNowSql();
+        const [result] = await db.query(
+            'UPDATE permintaan_koreksi_scan SET status = ?, catatan_admin = ?, updated_at = ? WHERE kode_koreksi = ?',
+            [status, catatan_admin || null, nowWib, kode]
+        );
+        if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Permintaan tidak ditemukan.' });
+        await recordAuditLog({ aksi: `Status Koreksi Scan -> ${status}`, detail: `Kode ${kode}${catatan_admin ? ' | Catatan: ' + catatan_admin : ''}`, kategori: status === 'rejected' ? 'rose' : 'emerald', sumber: 'DASHBOARD' });
+        syncEnterpriseTablesNow().catch(() => {});
+        res.json({ success: true, message: `Status pengajuan diperbarui menjadi ${status}.` });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.delete('/api/koreksi-scan/permintaan/:kode', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalEnterpriseReady();
+        const db = pool.promise();
+        const kode = req.params.kode;
+        const nowWib = getWibNowSql();
+        await db.query('INSERT INTO permintaan_koreksi_scan_deleted (kode_koreksi, deleted_at) VALUES (?, ?) ON DUPLICATE KEY UPDATE deleted_at = VALUES(deleted_at)', [kode, nowWib]);
+        await db.query('DELETE FROM permintaan_koreksi_scan WHERE kode_koreksi = ?', [kode]);
+        await recordAuditLog({ aksi: 'Hapus Koreksi Lupa Scan', detail: `Menghapus pengajuan ${kode}`, kategori: 'rose', sumber: 'DASHBOARD' });
+        syncEnterpriseTablesNow().catch(() => {});
+        res.json({ success: true, message: 'Pengajuan koreksi dihapus.' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 // 4. API Dashboard Pegawai (Data Hari Ini)
 app.get('/api/pegawai/dashboard/today/:id', authenticateToken, (req, res) => {
     const id = req.params.id;
@@ -3320,6 +4185,7 @@ app.get('/api/pegawai/dashboard/today/:id', authenticateToken, (req, res) => {
 
 // Jalankan Server
 app.listen(port, () => {
+    ensureLocalEnterpriseReady().catch(() => {});
     console.log(`🚀 Server berjalan di http://localhost:${port}`);
     // console.log(`📂 Buka http://localhost:${port}/admin.html di browser agar suaranya dari AI ini`);
 

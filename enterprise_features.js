@@ -7,7 +7,7 @@
 (function () {
     const ALL_TABS = [
         'overview', 'daily', 'monthly', 'performance', 'employees', 'scan-portal',
-        'view-db', 'view-db-monthly', 'req-password', 'settings', 'catatan', 'jadwal-libur',
+        'view-db', 'view-db-monthly', 'req-password', 'settings', 'catatan', 'jadwal-libur', 'koreksi-scan',
         'analytics', 'shifts', 'payroll', 'broadcast', 'environment'
     ];
 
@@ -28,6 +28,7 @@
         'broadcast': 'Pusat Pengumuman & Audit Sistem',
         'catatan': 'Tabel Catatan Kehadiran Pegawai',
         'jadwal-libur': 'Permintaan Jadwal Libur & DL',
+        'koreksi-scan': 'Permintaan Koreksi Lupa Scan',
         'environment': 'Manajemen Environment & Variabel Sistem (.env)'
     };
 
@@ -39,9 +40,16 @@
     function logAuditEvent(action, detail, badgeColor = 'emerald') {
         const now = new Date();
         const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        auditLogs.unshift({ time: timeStr, action, detail, badgeColor });
-        if (auditLogs.length > 30) auditLogs.pop();
+        auditLogs.unshift({ time: timeStr, action, detail, badgeColor, source: 'DASHBOARD' });
+        if (auditLogs.length > 60) auditLogs.pop();
         renderAuditLog();
+        if (action !== 'Navigasi Menu' && action !== 'Sistem Aktif') {
+            fetch('/api/audit-logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ aksi: action, detail, kategori: badgeColor, sumber: 'DASHBOARD' })
+            }).catch(() => {});
+        }
     }
 
     // --- 1. OVERRIDE & EXTEND SWITCHTAB ---
@@ -89,6 +97,7 @@
         if (tabName === 'broadcast') loadEnterpriseBroadcast();
         if (tabName === 'catatan' && typeof loadCatatanData === 'function') loadCatatanData();
         if (tabName === 'jadwal-libur' && typeof loadJadwalLiburRequests === 'function') loadJadwalLiburRequests();
+        if (tabName === 'koreksi-scan' && typeof loadKoreksiScanRequests === 'function') loadKoreksiScanRequests();
         if (tabName === 'environment' && typeof window.loadEnvData === 'function') window.loadEnvData();
 
         logAuditEvent('Navigasi Menu', `Membuka halaman ${TAB_TITLES[tabName] || tabName}`, 'blue');
@@ -406,27 +415,56 @@
     }
 
     window.loadEnterpriseShifts = async function () {
-        if (cachedEmployees.length === 0) {
-            try {
-                const res = await fetch(`/api/karyawan/descriptors?_t=${Date.now()}`);
-                const json = await res.json();
-                cachedEmployees = Array.isArray(json.descriptors) ? json.descriptors : [];
-            } catch (e) {
-                console.error(e);
+        try {
+            const [resEmp, resShift] = await Promise.all([
+                cachedEmployees.length === 0 ? fetch(`/api/karyawan/descriptors?_t=${Date.now()}`) : Promise.resolve(null),
+                fetch(`/api/shifts?_t=${Date.now()}`)
+            ]);
+            if (resEmp) {
+                const jEmp = await resEmp.json();
+                cachedEmployees = Array.isArray(jEmp.descriptors) ? jEmp.descriptors : [];
             }
+            const jShift = resShift ? await resShift.json().catch(() => null) : null;
+            if (jShift && jShift.success && jShift.map) {
+                const dbMap = jShift.map;
+                if (Object.keys(dbMap).length === 0) {
+                    const legacy = getSavedShifts();
+                    if (Object.keys(legacy).length > 0) {
+                        await fetch('/api/shifts/bulk', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ shifts: legacy })
+                        }).catch(() => {});
+                    }
+                } else {
+                    localStorage.setItem('pkm_wana_shifts', JSON.stringify(dbMap));
+                }
+            }
+        } catch (e) {
+            console.error(e);
         }
         renderShiftTable();
     };
 
-    window.updateEmployeeShift = function (idKaryawan, shiftCode) {
+    window.updateEmployeeShift = async function (idKaryawan, shiftCode) {
         const shifts = getSavedShifts();
         shifts[idKaryawan] = shiftCode;
         localStorage.setItem('pkm_wana_shifts', JSON.stringify(shifts));
         renderShiftTable();
-        if (typeof showToast === 'function') {
-            showToast(`Shift pegawai #${idKaryawan} diubah ke Shift ${shiftCode}`, 'success');
+        try {
+            const res = await fetch(`/api/shifts/${encodeURIComponent(idKaryawan)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ shift_code: shiftCode })
+            });
+            const json = await res.json();
+            if (typeof showToast === 'function') {
+                showToast(json.success ? `Shift #${idKaryawan} disimpan ke Database (${shiftCode})` : (json.message || 'Gagal simpan shift DB'), json.success ? 'success' : 'error');
+            }
+            logAuditEvent('Ubah Shift Kerja', `ID ${idKaryawan} -> Shift ${shiftCode}`, 'purple');
+        } catch (e) {
+            if (typeof showToast === 'function') showToast(`Shift diubah lokal (DB offline): ${e.message}`, 'warning');
         }
-        logAuditEvent('Ubah Shift Kerja', `ID ${idKaryawan} -> Shift ${shiftCode}`, 'purple');
     };
 
     window.renderShiftTable = function () {
@@ -647,34 +685,81 @@
         }
     }
 
-    window.loadEnterpriseBroadcast = function () {
+    window.deleteBroadcastDb = async function (kodeBroadcast) {
+        if (!kodeBroadcast || !confirm('Hapus pengumuman ini dari Dashboard & Portal Online?')) return;
+        try {
+            const res = await fetch(`/api/broadcast/${encodeURIComponent(kodeBroadcast)}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (json.success) {
+                if (typeof showToast === 'function') showToast('Pengumuman dihapus.', 'success');
+                await loadEnterpriseBroadcast();
+            }
+        } catch (e) {
+            if (typeof showToast === 'function') showToast('Gagal menghapus pengumuman: ' + e.message, 'error');
+        }
+    };
+
+    window.loadEnterpriseBroadcast = async function () {
+        try {
+            const [resBc, resAud] = await Promise.all([
+                fetch(`/api/broadcast?_t=${Date.now()}`),
+                fetch(`/api/audit-logs?limit=50&_t=${Date.now()}`)
+            ]);
+            const jBc = await resBc.json().catch(() => null);
+            if (jBc && jBc.success && Array.isArray(jBc.data)) {
+                const mapped = jBc.data.map(b => ({
+                    kode_broadcast: b.kode_broadcast,
+                    category: b.kategori,
+                    message: b.pesan,
+                    time: b.created_at ? String(b.created_at).slice(0, 16) + ' WIB' : '-'
+                }));
+                localStorage.setItem('pkm_wana_broadcasts', JSON.stringify(mapped.slice(0, 15)));
+                const tickerText = document.getElementById('ticker-announcement-text');
+                if (tickerText && mapped.length > 0) {
+                    tickerText.textContent = `[${mapped[0].category}] ${mapped[0].message}`;
+                }
+            }
+            const jAud = await resAud.json().catch(() => null);
+            if (jAud && jAud.success && Array.isArray(jAud.data)) {
+                auditLogs = jAud.data.map(a => ({
+                    time: String(a.created_at || '').slice(11, 19) || '-',
+                    date: String(a.created_at || '').slice(0, 10),
+                    action: a.aksi,
+                    detail: a.detail,
+                    badgeColor: a.kategori || 'emerald',
+                    source: a.sumber || 'SERVER'
+                }));
+            }
+        } catch (e) {}
         renderBroadcastHistory();
         renderAuditLog();
     };
 
-    window.publishBroadcast = function () {
-        const cat = document.getElementById('broadcast-category')?.value || 'INFO';
-        const msg = document.getElementById('broadcast-message')?.value.trim();
+    window.publishBroadcast = async function () {
+        const cat = document.getElementById('broadcast-category')?.value || 'INFO PENTING';
+        const msgEl = document.getElementById('broadcast-message');
+        const msg = msgEl?.value.trim();
         if (!msg) {
             if (typeof showToast === 'function') showToast('Tulis isi pengumuman terlebih dahulu!', 'error');
             return;
         }
-        const list = getSavedBroadcasts();
-        const item = {
-            id: Date.now(),
-            category: cat,
-            message: msg,
-            time: new Date().toLocaleString('id-ID')
-        };
-        list.unshift(item);
-        localStorage.setItem('pkm_wana_broadcasts', JSON.stringify(list.slice(0, 15)));
+        try {
+            const res = await fetch('/api/broadcast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kategori: cat, judul: cat, pesan: msg, tampil_portal: 1 })
+            });
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.message || 'Gagal menyimpan pengumuman.');
 
-        const tickerText = document.getElementById('ticker-announcement-text');
-        if (tickerText) tickerText.textContent = `[${cat}] ${msg}`;
-
-        renderBroadcastHistory();
-        logAuditEvent('Broadcast Baru', `${cat}: ${msg.substring(0, 45)}...`, 'rose');
-        if (typeof showToast === 'function') showToast('Pengumuman berhasil ditampilkan di Ticker Dashboard!', 'success');
+            const tickerText = document.getElementById('ticker-announcement-text');
+            if (tickerText) tickerText.textContent = `[${cat}] ${msg}`;
+            if (msgEl) msgEl.value = '';
+            if (typeof showToast === 'function') showToast('Pengumuman berhasil dikirim ke Ticker Dashboard & Portal Online!', 'success');
+            await loadEnterpriseBroadcast();
+        } catch (e) {
+            if (typeof showToast === 'function') showToast('Gagal broadcast: ' + e.message, 'error');
+        }
     };
 
     window.generateWhatsAppReport = function () {
@@ -713,6 +798,7 @@
                     <p class="text-xs text-slate-700 font-medium mt-1 break-words">${escapeHtml(item.message)}</p>
                     <p class="text-[10px] text-slate-400 mt-1">${escapeHtml(item.time)}</p>
                 </div>
+                ${item.kode_broadcast ? `<button type="button" onclick="deleteBroadcastDb('${escapeHtml(item.kode_broadcast)}')" class="px-2 py-1 rounded-lg bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 text-[10px] shrink-0" title="Hapus Pengumuman"><i class="fa-solid fa-trash-can"></i></button>` : ''}
             </div>
         `).join('');
     }
@@ -725,15 +811,18 @@
             return;
         }
         container.innerHTML = auditLogs.map(log => `
-            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/70 gap-2">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                     <div class="min-w-0">
-                        <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(log.action)}</p>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(log.action)}</p>
+                            ${log.source ? `<span class="px-1.5 py-0.2 rounded bg-slate-200 text-slate-700 text-[9px] font-black uppercase">${escapeHtml(log.source)}</span>` : ''}
+                        </div>
                         <p class="text-[10px] text-slate-500 truncate">${escapeHtml(log.detail)}</p>
                     </div>
                 </div>
-                <span class="font-mono text-[10px] font-bold text-slate-400 shrink-0">${log.time}</span>
+                <span class="font-mono text-[10px] font-bold text-slate-400 shrink-0">${log.date ? escapeHtml(log.date) + ' ' : ''}${escapeHtml(log.time)}</span>
             </div>
         `).join('');
     }
@@ -751,6 +840,7 @@
         { label: 'Buka Broadcast WA & Audit Sistem', category: 'Fitur Enterprise', icon: 'fa-bullhorn', action: () => switchTab('broadcast') },
         { label: 'Buka Direktori Data Pegawai', category: 'Manajemen Data', icon: 'fa-users', action: () => switchTab('employees') },
         { label: 'Buka Tabel Permintaan Jadwal Libur & DL', category: 'Manajemen Data', icon: 'fa-calendar-check', action: () => switchTab('jadwal-libur') },
+        { label: 'Buka Tabel Permintaan Koreksi Lupa Scan', category: 'Manajemen Data', icon: 'fa-fingerprint', action: () => switchTab('koreksi-scan') },
         { label: 'Buka Tabel Akun Portal & Biometrik', category: 'Manajemen Data', icon: 'fa-id-card-clip', action: () => { switchTab('employees'); if (typeof switchEmployeeView === 'function') switchEmployeeView('table'); } },
         { label: 'Input Absensi Manual / Izin / Dinas Luar', category: 'Aksi Cepat', icon: 'fa-user-plus', action: () => { if (typeof openManualModal === 'function') openManualModal(); } },
         { label: 'Tema Warna: Sapphire Cyber (Biru Eksekutif)', category: 'Tema Visual', icon: 'fa-palette', action: () => setEnterpriseTheme('sapphire') },
@@ -843,6 +933,12 @@
             }
         }
 
+        fetch(`/api/broadcast?_t=${Date.now()}`).then(r => r.json()).then(j => {
+            if (j && j.success && Array.isArray(j.data) && j.data.length > 0) {
+                const tickerText = document.getElementById('ticker-announcement-text');
+                if (tickerText) tickerText.textContent = `[${j.data[0].kategori}] ${j.data[0].pesan}`;
+            }
+        }).catch(() => {});
         logAuditEvent('Sistem Aktif', 'Enterprise Suite v4.5.2 berhasil dimuat', 'emerald');
         setTimeout(refreshEnterpriseOverviewExtras, 800);
         setInterval(refreshEnterpriseOverviewExtras, 60000);

@@ -726,10 +726,29 @@
                 </div>
                 <div class="overflow-hidden flex-1 relative flex items-center pl-2">
                     <div class="animate-marquee">
-                        <span class="text-[11px] font-extrabold text-teal-950 uppercase tracking-widest">
+                        <span id="portal-marquee-text" class="text-[11px] font-extrabold text-teal-950 uppercase tracking-widest">
                             🌟 Semangat Melayani Sepenuh Hati! Pastikan Anda melakukan presensi tepat waktu. 🏥 Kesehatan Pasien adalah Prioritas Utama Kita. 🌟
                         </span>
                     </div>
+                </div>
+            </div>
+
+            <!-- Card Pengumuman Resmi Instansi (Real-Time DB Broadcast) -->
+            <div id="portal-broadcast-card" onclick="openNotificationModal()" class="hidden cursor-pointer rounded-2xl border border-amber-200/90 bg-gradient-to-r from-amber-50/90 via-white to-teal-50/70 shadow-sm p-3.5 transition-all hover:shadow-md active:scale-[0.99]">
+                <div class="flex items-start justify-between gap-2.5">
+                    <div class="flex items-start gap-2.5 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-xs shrink-0 mt-0.5">
+                            <i class="fa-solid fa-bullhorn text-xs"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span id="portal-bc-kategori" class="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-rose-100 text-rose-700 border border-rose-200">INFO PENTING</span>
+                                <span id="portal-bc-meta" class="text-[10px] font-semibold text-slate-400">Terbaru</span>
+                            </div>
+                            <p id="portal-bc-msg" class="text-xs font-bold text-slate-800 mt-1 leading-snug line-clamp-2"></p>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-extrabold text-teal-700 shrink-0 mt-1">Lihat <i class="fa-solid fa-chevron-right text-[8px]"></i></span>
                 </div>
             </div>
 
@@ -779,6 +798,10 @@
                             <span class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center text-xs shadow-sm"><i class="fa-solid fa-calendar-day"></i></span>
                             Presensi Hari Ini
                         </h3>
+                        <div id="portal-shift-pill" class="mt-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <i class="fa-solid fa-business-time text-emerald-600"></i>
+                            <span>Shift Pagi • 07:30 - 14:00 WIB</span>
+                        </div>
                         <p id="today-sync-time" class="text-[9px] font-bold text-slate-400 tracking-wider mt-1 pl-9 flex items-center gap-1">
                             <i class="fa-solid fa-circle-check text-teal-500 text-[8px]"></i> Sinkron: Baru saja
                         </p>
@@ -871,6 +894,30 @@
                         class="shrink-0 px-3.5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5">
                         <i class="fa-solid fa-paper-plane"></i>
                         <span>Ajukan</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card Pengajuan Koreksi Lupa Scan Masuk / Pulang -->
+            <div id="portal-koreksi-scan-card" class="mb-4 rounded-2xl border border-amber-200/80 bg-white/95 shadow-sm p-4 transition-all hover:shadow-md">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                            <i class="fa-solid fa-fingerprint text-lg"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <h4 class="text-sm font-extrabold text-slate-900 tracking-tight">Koreksi Lupa Scan</h4>
+                                <span id="portal-ks-pending-pill" class="hidden inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">0 Menunggu</span>
+                                <span id="portal-ks-alert-pill" class="hidden inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-300">0 Perlu Koreksi</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">Lupa scan masuk atau pulang di mesin? Ajukan koreksi jam ke Admin.</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="openKoreksiScanModal()"
+                        class="shrink-0 px-3.5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>Koreksi</span>
                     </button>
                 </div>
             </div>
@@ -1944,7 +1991,145 @@
         </div>
     </div>
 
-    <script src="/portal.js?v=56"></script>
+    <!-- Modal Pengajuan Koreksi Lupa Scan Masuk / Pulang -->
+    <div id="koreksi-scan-modal" class="fixed inset-0 z-[76] hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl shadow-2xl border border-amber-100 max-h-[92vh] flex flex-col overflow-hidden">
+            <!-- Header -->
+            <div class="px-5 py-4 bg-gradient-to-r from-amber-700 via-orange-600 to-emerald-800 text-white flex items-center justify-between shrink-0">
+                <div>
+                    <h3 class="text-base font-extrabold tracking-tight flex items-center gap-2">
+                        <i class="fa-solid fa-fingerprint text-amber-200"></i>
+                        <span>Ajukan Koreksi Lupa Scan</span>
+                    </h3>
+                    <p id="ks-emp-badge" class="text-[11px] text-amber-100/90 font-medium mt-0.5">-</p>
+                </div>
+                <button type="button" onclick="closeKoreksiScanModal()" class="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-5 overflow-y-auto space-y-4">
+                <input type="hidden" id="ks-jenis-value" value="LUPA_PULANG">
+
+                <!-- 1. Terdeteksi Lupa Scan Bulan Ini -->
+                <div id="ks-candidates-wrap" class="hidden rounded-2xl border border-rose-200 bg-rose-50/60 p-3 space-y-2">
+                    <div class="text-[11px] font-extrabold text-rose-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>Hari Terdeteksi Belum Lengkap (Klik 1x untuk isi otomatis):</span>
+                    </div>
+                    <div id="ks-candidates-list" class="flex gap-2 overflow-x-auto pb-1"></div>
+                </div>
+
+                <!-- 2. Jenis Lupa Scan -->
+                <div>
+                    <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-2">1. Pilih Jenis Lupa Scan</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" id="ks-btn-pulang" onclick="setKoreksiScanJenis('LUPA_PULANG')"
+                            class="p-2.5 rounded-xl border-2 border-amber-600 bg-amber-50 text-amber-900 font-extrabold text-[11px] text-center shadow-xs transition-all">
+                            <i class="fa-solid fa-right-from-bracket block mb-1 text-amber-600"></i>
+                            Lupa Pulang
+                        </button>
+                        <button type="button" id="ks-btn-masuk" onclick="setKoreksiScanJenis('LUPA_MASUK')"
+                            class="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 font-bold text-[11px] text-center transition-all hover:bg-violet-50">
+                            <i class="fa-solid fa-right-to-bracket block mb-1 text-violet-600"></i>
+                            Lupa Masuk
+                        </button>
+                        <button type="button" id="ks-btn-keduanya" onclick="setKoreksiScanJenis('LUPA_KEDUANYA')"
+                            class="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 font-bold text-[11px] text-center transition-all hover:bg-rose-50">
+                            <i class="fa-solid fa-clock block mb-1 text-rose-600"></i>
+                            Keduanya
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. Tanggal Lupa Scan -->
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">2. Tanggal Lupa Scan</span>
+                        <input type="date" id="ks-date-picker" onchange="syncKsDropdownsFromDate()"
+                            class="text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-amber-500">
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1">Tanggal</label>
+                            <select id="ks-select-tgl" onchange="syncKsDateFromDropdowns()"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1">Bulan</label>
+                            <select id="ks-select-bulan" onchange="syncKsDateFromDropdowns()"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1">Tahun</label>
+                            <select id="ks-select-tahun" onchange="syncKsDateFromDropdowns()"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800"></select>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl bg-white border border-amber-200 px-3 py-2 flex items-center justify-between gap-2">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase text-slate-400">Hari &amp; Tanggal Dipilih</div>
+                            <div class="text-xs font-black text-slate-900 mt-0.5"><span id="ks-display-hari">-</span>, <span id="ks-display-lengkap">-</span></div>
+                            <div id="ks-existing-absen-info" class="text-[10px] font-mono font-semibold text-teal-700 mt-0.5">Memeriksa data scan tanggal ini...</div>
+                        </div>
+                        <span class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-calendar-day"></i></span>
+                    </div>
+                </div>
+
+                <!-- 4. Jam Koreksi -->
+                <div class="rounded-2xl border border-amber-200 bg-amber-50/50 p-3.5">
+                    <div class="text-[11px] font-extrabold text-amber-900 mb-2 flex items-center gap-1.5">
+                        <i class="fa-regular fa-clock"></i>
+                        <span>3. Jam Kehadiran Sebenarnya</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div id="ks-wrap-masuk" class="opacity-60">
+                            <label class="block text-[10px] font-bold text-slate-600 mb-1">Jam Masuk</label>
+                            <input type="time" id="ks-jam-masuk" value="07:30" class="w-full bg-white border border-amber-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800">
+                        </div>
+                        <div id="ks-wrap-pulang">
+                            <label class="block text-[10px] font-bold text-amber-900 mb-1">Jam Pulang</label>
+                            <input type="time" id="ks-jam-pulang" value="14:00" class="w-full bg-white border border-amber-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Alasan -->
+                <div>
+                    <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">4. Alasan Lupa Scan (Wajib Jelas)</label>
+                    <textarea id="ks-alasan" rows="2" placeholder="Contoh: Langsung menangani pasien darurat / mengantar rujukan hingga lupa melakukan scan pulang..."
+                        class="w-full bg-white border border-slate-300 rounded-2xl px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500"></textarea>
+                </div>
+
+                <button type="button" id="ks-submit-btn" onclick="submitPermintaanKoreksiScan()"
+                    class="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>Kirim Pengajuan Koreksi ke Admin</span>
+                </button>
+
+                <!-- 6. Riwayat Pengajuan Koreksi Saya -->
+                <div class="pt-2 border-t border-slate-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-list-check text-amber-600"></i>
+                            <span>Riwayat Pengajuan Koreksi Saya</span>
+                        </h4>
+                        <button type="button" onclick="loadMyKoreksiScanRequests()" class="text-[11px] font-bold text-amber-700 hover:underline">
+                            <i class="fa-solid fa-arrows-rotate mr-0.5"></i> Refresh
+                        </button>
+                    </div>
+                    <div id="ks-my-history-list" class="space-y-2 text-xs text-slate-500">
+                        <div class="text-center py-4 text-slate-400">Memuat riwayat koreksi...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/portal.js?v=57"></script>
     <script src="instansi_config.js"></script>
 </body>
 </html>
