@@ -135,14 +135,17 @@ document.addEventListener('DOMContentLoaded', () => {
         updateChartFilter();
         loadSignatureConfig(); // Load setting tanda tangan saat start
         setupSidebarToggle(); // [NEW] Init Sidebar Toggle
+        if (typeof refreshJadwalLiburBadge === 'function') refreshJadwalLiburBadge();
     });
 
     // AUTO REFRESH (Setiap 60 Detik) - Fitur Canggih
     setInterval(() => {
         // Hanya refresh jika tab aktif adalah overview atau daily
-        const activeTab = document.querySelector('.nav-item.active').id;
+        const activeTab = document.querySelector('.nav-item.active')?.id || '';
         if (activeTab === 'nav-overview') loadOverviewData(true); // true = silent refresh
         if (activeTab === 'nav-daily') loadDailyData(true); // true = silent refresh
+        if (activeTab === 'nav-jadwal-libur' && typeof loadJadwalLiburRequests === 'function') loadJadwalLiburRequests(true);
+        if (typeof refreshJadwalLiburBadge === 'function') refreshJadwalLiburBadge();
     }, 60000);
 
     // --- DRAG-SCROLL untuk Tabel & Grid Data ---
@@ -286,7 +289,7 @@ async function loadSystemConfig() {
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
     // Hide all views
-    ['overview', 'daily', 'monthly', 'performance', 'employees', 'scan-portal', 'view-db', 'view-db-monthly', 'req-password', 'settings', 'environment', 'catatan'].forEach(id => {
+    ['overview', 'daily', 'monthly', 'performance', 'employees', 'scan-portal', 'view-db', 'view-db-monthly', 'req-password', 'settings', 'environment', 'catatan', 'jadwal-libur'].forEach(id => {
         const viewEl = document.getElementById(`view-${id}`);
         if (viewEl) {
             viewEl.classList.add('hidden');
@@ -322,7 +325,8 @@ function switchTab(tabName) {
         'req-password': 'Permintaan Ubah Password',
         'settings': 'Pengaturan Sistem',
         'environment': 'Tabel Konfigurasi Environment (.env)',
-        'catatan': 'Tabel Catatan Kehadiran Pegawai'
+        'catatan': 'Tabel Catatan Kehadiran Pegawai',
+        'jadwal-libur': 'Permintaan Jadwal Libur & DL'
     };
     document.getElementById('page-title').textContent = titles[tabName];
 
@@ -358,6 +362,7 @@ function switchTab(tabName) {
     if (tabName === 'req-password') loadReqPassword();
     if (tabName === 'environment' && typeof loadEnvData === 'function') loadEnvData();
     if (tabName === 'catatan' && typeof loadCatatanData === 'function') loadCatatanData();
+    if (tabName === 'jadwal-libur' && typeof loadJadwalLiburRequests === 'function') loadJadwalLiburRequests();
 }
 
 // --- DATA LOADER: REQ UBAH PASSWORD ---
@@ -2371,6 +2376,13 @@ async function openManualModal() {
     const content = document.getElementById('modal-manual-content');
     const select = document.getElementById('manual-emp-select');
     
+    // Reset konteks pengajuan jadwal libur & keterangan
+    window.activeJadwalLiburKode = null;
+    const jlCtx = document.getElementById('manual-jadwal-context');
+    if (jlCtx) { jlCtx.classList.add('hidden'); jlCtx.innerHTML = ''; }
+    const descReset = document.getElementById('manual-desc');
+    if (descReset) descReset.value = '';
+
     // [NEW] Reset Search Filter saat modal dibuka
     const searchInput = document.getElementById('search-manual-emp');
     if (searchInput) {
@@ -2429,6 +2441,9 @@ async function openManualModal() {
 }
 
 function closeManualModal() {
+    window.activeJadwalLiburKode = null;
+    const jlCtx = document.getElementById('manual-jadwal-context');
+    if (jlCtx) { jlCtx.classList.add('hidden'); jlCtx.innerHTML = ''; }
     const modal = document.getElementById('modal-manual-status');
     const content = document.getElementById('modal-manual-content');
     modal.classList.add('opacity-0');
@@ -2470,10 +2485,19 @@ async function submitManualStatus() {
         const result = await response.json();
 
         if (response.ok && result.success) {
+            const linkedJlKode = window.activeJadwalLiburKode;
+            if (linkedJlKode && typeof window.markJadwalLiburProcessed === 'function') {
+                await window.markJadwalLiburProcessed(linkedJlKode);
+            }
             showToast("Status berhasil disimpan!", 'success');
             closeManualModal();
             loadDailyData(); // Refresh tabel harian
             loadOverviewData(); // Refresh statistik atas (Hadir/Alpa)
+            if (typeof loadJadwalLiburRequests === 'function') {
+                loadJadwalLiburRequests(true);
+            } else if (typeof refreshJadwalLiburBadge === 'function') {
+                refreshJadwalLiburBadge();
+            }
         } else {
             // Tampilkan pesan error asli dari server
             showToast(`Gagal menyimpan: ${result.message}`, 'error');

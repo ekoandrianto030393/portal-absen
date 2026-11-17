@@ -58,6 +58,37 @@ async function ensureAllSyncSchemas(db) {
         await db.query("UPDATE req_ubah_password SET updated_at = FROM_UNIXTIME(946684800)");
     }
 
+    // 4b. Permintaan Jadwal Libur & Dinas Luar (DL)
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS permintaan_jadwal_libur (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            kode_permintaan VARCHAR(80) NOT NULL UNIQUE,
+            id_karyawan VARCHAR(50) NOT NULL,
+            nama VARCHAR(150) DEFAULT '',
+            jabatan VARCHAR(150) DEFAULT '',
+            jenis_pengajuan VARCHAR(20) NOT NULL DEFAULT 'LIBUR',
+            tanggal_diajukan DATE NOT NULL,
+            hari_diajukan VARCHAR(20) NOT NULL DEFAULT '',
+            tahun_diajukan INT NOT NULL,
+            jam_masuk VARCHAR(10) DEFAULT NULL,
+            jam_pulang VARCHAR(10) DEFAULT NULL,
+            keterangan TEXT,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            catatan_admin VARCHAR(255) DEFAULT NULL,
+            tanggal_kirim DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_jl_emp (id_karyawan),
+            INDEX idx_jl_tgl (tanggal_diajukan),
+            INDEX idx_jl_status (status)
+        )
+    `);
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS permintaan_jadwal_libur_deleted (
+            kode_permintaan VARCHAR(80) PRIMARY KEY,
+            deleted_at DATETIME NOT NULL
+        )
+    `);
+
     // 5. Akses Scan Portal
     await db.query(`
         CREATE TABLE IF NOT EXISTS akses_scan_portal (
@@ -505,6 +536,127 @@ async function syncCatatanKehadiranTwoWay(localDb, cloudDb) {
     return { toCloud, toLocal };
 }
 
+async function syncPermintaanJadwalLiburTwoWay(localDb, cloudDb) {
+    let toCloud = 0;
+    let toLocal = 0;
+
+    // 1. Sinkronkan tombstone hapus dua arah
+    const [localDel] = await localDb.query(
+        "SELECT kode_permintaan, DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s') AS deleted_at FROM permintaan_jadwal_libur_deleted"
+    );
+    const [cloudDel] = await cloudDb.query(
+        "SELECT kode_permintaan, DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s') AS deleted_at FROM permintaan_jadwal_libur_deleted"
+    );
+
+    const localDelMap = new Map(localDel.map(r => [r.kode_permintaan, r.deleted_at]));
+    const cloudDelMap = new Map(cloudDel.map(r => [r.kode_permintaan, r.deleted_at]));
+    const deletedSet = new Set([...localDelMap.keys(), ...cloudDelMap.keys()]);
+
+    for (const [kode, delAt] of cloudDelMap.entries()) {
+        if (!localDelMap.has(kode)) {
+            await localDb.query('INSERT IGNORE INTO permintaan_jadwal_libur_deleted (kode_permintaan, deleted_at) VALUES (?, ?)', [kode, delAt]);
+        }
+        await localDb.query('DELETE FROM permintaan_jadwal_libur WHERE kode_permintaan = ?', [kode]);
+    }
+    for (const [kode, delAt] of localDelMap.entries()) {
+        if (!cloudDelMap.has(kode)) {
+            await cloudDb.query('INSERT IGNORE INTO permintaan_jadwal_libur_deleted (kode_permintaan, deleted_at) VALUES (?, ?)', [kode, delAt]);
+        }
+        await cloudDb.query('DELETE FROM permintaan_jadwal_libur WHERE kode_permintaan = ?', [kode]);
+    }
+
+    // 2. Ambil semua data permintaan dari Lokal & Cloud
+    const selectSql = `
+        SELECT kode_permintaan, id_karyawan, nama, jabatan, jenis_pengajuan,
+               DATE_FORMAT(tanggal_diajukan, '%Y-%m-%d') AS tanggal_diajukan,
+               hari_diajukan, tahun_diajukan, jam_masuk, jam_pulang, keterangan,
+               status, catatan_admin,
+               DATE_FORMAT(tanggal_kirim, '%Y-%m-%d %H:%i:%s') AS tanggal_kirim,
+               DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+        FROM permintaan_jadwal_libur
+    `;
+    const [localRows] = await localDb.query(selectSql);
+    const [cloudRows] = await cloudDb.query(selectSql);
+
+    const localMap = new Map(localRows.map(r => [r.kode_permintaan, r]));
+    const cloudMap = new Map(cloudRows.map(r => [r.kode_permintaan, r]));
+    const allKodes = new Set([...localMap.keys(), ...cloudMap.keys()]);
+
+    const upsertSql = `
+        INSERT INTO permintaan_jadwal_libur
+            (kode_permintaan, id_karyawan, nama, jabatan, jenis_pengajuan, tanggal_diajukan,
+             hari_diajukan, tahun_diajukan, jam_masuk, jam_pulang, keterangan, status,
+             catatan_admin, tanggal_kirim, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            nama = VALUES(nama),
+            jabatan = VALUES(jabatan),
+            jenis_pengajuan = VALUES(jenis_pengajuan),
+            tanggal_diajukan = VALUES(tanggal_diajukan),
+            hari_diajukan = VALUES(hari_diajukan),
+            tahun_diajukan = VALUES(tahun_diajukan),
+            jam_masuk = VALUES(jam_masuk),
+            jam_pulang = VALUES(jam_pulang),
+            keterangan = VALUES(keterangan),
+            status = VALUES(status),
+            catatan_admin = VALUES(catatan_admin),
+            tanggal_kirim = VALUES(tanggal_kirim),
+            updated_at = VALUES(updated_at)
+    `;
+
+    const toParams = (r) => [
+        r.kode_permintaan, r.id_karyawan, r.nama || '', r.jabatan || '',
+        r.jenis_pengajuan || 'LIBUR', r.tanggal_diajukan,
+        r.hari_diajukan || '', Number(r.tahun_diajukan || String(r.tanggal_diajukan || '').slice(0, 4) || 2026),
+        r.jam_masuk || null, r.jam_pulang || null, r.keterangan || '',
+        r.status || 'pending', r.catatan_admin || null,
+        r.tanggal_kirim, r.updated_at || r.tanggal_kirim
+    ];
+
+    const toEpoch = (dtStr) => {
+        if (!dtStr) return 0;
+        const ms = new Date(String(dtStr).replace(' ', 'T') + '+07:00').getTime();
+        return isNaN(ms) ? 0 : ms;
+    };
+
+    for (const kode of allKodes) {
+        if (deletedSet.has(kode)) {
+            await localDb.query('DELETE FROM permintaan_jadwal_libur WHERE kode_permintaan = ?', [kode]);
+            await cloudDb.query('DELETE FROM permintaan_jadwal_libur WHERE kode_permintaan = ?', [kode]);
+            continue;
+        }
+        const l = localMap.get(kode);
+        const c = cloudMap.get(kode);
+        if (c && !l) {
+            await localDb.query(upsertSql, toParams(c));
+            toLocal++;
+        } else if (l && !c) {
+            await cloudDb.query(upsertSql, toParams(l));
+            toCloud++;
+        } else if (l && c) {
+            const lMs = toEpoch(l.updated_at);
+            const cMs = toEpoch(c.updated_at);
+            if (cMs > lMs) {
+                await localDb.query(upsertSql, toParams(c));
+                toLocal++;
+            } else if (lMs > cMs) {
+                await cloudDb.query(upsertSql, toParams(l));
+                toCloud++;
+            } else if (l.status !== c.status) {
+                if (c.status !== 'pending' && l.status === 'pending') {
+                    await localDb.query(upsertSql, toParams(c));
+                    toLocal++;
+                } else if (l.status !== 'pending' && c.status === 'pending') {
+                    await cloudDb.query(upsertSql, toParams(l));
+                    toCloud++;
+                }
+            }
+        }
+    }
+
+    return { toCloud, toLocal };
+}
+
 async function startSync() {
     const dbHost = process.env.DB_HOST || '';
     if (!process.env.CLOUD_DB_HOST || dbHost.includes('aivencloud') || dbHost.includes('tidbcloud')) {
@@ -574,6 +726,12 @@ async function startSync() {
 
             // Step 6: Catatan Kehadiran (Dua Arah)
             const cInfo = await syncCatatanKehadiranTwoWay(localDb, cloudDb);
+
+            // Step 7: Permintaan Jadwal Libur & DL (Dua Arah)
+            const jlInfo = await syncPermintaanJadwalLiburTwoWay(localDb, cloudDb);
+            if (jlInfo.toCloud > 0 || jlInfo.toLocal > 0) {
+                console.log(`   📅 Jadwal Libur/DL Sync: Cloud+${jlInfo.toCloud} / Local+${jlInfo.toLocal}`);
+            }
 
             console.log(`✅ Sinkronisasi sukses!
    * Karyawan: ${kInfo.toCloud} ➔ Cloud, ${kInfo.toLocal} ➔ Lokal (Hapus: ${kInfo.delCloud} Cloud / ${kInfo.delLocal} Lokal)

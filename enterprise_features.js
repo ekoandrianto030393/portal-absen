@@ -7,7 +7,7 @@
 (function () {
     const ALL_TABS = [
         'overview', 'daily', 'monthly', 'performance', 'employees', 'scan-portal',
-        'view-db', 'view-db-monthly', 'req-password', 'settings',
+        'view-db', 'view-db-monthly', 'req-password', 'settings', 'catatan', 'jadwal-libur',
         'analytics', 'shifts', 'payroll', 'broadcast', 'environment'
     ];
 
@@ -26,6 +26,8 @@
         'shifts': 'Manajemen Jadwal & Shift Kerja',
         'payroll': 'Simulasi Gaji, Tukin & Slip Pegawai',
         'broadcast': 'Pusat Pengumuman & Audit Sistem',
+        'catatan': 'Tabel Catatan Kehadiran Pegawai',
+        'jadwal-libur': 'Permintaan Jadwal Libur & DL',
         'environment': 'Manajemen Environment & Variabel Sistem (.env)'
     };
 
@@ -85,6 +87,8 @@
         if (tabName === 'shifts') loadEnterpriseShifts();
         if (tabName === 'payroll') loadEnterprisePayroll();
         if (tabName === 'broadcast') loadEnterpriseBroadcast();
+        if (tabName === 'catatan' && typeof loadCatatanData === 'function') loadCatatanData();
+        if (tabName === 'jadwal-libur' && typeof loadJadwalLiburRequests === 'function') loadJadwalLiburRequests();
         if (tabName === 'environment' && typeof window.loadEnvData === 'function') window.loadEnvData();
 
         logAuditEvent('Navigasi Menu', `Membuka halaman ${TAB_TITLES[tabName] || tabName}`, 'blue');
@@ -746,6 +750,7 @@
         { label: 'Buka Kalkulator Gaji, Tukin & Slip Gaji', category: 'Fitur Enterprise', icon: 'fa-money-check-dollar', action: () => switchTab('payroll') },
         { label: 'Buka Broadcast WA & Audit Sistem', category: 'Fitur Enterprise', icon: 'fa-bullhorn', action: () => switchTab('broadcast') },
         { label: 'Buka Direktori Data Pegawai', category: 'Manajemen Data', icon: 'fa-users', action: () => switchTab('employees') },
+        { label: 'Buka Tabel Permintaan Jadwal Libur & DL', category: 'Manajemen Data', icon: 'fa-calendar-check', action: () => switchTab('jadwal-libur') },
         { label: 'Buka Tabel Akun Portal & Biometrik', category: 'Manajemen Data', icon: 'fa-id-card-clip', action: () => { switchTab('employees'); if (typeof switchEmployeeView === 'function') switchEmployeeView('table'); } },
         { label: 'Input Absensi Manual / Izin / Dinas Luar', category: 'Aksi Cepat', icon: 'fa-user-plus', action: () => { if (typeof openManualModal === 'function') openManualModal(); } },
         { label: 'Tema Warna: Sapphire Cyber (Biru Eksekutif)', category: 'Tema Visual', icon: 'fa-palette', action: () => setEnterpriseTheme('sapphire') },

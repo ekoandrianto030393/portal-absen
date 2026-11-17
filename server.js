@@ -413,6 +413,41 @@ pool.getConnection((err, connection) => {
                                 connection.query(createAksesScanPortalSql, (errAkses) => {
                                     if (errAkses) console.error('⚠️ Init Tabel Akses Scan Portal:', errAkses.message);
                                 });
+                                const createPermintaanJadwalLiburSql = `
+                                    CREATE TABLE IF NOT EXISTS permintaan_jadwal_libur (
+                                        id INT AUTO_INCREMENT PRIMARY KEY,
+                                        kode_permintaan VARCHAR(80) NOT NULL UNIQUE,
+                                        id_karyawan VARCHAR(50) NOT NULL,
+                                        nama VARCHAR(150) DEFAULT '',
+                                        jabatan VARCHAR(150) DEFAULT '',
+                                        jenis_pengajuan VARCHAR(20) NOT NULL DEFAULT 'LIBUR',
+                                        tanggal_diajukan DATE NOT NULL,
+                                        hari_diajukan VARCHAR(20) NOT NULL DEFAULT '',
+                                        tahun_diajukan INT NOT NULL,
+                                        jam_masuk VARCHAR(10) DEFAULT NULL,
+                                        jam_pulang VARCHAR(10) DEFAULT NULL,
+                                        keterangan TEXT,
+                                        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                                        catatan_admin VARCHAR(255) DEFAULT NULL,
+                                        tanggal_kirim DATETIME NOT NULL,
+                                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                        INDEX idx_jl_emp (id_karyawan),
+                                        INDEX idx_jl_tgl (tanggal_diajukan),
+                                        INDEX idx_jl_status (status)
+                                    ) ENGINE=InnoDB
+                                `;
+                                const createPermintaanJadwalLiburDelSql = `
+                                    CREATE TABLE IF NOT EXISTS permintaan_jadwal_libur_deleted (
+                                        kode_permintaan VARCHAR(80) PRIMARY KEY,
+                                        deleted_at DATETIME NOT NULL
+                                    ) ENGINE=InnoDB
+                                `;
+                                connection.query(createPermintaanJadwalLiburSql, (errJl) => {
+                                    if (errJl) console.error('⚠️ Init Tabel Permintaan Jadwal Libur:', errJl.message);
+                                });
+                                connection.query(createPermintaanJadwalLiburDelSql, (errJlDel) => {
+                                    if (errJlDel) console.error('⚠️ Init Tabel Permintaan Jadwal Libur Deleted:', errJlDel.message);
+                                });
                                 connection.query(createReqPasswordSql, (err) => {
                                     if (err) console.error('⚠️ Init Tabel Req Password:', err.message);
                                     
@@ -2773,6 +2808,500 @@ app.post('/api/admin/lupa-password/reject/:id_req', authenticateToken, (req, res
     });
 });
 
+
+// ============================================================
+// FITUR PERMINTAAN JADWAL LIBUR & DINAS LUAR (DL) - PORTAL <-> DASHBOARD
+// ============================================================
+const mysqlPromiseJl = require('mysql2/promise');
+let jlSchemaVerified = false;
+let activeJlSyncPromise = null;
+
+function getWibNowSql() {
+    return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+}
+
+function parseHariTahunIndo(dateStr) {
+    const clean = String(dateStr || '').slice(0, 10);
+    const parts = clean.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return null;
+    const [y, m, d] = parts;
+    const dt = new Date(y, m - 1, d);
+    if (isNaN(dt.getTime()) || dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
+        return null;
+    }
+    const hariList = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    return {
+        tanggal: clean,
+        hari: hariList[dt.getDay()],
+        tahun: y
+    };
+}
+
+async function ensureJadwalLiburTables(dbConn) {
+    await dbConn.query(`
+        CREATE TABLE IF NOT EXISTS permintaan_jadwal_libur (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            kode_permintaan VARCHAR(80) NOT NULL UNIQUE,
+            id_karyawan VARCHAR(50) NOT NULL,
+            nama VARCHAR(150) DEFAULT '',
+            jabatan VARCHAR(150) DEFAULT '',
+            jenis_pengajuan VARCHAR(20) NOT NULL DEFAULT 'LIBUR',
+            tanggal_diajukan DATE NOT NULL,
+            hari_diajukan VARCHAR(20) NOT NULL DEFAULT '',
+            tahun_diajukan INT NOT NULL,
+            jam_masuk VARCHAR(10) DEFAULT NULL,
+            jam_pulang VARCHAR(10) DEFAULT NULL,
+            keterangan TEXT,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            catatan_admin VARCHAR(255) DEFAULT NULL,
+            tanggal_kirim DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_jl_emp (id_karyawan),
+            INDEX idx_jl_tgl (tanggal_diajukan),
+            INDEX idx_jl_status (status)
+        )
+    `);
+    await dbConn.query(`
+        CREATE TABLE IF NOT EXISTS permintaan_jadwal_libur_deleted (
+            kode_permintaan VARCHAR(80) PRIMARY KEY,
+            deleted_at DATETIME NOT NULL
+        )
+    `);
+}
+
+async function ensureLocalJadwalLiburReady() {
+    if (jlSchemaVerified) return;
+    await ensureJadwalLiburTables(pool.promise());
+    jlSchemaVerified = true;
+}
+
+function getLocalCloudSyncConfig() {
+    const dbHost = String(process.env.DB_HOST || '').toLowerCase();
+    const runningInCloud = dbHost.includes('aivencloud') || dbHost.includes('tidbcloud');
+    if (runningInCloud || !process.env.CLOUD_DB_HOST) return null;
+    const cloudHost = String(process.env.CLOUD_DB_HOST || '');
+    const cloudSsl = cloudHost.includes('tidbcloud')
+        ? { minVersion: 'TLSv1.2', rejectUnauthorized: true }
+        : { rejectUnauthorized: false };
+    return {
+        host: process.env.CLOUD_DB_HOST,
+        port: Number(process.env.CLOUD_DB_PORT || 3306),
+        user: process.env.CLOUD_DB_USER,
+        password: process.env.CLOUD_DB_PASSWORD,
+        database: process.env.CLOUD_DB_NAME,
+        ssl: cloudSsl,
+        connectTimeout: 4500,
+        timezone: '+07:00',
+        dateStrings: true
+    };
+}
+
+async function syncPermintaanJadwalNow() {
+    const cloudCfg = getLocalCloudSyncConfig();
+    if (!cloudCfg) return;
+    if (activeJlSyncPromise) return activeJlSyncPromise;
+
+    activeJlSyncPromise = (async () => {
+        const localDb = pool.promise();
+        await ensureLocalJadwalLiburReady();
+        let cloudDb = null;
+        try {
+            cloudDb = await mysqlPromiseJl.createConnection(cloudCfg);
+            await cloudDb.query("SET time_zone = '+07:00'");
+            await ensureJadwalLiburTables(cloudDb);
+
+            const [localDel] = await localDb.query(
+                "SELECT kode_permintaan, DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s') AS deleted_at FROM permintaan_jadwal_libur_deleted"
+            );
+            const [cloudDel] = await cloudDb.query(
+                "SELECT kode_permintaan, DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s') AS deleted_at FROM permintaan_jadwal_libur_deleted"
+            );
+            const localDelMap = new Map(localDel.map(r => [r.kode_permintaan, r.deleted_at]));
+            const cloudDelMap = new Map(cloudDel.map(r => [r.kode_permintaan, r.deleted_at]));
+            const deletedSet = new Set([...localDelMap.keys(), ...cloudDelMap.keys()]);
+
+            for (const [kode, delAt] of cloudDelMap.entries()) {
+                if (!localDelMap.has(kode)) {
+                    await localDb.query('INSERT IGNORE INTO permintaan_jadwal_libur_deleted (kode_permintaan, deleted_at) VALUES (?, ?)', [kode, delAt]);
+                }
+                await localDb.query('DELETE FROM permintaan_jadwal_libur WHERE kode_permintaan = ?', [kode]);
+            }
+            for (const [kode, delAt] of localDelMap.entries()) {
+                if (!cloudDelMap.has(kode)) {
+                    await cloudDb.query('INSERT IGNORE INTO permintaan_jadwal_libur_deleted (kode_permintaan, deleted_at) VALUES (?, ?)', [kode, delAt]);
+                }
+                await cloudDb.query('DELETE FROM permintaan_jadwal_libur WHERE kode_permintaan = ?', [kode]);
+            }
+
+            const selectSql = `
+                SELECT kode_permintaan, id_karyawan, nama, jabatan, jenis_pengajuan,
+                       DATE_FORMAT(tanggal_diajukan, '%Y-%m-%d') AS tanggal_diajukan,
+                       hari_diajukan, tahun_diajukan, jam_masuk, jam_pulang, keterangan,
+                       status, catatan_admin,
+                       DATE_FORMAT(tanggal_kirim, '%Y-%m-%d %H:%i:%s') AS tanggal_kirim,
+                       DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+                FROM permintaan_jadwal_libur
+            `;
+            const [localRows] = await localDb.query(selectSql);
+            const [cloudRows] = await cloudDb.query(selectSql);
+            const localMap = new Map(localRows.map(r => [r.kode_permintaan, r]));
+            const cloudMap = new Map(cloudRows.map(r => [r.kode_permintaan, r]));
+            const allKodes = new Set([...localMap.keys(), ...cloudMap.keys()]);
+
+            const upsertSql = `
+                INSERT INTO permintaan_jadwal_libur
+                    (kode_permintaan, id_karyawan, nama, jabatan, jenis_pengajuan, tanggal_diajukan,
+                     hari_diajukan, tahun_diajukan, jam_masuk, jam_pulang, keterangan, status,
+                     catatan_admin, tanggal_kirim, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    nama = VALUES(nama),
+                    jabatan = VALUES(jabatan),
+                    jenis_pengajuan = VALUES(jenis_pengajuan),
+                    tanggal_diajukan = VALUES(tanggal_diajukan),
+                    hari_diajukan = VALUES(hari_diajukan),
+                    tahun_diajukan = VALUES(tahun_diajukan),
+                    jam_masuk = VALUES(jam_masuk),
+                    jam_pulang = VALUES(jam_pulang),
+                    keterangan = VALUES(keterangan),
+                    status = VALUES(status),
+                    catatan_admin = VALUES(catatan_admin),
+                    tanggal_kirim = VALUES(tanggal_kirim),
+                    updated_at = VALUES(updated_at)
+            `;
+            const toParams = (r) => [
+                r.kode_permintaan, r.id_karyawan, r.nama || '', r.jabatan || '',
+                r.jenis_pengajuan || 'LIBUR', r.tanggal_diajukan,
+                r.hari_diajukan || '', Number(r.tahun_diajukan || String(r.tanggal_diajukan || '').slice(0, 4) || 2026),
+                r.jam_masuk || null, r.jam_pulang || null, r.keterangan || '',
+                r.status || 'pending', r.catatan_admin || null,
+                r.tanggal_kirim, r.updated_at || r.tanggal_kirim
+            ];
+            const toEpoch = (s) => {
+                if (!s) return 0;
+                const ms = new Date(String(s).replace(' ', 'T') + '+07:00').getTime();
+                return isNaN(ms) ? 0 : ms;
+            };
+
+            for (const kode of allKodes) {
+                if (deletedSet.has(kode)) {
+                    await localDb.query('DELETE FROM permintaan_jadwal_libur WHERE kode_permintaan = ?', [kode]);
+                    await cloudDb.query('DELETE FROM permintaan_jadwal_libur WHERE kode_permintaan = ?', [kode]);
+                    continue;
+                }
+                const l = localMap.get(kode);
+                const c = cloudMap.get(kode);
+                if (c && !l) {
+                    await localDb.query(upsertSql, toParams(c));
+                } else if (l && !c) {
+                    await cloudDb.query(upsertSql, toParams(l));
+                } else if (l && c) {
+                    const lMs = toEpoch(l.updated_at);
+                    const cMs = toEpoch(c.updated_at);
+                    if (cMs > lMs) {
+                        await localDb.query(upsertSql, toParams(c));
+                    } else if (lMs > cMs) {
+                        await cloudDb.query(upsertSql, toParams(l));
+                    } else if (l.status !== c.status) {
+                        if (c.status !== 'pending' && l.status === 'pending') {
+                            await localDb.query(upsertSql, toParams(c));
+                        } else if (l.status !== 'pending' && c.status === 'pending') {
+                            await cloudDb.query(upsertSql, toParams(l));
+                        }
+                    }
+                }
+            }
+        } catch (errSync) {
+            console.warn('⚠️ On-demand sync Jadwal Libur/DL gagal (fallback lokal):', errSync.message);
+        } finally {
+            if (cloudDb) await cloudDb.end().catch(() => {});
+            activeJlSyncPromise = null;
+        }
+    })();
+
+    return activeJlSyncPromise;
+}
+
+// 1. Pegawai kirim permintaan Jadwal Libur atau DL dari Portal Online
+app.post('/api/pegawai/jadwal-libur', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalJadwalLiburReady();
+        const db = pool.promise();
+        const {
+            id_karyawan,
+            nama,
+            jabatan,
+            jenis_pengajuan,
+            tanggal_diajukan,
+            jam_masuk,
+            jam_pulang,
+            keterangan
+        } = req.body || {};
+
+        if (!id_karyawan || !tanggal_diajukan) {
+            return res.status(400).json({ success: false, message: 'ID Pegawai dan Tanggal wajib diisi.' });
+        }
+        if (req.user && req.user.role === 'pegawai' && req.user.id_karyawan &&
+            String(req.user.id_karyawan).toLowerCase() !== String(id_karyawan).toLowerCase()) {
+            return res.status(403).json({ success: false, message: 'Akses ditolak untuk ID Pegawai lain.' });
+        }
+
+        const dateInfo = parseHariTahunIndo(tanggal_diajukan);
+        if (!dateInfo) {
+            return res.status(400).json({ success: false, message: 'Format tanggal tidak valid. Pilih tanggal yang benar.' });
+        }
+
+        const jenis = String(jenis_pengajuan || 'LIBUR').toUpperCase() === 'DL' ? 'DL' : 'LIBUR';
+        const jamMasukFinal = jenis === 'DL' && jam_masuk ? String(jam_masuk).slice(0, 5) : null;
+        const jamPulangFinal = jenis === 'DL' && jam_pulang ? String(jam_pulang).slice(0, 5) : null;
+        const ketFinal = String(keterangan || '').trim() || (jenis === 'DL' ? 'Dinas Luar (Pengajuan Portal Online)' : 'Jadwal Libur (Pengajuan Portal Online)');
+
+        let namaFinal = String(nama || '').trim();
+        let jabatanFinal = String(jabatan || '').trim();
+        const [empRows] = await db.query('SELECT id_karyawan, nama, jabatan FROM karyawan WHERE id_karyawan = ? LIMIT 1', [id_karyawan]);
+        if (empRows && empRows.length > 0) {
+            namaFinal = empRows[0].nama || namaFinal || id_karyawan;
+            jabatanFinal = empRows[0].jabatan || jabatanFinal || 'Staf';
+        } else {
+            namaFinal = namaFinal || id_karyawan;
+            jabatanFinal = jabatanFinal || 'Staf';
+        }
+
+        const [dupRows] = await db.query(
+            `SELECT kode_permintaan FROM permintaan_jadwal_libur
+             WHERE id_karyawan = ? AND tanggal_diajukan = ? AND jenis_pengajuan = ? AND status = 'pending' LIMIT 1`,
+            [id_karyawan, dateInfo.tanggal, jenis]
+        );
+        if (dupRows && dupRows.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Pengajuan ${jenis === 'DL' ? 'Dinas Luar (DL)' : 'Jadwal Libur'} untuk tanggal ${dateInfo.tanggal} masih menunggu proses Admin.`
+            });
+        }
+
+        const safeEmp = String(id_karyawan).replace(/[^a-zA-Z0-9_-]/g, '');
+        const kodePermintaan = `JL-${safeEmp}-${dateInfo.tanggal.replace(/-/g, '')}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+        const nowWib = getWibNowSql();
+
+        await db.query(
+            `INSERT INTO permintaan_jadwal_libur
+                (kode_permintaan, id_karyawan, nama, jabatan, jenis_pengajuan, tanggal_diajukan,
+                 hari_diajukan, tahun_diajukan, jam_masuk, jam_pulang, keterangan, status,
+                 tanggal_kirim, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+            [
+                kodePermintaan, id_karyawan, namaFinal, jabatanFinal, jenis,
+                dateInfo.tanggal, dateInfo.hari, dateInfo.tahun,
+                jamMasukFinal, jamPulangFinal, ketFinal, nowWib, nowWib
+            ]
+        );
+
+        syncPermintaanJadwalNow().catch(() => {});
+
+        res.json({
+            success: true,
+            message: `Permintaan ${jenis === 'DL' ? 'Dinas Luar (DL)' : 'Jadwal Libur'} berhasil dikirim ke Admin Kepegawaian.`,
+            data: {
+                kode_permintaan: kodePermintaan,
+                id_karyawan,
+                nama: namaFinal,
+                jabatan: jabatanFinal,
+                jenis_pengajuan: jenis,
+                tanggal_diajukan: dateInfo.tanggal,
+                hari_diajukan: dateInfo.hari,
+                tahun_diajukan: dateInfo.tahun,
+                jam_masuk: jamMasukFinal,
+                jam_pulang: jamPulangFinal,
+                keterangan: ketFinal,
+                status: 'pending',
+                tanggal_kirim: nowWib
+            }
+        });
+    } catch (e) {
+        console.error('Error POST /api/pegawai/jadwal-libur:', e);
+        res.status(500).json({ success: false, message: 'Gagal menyimpan permintaan: ' + e.message });
+    }
+});
+
+// 2. Pegawai melihat riwayat permintaan Jadwal Libur / DL miliknya
+app.get('/api/pegawai/jadwal-libur/:id_karyawan', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalJadwalLiburReady();
+        await syncPermintaanJadwalNow().catch(() => {});
+        const db = pool.promise();
+        const empId = req.params.id_karyawan;
+
+        if (req.user && req.user.role === 'pegawai' && req.user.id_karyawan &&
+            String(req.user.id_karyawan).toLowerCase() !== String(empId).toLowerCase()) {
+            return res.status(403).json({ success: false, message: 'Akses ditolak.' });
+        }
+
+        const [rows] = await db.query(
+            `SELECT kode_permintaan, id_karyawan, nama, jabatan, jenis_pengajuan,
+                    DATE_FORMAT(tanggal_diajukan, '%Y-%m-%d') AS tanggal_diajukan,
+                    hari_diajukan, tahun_diajukan, jam_masuk, jam_pulang, keterangan,
+                    status, catatan_admin,
+                    DATE_FORMAT(tanggal_kirim, '%Y-%m-%d %H:%i:%s') AS tanggal_kirim,
+                    DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+             FROM permintaan_jadwal_libur
+             WHERE id_karyawan = ?
+             ORDER BY tanggal_kirim DESC, id DESC
+             LIMIT 100`,
+            [empId]
+        );
+
+        const [absRows] = await db.query(
+            `SELECT DATE_FORMAT(tanggal, '%Y-%m-%d') AS tgl, status FROM absensi WHERE id_karyawan = ?`,
+            [empId]
+        );
+        const absMap = new Map(absRows.map(a => [a.tgl, a.status]));
+        const enriched = rows.map(r => ({
+            ...r,
+            absen_status_di_tanggal: absMap.get(r.tanggal_diajukan) || null
+        }));
+
+        res.json({ success: true, data: enriched });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// 3. Pegawai membatalkan permintaan yang masih pending
+app.delete('/api/pegawai/jadwal-libur/:kode', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalJadwalLiburReady();
+        const db = pool.promise();
+        const kode = req.params.kode;
+        const [rows] = await db.query(
+            'SELECT id_karyawan, status FROM permintaan_jadwal_libur WHERE kode_permintaan = ? LIMIT 1',
+            [kode]
+        );
+        if (!rows || rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Permintaan tidak ditemukan.' });
+        }
+        if (req.user && req.user.role === 'pegawai' && req.user.id_karyawan &&
+            String(req.user.id_karyawan).toLowerCase() !== String(rows[0].id_karyawan).toLowerCase()) {
+            return res.status(403).json({ success: false, message: 'Akses ditolak.' });
+        }
+        if (rows[0].status !== 'pending') {
+            return res.status(400).json({ success: false, message: 'Permintaan yang sudah diproses admin tidak dapat dibatalkan.' });
+        }
+
+        const nowWib = getWibNowSql();
+        await db.query(
+            'INSERT INTO permintaan_jadwal_libur_deleted (kode_permintaan, deleted_at) VALUES (?, ?) ON DUPLICATE KEY UPDATE deleted_at = VALUES(deleted_at)',
+            [kode, nowWib]
+        );
+        await db.query('DELETE FROM permintaan_jadwal_libur WHERE kode_permintaan = ?', [kode]);
+        syncPermintaanJadwalNow().catch(() => {});
+
+        res.json({ success: true, message: 'Pengajuan berhasil dibatalkan.' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// 4. Admin Dashboard: Ambil semua permintaan Jadwal Libur & DL
+app.get('/api/jadwal-libur/permintaan', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalJadwalLiburReady();
+        await syncPermintaanJadwalNow().catch(() => {});
+        const db = pool.promise();
+
+        const [rows] = await db.query(
+            `SELECT kode_permintaan, id_karyawan, nama, jabatan, jenis_pengajuan,
+                    DATE_FORMAT(tanggal_diajukan, '%Y-%m-%d') AS tanggal_diajukan,
+                    hari_diajukan, tahun_diajukan, jam_masuk, jam_pulang, keterangan,
+                    status, catatan_admin,
+                    DATE_FORMAT(tanggal_kirim, '%Y-%m-%d %H:%i:%s') AS tanggal_kirim,
+                    DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+             FROM permintaan_jadwal_libur
+             ORDER BY tanggal_kirim DESC, id DESC`
+        );
+
+        const [empRows] = await db.query('SELECT id_karyawan, nama, jabatan FROM karyawan');
+        const empMap = new Map(empRows.map(e => [String(e.id_karyawan).trim().toLowerCase(), e]));
+
+        let absMap = new Map();
+        if (rows.length > 0) {
+            const tgls = [...new Set(rows.map(r => r.tanggal_diajukan).filter(Boolean))];
+            if (tgls.length > 0) {
+                const ph = tgls.map(() => '?').join(',');
+                const [absRows] = await db.query(
+                    `SELECT id_karyawan, DATE_FORMAT(tanggal, '%Y-%m-%d') AS tgl, status FROM absensi WHERE tanggal IN (${ph})`,
+                    tgls
+                );
+                absRows.forEach(a => {
+                    absMap.set(`${String(a.id_karyawan).trim().toLowerCase()}__${a.tgl}`, a.status);
+                });
+            }
+        }
+
+        const enriched = rows.map(r => {
+            const k = empMap.get(String(r.id_karyawan).trim().toLowerCase());
+            return {
+                ...r,
+                nama: (k && k.nama) || r.nama || r.id_karyawan,
+                jabatan: (k && k.jabatan) || r.jabatan || 'Staf',
+                absen_status_di_tanggal: absMap.get(`${String(r.id_karyawan).trim().toLowerCase()}__${r.tanggal_diajukan}`) || null
+            };
+        });
+
+        res.json({ success: true, data: enriched });
+    } catch (e) {
+        console.error('Error GET /api/jadwal-libur/permintaan:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// 5. Admin Dashboard: Update status permintaan ('pending' | 'processed' | 'rejected')
+app.put('/api/jadwal-libur/permintaan/:kode/status', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalJadwalLiburReady();
+        const db = pool.promise();
+        const kode = req.params.kode;
+        const { status, catatan_admin } = req.body || {};
+        const allowed = ['pending', 'processed', 'rejected'];
+        if (!allowed.includes(status)) {
+            return res.status(400).json({ success: false, message: 'Status tidak valid.' });
+        }
+
+        const nowWib = getWibNowSql();
+        const [result] = await db.query(
+            'UPDATE permintaan_jadwal_libur SET status = ?, catatan_admin = ?, updated_at = ? WHERE kode_permintaan = ?',
+            [status, catatan_admin || null, nowWib, kode]
+        );
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Permintaan tidak ditemukan.' });
+        }
+
+        syncPermintaanJadwalNow().catch(() => {});
+        res.json({ success: true, message: `Status permintaan diperbarui menjadi ${status}.` });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// 6. Admin Dashboard: Hapus riwayat permintaan (+ tombstone dua arah)
+app.delete('/api/jadwal-libur/permintaan/:kode', authenticateToken, async (req, res) => {
+    try {
+        await ensureLocalJadwalLiburReady();
+        const db = pool.promise();
+        const kode = req.params.kode;
+        const nowWib = getWibNowSql();
+
+        await db.query(
+            'INSERT INTO permintaan_jadwal_libur_deleted (kode_permintaan, deleted_at) VALUES (?, ?) ON DUPLICATE KEY UPDATE deleted_at = VALUES(deleted_at)',
+            [kode, nowWib]
+        );
+        await db.query('DELETE FROM permintaan_jadwal_libur WHERE kode_permintaan = ?', [kode]);
+        syncPermintaanJadwalNow().catch(() => {});
+
+        res.json({ success: true, message: 'Permintaan berhasil dihapus.' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
 
 // 4. API Dashboard Pegawai (Data Hari Ini)
 app.get('/api/pegawai/dashboard/today/:id', authenticateToken, (req, res) => {

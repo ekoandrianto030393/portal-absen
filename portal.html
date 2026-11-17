@@ -852,6 +852,29 @@
                 </div>
             </div>
 
+            <!-- Card Pengajuan Jadwal Libur & Dinas Luar (DL) -->
+            <div id="portal-jadwal-libur-card" class="mb-4 rounded-2xl border border-emerald-200/80 bg-white/95 shadow-sm p-4 transition-all hover:shadow-md">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-700 text-white flex items-center justify-center shadow-sm shrink-0">
+                            <i class="fa-solid fa-calendar-day text-lg"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h4 class="text-sm font-extrabold text-slate-900 tracking-tight">Ambil Jadwal Libur &amp; DL</h4>
+                                <span id="portal-jl-pending-pill" class="hidden inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">0 Menunggu</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">Pilih tanggal, hari &amp; tahun lalu kirim permintaan ke Admin Kepegawaian.</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="openJadwalLiburModal()"
+                        class="shrink-0 px-3.5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>Ajukan</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- Header Rekap -->
             <div class="flex justify-between items-center px-1 pt-1">
                 <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
@@ -1786,7 +1809,142 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/portal.js?v=55"></script>
+    <!-- Modal Pengajuan Jadwal Libur & Dinas Luar (DL) -->
+    <div id="jadwal-libur-modal" class="fixed inset-0 z-[75] hidden bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl shadow-2xl border border-emerald-100 max-h-[92vh] flex flex-col overflow-hidden">
+            <!-- Modal Header -->
+            <div class="px-5 py-4 bg-gradient-to-r from-emerald-900 via-teal-800 to-emerald-800 text-white flex items-center justify-between shrink-0">
+                <div>
+                    <h3 class="text-base font-extrabold tracking-tight flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-plus text-emerald-200"></i>
+                        <span>Permintaan Jadwal Libur &amp; DL</span>
+                    </h3>
+                    <p id="jl-emp-badge" class="text-[11px] text-emerald-100/90 font-medium mt-0.5">-</p>
+                </div>
+                <button type="button" onclick="closeJadwalLiburModal()" class="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-5 overflow-y-auto space-y-4">
+                <input type="hidden" id="jl-jenis-value" value="LIBUR">
+
+                <!-- 1. Pilih Jenis Pengajuan -->
+                <div>
+                    <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-2">1. Pilih Jenis Pengajuan</label>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button type="button" id="jl-btn-libur" onclick="setJadwalLiburJenis('LIBUR')"
+                            class="p-3 rounded-2xl border-2 border-emerald-600 bg-emerald-50 text-emerald-900 font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs transition-all">
+                            <i class="fa-solid fa-mug-hot text-emerald-600"></i>
+                            <span>Jadwal Libur</span>
+                        </button>
+                        <button type="button" id="jl-btn-dl" onclick="setJadwalLiburJenis('DL')"
+                            class="p-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 font-bold text-xs flex items-center justify-center gap-2 transition-all hover:bg-sky-50">
+                            <i class="fa-solid fa-car-side text-sky-600"></i>
+                            <span>Dinas Luar (DL)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Pilihan Cepat Tanggal -->
+                <div>
+                    <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-2">2. Pilih Cepat Hari &amp; Tanggal</label>
+                    <div id="jl-quick-dates" class="flex gap-2 overflow-x-auto pb-1"></div>
+                </div>
+
+                <!-- 3. Pilihan Eksplisit Tanggal, Bulan, Tahun & Kalender -->
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">Atur Tanggal, Hari &amp; Tahun</span>
+                        <input type="date" id="jl-date-picker" onchange="syncJadwalDropdownsFromDate()"
+                            class="text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1">Tanggal</label>
+                            <select id="jl-select-tgl" onchange="syncJadwalDateFromDropdowns()"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1">Bulan</label>
+                            <select id="jl-select-bulan" onchange="syncJadwalDateFromDropdowns()"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1">Tahun</label>
+                            <select id="jl-select-tahun" onchange="syncJadwalDateFromDropdowns()"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500"></select>
+                        </div>
+                    </div>
+
+                    <!-- Preview Hari Terpilih -->
+                    <div class="rounded-xl bg-white border border-emerald-200 px-3.5 py-2.5 flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase text-slate-400">Hari &amp; Tanggal Dipilih</div>
+                            <div class="text-sm font-black text-emerald-900 mt-0.5">
+                                <span id="jl-display-hari">-</span>, <span id="jl-display-lengkap">-</span>
+                            </div>
+                        </div>
+                        <span class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 4. Jam Dinas Luar (Hanya muncul saat DL dipilih) -->
+                <div id="jl-dl-times-wrap" class="hidden rounded-2xl border border-sky-200 bg-sky-50/60 p-3.5">
+                    <div class="text-[11px] font-extrabold text-sky-900 mb-2 flex items-center gap-1.5">
+                        <i class="fa-regular fa-clock"></i>
+                        <span>Perkiraan Jam Tugas Dinas Luar (Opsional)</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-bold text-sky-800 mb-1">Jam Berangkat / Masuk</label>
+                            <input type="time" id="jl-jam-masuk" value="07:30" class="w-full bg-white border border-sky-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-sky-800 mb-1">Jam Pulang</label>
+                            <input type="time" id="jl-jam-pulang" value="14:00" class="w-full bg-white border border-sky-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Keterangan -->
+                <div>
+                    <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Keterangan / Alasan</label>
+                    <textarea id="jl-keterangan" rows="2" placeholder="Contoh: Pengajuan jadwal libur shift / Dinas Luar ke Dinas Kesehatan..."
+                        class="w-full bg-white border border-slate-300 rounded-2xl px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"></textarea>
+                </div>
+
+                <!-- Tombol Kirim -->
+                <button type="button" id="jl-submit-btn" onclick="submitPermintaanJadwalLibur()"
+                    class="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>Kirim Permintaan ke Dashboard Admin</span>
+                </button>
+
+                <!-- 6. Riwayat Pengajuan Saya -->
+                <div class="pt-2 border-t border-slate-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-clock-rotate-left text-emerald-600"></i>
+                            <span>Riwayat Pengajuan Saya</span>
+                        </h4>
+                        <button type="button" onclick="loadMyJadwalLiburRequests()" class="text-[11px] font-bold text-emerald-700 hover:underline">
+                            <i class="fa-solid fa-arrows-rotate mr-0.5"></i> Refresh
+                        </button>
+                    </div>
+                    <div id="jl-my-history-list" class="space-y-2 text-xs text-slate-500">
+                        <div class="text-center py-4 text-slate-400">Memuat riwayat pengajuan...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/portal.js?v=56"></script>
     <script src="instansi_config.js"></script>
 </body>
 </html>

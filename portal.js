@@ -1800,7 +1800,7 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                         let boxCls = 'bg-slate-50 border-slate-200 text-slate-400';
                         let iconHtml = '<i class="fa-solid fa-minus text-[8px]"></i>';
                         if (recW) {
-                            if (recW.status === 'IZIN' || recW.status === 'SAKIT' || recW.status === 'CUTI' || recW.status === 'DL' || recW.status === 'DINAS_LUAR') {
+                            if (recW.status === 'IZIN' || recW.status === 'SAKIT' || recW.status === 'CUTI' || recW.status === 'DL' || recW.status === 'DINAS_LUAR' || recW.status === 'LIBUR') {
                                 boxCls = 'bg-sky-50 border-sky-200 text-sky-700';
                                 iconHtml = '<i class="fa-solid fa-suitcase-medical text-[9px]"></i>';
                                 hadirPekanIni++;
@@ -1863,10 +1863,11 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
 
                 const d = historyMap[i];
                 if (d) {
-                    if (d.status === 'IZIN' || d.status === 'SAKIT' || d.status === 'CUTI' || d.status === 'DL' || d.status === 'DINAS_LUAR') {
+                    if (d.status === 'IZIN' || d.status === 'SAKIT' || d.status === 'CUTI' || d.status === 'DL' || d.status === 'DINAS_LUAR' || d.status === 'LIBUR') {
                         const badgeMap = {
                             'IZIN': 'bg-amber-50 text-amber-700 border-amber-200',
                             'CUTI': 'bg-amber-50 text-amber-700 border-amber-200',
+                            'LIBUR': 'bg-cyan-50 text-cyan-700 border-cyan-200',
                             'SAKIT': 'bg-sky-50 text-sky-700 border-sky-200',
                             'DL': 'bg-violet-50 text-violet-700 border-violet-200',
                             'DINAS_LUAR': 'bg-violet-50 text-violet-700 border-violet-200'
@@ -1875,6 +1876,7 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                         let specificTag = 'ISC';
                         if (d.status === 'DL' || d.status === 'DINAS_LUAR') specificTag = 'DL ISC';
                         else if (d.status === 'SAKIT') specificTag = 'SAKIT ISC';
+                        else if (d.status === 'LIBUR') specificTag = 'LIBUR ISC';
                         else if (d.status === 'IZIN' || d.status === 'CUTI') specificTag = 'IZIN_CUTI ISC';
                         html += `
                             <tr ${rowIdAttr} data-row-tags="${specificTag}" class="daily-metric-row border-b border-teal-100/60 ${todayRowCls}">
@@ -1973,7 +1975,7 @@ async function loadDailyMetricsTable(idKaryawan, targetPeriode = null) {
                     if (recD) {
                         detailMasuk = recD.jam_masuk && recD.jam_masuk !== '-' ? recD.jam_masuk.slice(0, 5) : '--:--';
                         detailPulang = recD.jam_keluar && recD.jam_keluar !== '-' ? recD.jam_keluar.slice(0, 5) : '--:--';
-                        if (recD.status === 'IZIN' || recD.status === 'SAKIT' || recD.status === 'CUTI' || recD.status === 'DL' || recD.status === 'DINAS_LUAR') {
+                        if (recD.status === 'IZIN' || recD.status === 'SAKIT' || recD.status === 'CUTI' || recD.status === 'DL' || recD.status === 'DINAS_LUAR' || recD.status === 'LIBUR') {
                             cellBg = 'bg-sky-50 border-sky-300 text-sky-900';
                             subTxt = recD.status === 'DINAS_LUAR' ? 'DL' : recD.status;
                             detailStatus = `Status: ${recD.status}`;
@@ -2203,6 +2205,7 @@ function filterDailyTableByStatus(tag) {
         'IZIN_CUTI': 'Hari Izin / Cuti',
         'SAKIT': 'Hari Sakit',
         'DL': 'Hari Dinas Luar (DL)',
+        'LIBUR': 'Jadwal Libur',
         'ISC': 'Izin / Sakit / Cuti / Dinas Luar',
         'TELAT': 'Hari Terlambat (Telat)',
         'PSW': 'Pulang Sebelum Waktu (PSW)',
@@ -2498,4 +2501,390 @@ function openPortalScanPage() {
         }
     } catch (e) {}
     window.location.href = 'scan.html?' + q;
+}
+
+
+// ============================================================
+// FITUR PENGAJUAN JADWAL LIBUR & DINAS LUAR (DL) - PORTAL ONLINE
+// ============================================================
+const JL_HARI_INDO = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const JL_BULAN_INDO = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const JL_BULAN_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+let jlFormInitialized = false;
+let myJadwalLiburList = [];
+
+function escapePortalJlHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getWibTodayYmdJl() {
+    return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+function addDaysYmdJl(ymd, offsetDays) {
+    const parts = String(ymd).split('-').map(Number);
+    const dt = new Date(parts[0], parts[1] - 1, parts[2] + offsetDays);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const d = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function parseYmdSafeJl(ymd) {
+    const parts = String(ymd || '').slice(0, 10).split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return null;
+    const [y, m, d] = parts;
+    const dt = new Date(y, m - 1, d);
+    if (isNaN(dt.getTime())) return null;
+    return {
+        y, m, d,
+        dow: dt.getDay(),
+        hari: JL_HARI_INDO[dt.getDay()] || '',
+        bulanNama: JL_BULAN_INDO[m - 1] || '',
+        bulanShort: JL_BULAN_SHORT[m - 1] || ''
+    };
+}
+
+function initJadwalLiburForm() {
+    if (jlFormInitialized) return;
+    const selTgl = document.getElementById('jl-select-tgl');
+    const selBln = document.getElementById('jl-select-bulan');
+    const selThn = document.getElementById('jl-select-tahun');
+    const quickWrap = document.getElementById('jl-quick-dates');
+    if (!selTgl || !selBln || !selThn) return;
+
+    let tglOpts = '';
+    for (let d = 1; d <= 31; d++) {
+        const val = String(d).padStart(2, '0');
+        tglOpts += `<option value="${val}">${val}</option>`;
+    }
+    selTgl.innerHTML = tglOpts;
+
+    selBln.innerHTML = JL_BULAN_INDO.map((nama, idx) => {
+        const val = String(idx + 1).padStart(2, '0');
+        return `<option value="${val}">${nama}</option>`;
+    }).join('');
+
+    const curYear = Number(getWibTodayYmdJl().slice(0, 4)) || new Date().getFullYear();
+    let thnOpts = '';
+    for (let y = curYear - 1; y <= curYear + 2; y++) {
+        thnOpts += `<option value="${y}">${y}</option>`;
+    }
+    selThn.innerHTML = thnOpts;
+
+    if (quickWrap) {
+        const todayYmd = getWibTodayYmdJl();
+        const chips = [];
+        for (let i = 0; i < 7; i++) {
+            const ymd = addDaysYmdJl(todayYmd, i);
+            const info = parseYmdSafeJl(ymd);
+            const labelTop = i === 0 ? 'Hari Ini' : (i === 1 ? 'Besok' : info.hari);
+            chips.push(`
+                <button type="button" data-jl-ymd="${ymd}" onclick="selectQuickJadwalDate('${ymd}')"
+                    class="jl-quick-chip shrink-0 px-3 py-2 rounded-xl border border-slate-200 bg-white text-left transition-all hover:border-emerald-400">
+                    <div class="text-[10px] font-black uppercase text-emerald-700">${escapePortalJlHtml(labelTop)}</div>
+                    <div class="text-xs font-extrabold text-slate-800">${String(info.d).padStart(2, '0')} ${info.bulanShort} ${info.y}</div>
+                </button>
+            `);
+        }
+        quickWrap.innerHTML = chips.join('');
+    }
+
+    jlFormInitialized = true;
+    setJadwalTargetDate(getWibTodayYmdJl());
+}
+
+function setJadwalTargetDate(ymd) {
+    const info = parseYmdSafeJl(ymd);
+    if (!info) return;
+    const cleanYmd = `${info.y}-${String(info.m).padStart(2, '0')}-${String(info.d).padStart(2, '0')}`;
+
+    const dp = document.getElementById('jl-date-picker');
+    const selTgl = document.getElementById('jl-select-tgl');
+    const selBln = document.getElementById('jl-select-bulan');
+    const selThn = document.getElementById('jl-select-tahun');
+    const dispHari = document.getElementById('jl-display-hari');
+    const dispLengkap = document.getElementById('jl-display-lengkap');
+
+    if (dp) dp.value = cleanYmd;
+    if (selTgl) selTgl.value = String(info.d).padStart(2, '0');
+    if (selBln) selBln.value = String(info.m).padStart(2, '0');
+    if (selThn) {
+        if (!Array.from(selThn.options).some(o => o.value === String(info.y))) {
+            const opt = document.createElement('option');
+            opt.value = String(info.y);
+            opt.textContent = String(info.y);
+            selThn.appendChild(opt);
+        }
+        selThn.value = String(info.y);
+    }
+
+    if (dispHari) dispHari.textContent = info.hari;
+    if (dispLengkap) dispLengkap.textContent = `${String(info.d).padStart(2, '0')} ${info.bulanNama} ${info.y}`;
+
+    // Highlight quick chip yang cocok
+    document.querySelectorAll('.jl-quick-chip').forEach(btn => {
+        if (btn.getAttribute('data-jl-ymd') === cleanYmd) {
+            btn.className = 'jl-quick-chip shrink-0 px-3 py-2 rounded-xl border-2 border-emerald-600 bg-emerald-50 text-left shadow-xs transition-all';
+        } else {
+            btn.className = 'jl-quick-chip shrink-0 px-3 py-2 rounded-xl border border-slate-200 bg-white text-left transition-all hover:border-emerald-400';
+        }
+    });
+
+    // Sesuaikan jam pulang default DL berdasarkan hari
+    const jamPulangEl = document.getElementById('jl-jam-pulang');
+    if (jamPulangEl) {
+        if (info.dow === 5) jamPulangEl.value = '11:30';
+        else if (info.dow === 6) jamPulangEl.value = '13:00';
+        else jamPulangEl.value = '14:00';
+    }
+}
+
+window.syncJadwalDropdownsFromDate = function() {
+    const dp = document.getElementById('jl-date-picker');
+    if (dp && dp.value) setJadwalTargetDate(dp.value);
+};
+
+window.syncJadwalDateFromDropdowns = function() {
+    const y = Number(document.getElementById('jl-select-tahun')?.value || new Date().getFullYear());
+    const m = Number(document.getElementById('jl-select-bulan')?.value || 1);
+    let d = Number(document.getElementById('jl-select-tgl')?.value || 1);
+    const maxDay = new Date(y, m, 0).getDate();
+    if (d > maxDay) d = maxDay;
+    const ymd = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    setJadwalTargetDate(ymd);
+};
+
+window.selectQuickJadwalDate = function(ymd) {
+    setJadwalTargetDate(ymd);
+};
+
+window.setJadwalLiburJenis = function(jenis) {
+    const val = String(jenis).toUpperCase() === 'DL' ? 'DL' : 'LIBUR';
+    const hidden = document.getElementById('jl-jenis-value');
+    const btnLibur = document.getElementById('jl-btn-libur');
+    const btnDl = document.getElementById('jl-btn-dl');
+    const dlWrap = document.getElementById('jl-dl-times-wrap');
+
+    if (hidden) hidden.value = val;
+    if (val === 'DL') {
+        if (btnDl) btnDl.className = 'p-3 rounded-2xl border-2 border-sky-600 bg-sky-50 text-sky-900 font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs transition-all';
+        if (btnLibur) btnLibur.className = 'p-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 font-bold text-xs flex items-center justify-center gap-2 transition-all hover:bg-emerald-50';
+        if (dlWrap) dlWrap.classList.remove('hidden');
+    } else {
+        if (btnLibur) btnLibur.className = 'p-3 rounded-2xl border-2 border-emerald-600 bg-emerald-50 text-emerald-900 font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs transition-all';
+        if (btnDl) btnDl.className = 'p-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 font-bold text-xs flex items-center justify-center gap-2 transition-all hover:bg-sky-50';
+        if (dlWrap) dlWrap.classList.add('hidden');
+    }
+};
+
+window.openJadwalLiburModal = function() {
+    const sessionStr = localStorage.getItem('pegawai_session');
+    if (!sessionStr) {
+        if (typeof showPortalToast === 'function') showPortalToast('Silakan login terlebih dahulu.', 'error');
+        return;
+    }
+    const user = JSON.parse(sessionStr);
+    initJadwalLiburForm();
+
+    const badge = document.getElementById('jl-emp-badge');
+    if (badge) {
+        badge.textContent = `${user.nama || user.id_karyawan} • ID: ${user.id_karyawan} (${user.jabatan || 'Staf'})`;
+    }
+
+    const modal = document.getElementById('jadwal-libur-modal');
+    if (modal) modal.classList.remove('hidden');
+
+    loadMyJadwalLiburRequests();
+};
+
+window.closeJadwalLiburModal = function() {
+    const modal = document.getElementById('jadwal-libur-modal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.submitPermintaanJadwalLibur = async function() {
+    const sessionStr = localStorage.getItem('pegawai_session');
+    if (!sessionStr) return;
+    const user = JSON.parse(sessionStr);
+
+    const jenis = document.getElementById('jl-jenis-value')?.value || 'LIBUR';
+    const tanggal = document.getElementById('jl-date-picker')?.value || '';
+    const jamMasuk = document.getElementById('jl-jam-masuk')?.value || '07:30';
+    const jamPulang = document.getElementById('jl-jam-pulang')?.value || '14:00';
+    const keterangan = (document.getElementById('jl-keterangan')?.value || '').trim();
+
+    if (!tanggal) {
+        if (typeof showPortalToast === 'function') showPortalToast('Pilih tanggal pengajuan terlebih dahulu.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('jl-submit-btn');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Mengirim ke Dashboard Admin...';
+    }
+
+    try {
+        const payload = {
+            id_karyawan: user.id_karyawan,
+            nama: user.nama || '',
+            jabatan: user.jabatan || '',
+            jenis_pengajuan: jenis,
+            tanggal_diajukan: tanggal,
+            jam_masuk: jenis === 'DL' ? jamMasuk : null,
+            jam_pulang: jenis === 'DL' ? jamPulang : null,
+            keterangan
+        };
+        const res = await fetch(`${API_BASE}/pegawai/jadwal-libur`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+            throw new Error(json.message || 'Gagal mengirim pengajuan.');
+        }
+
+        const ketEl = document.getElementById('jl-keterangan');
+        if (ketEl) ketEl.value = '';
+        if (typeof showPortalToast === 'function') {
+            showPortalToast(json.message || 'Permintaan berhasil dikirim ke Admin.', 'success');
+        }
+        await loadMyJadwalLiburRequests();
+    } catch (e) {
+        if (typeof showPortalToast === 'function') showPortalToast(e.message, 'error');
+        else alert(e.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+};
+
+function updatePortalJlPendingPill(list) {
+    const pill = document.getElementById('portal-jl-pending-pill');
+    if (!pill) return;
+    const cnt = (Array.isArray(list) ? list : []).filter(r => r.status === 'pending').length;
+    if (cnt > 0) {
+        pill.textContent = `${cnt} Menunggu`;
+        pill.classList.remove('hidden');
+    } else {
+        pill.classList.add('hidden');
+    }
+}
+
+window.loadMyJadwalLiburBadge = async function(idKaryawan) {
+    if (!idKaryawan) return;
+    try {
+        const res = await fetch(`${API_BASE}/pegawai/jadwal-libur/${encodeURIComponent(idKaryawan)}?_t=${Date.now()}`, {
+            headers: { ...getAuthHeader() }
+        });
+        const json = await res.json();
+        if (json && json.success && Array.isArray(json.data)) {
+            myJadwalLiburList = json.data;
+            updatePortalJlPendingPill(json.data);
+        }
+    } catch (e) {}
+};
+
+window.loadMyJadwalLiburRequests = async function() {
+    const sessionStr = localStorage.getItem('pegawai_session');
+    if (!sessionStr) return;
+    const user = JSON.parse(sessionStr);
+    const listEl = document.getElementById('jl-my-history-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '<div class="text-center py-4 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Memuat riwayat pengajuan...</div>';
+
+    try {
+        const res = await fetch(`${API_BASE}/pegawai/jadwal-libur/${encodeURIComponent(user.id_karyawan)}?_t=${Date.now()}`, {
+            headers: { ...getAuthHeader() }
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || 'Gagal memuat riwayat.');
+        const rows = Array.isArray(json.data) ? json.data : [];
+        myJadwalLiburList = rows;
+        updatePortalJlPendingPill(rows);
+
+        if (rows.length === 0) {
+            listEl.innerHTML = '<div class="text-center py-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-400">Belum ada pengajuan jadwal libur atau DL.</div>';
+            return;
+        }
+
+        listEl.innerHTML = rows.map(r => {
+            const isDL = String(r.jenis_pengajuan).toUpperCase() === 'DL';
+            const info = parseYmdSafeJl(r.tanggal_diajukan);
+            const tglStr = info ? `${info.hari}, ${String(info.d).padStart(2, '0')} ${info.bulanShort} ${info.y}` : (r.tanggal_diajukan || '-');
+
+            const kirimParts = String(r.tanggal_kirim || '').replace('T', ' ').slice(0, 16).split(' ');
+            const kirimInfo = parseYmdSafeJl(kirimParts[0] || '');
+            const kirimStr = kirimInfo
+                ? `${String(kirimInfo.d).padStart(2, '0')} ${kirimInfo.bulanShort} ${kirimInfo.y}${kirimParts[1] ? ' • ' + kirimParts[1] + ' WIB' : ''}`
+                : (r.tanggal_kirim || '-');
+
+            let stBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">Menunggu Admin</span>';
+            if (r.status === 'processed') {
+                stBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">Sudah Diinput</span>';
+            } else if (r.status === 'rejected') {
+                stBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-300">Ditolak</span>';
+            }
+
+            const jenisPill = isDL
+                ? '<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-sky-100 text-sky-800">DINAS LUAR (DL)</span>'
+                : '<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-cyan-100 text-cyan-800">JADWAL LIBUR</span>';
+
+            return `
+                <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-1.5">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div class="flex items-center gap-1.5">${jenisPill}</div>
+                        <div class="flex items-center gap-1.5">
+                            ${stBadge}
+                            ${r.status === 'pending' ? `<button type="button" onclick="cancelMyJadwalLiburRequest('${escapePortalJlHtml(r.kode_permintaan)}')" class="text-[10px] font-bold text-rose-600 hover:underline px-1">Batalkan</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="font-extrabold text-slate-900 text-xs">${escapePortalJlHtml(tglStr)}</div>
+                    ${isDL && (r.jam_masuk || r.jam_pulang) ? `<div class="text-[10px] font-mono font-bold text-sky-700">Jam DL: ${escapePortalJlHtml(r.jam_masuk || '07:30')} - ${escapePortalJlHtml(r.jam_pulang || '14:00')} WIB</div>` : ''}
+                    <div class="text-[11px] text-slate-600">${escapePortalJlHtml(r.keterangan || '-')}</div>
+                    <div class="text-[10px] text-slate-400 font-medium">Dikirim: ${escapePortalJlHtml(kirimStr)}</div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        listEl.innerHTML = `<div class="text-center py-4 text-rose-600 font-bold">${escapePortalJlHtml(e.message)}</div>`;
+    }
+};
+
+window.cancelMyJadwalLiburRequest = async function(kode) {
+    if (!confirm('Batalkan pengajuan jadwal libur / DL ini?')) return;
+    try {
+        const res = await fetch(`${API_BASE}/pegawai/jadwal-libur/${encodeURIComponent(kode)}`, {
+            method: 'DELETE',
+            headers: { ...getAuthHeader() }
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Gagal membatalkan.');
+        if (typeof showPortalToast === 'function') showPortalToast('Pengajuan berhasil dibatalkan.', 'info');
+        await loadMyJadwalLiburRequests();
+    } catch (e) {
+        if (typeof showPortalToast === 'function') showPortalToast(e.message, 'error');
+    }
+};
+
+if (typeof loadDashboardData === 'function') {
+    const _origLoadDashboardDataJl = loadDashboardData;
+    loadDashboardData = async function(idKaryawan) {
+        const out = await _origLoadDashboardDataJl.apply(this, arguments);
+        try {
+            if (idKaryawan) loadMyJadwalLiburBadge(idKaryawan);
+        } catch (e) {}
+        return out;
+    };
 }
